@@ -13,7 +13,7 @@ Asdamir gives you two things at once:
 ![Open core](https://img.shields.io/badge/open%20core-LGPL--3.0-blue)
 ![Commercial](https://img.shields.io/badge/AppManagement-commercial-orange)
 
-> Status: preview (`0.1.0-preview`). The public API may still change between minor versions. The production-readiness features below are in place.
+> Status: stable (`1.0.0`). Production-ready; semantic versioning — breaking changes bump the major. The production-readiness features below are in place.
 
 ---
 

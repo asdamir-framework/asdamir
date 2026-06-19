@@ -16,23 +16,21 @@ dotnet run --project src/Asdamir.Tools -- <command> [options]
 
 The packaged command is `asdamir <command>` (the tool command name is also `framework`).
 
-**From nuget.org** (once the `NUGET_API_KEY` repo secret is configured — the framework + tool publish there
-on each main build):
+**From nuget.org** (stable `1.0.0`):
 
 ```bash
-dotnet tool install --global Asdamir.Tools --prerelease
-#   update later:  dotnet tool update --global Asdamir.Tools --prerelease
+dotnet tool install --global Asdamir.Tools
+#   update later:  dotnet tool update --global Asdamir.Tools
 ```
 
 This is the public channel — generated apps also restore `Asdamir.Core` / `.Data` / `.Web` from nuget.org.
 
-**Fallback (no secret needed)** — the tool is always attached as an asset on the rolling **`cli-preview`**
-GitHub Release (GitHub Packages' NuGet endpoint can't ingest the self-contained tool package, so it isn't
-on that feed):
+**Fallback (no secret needed)** — the tool is also attached as an asset on the latest **GitHub Release**
+(GitHub Packages' NuGet endpoint can't ingest the self-contained tool package, so it isn't on that feed):
 
 ```bash
-# download Asdamir.Tools.preview.nupkg from the 'cli-preview' release into a folder, then:
-dotnet tool install --global Asdamir.Tools --add-source <folder> --prerelease
+# download Asdamir.Tools.1.0.0.nupkg from the latest release into a folder, then:
+dotnet tool install --global Asdamir.Tools --add-source <folder>
 ```
 
 The framework **libraries** are also on the **GitHub Packages** NuGet feed (`Asdamir.Core` / `.Data` /
