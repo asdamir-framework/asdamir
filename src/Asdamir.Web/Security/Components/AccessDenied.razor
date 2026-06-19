@@ -1,0 +1,63 @@
+@page "/access-denied"
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<div class="access-denied-container">
+    <FluentCard Class="access-denied-card">
+        <FluentStack Orientation="Orientation.Vertical" 
+                   HorizontalAlignment="HorizontalAlignment.Center"
+                   VerticalGap="20">
+            
+            <!-- Error Icon -->
+            <div style="font-size: 48px; color: red;">⚠️</div>
+
+            <FluentLabel Typo="Typography.H4">Erişim Reddedildi</FluentLabel>            <FluentLabel Typo="Typography.Body" Class="text-center">
+                Bu sayfaya erişim yetkiniz bulunmamaktadır. Gerekli izinlere sahip olmadığınız için bu işlemi gerçekleştiremezsiniz.
+            </FluentLabel>
+            
+            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+                <FluentButton Appearance="Appearance.Accent" OnClick="GoToDashboard">
+                    Ana Sayfaya Dön
+                </FluentButton>
+                <FluentButton Appearance="Appearance.Neutral" OnClick="GoBack">
+                    Geri Dön
+                </FluentButton>
+            </FluentStack>
+            
+        </FluentStack>
+    </FluentCard>
+</div>
+
+<style>
+    .access-denied-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 80vh;
+        padding: 20px;
+    }
+
+    .access-denied-card {
+        max-width: 500px;
+        width: 100%;
+        padding: 40px;
+        text-align: center;
+    }
+
+    .text-center {
+        text-align: center;
+    }
+</style>
+
+@code {
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    private void GoToDashboard()
+    {
+        Navigation.NavigateTo("/dashboard");
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

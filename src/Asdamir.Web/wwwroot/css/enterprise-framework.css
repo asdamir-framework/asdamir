@@ -1,0 +1,298 @@
+/* ============================================
+   ENTERPRISE FRAMEWORK - LAYER 1
+   Utility classes and global helpers
+   Requires: design-tokens.css
+   ============================================ */
+
+/* ========================================
+   RESET & BASE
+   ======================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+/* ========================================
+   UTILITY CLASSES - SPACING
+   ======================================== */
+.ui-gap-0 { gap: var(--ui-space-0); }
+.ui-gap-1 { gap: var(--ui-space-1); }
+.ui-gap-2 { gap: var(--ui-space-2); }
+.ui-gap-3 { gap: var(--ui-space-3); }
+.ui-gap-4 { gap: var(--ui-space-4); }
+.ui-gap-6 { gap: var(--ui-space-6); }
+.ui-gap-8 { gap: var(--ui-space-8); }
+
+.ui-p-0 { padding: var(--ui-space-0); }
+.ui-p-1 { padding: var(--ui-space-1); }
+.ui-p-2 { padding: var(--ui-space-2); }
+.ui-p-3 { padding: var(--ui-space-3); }
+.ui-p-4 { padding: var(--ui-space-4); }
+.ui-p-6 { padding: var(--ui-space-6); }
+.ui-p-8 { padding: var(--ui-space-8); }
+
+.ui-m-0 { margin: var(--ui-space-0); }
+.ui-m-1 { margin: var(--ui-space-1); }
+.ui-m-2 { margin: var(--ui-space-2); }
+.ui-m-3 { margin: var(--ui-space-3); }
+.ui-m-4 { margin: var(--ui-space-4); }
+.ui-m-6 { margin: var(--ui-space-6); }
+.ui-m-8 { margin: var(--ui-space-8); }
+
+/* ========================================
+   UTILITY CLASSES - DISPLAY & FLEX
+   ======================================== */
+.ui-flex { display: flex; }
+.ui-inline-flex { display: inline-flex; }
+.ui-grid { display: grid; }
+.ui-block { display: block; }
+.ui-inline-block { display: inline-block; }
+.ui-hidden { display: none; }
+
+.ui-flex-col { flex-direction: column; }
+.ui-flex-row { flex-direction: row; }
+.ui-items-center { align-items: center; }
+.ui-items-start { align-items: flex-start; }
+.ui-items-end { align-items: flex-end; }
+.ui-justify-center { justify-content: center; }
+.ui-justify-between { justify-content: space-between; }
+.ui-justify-start { justify-content: flex-start; }
+.ui-justify-end { justify-content: flex-end; }
+
+/* ========================================
+   UTILITY CLASSES - TEXT
+   ======================================== */
+.ui-text-primary { color: var(--ui-text-primary); }
+.ui-text-secondary { color: var(--ui-text-secondary); }
+.ui-text-tertiary { color: var(--ui-text-tertiary); }
+.ui-text-disabled { color: var(--ui-text-disabled); }
+
+.ui-text-xs { font-size: var(--ui-font-size-xs); }
+.ui-text-sm { font-size: var(--ui-font-size-sm); }
+.ui-text-base { font-size: var(--ui-font-size-base); }
+.ui-text-lg { font-size: var(--ui-font-size-lg); }
+.ui-text-xl { font-size: var(--ui-font-size-xl); }
+
+.ui-font-normal { font-weight: var(--ui-font-weight-normal); }
+.ui-font-medium { font-weight: var(--ui-font-weight-medium); }
+.ui-font-semibold { font-weight: var(--ui-font-weight-semibold); }
+.ui-font-bold { font-weight: var(--ui-font-weight-bold); }
+
+.ui-text-center { text-align: center; }
+.ui-text-left { text-align: left; }
+.ui-text-right { text-align: right; }
+
+/* ========================================
+   UTILITY CLASSES - BACKGROUND
+   ======================================== */
+.ui-bg-surface { background: var(--ui-bg-surface); }
+.ui-bg-surface-secondary { background: var(--ui-bg-surface-secondary); }
+.ui-bg-hover { background: var(--ui-bg-hover); }
+
+/* ========================================
+   UTILITY CLASSES - BORDERS
+   ======================================== */
+.ui-border { border: var(--ui-border-width-thin) solid var(--ui-border-default); }
+.ui-border-strong { border-color: var(--ui-border-strong); }
+.ui-rounded-sm { border-radius: var(--ui-border-radius-sm); }
+.ui-rounded-md { border-radius: var(--ui-border-radius-md); }
+.ui-rounded-lg { border-radius: var(--ui-border-radius-lg); }
+.ui-rounded-full { border-radius: var(--ui-border-radius-full); }
+
+/* ========================================
+   UTILITY CLASSES - SHADOWS
+   ======================================== */
+.ui-shadow-sm { box-shadow: var(--ui-shadow-sm); }
+.ui-shadow-md { box-shadow: var(--ui-shadow-md); }
+.ui-shadow-lg { box-shadow: var(--ui-shadow-lg); }
+.ui-shadow-none { box-shadow: none; }
+
+/* ========================================
+   UTILITY CLASSES - WIDTH/HEIGHT
+   ======================================== */
+.ui-w-full { width: 100%; }
+.ui-h-full { height: 100%; }
+.ui-w-auto { width: auto; }
+.ui-h-auto { height: auto; }
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--ui-bg-surface-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ui-border-default);
+    border-radius: var(--ui-border-radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ui-border-strong);
+}
+
+/* ========================================
+   BLAZOR ERROR Framework.Web.UI
+   ======================================== */
+#blazor-error-ui {
+    background: var(--ui-color-error-light);
+    bottom: 0;
+    box-shadow: var(--ui-shadow-lg);
+    display: none;
+    left: 0;
+    padding: var(--ui-space-4);
+    position: fixed;
+    width: 100%;
+    z-index: var(--ui-z-toast);
+    color: var(--ui-color-error);
+    border-top: 2px solid var(--ui-color-error);
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: var(--ui-space-4);
+    top: var(--ui-space-4);
+}
+
+/* ========================================
+   LOADING STATES
+   ======================================== */
+.ui-loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--ui-bg-overlay);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--ui-z-modal);
+}
+
+/* ========================================
+   FOCUS STATES
+   ======================================== */
+*:focus-visible {
+    outline: 2px solid var(--ui-border-focus);
+    outline-offset: 2px;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+    .ui-no-print {
+        display: none !important;
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+.ui-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+.ui-skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--ui-bg-surface);
+    color: var(--ui-text-primary);
+    padding: var(--ui-space-2) var(--ui-space-4);
+    text-decoration: none;
+    z-index: var(--ui-z-toast);
+}
+
+.ui-skip-link:focus {
+    top: 0;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes ui-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes ui-slide-up {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes ui-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.ui-fade-in {
+    animation: ui-fade-in var(--ui-transition-normal);
+}
+
+.ui-slide-up {
+    animation: ui-slide-up var(--ui-transition-normal);
+}
+
+/* ========================================
+   RESPONSIVE UTILITIES
+   ======================================== */
+@media (max-width: 768px) {
+    .ui-hidden-mobile {
+        display: none;
+    }
+}
+
+@media (min-width: 769px) {
+    .ui-hidden-desktop {
+        display: none;
+    }
+}
+
+/* ========================================
+   FLUENT Framework.Web.UI Z-INDEX FIXES
+   Fix dropdown menus appearing behind cards
+   ======================================== */
+fluent-select::part(listbox),
+fluent-combobox::part(listbox),
+fluent-autocomplete::part(listbox),
+.fluent-select-popup,
+.fluent-combobox-popup {
+    z-index: 1050 !important;
+}
+
+fluent-menu,
+.fluent-menu-popup {
+    z-index: 1050 !important;
+}
+
+/* Ensure parent containers don't clip dropdowns */
+.resource-header,
+.filters-container,
+.toolbar-container {
+    position: relative;
+    z-index: 10;
+    overflow: visible !important;
+}

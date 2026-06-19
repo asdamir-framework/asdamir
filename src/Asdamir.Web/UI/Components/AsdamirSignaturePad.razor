@@ -1,0 +1,498 @@
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inherits ComponentBase
+@implements IDisposable
+
+@*
+    SignaturePad — INSPINIA-styled (Asdamir design system). FluentUI-free: toolbar restyled with
+    .asd-* buttons, pen-colour swatches and a native range slider; .asd-pill status; AsdamirModal
+    template-save + validation dialogs. The <canvas> and all enterpriseUtils JS interop are unchanged.
+*@
+
+<div class="sp-container">
+    <div class="sp-toolbar">
+        <span class="sp-title">✍️ Digital Signature Pad</span>
+        <span class="sp-grow"></span>
+
+        <span class="sp-lbl">Pen:</span>
+        <div class="sp-pens">
+            @for (var i = 0; i < penColors.Length; i++)
+            {
+                var color = penColors[i];
+                <button type="button" class="sp-pen c@(i) @(selectedPenColor == color ? "sel" : "")" title="@GetColorName(color)" @onclick="() => SelectPenColor(color)"></button>
+            }
+        </div>
+
+        <input class="sp-range" type="range" min="1" max="10" step="1" @bind="penThickness" @bind:event="oninput" @bind:after="UpdatePenSettings" title="Pen Thickness" />
+
+        <button type="button" class="asd-btn asd-btn-ghost" @onclick="UndoLastStroke" disabled="@(!canUndo)" title="Undo">↶ Undo</button>
+        <button type="button" class="asd-btn asd-btn-ghost" @onclick="RedoLastStroke" disabled="@(!canRedo)" title="Redo">↷ Redo</button>
+        <button type="button" class="asd-btn asd-btn-ghost" @onclick="ClearSignature" title="Clear">🗑️ Clear</button>
+        <button type="button" class="asd-btn @(isFullscreen ? "asd-btn-primary" : "asd-btn-ghost")" @onclick="ToggleFullscreen" title="Fullscreen">🔍 Fullscreen</button>
+    </div>
+
+    <div class="sp-content @(isFullscreen ? "fullscreen" : "")">
+        <div class="sp-canvas-wrap">
+            @if (ShowBackground && !string.IsNullOrEmpty(BackgroundImage))
+            {
+                <img src="@BackgroundImage" class="sp-bg" alt="Signature Background" />
+            }
+
+            <canvas id="@CanvasId" width="@canvasWidth" height="@canvasHeight" class="sp-canvas @Class"
+                @onmousedown="OnCanvasMouseDown" @onmousemove="OnCanvasMouseMove" @onmouseup="OnCanvasMouseUp"
+                @ontouchstart="OnCanvasTouchStart" @ontouchmove="OnCanvasTouchMove"
+                @ontouchend="OnCanvasTouchEnd"></canvas>
+
+            @if (ShowWatermark)
+            {
+                <div class="sp-watermark">@WatermarkText</div>
+            }
+
+            @if (isEmpty)
+            {
+                <div class="sp-placeholder">Sign here</div>
+            }
+        </div>
+
+        @if (ShowSignatureInfo && !isEmpty)
+        {
+            <div class="sp-info">
+                <div class="sp-info-title">Signature Information</div>
+                <div class="sp-info-meta">Strokes: @strokeCount | Created: @signatureTimestamp.ToString("yyyy-MM-dd HH:mm:ss")</div>
+                @if (isSignatureValid)
+                {
+                    <span class="asd-pill ok">✓ Valid Signature</span>
+                }
+                else
+                {
+                    <span class="asd-pill warn">⚠ Requires Validation</span>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="sp-actions">
+        <div class="sp-actions-l">
+            <span class="sp-lbl">Templates:</span>
+            <select class="asd-input sp-sel" @bind="_selectedTemplateId" @bind:after="OnTemplateSelected">
+                <option value="">(none)</option>
+                @foreach (var t in signatureTemplates)
+                {
+                    <option value="@t.Id">@t.Name</option>
+                }
+            </select>
+            <button type="button" class="asd-btn asd-btn-ghost" @onclick="SaveAsTemplate" disabled="@isEmpty" title="Save as Template">Save Template</button>
+        </div>
+
+        <span class="sp-grow"></span>
+
+        <div class="sp-actions-r">
+            <span class="sp-lbl">Export:</span>
+            <button type="button" class="asd-btn asd-btn-ghost" @onclick="() => ExportSignature(ExportFormat.PNG)" disabled="@isEmpty">PNG</button>
+            <button type="button" class="asd-btn asd-btn-ghost" @onclick="() => ExportSignature(ExportFormat.SVG)" disabled="@isEmpty">SVG</button>
+            <button type="button" class="asd-btn asd-btn-ghost" @onclick="() => ExportSignature(ExportFormat.PDF)" disabled="@isEmpty">PDF</button>
+            <button type="button" class="asd-btn asd-btn-primary" @onclick="ValidateAndSave" disabled="@isEmpty">Validate &amp; Save</button>
+        </div>
+    </div>
+</div>
+
+@* Template save dialog *@
+<AsdamirModal Open="_templateOpen" OpenChanged="@(v => _templateOpen = v)" Title="Save Signature Template">
+    <ChildContent>
+        <div class="asd-form-grid">
+            <div>
+                <div class="asd-section-label">Template Name *</div>
+                <input class="asd-input asd-form-w" @bind="newTemplateName" placeholder="Enter template name..." />
+            </div>
+            <div>
+                <div class="asd-section-label">Description</div>
+                <textarea class="asd-input asd-form-w" rows="3" @bind="newTemplateDescription" placeholder="Optional description..."></textarea>
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => _templateOpen = false)">Cancel</button>
+        <button type="button" class="asd-btn asd-btn-primary" @onclick="ConfirmSaveTemplate" disabled="@string.IsNullOrWhiteSpace(newTemplateName)">Save</button>
+    </Footer>
+</AsdamirModal>
+
+@* Validation dialog *@
+<AsdamirModal Open="_validationOpen" OpenChanged="@(v => _validationOpen = v)" Title="Signature Validation">
+    <ChildContent>
+        <div class="asd-form-grid">
+            <div>
+                <div class="asd-section-label">Signer Name *</div>
+                <input class="asd-input asd-form-w" @bind="signerName" placeholder="Enter full name..." />
+            </div>
+            <div>
+                <div class="asd-section-label">Title/Position</div>
+                <input class="asd-input asd-form-w" @bind="signerTitle" placeholder="Enter title or position..." />
+            </div>
+            <div>
+                <div class="asd-section-label">Organization</div>
+                <input class="asd-input asd-form-w" @bind="signerOrganization" placeholder="Enter organization..." />
+            </div>
+            <div>
+                <div class="asd-section-label">Signature Date</div>
+                <input class="asd-input asd-form-w" type="date" @bind="signatureDate" />
+            </div>
+            <div>
+                <div class="asd-section-label">Purpose</div>
+                <textarea class="asd-input asd-form-w" rows="3" @bind="signaturePurpose" placeholder="Reason for signature..."></textarea>
+            </div>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => _validationOpen = false)">Cancel</button>
+        <button type="button" class="asd-btn asd-btn-primary" @onclick="ConfirmValidation" disabled="@string.IsNullOrWhiteSpace(signerName)">Validate &amp; Save</button>
+    </Footer>
+</AsdamirModal>
+
+@code {
+    // Parameters
+    [Parameter] public string CanvasId { get; set; } = $"sig_{Guid.NewGuid():N}";
+    [Parameter] public string Height { get; set; } = "400px";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool ShowBackground { get; set; } = false;
+    [Parameter] public string? BackgroundImage { get; set; }
+    [Parameter] public bool ShowWatermark { get; set; } = false;
+    [Parameter] public string WatermarkText { get; set; } = "Digital Signature";
+    [Parameter] public bool ShowSignatureInfo { get; set; } = true;
+    [Parameter] public EventCallback<string> OnSignatureSaved { get; set; }
+    [Parameter] public EventCallback<SignatureValidationResult> OnSignatureValidated { get; set; }
+
+    // State
+    private int canvasWidth = 800;
+    private int canvasHeight = 300;
+    private bool isEmpty = true;
+    private bool isFullscreen = false;
+    private bool canUndo = false;
+    private bool canRedo = false;
+    private int strokeCount = 0;
+    private DateTime signatureTimestamp = DateTime.Now;
+    private bool isSignatureValid = false;
+    private bool _templateOpen;
+    private bool _validationOpen;
+
+    // Pen settings
+    private string selectedPenColor = "#000000";
+    private int penThickness = 2;
+    private readonly string[] penColors = { "#000000", "#0000FF", "#FF0000", "#008000", "#800080" };
+
+    // Templates
+    private List<SignatureTemplate> signatureTemplates = new();
+    private SignatureTemplate? selectedTemplate;
+    private string _selectedTemplateId = string.Empty;
+    private string newTemplateName = string.Empty;
+    private string newTemplateDescription = string.Empty;
+
+    // Validation
+    private string signerName = string.Empty;
+    private string signerTitle = string.Empty;
+    private string signerOrganization = string.Empty;
+    private DateTime? signatureDate = DateTime.Today;
+    private string signaturePurpose = string.Empty;
+
+    // Drawing state
+    private List<List<Point>> strokes = new();
+    private List<List<Point>> undoStack = new();
+    private DotNetObjectReference<AsdamirSignaturePad>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await InitializeSignaturePad();
+            await LoadTemplates();
+        }
+    }
+
+    private async Task InitializeSignaturePad()
+    {
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("enterpriseUtils.initializeSignaturePad", CanvasId, new
+        {
+            Width = canvasWidth,
+            Height = canvasHeight,
+            PenColor = selectedPenColor,
+            PenThickness = penThickness,
+            OnStrokeComplete = _dotNetRef
+        });
+    }
+
+    private async Task SelectPenColor(string color)
+    {
+        selectedPenColor = color;
+        await UpdatePenSettings();
+    }
+
+    private async Task OnTemplateSelected()
+    {
+        selectedTemplate = signatureTemplates.FirstOrDefault(t => t.Id.ToString() == _selectedTemplateId);
+        await LoadTemplate();
+    }
+
+    private async Task UpdatePenSettings()
+    {
+        await JS.InvokeVoidAsync("enterpriseUtils.updateSignaturePadSettings", CanvasId, new
+        {
+            PenColor = selectedPenColor,
+            PenThickness = penThickness
+        });
+    }
+
+    [JSInvokable]
+    public async Task OnStrokeCompleted()
+    {
+        strokeCount++;
+        isEmpty = false;
+        canUndo = true;
+        signatureTimestamp = DateTime.Now;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task UndoLastStroke()
+    {
+        if (canUndo)
+        {
+            await JS.InvokeVoidAsync("enterpriseUtils.undoSignatureStroke", CanvasId);
+            strokeCount = Math.Max(0, strokeCount - 1);
+            isEmpty = strokeCount == 0;
+            canRedo = true;
+            if (strokeCount == 0) canUndo = false;
+        }
+    }
+
+    private async Task RedoLastStroke()
+    {
+        if (canRedo)
+        {
+            await JS.InvokeVoidAsync("enterpriseUtils.redoSignatureStroke", CanvasId);
+            strokeCount++;
+            isEmpty = false;
+            canUndo = true;
+        }
+    }
+
+    private async Task ClearSignature()
+    {
+        await JS.InvokeVoidAsync("enterpriseUtils.clearSignaturePad", CanvasId);
+        isEmpty = true;
+        strokeCount = 0;
+        canUndo = false;
+        canRedo = false;
+        isSignatureValid = false;
+        signatureTimestamp = DateTime.Now;
+    }
+
+    private void ToggleFullscreen()
+    {
+        isFullscreen = !isFullscreen;
+        if (isFullscreen)
+        {
+            canvasWidth = 1200;
+            canvasHeight = 600;
+        }
+        else
+        {
+            canvasWidth = 800;
+            canvasHeight = 300;
+        }
+    }
+
+    private async Task ExportSignature(ExportFormat format)
+    {
+        if (isEmpty) return;
+
+        try
+        {
+            var fileName = $"signature_{DateTime.Now:yyyyMMdd_HHmmss}";
+
+            switch (format)
+            {
+                case ExportFormat.PNG:
+                    var pngData = await JS.InvokeAsync<string>("enterpriseUtils.exportSignatureAsPNG", CanvasId);
+                    await JS.InvokeVoidAsync("enterpriseUtils.downloadDataUrl", pngData, $"{fileName}.png");
+                    break;
+
+                case ExportFormat.SVG:
+                    var svgData = await JS.InvokeAsync<string>("enterpriseUtils.exportSignatureAsSVG", CanvasId);
+                    await JS.InvokeVoidAsync("enterpriseUtils.downloadFile", $"{fileName}.svg", svgData, "image/svg+xml");
+                    break;
+
+                case ExportFormat.PDF:
+                    var pdfData = await JS.InvokeAsync<string>("enterpriseUtils.exportSignatureAsPDF", CanvasId, new
+                    {
+                        SignerName = signerName,
+                        SignatureDate = signatureDate?.ToString("yyyy-MM-dd"),
+                        Purpose = signaturePurpose
+                    });
+                    await JS.InvokeVoidAsync("enterpriseUtils.downloadDataUrl", pdfData, $"{fileName}.pdf");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Export failed: {ex.Message}");
+        }
+    }
+
+    private async Task ValidateAndSave()
+    {
+        if (isEmpty) return;
+        _validationOpen = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ConfirmValidation()
+    {
+        var validationResult = new SignatureValidationResult
+        {
+            IsValid = true,
+            SignerName = signerName,
+            SignerTitle = signerTitle,
+            SignerOrganization = signerOrganization,
+            SignatureDate = signatureDate ?? DateTime.Now,
+            Purpose = signaturePurpose,
+            Timestamp = DateTime.UtcNow,
+            StrokeCount = strokeCount
+        };
+
+        isSignatureValid = true;
+        _validationOpen = false;
+
+        await ExportSignature(ExportFormat.PDF);
+
+        await OnSignatureValidated.InvokeAsync(validationResult);
+
+        signerName = string.Empty;
+        signerTitle = string.Empty;
+        signerOrganization = string.Empty;
+        signaturePurpose = string.Empty;
+        signatureDate = DateTime.Today;
+    }
+
+    private void SaveAsTemplate()
+    {
+        if (isEmpty) return;
+        _templateOpen = true;
+    }
+
+    private async Task ConfirmSaveTemplate()
+    {
+        if (string.IsNullOrWhiteSpace(newTemplateName)) return;
+
+        var signatureData = await JS.InvokeAsync<string>("enterpriseUtils.getSignatureData", CanvasId);
+
+        var template = new SignatureTemplate
+        {
+            Id = Guid.NewGuid(),
+            Name = newTemplateName,
+            Description = newTemplateDescription,
+            SignatureData = signatureData,
+            CreatedDate = DateTime.Now
+        };
+
+        signatureTemplates.Add(template);
+        await SaveTemplates();
+
+        _templateOpen = false;
+        newTemplateName = string.Empty;
+        newTemplateDescription = string.Empty;
+    }
+
+    private async Task LoadTemplate()
+    {
+        if (selectedTemplate != null)
+        {
+            await JS.InvokeVoidAsync("enterpriseUtils.loadSignatureData", CanvasId, selectedTemplate.SignatureData);
+            isEmpty = false;
+            strokeCount = 10; // Approximation
+            canUndo = true;
+            signatureTimestamp = DateTime.Now;
+        }
+    }
+
+    private async Task LoadTemplates()
+    {
+        try
+        {
+            var templatesJson = await JS.InvokeAsync<string>("localStorage.getItem", "signatureTemplates");
+            if (!string.IsNullOrEmpty(templatesJson))
+            {
+                signatureTemplates = JsonSerializer.Deserialize<List<SignatureTemplate>>(templatesJson) ?? new();
+            }
+        }
+        catch
+        {
+            signatureTemplates = new List<SignatureTemplate>();
+        }
+    }
+
+    private async Task SaveTemplates()
+    {
+        try
+        {
+            var templatesJson = JsonSerializer.Serialize(signatureTemplates);
+            await JS.InvokeVoidAsync("localStorage.setItem", "signatureTemplates", templatesJson);
+        }
+        catch
+        {
+            // Handle error
+        }
+    }
+
+    private string GetColorName(string color) => color switch
+    {
+        "#000000" => "Black",
+        "#0000FF" => "Blue",
+        "#FF0000" => "Red",
+        "#008000" => "Green",
+        "#800080" => "Purple",
+        _ => "Custom"
+    };
+
+    // Touch and mouse events for custom drawing
+    private void OnCanvasMouseDown(MouseEventArgs e) { /* Handle drawing start */ }
+    private void OnCanvasMouseMove(MouseEventArgs e) { /* Handle drawing */ }
+    private void OnCanvasMouseUp(MouseEventArgs e) { /* Handle drawing end */ }
+    private void OnCanvasTouchStart(TouchEventArgs e) { /* Handle drawing start */ }
+    private void OnCanvasTouchMove(TouchEventArgs e) { /* Handle drawing */ }
+    private void OnCanvasTouchEnd(TouchEventArgs e) { /* Handle drawing end */ }
+
+    // Models
+    public enum ExportFormat { PNG, SVG, PDF }
+
+    public class SignatureTemplate
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public string SignatureData { get; set; } = string.Empty;
+        public DateTime CreatedDate { get; set; }
+    }
+
+    public class SignatureValidationResult
+    {
+        public bool IsValid { get; set; }
+        public string SignerName { get; set; } = string.Empty;
+        public string SignerTitle { get; set; } = string.Empty;
+        public string SignerOrganization { get; set; } = string.Empty;
+        public DateTime SignatureDate { get; set; }
+        public string Purpose { get; set; } = string.Empty;
+        public DateTime Timestamp { get; set; }
+        public int StrokeCount { get; set; }
+    }
+
+    public class Point
+    {
+        public double X { get; set; }
+        public double Y { get; set; }
+    }
+
+    public void Dispose()
+    {
+        _dotNetRef?.Dispose();
+    }
+}

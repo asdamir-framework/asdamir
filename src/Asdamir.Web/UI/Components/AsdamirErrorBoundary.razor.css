@@ -1,0 +1,87 @@
+/**
+ * ErrorBoundaryEx Component Styles
+ * Framework: Framework.Web.UI.Components
+ * CSS Isolation Pattern - Scoped to this component only
+ */
+
+.error-boundary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    padding: 2rem;
+}
+
+.error-content {
+    max-width: 520px;
+    width: 100%;
+    background: var(--neutral-layer-1);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    text-align: center;
+}
+
+.error-icon {
+    color: var(--asd-danger, #b3261e);
+    margin-bottom: 1rem;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.error-content h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--neutral-foreground-rest);
+    margin-bottom: 0.75rem;
+}
+
+.error-content p {
+    color: var(--neutral-foreground-hint);
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.error-details {
+    margin: 1rem 0;
+    text-align: left;
+}
+
+.error-details summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--neutral-foreground-rest);
+    margin-bottom: 0.5rem;
+}
+
+.error-trace {
+    background: var(--neutral-layer-2);
+    padding: 1rem;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.875rem;
+    color: var(--neutral-foreground-rest);
+    border-left: 4px solid var(--error-rest);
+    overflow-x: auto;
+}
+
+.error-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+@media (max-width: 768px) {
+    .error-boundary {
+        padding: 1rem;
+    }
+
+    .error-content {
+        padding: 1rem;
+    }
+}

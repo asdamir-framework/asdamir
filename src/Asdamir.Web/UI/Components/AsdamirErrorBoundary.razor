@@ -1,0 +1,63 @@
+@inherits ErrorBoundary
+@inject ILogger<AsdamirErrorBoundary> Logger
+@inject NavigationManager NavigationManager
+
+@if (CurrentException is null)
+{
+    @ChildContent
+}
+else
+{
+    <div class="error-boundary">
+        <div class="error-content">
+            <svg class="error-icon" viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <h3>Bir hata oluştu</h3>
+            <p>Üzgünüz, beklenmeyen bir hata oluştu. Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin.</p>
+
+            @if (ShowDetails)
+            {
+                <details class="error-details">
+                    <summary>Teknik Detaylar</summary>
+                    <div class="error-trace">
+                        <strong>Hata ID:</strong> @_errorId<br />
+                        <strong>Zaman:</strong> @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")<br />
+                        <strong>Hata:</strong> @CurrentException.Message
+                    </div>
+                </details>
+            }
+
+            <div class="error-actions">
+                <button type="button" class="asd-btn asd-btn-primary" @onclick="RefreshPage">Sayfayı Yenile</button>
+                <button type="button" class="asd-btn asd-btn-ghost" @onclick="GoHome">Ana Sayfaya Dön</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool ShowDetails { get; set; } = false;
+
+    private string? _errorId;
+
+    protected override Task OnErrorAsync(Exception exception)
+    {
+        _errorId = Guid.NewGuid().ToString("N");
+
+        Logger.LogError(exception,
+        "ErrorBoundary caught exception. ErrorId: {ErrorId}, Path: {Path}",
+        _errorId,
+        NavigationManager.Uri);
+
+        return Task.CompletedTask;
+    }
+
+    private void RefreshPage()
+    {
+        NavigationManager.NavigateTo(NavigationManager.Uri, forceLoad: true);
+    }
+
+    private void GoHome()
+    {
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+}

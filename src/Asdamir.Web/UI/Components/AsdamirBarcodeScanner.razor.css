@@ -1,0 +1,18 @@
+/* BarcodeScanner — scoped, theme-aware (reads the global --asd-* tokens).
+   Buttons come from the shared .asd-* design system; the viewport (sized via the --bc-w / --bc-h
+   custom properties) and action row are local. */
+
+.bc-view {
+    width: var(--bc-w, 640px);
+    height: var(--bc-h, 360px);
+    max-width: 100%;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.bc-actions {
+    margin-top: 12px;
+    display: flex;
+    gap: 10px;
+}

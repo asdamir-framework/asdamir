@@ -1,0 +1,54 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Asdamir.Tools</RootNamespace>
+    <AssemblyName>asdamir</AssemblyName>
+
+    <!-- dotnet tool packaging -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>framework</ToolCommandName>
+    <PackageOutputPath>./nupkg</PackageOutputPath>
+
+    <!-- NuGet metadata -->
+    <PackageId>Asdamir.Tools</PackageId>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
+    <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Note: Scriban dropped due to transitive YamlDotNet vulnerabilities (CVE chain).
+         Replaced by a small in-house templater (Commands/TemplateRenderer.cs). The .sbn
+         templates only use substitution + iteration + conditionals, so a hand-rolled
+         engine is simpler, audit-clean, and zero-dependency. -->
+    <PackageReference Include="System.CommandLine" />
+    <!-- `framework db apply` / `secrets rotate-key` connect to SQL Server. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <!-- NOTE: deliberately NO Asdamir.Core reference. The `secrets` command re-implements Core's
+         encryption locally (Commands/SecretCrypto.cs, byte-compatible, pinned by a cross-compat test)
+         so the published dotnet tool stays small — a Core ProjectReference dragged its whole runtime
+         graph (libphonenumber ~5 MB, FluentValidation, IdentityModel/Azure, Polly…) into the tool
+         package (~8 MB), which stalled the GitHub Packages push. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundle all .sbn template files so the published tool can resolve them at runtime. -->
+    <EmbeddedResource Include="Templates\**\*.sbn" />
+    <!-- Static SQL assets (e.g. the managed-app DB schema) copied verbatim — no templating. -->
+    <EmbeddedResource Include="Templates\**\*.sql" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

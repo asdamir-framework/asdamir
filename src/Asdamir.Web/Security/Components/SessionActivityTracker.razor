@@ -1,0 +1,29 @@
+@using Microsoft.JSInterop
+@using Asdamir.Web.Security.Services
+@implements IAsyncDisposable
+@inject AuthState AuthState
+@inject AutoLogoutService AutoLogout
+@inject IJSRuntime JS
+
+@* Bu component otomatik olarak sayfalara eklenmeli *@
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && AuthState.IsAuthenticated)
+        {
+            await AutoLogout.StartMonitoringAsync();
+            
+            // Initialize security framework JS
+            await JS.InvokeVoidAsync("SecurityFramework.requestNotificationPermission");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (AuthState.IsAuthenticated)
+        {
+            await AutoLogout.StopMonitoringAsync();
+        }
+    }
+}

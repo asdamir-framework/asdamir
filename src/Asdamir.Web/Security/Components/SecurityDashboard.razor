@@ -1,0 +1,285 @@
+@page "/security-dashboard"
+@using Asdamir.Web.Security.Analyzers
+@using Asdamir.Web.Security.Attributes
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components
+@attribute [Authorize(Policy = "SecurityAnalysisAdmin")]
+@inject SecurityCodeAnalyzer SecurityAnalyzer
+@inject IJSRuntime JSRuntime
+@inject ILogger<SecurityDashboard> Logger
+
+<PageTitle>Security Dashboard</PageTitle>
+
+<div class="security-dashboard">
+    <div class="header">
+        <h1>🔒 Security Dashboard</h1>
+        <div class="actions">
+            <button class="btn btn-primary" @onclick="RunAnalysis" disabled="@_isAnalyzing">
+                @if (_isAnalyzing)
+                {
+                    <span class="spinner"></span>
+                    <text>Analyzing...</text>
+                }
+                else
+                {
+                    <text>🔍 Run Analysis</text>
+                }
+            </button>
+            <button class="btn btn-secondary" @onclick="ExportReport" disabled="@(_result == null)">
+                📊 Export Report
+            </button>
+        </div>
+    </div>
+
+    @if (_result != null)
+    {
+        <div class="security-overview">
+            <div class="score-card @GetScoreClass(_result.SecurityScore)">
+                <h2>Security Score</h2>
+                <div class="score">@_result.SecurityScore/100</div>
+                <div class="level">@GetSecurityLevel(_result.SecurityScore)</div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card critical">
+                    <div class="stat-number">@_result.CriticalViolations</div>
+                    <div class="stat-label">Critical</div>
+                </div>
+                <div class="stat-card high">
+                    <div class="stat-number">@_result.HighViolations</div>
+                    <div class="stat-label">High</div>
+                </div>
+                <div class="stat-card medium">
+                    <div class="stat-number">@_result.MediumViolations</div>
+                    <div class="stat-label">Medium</div>
+                </div>
+                <div class="stat-card low">
+                    <div class="stat-number">@_result.LowViolations</div>
+                    <div class="stat-label">Low</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="analysis-details">
+            <div class="analysis-info">
+                <span>📈 Analysis completed in @(((int)_result.AnalysisTime.TotalMilliseconds).ToString())ms</span>
+                <span>📅 Last updated: @DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")</span>
+            </div>
+
+            @if (_result.Violations.Any())
+            {
+                <div class="violations-container">
+                    <h3>🚨 Security Violations</h3>
+                    
+                    <div class="filter-tabs">
+                        <button class="tab @(_selectedSeverity == "All" ? "active" : "")" 
+                                @onclick='() => FilterBySeverity("All")'>
+                            All (@_result.TotalViolations)
+                        </button>
+                        <button class="tab critical @(_selectedSeverity == "Critical" ? "active" : "")" 
+                                @onclick='() => FilterBySeverity("Critical")'>
+                            Critical (@_result.CriticalViolations)
+                        </button>
+                        <button class="tab high @(_selectedSeverity == "High" ? "active" : "")" 
+                                @onclick='() => FilterBySeverity("High")'>
+                            High (@_result.HighViolations)
+                        </button>
+                        <button class="tab medium @(_selectedSeverity == "Medium" ? "active" : "")" 
+                                @onclick='() => FilterBySeverity("Medium")'>
+                            Medium (@_result.MediumViolations)
+                        </button>
+                        <button class="tab low @(_selectedSeverity == "Low" ? "active" : "")" 
+                                @onclick='() => FilterBySeverity("Low")'>
+                            Low (@_result.LowViolations)
+                        </button>
+                    </div>
+
+                    <div class="violations-list">
+                        @foreach (var violation in GetFilteredViolations())
+                        {
+                            <div class="violation-card @violation.Severity.ToString().ToLower()">
+                                <div class="violation-header">
+                                    <span class="violation-code">@violation.Code</span>
+                                    <span class="violation-severity @violation.Severity.ToString().ToLower()">
+                                        @GetSeverityIcon(violation.Severity) @violation.Severity
+                                    </span>
+                                    <span class="violation-category">@violation.Category</span>
+                                </div>
+                                <h4 class="violation-title">@violation.Title</h4>
+                                <p class="violation-description">@violation.Description</p>
+                                <div class="violation-meta">
+                                    <span>🕒 Detected: @violation.DetectedAt.ToString("HH:mm:ss")</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="no-violations">
+                    <h3>✅ No Security Violations Found</h3>
+                    <p>Your application meets all security standards!</p>
+                </div>
+            }
+        </div>
+    }
+    else if (_error != null)
+    {
+        <div class="error-message">
+            <h3>❌ Analysis Failed</h3>
+            <p>@_error</p>
+            <button class="btn btn-primary" @onclick="RunAnalysis">🔄 Retry</button>
+        </div>
+    }
+    else
+    {
+        <div class="welcome-message">
+            <h3>🔍 Security Analysis</h3>
+            <p>Click "Run Analysis" to scan your application for security vulnerabilities and code quality issues.</p>
+            <ul>
+                <li>🔐 Authentication & Authorization checks</li>
+                <li>🎯 API Controller security analysis</li>
+                <li>🧩 Blazor Component security review</li>
+                <li>⚙️ Configuration security assessment</li>
+                <li>💉 Dependency injection validation</li>
+                <li>🔄 Middleware pipeline analysis</li>
+            </ul>
+        </div>
+    }
+</div>
+
+@code {
+    private SecurityAnalysisResult? _result;
+    private bool _isAnalyzing = false;
+    private string? _error;
+    private string _selectedSeverity = "All";
+
+    protected override Task OnInitializedAsync()
+    {
+        // Auto-run analysis'i kaldırdık - sadece manuel
+        // await RunAnalysis();
+        return Task.CompletedTask;
+    }
+
+    private async Task RunAnalysis()
+    {
+        try
+        {
+            _isAnalyzing = true;
+            _error = null;
+            StateHasChanged();
+
+            _result = await SecurityAnalyzer.AnalyzeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isAnalyzing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void FilterBySeverity(string severity)
+    {
+        _selectedSeverity = severity;
+        StateHasChanged();
+    }
+
+    private IEnumerable<SecurityViolation> GetFilteredViolations()
+    {
+        if (_result == null) return Enumerable.Empty<SecurityViolation>();
+
+        if (_selectedSeverity == "All")
+            return _result.Violations;
+
+        if (Enum.TryParse<SecuritySeverity>(_selectedSeverity, out var severity))
+            return _result.Violations.Where(v => v.Severity == severity);
+
+        return _result.Violations;
+    }
+
+    private async Task ExportReport()
+    {
+        if (_result == null) return;
+
+        try
+        {
+            var reportData = new
+            {
+                Timestamp = DateTime.UtcNow,
+                SecurityScore = _result.SecurityScore,
+                Summary = new
+                {
+                    Total = _result.TotalViolations,
+                    Critical = _result.CriticalViolations,
+                    High = _result.HighViolations,
+                    Medium = _result.MediumViolations,
+                    Low = _result.LowViolations
+                },
+                Violations = _result.Violations.Select(v => new
+                {
+                    v.Code,
+                    v.Title,
+                    v.Description,
+                    Severity = v.Severity.ToString(),
+                    v.Category,
+                    v.DetectedAt
+                }),
+                AnalysisTime = _result.AnalysisTime.TotalMilliseconds
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(reportData, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+
+            var fileName = $"security-report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+            
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/json", json);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "[SecurityDashboard] Export failed");
+        }
+    }
+
+    private string GetScoreClass(int score)
+    {
+        return score switch
+        {
+            >= 90 => "excellent",
+            >= 80 => "good", 
+            >= 70 => "fair",
+            >= 60 => "poor",
+            _ => "critical"
+        };
+    }
+
+    private string GetSecurityLevel(int score)
+    {
+        return score switch
+        {
+            >= 90 => "Excellent",
+            >= 80 => "Good",
+            >= 70 => "Fair", 
+            >= 60 => "Poor",
+            _ => "Critical"
+        };
+    }
+
+    private string GetSeverityIcon(SecuritySeverity severity)
+    {
+        return severity switch
+        {
+            SecuritySeverity.Critical => "💥",
+            SecuritySeverity.High => "🔥",
+            SecuritySeverity.Medium => "⚠️",
+            SecuritySeverity.Low => "ℹ️",
+            _ => "❓"
+        };
+    }
+}

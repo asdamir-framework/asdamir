@@ -1,0 +1,133 @@
+/* Scoped styles for AsdamirNotificationHost — confirm dialog buttons, loading overlay, action toasts.
+   Themed via the shared --asd-* design tokens (with safe fallbacks for hosts that don't define them). */
+
+.asd-confirm-msg {
+    margin: 0;
+    line-height: 1.5;
+    color: var(--asd-text, #2b2b3c);
+}
+
+/* Buttons rendered in the modal footer + action toasts. Authored here, so CSS isolation scopes them
+   even though the footer DOM is owned by AsdamirModal. */
+.asd-btn {
+    appearance: none;
+    border: 1px solid var(--asd-border, #d8d8e2);
+    background: var(--asd-surface, #fff);
+    color: var(--asd-text, #2b2b3c);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    font: inherit;
+    cursor: pointer;
+    transition: background-color .12s ease, border-color .12s ease, opacity .12s ease;
+}
+
+.asd-btn:hover {
+    background: var(--asd-surface-2, #f4f4f9);
+}
+
+.asd-btn-primary {
+    background: var(--asd-accent, #8e7fe0);
+    border-color: var(--asd-accent, #8e7fe0);
+    color: #fff;
+}
+
+.asd-btn-primary:hover {
+    background: var(--asd-accent-strong, #7a6bd0);
+}
+
+.asd-btn-danger {
+    background: var(--asd-danger, #d9534f);
+    border-color: var(--asd-danger, #d9534f);
+    color: #fff;
+}
+
+.asd-btn-danger:hover {
+    opacity: .9;
+}
+
+/* Loading overlay — covers the viewport, dims, centres a spinner + message. */
+.asd-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20, 20, 32, .45);
+    backdrop-filter: blur(1px);
+}
+
+.asd-loading-box {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: 1rem 1.25rem;
+    border-radius: 12px;
+    background: var(--asd-surface, #fff);
+    color: var(--asd-text, #2b2b3c);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+}
+
+.asd-loading-spinner {
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 3px solid var(--asd-border, #d8d8e2);
+    border-top-color: var(--asd-accent, #8e7fe0);
+    border-radius: 50%;
+    animation: asd-spin .8s linear infinite;
+}
+
+@keyframes asd-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Action toasts — persistent cards with buttons, stacked top-right. */
+.asd-actiontoaster {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 1001;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    max-width: 24rem;
+}
+
+.asd-actiontoast {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    border-radius: 10px;
+    background: var(--asd-surface, #fff);
+    color: var(--asd-text, #2b2b3c);
+    border-left: 4px solid var(--asd-accent, #8e7fe0);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .18);
+}
+
+.asd-actiontoast.ok { border-left-color: var(--asd-success, #2f9e44); }
+.asd-actiontoast.warn { border-left-color: var(--asd-warning, #e8a33d); }
+.asd-actiontoast.err { border-left-color: var(--asd-danger, #d9534f); }
+
+.asd-actiontoast-msg {
+    line-height: 1.4;
+}
+
+.asd-actiontoast-btns {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+.asd-actiontoast-x {
+    margin-left: auto;
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--asd-text-muted, #8a8a9a);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: .25rem;
+}

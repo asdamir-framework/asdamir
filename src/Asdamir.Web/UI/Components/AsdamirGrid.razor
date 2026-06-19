@@ -1,0 +1,398 @@
+@typeparam TItem
+@using Asdamir.Web.UI.Services
+@inject IExportService Export
+@inject Microsoft.JSInterop.IJSRuntime JS
+
+@*
+    AsdamirGrid — reusable, dependency-light INSPINIA-style data table.
+
+    Lives in the shared Asdamir.Web UI library so BOTH the Blazor web app AND the MAUI Blazor-Hybrid
+    mobile app can use it. Deliberately FluentUI-free (plain <input>/<button> + caller-supplied
+    RenderFragments) so it renders anywhere a WebView/Blazor renderer runs. Styling comes from the
+    shared design-system CSS (.asd-* classes shipped to every app type), themed via --asd-* tokens.
+
+    The component owns the chrome only — flat panel, toolbar (built-in search left + Toolbar slot
+    right), sticky-header scrollable table, and footer (count + numbered pagination). No
+    fullscreen/export/refresh chrome. Columns/rows are caller-supplied:
+
+      <AsdamirGrid TItem="Foo" Items="@_items" PageSize="25"
+                   SearchPlaceholder="Ara…" SearchPredicate="@((f,q) => f.Name.Contains(q, …))">
+          <Toolbar> …filters + primary button… </Toolbar>
+          <HeaderTemplate><th>Ad</th><th></th></HeaderTemplate>
+          <RowTemplate Context="f"><td>@f.Name</td><td>…</td></RowTemplate>
+      </AsdamirGrid>
+*@
+
+<div class="asd-panel asd-grid">
+    @if (ShowSearch || Toolbar is not null || CanExport)
+    {
+        <div class="asd-grid-toolbar">
+            @if (ShowSearch)
+            {
+                <span class="asd-grid-searchwrap">
+                    <span class="asd-grid-searchlbl">@SearchLabel</span>
+                    <input type="search" class="asd-grid-search" placeholder="@SearchPlaceholder"
+                           value="@_search" @oninput="OnSearchInput" />
+                </span>
+            }
+            <span class="grow"></span>
+            @Toolbar
+            @if (OnPrimaryAction.HasDelegate && !string.IsNullOrEmpty(PrimaryActionLabel))
+            {
+                <button type="button" class="asd-grid-primary" @onclick="OnPrimaryAction" disabled="@PrimaryActionDisabled">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <span>@PrimaryActionText</span>
+                </button>
+            }
+            @if (OnRefresh.HasDelegate)
+            {
+                <button type="button" class="asd-btn asd-grid-refresh" title="@RefreshTitle"
+                        @onclick="OnRefresh" disabled="@Busy">
+                    <svg class="@(Busy ? "asd-spin" : "")" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                </button>
+            }
+            @if (CanExport)
+            {
+                <div class="asd-export">
+                    <button type="button" class="asd-btn asd-export-btn @(_exportOpen ? "open" : "")"
+                            title="@ExportTitle" @onclick="ToggleExport" disabled="@_exporting">
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+                        <span>@ExportLabel</span>
+                        <svg class="asd-export-caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    @if (_exportOpen)
+                    {
+                        <div class="asd-export-backdrop" @onclick="@(() => _exportOpen = false)"></div>
+                        <div class="asd-export-menu">
+                            <button type="button" @onclick="@(() => DoExportAsync(ExportFormat.Copy))">@CopyLabel</button>
+                            <button type="button" @onclick="@(() => DoExportAsync(ExportFormat.Csv))">CSV</button>
+                            <button type="button" @onclick="@(() => DoExportAsync(ExportFormat.Excel))">Excel</button>
+                            <button type="button" @onclick="@(() => DoExportAsync(ExportFormat.Print))">@PrintLabel</button>
+                            <button type="button" @onclick="@(() => DoExportAsync(ExportFormat.Pdf))">PDF</button>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div class="asd-tablewrap">
+        <table class="asd-table">
+            @if (Columns is not null)
+            {
+                <thead><tr>
+                    @for (var ci = 0; ci < Columns.Count; ci++)
+                    {
+                        var c = Columns[ci];
+                        var idx = ci;
+                        if (c.Sortable)
+                        {
+                            <th class="@($"asd-th-sort {c.CssClass}")" @onclick="@(() => ToggleSort(idx))">
+                                <span class="asd-th-sortinner">
+                                    @c.Title
+                                    <span class="asd-sort-ind @(_sortIndex == idx ? "active" : "")">@SortGlyph(idx)</span>
+                                </span>
+                            </th>
+                        }
+                        else
+                        {
+                            <th class="@c.CssClass">@c.Title</th>
+                        }
+                    }
+                    @if (RowActions is not null && RowTemplate is null)
+                    {
+                        <th class="num">@ActionsTitle</th>
+                    }
+                </tr></thead>
+            }
+            else if (HeaderTemplate is not null)
+            {
+                <thead><tr>@HeaderTemplate</tr></thead>
+            }
+            <tbody>
+                @if (Total == 0)
+                {
+                    <tr><td colspan="50" class="asd-tnote">@EmptyText</td></tr>
+                }
+                else if (RowTemplate is not null)
+                {
+                    @* Hybrid mode: sortable header + export come from Columns; cells stay caller-rendered
+                       (preserves pills/badges/custom markup). PageItems already reflects the active sort. *@
+                    @foreach (var item in PageItems)
+                    {
+                        <tr @key="item" class="@RowClass?.Invoke(item)">@RowTemplate(item)</tr>
+                    }
+                }
+                else if (Columns is not null)
+                {
+                    @foreach (var item in PageItems)
+                    {
+                        <tr @key="item" class="@RowClass?.Invoke(item)">
+                            @foreach (var c in Columns)
+                            {
+                                <td class="@c.CssClass">
+                                    @if (c.Mono)
+                                    {
+                                        <code>@CellText(c, item)</code>
+                                    }
+                                    else
+                                    {
+                                        @CellText(c, item)
+                                    }
+                                </td>
+                            }
+                            @if (RowActions is not null)
+                            {
+                                <td class="num">@RowActions(item)</td>
+                            }
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="asd-panel-foot">
+        <span>@FooterText</span>
+        <span class="grow"></span>
+        @if (PageCount > 1)
+        {
+            <div class="asd-pager">
+                <button type="button" class="asd-pagebtn" title="@FirstPageTitle"
+                        disabled="@(_page <= 1)" @onclick="@(() => Go(1))">«</button>
+                <button type="button" class="asd-pagebtn" title="@PrevPageTitle"
+                        disabled="@(_page <= 1)" @onclick="@(() => Go(_page - 1))">‹</button>
+                @foreach (var p in PageNumbers())
+                {
+                    var pp = p;
+                    <button type="button" class="asd-pagebtn @(pp == _page ? "active" : "")" @onclick="@(() => Go(pp))">@pp</button>
+                }
+                <button type="button" class="asd-pagebtn" title="@NextPageTitle"
+                        disabled="@(_page >= PageCount)" @onclick="@(() => Go(_page + 1))">›</button>
+                <button type="button" class="asd-pagebtn" title="@LastPageTitle"
+                        disabled="@(_page >= PageCount)" @onclick="@(() => Go(PageCount))">»</button>
+
+                <span class="asd-pager-jump" title="@GoToPageTitle">
+                    <input type="number" inputmode="numeric" min="1" max="@PageCount"
+                           class="asd-pager-input" value="@_page" @onchange="OnJumpChange" />
+                    <span class="asd-pager-total">/ @PageCount</span>
+                </span>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment<TItem>? RowTemplate { get; set; }
+    [Parameter] public RenderFragment? Toolbar { get; set; }
+    [Parameter] public bool ShowSearch { get; set; } = true;
+    [Parameter] public string SearchPlaceholder { get; set; } = "Ara…";
+    [Parameter] public string SearchLabel { get; set; } = "Ara:";
+    [Parameter] public Func<TItem, string, bool>? SearchPredicate { get; set; }
+    [Parameter] public int PageSize { get; set; } = 10;
+    [Parameter] public string EmptyText { get; set; } = "Kayıt yok.";
+
+    // Optional column model — when set, the grid renders its own sortable header + cells and (if
+    // ShowExport) an export of the filtered+sorted rows. HeaderTemplate/RowTemplate are ignored.
+    [Parameter] public IReadOnlyList<AsdamirGridColumn<TItem>>? Columns { get; set; }
+    [Parameter] public RenderFragment<TItem>? RowActions { get; set; }
+    [Parameter] public string ActionsTitle { get; set; } = "Eylem";
+
+    // Optional per-row CSS class (e.g. highlight the currently-selected row). Applied to the <tr> in
+    // both RowTemplate and Columns rendering modes.
+    [Parameter] public Func<TItem, string?>? RowClass { get; set; }
+
+    // Export dropdown (Copy/CSV/Excel/Print/PDF via IExportService — ClosedXML + QuestPDF). Requires
+    // Columns. Files are named "{ExportFileName}.{ext}"; Excel sheet name is ExportSheetName.
+    [Parameter] public bool ShowExport { get; set; }
+    [Parameter] public string ExportFileName { get; set; } = "export";
+    [Parameter] public string ExportSheetName { get; set; } = "Data";
+    [Parameter] public string ExportLabel { get; set; } = "Dışa Aktar";
+    [Parameter] public string ExportTitle { get; set; } = "Verileri dışa aktar";
+    [Parameter] public string CopyLabel { get; set; } = "Kopyala";
+    [Parameter] public string PrintLabel { get; set; } = "Yazdır";
+
+    // Refresh: when the caller wires OnRefresh, the grid shows a refresh icon button (left of export).
+    // Busy disables it + spins the icon while the caller reloads.
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string RefreshTitle { get; set; } = "Yenile";
+
+    // Optional primary action (e.g. "+ New") — when both are set the grid renders an accent button in
+    // the toolbar, so a page doesn't need a separate near-empty card just to hold its New button.
+    [Parameter] public string? PrimaryActionLabel { get; set; }
+    [Parameter] public EventCallback OnPrimaryAction { get; set; }
+    [Parameter] public bool PrimaryActionDisabled { get; set; }
+
+    // The "+" is rendered as an icon, so strip a leading "+ "/"+" from the (often localized) label.
+    private string PrimaryActionText => (PrimaryActionLabel ?? "").TrimStart('+', ' ');
+
+    // Pager button tooltips — Turkish defaults; callers may pass localized strings.
+    [Parameter] public string FirstPageTitle { get; set; } = "İlk sayfa";
+    [Parameter] public string PrevPageTitle { get; set; } = "Önceki sayfa";
+    [Parameter] public string NextPageTitle { get; set; } = "Sonraki sayfa";
+    [Parameter] public string LastPageTitle { get; set; } = "Son sayfa";
+    [Parameter] public string GoToPageTitle { get; set; } = "Sayfaya git";
+
+    private string _search = "";
+    private int _page = 1;
+    private int? _sortIndex;
+    private bool _sortDesc;
+    private bool _exporting;
+    private bool _exportOpen;
+
+    private enum ExportFormat { Copy, Csv, Excel, Print, Pdf }
+
+    private bool CanExport => ShowExport && Columns is not null;
+
+    // Built-in search: a caller SearchPredicate wins; otherwise (column mode) match the query against
+    // every column's value text; with neither, no filtering.
+    private List<TItem> Filtered
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_search)) return Items.ToList();
+            if (SearchPredicate is not null) return Items.Where(i => SearchPredicate(i, _search)).ToList();
+            if (Columns is not null)
+            {
+                var q = _search.Trim();
+                return Items.Where(i => Columns.Any(c =>
+                    (c.Value(i)?.ToString() ?? "").Contains(q, StringComparison.CurrentCultureIgnoreCase))).ToList();
+            }
+            return Items.ToList();
+        }
+    }
+
+    // Filtered + (optional) sorted view — the basis for both paging and export.
+    private List<TItem> Sorted
+    {
+        get
+        {
+            var list = Filtered;
+            if (Columns is null || _sortIndex is not int si || si >= Columns.Count) return list;
+            var sel = Columns[si].Value;
+            return (_sortDesc
+                ? list.OrderByDescending(sel, ValueComparer.Instance)
+                : list.OrderBy(sel, ValueComparer.Instance)).ToList();
+        }
+    }
+
+    private int Total => Filtered.Count;
+    private int PageCount => Math.Max(1, (int)Math.Ceiling(Total / (double)PageSize));
+    private IEnumerable<TItem> PageItems => Sorted.Skip((_page - 1) * PageSize).Take(PageSize);
+    private string FooterText => Total == 0
+        ? "Kayıt yok"
+        : $"{(_page - 1) * PageSize + 1}–{System.Math.Min(_page * PageSize, Total)} / {Total} kayıt";
+
+    private static string CellText(AsdamirGridColumn<TItem> c, TItem item)
+        => c.Display?.Invoke(item) ?? c.Value(item)?.ToString() ?? "";
+
+    private string SortGlyph(int idx) => _sortIndex == idx ? (_sortDesc ? "↓" : "↑") : "⇅";
+
+    protected override void OnParametersSet()
+    {
+        if (_page > PageCount) _page = PageCount;
+        if (_page < 1) _page = 1;
+    }
+
+    private void OnSearchInput(ChangeEventArgs e) { _search = e.Value?.ToString() ?? ""; _page = 1; }
+    private void Go(int p) => _page = Math.Clamp(p, 1, PageCount);
+
+    // Click a sortable header: first click sorts ascending, second toggles to descending.
+    private void ToggleSort(int idx)
+    {
+        if (_sortIndex == idx) _sortDesc = !_sortDesc;
+        else { _sortIndex = idx; _sortDesc = false; }
+        _page = 1;
+    }
+
+    private void ToggleExport() => _exportOpen = !_exportOpen;
+
+    private async Task DoExportAsync(ExportFormat format)
+    {
+        _exportOpen = false;
+        if (Columns is null || _exporting) return;
+        _exporting = true;
+        try
+        {
+            var cols = Columns.Where(c => c.Exportable).ToList();
+            var headers = cols.Select(c => c.Title).ToList();
+            var rows = Sorted.Select(item => (IReadOnlyList<object?>)cols.Select(c => c.Value(item)).ToList()).ToList();
+
+            switch (format)
+            {
+                case ExportFormat.Copy:
+                    await JS.InvokeVoidAsync("asdGridCopy", BuildTsv(headers, rows));
+                    break;
+                case ExportFormat.Print:
+                    await JS.InvokeVoidAsync("asdGridPrint", ExportSheetName, headers, rows.Select(r => r.Select(CellString).ToArray()).ToArray());
+                    break;
+                case ExportFormat.Csv:
+                    await Download(await Export.ExportToCsvAsync(headers, rows), "csv", "text/csv");
+                    break;
+                case ExportFormat.Pdf:
+                    await Download(await Export.ExportToPdfAsync(headers, rows, ExportSheetName), "pdf", "application/pdf");
+                    break;
+                default:
+                    await Download(await Export.ExportToExcelAsync(headers, rows, ExportSheetName), "xlsx",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                    break;
+            }
+        }
+        finally
+        {
+            _exporting = false;
+        }
+    }
+
+    private Task Download(byte[] bytes, string ext, string mime)
+        => JS.InvokeVoidAsync("asdGridDownload", $"{ExportFileName}.{ext}", Convert.ToBase64String(bytes), mime).AsTask();
+
+    private static string CellString(object? v) => v switch
+    {
+        null => "",
+        DateTime dt => dt.ToString("yyyy-MM-dd HH:mm"),
+        _ => v.ToString() ?? ""
+    };
+
+    private static string BuildTsv(IReadOnlyList<string> headers, IEnumerable<IReadOnlyList<object?>> rows)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine(string.Join("\t", headers));
+        foreach (var r in rows)
+            sb.AppendLine(string.Join("\t", r.Select(v => CellString(v).Replace("\t", " ").Replace("\n", " "))));
+        return sb.ToString();
+    }
+
+    // Null-safe comparer for sort selectors: nulls first, IComparable when types match, else string compare.
+    private sealed class ValueComparer : IComparer<object?>
+    {
+        public static readonly ValueComparer Instance = new();
+        public int Compare(object? x, object? y)
+        {
+            if (x is null && y is null) return 0;
+            if (x is null) return -1;
+            if (y is null) return 1;
+            if (x is IComparable cx && x.GetType() == y.GetType()) return cx.CompareTo(y);
+            return string.Compare(x.ToString(), y.ToString(), StringComparison.CurrentCultureIgnoreCase);
+        }
+    }
+
+    // Jump-to-page box: <input> @onchange fires on Enter and on blur. Commit a valid number; ignore
+    // non-numeric input (the bound value re-renders back to the current page).
+    private void OnJumpChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var p)) Go(p);
+    }
+
+    // Windowed page numbers (max 7) so a 50-page grid doesn't render 50 buttons.
+    private IEnumerable<int> PageNumbers()
+    {
+        const int window = 7;
+        if (PageCount <= window) return Enumerable.Range(1, PageCount);
+        var start = Math.Clamp(_page - window / 2, 1, Math.Max(1, PageCount - window + 1));
+        return Enumerable.Range(start, window);
+    }
+}

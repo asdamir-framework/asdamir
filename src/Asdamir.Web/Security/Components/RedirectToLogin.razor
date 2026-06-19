@@ -1,0 +1,26 @@
+@inject NavigationManager Nav
+
+<FluentStack VerticalAlignment="VerticalAlignment.Center" 
+            HorizontalAlignment="HorizontalAlignment.Center"
+            Style="min-height: 100vh;">
+    <FluentProgressRing />
+    <FluentLabel Typo="Typography.Body" Style="margin-top: 16px;">
+        Redirecting to login...
+    </FluentLabel>
+</FluentStack>
+
+@code {
+    protected override void OnInitialized()
+    {
+        var returnUrl = Nav.ToAbsoluteUri(Nav.Uri).PathAndQuery;
+        
+        // Don't redirect if already on login page (prevent loop)
+        if (returnUrl.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+        
+        // Redirect to login with return URL
+        Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
+    }
+}

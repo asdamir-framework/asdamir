@@ -1,0 +1,256 @@
+/* ============================================
+   CUSTOM COLOR OVERRIDES - LAYER 1.5
+   Elegant Black/Charcoal Theme
+   Modern dark slate colors for sophisticated Framework.Web.UI
+   Replaces default blue accent colors
+   ============================================ */
+
+:root {
+    /* ========================================
+       PRIMARY COLOR PALETTE - Pure Black & Gray
+       ======================================== */
+    
+    /* Light Mode Primary Colors - Pure grayscale */
+    --custom-primary-base: #2a2a2a;           /* Dark charcoal - main */
+    --custom-primary-hover: #3a3a3a;          /* Slightly lighter on hover */
+    --custom-primary-active: #1a1a1a;         /* Darker on press */
+    --custom-primary-light: #f5f5f5;          /* Very light gray background */
+    --custom-primary-border: #666666;         /* Medium gray border */
+    --custom-primary-gradient-start: #2a2a2a;
+    --custom-primary-gradient-end: #3a3a3a;
+    
+    /* Override Fluent Design System accent colors */
+    --accent-fill-rest: var(--custom-primary-base);
+    --accent-fill-hover: var(--custom-primary-hover);
+    --accent-fill-active: var(--custom-primary-active);
+    --accent-fill-secondary: var(--custom-primary-light);
+    --accent-stroke-focus: var(--custom-primary-base);
+    --accent-foreground-rest: var(--custom-primary-base);
+    
+    /* Update Framework.Web.UI tokens to use new primary color */
+    --ui-color-primary: var(--custom-primary-base);
+    --ui-color-primary-hover: var(--custom-primary-hover);
+    --ui-color-primary-active: var(--custom-primary-active);
+    --ui-color-primary-light: var(--custom-primary-light);
+    --ui-color-primary-foreground: #FFFFFF;
+    
+    /* Update link colors */
+    --ui-text-link: var(--custom-primary-base);
+    --ui-text-link-hover: var(--custom-primary-hover);
+    
+    /* Update focus shadow to match new primary color */
+    --ui-shadow-focus: 0 0 0 3px rgba(42, 42, 42, 0.2);
+}
+
+/* ========================================
+   DARK THEME OVERRIDES
+   ======================================== */
+[data-theme="dark"] {
+    /* Dark Mode Primary Colors - Lighter grays for contrast */
+    --custom-primary-base: #707070;           /* Medium gray for dark mode */
+    --custom-primary-hover: #808080;          /* Lighter on hover */
+    --custom-primary-active: #606060;         /* Darker on press */
+    --custom-primary-light: rgba(112, 112, 112, 0.15);  /* Transparent background */
+    --custom-primary-border: rgba(112, 112, 112, 0.4);
+    
+    /* Override Fluent Design System for dark mode */
+    --accent-fill-rest: var(--custom-primary-base);
+    --accent-fill-hover: var(--custom-primary-hover);
+    --accent-fill-active: var(--custom-primary-active);
+    --accent-fill-secondary: var(--custom-primary-light);
+    --accent-stroke-focus: var(--custom-primary-base);
+    --accent-foreground-rest: var(--custom-primary-base);
+    
+    /* Update Framework.Web.UI tokens for dark mode */
+    --ui-color-primary: var(--custom-primary-base);
+    --ui-color-primary-hover: var(--custom-primary-hover);
+    --ui-color-primary-active: var(--custom-primary-active);
+    --ui-color-primary-light: var(--custom-primary-light);
+    
+    /* Update link colors for dark mode */
+    --ui-text-link: var(--custom-primary-base);
+    --ui-text-link-hover: var(--custom-primary-hover);
+    
+    /* Update focus shadow for dark mode */
+    --ui-shadow-focus: 0 0 0 3px rgba(112, 112, 112, 0.3);
+}
+
+/* ========================================
+   STAT CARD ICON GRADIENTS - Pure Gray
+   Subtle gray gradients for modern look
+   ======================================== */
+:root {
+    --stat-gradient-primary: linear-gradient(135deg, rgba(42, 42, 42, 0.12) 0%, rgba(42, 42, 42, 0.04) 100%);
+}
+
+[data-theme="dark"] {
+    --stat-gradient-primary: linear-gradient(135deg, rgba(112, 112, 112, 0.18) 0%, rgba(112, 112, 112, 0.06) 100%);
+}
+
+/* Apply to stat icons */
+.stat-icon-accent {
+    background: var(--stat-gradient-primary) !important;
+}
+
+.activity-icon-accent,
+.activity-icon-info {
+    background: rgba(42, 42, 42, 0.08) !important;
+}
+
+[data-theme="dark"] .activity-icon-accent,
+[data-theme="dark"] .activity-icon-info {
+    background: rgba(112, 112, 112, 0.15) !important;
+}
+
+/* ========================================
+   BUTTON HIGHLIGHTS
+   Ensure buttons use the new color
+   ======================================== */
+fluent-button[appearance="accent"]::part(control) {
+    background: var(--custom-primary-base);
+    color: white;
+}
+
+fluent-button[appearance="accent"]:hover::part(control) {
+    background: var(--custom-primary-hover);
+}
+
+fluent-button[appearance="accent"]:active::part(control) {
+    background: var(--custom-primary-active);
+}
+
+/* ========================================
+   NAVIGATION MENU ACTIVE STATE
+   Ensure active menu items use new color
+   ======================================== */
+.nav-item.active {
+    background: var(--custom-primary-base) !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+}
+
+.nav-item.active:hover {
+    background: var(--custom-primary-hover) !important;
+}
+
+.nav-item.active fluent-icon {
+    color: white !important;
+}
+
+/* ========================================
+   BRAND ELEMENTS
+   Update logo and avatar backgrounds
+   ======================================== */
+.brand-logo,
+.user-avatar {
+    background: var(--custom-primary-base) !important;
+}
+
+/* ========================================
+   INFO COLOR UPDATE (Optional)
+   Keep info color in sync with primary
+   ======================================== */
+:root {
+    --ui-color-info: var(--custom-primary-base);
+    --ui-color-info-hover: var(--custom-primary-hover);
+    --ui-color-info-light: var(--custom-primary-light);
+    --ui-color-info-border: var(--custom-primary-border);
+}
+
+[data-theme="dark"] {
+    --ui-color-info: var(--custom-primary-base);
+    --ui-color-info-hover: var(--custom-primary-hover);
+    --ui-color-info-light: var(--custom-primary-light);
+    --ui-color-info-border: var(--custom-primary-border);
+}
+
+/* ========================================
+   FLUENT COMPONENTS - Additional Overrides
+   ======================================== */
+
+/* Badge components - Override ALL appearances that use accent color */
+fluent-badge::part(control) {
+    background: var(--custom-primary-base) !important;
+    color: white !important;
+}
+
+fluent-badge[appearance="accent"]::part(control) {
+    background: var(--custom-primary-base) !important;
+    color: white !important;
+    border-color: var(--custom-primary-base) !important;
+}
+
+/* Fix FluentIcon Color.Accent to use new primary color */
+fluent-icon[color="accent"],
+fluent-icon[style*="--accent-fill-rest"] {
+    color: var(--custom-primary-base) !important;
+}
+
+/* Progress indicators */
+fluent-progress::part(progress),
+fluent-progress-ring::part(progress) {
+    fill: var(--custom-primary-base);
+    stroke: var(--custom-primary-base);
+}
+
+/* Checkbox and radio - checked state */
+fluent-checkbox[checked]::part(control),
+fluent-radio[checked]::part(control) {
+    background: var(--custom-primary-base);
+    border-color: var(--custom-primary-base);
+}
+
+/* Switch - checked state */
+fluent-switch[checked]::part(switch) {
+    background: var(--custom-primary-base);
+}
+
+/* Tabs - active tab */
+fluent-tab[aria-selected="true"]::part(tab) {
+    color: var(--custom-primary-base);
+    border-bottom-color: var(--custom-primary-base);
+}
+
+/* Slider */
+fluent-slider::part(thumb) {
+    background: var(--custom-primary-base);
+}
+
+fluent-slider::part(track-active) {
+    background: var(--custom-primary-base);
+}
+
+/* Text field focus */
+fluent-text-field:focus-within::part(root),
+fluent-text-area:focus-within::part(root) {
+    border-color: var(--custom-primary-base);
+    outline-color: var(--custom-primary-base);
+}
+
+/* ========================================
+   RESPONSIVE & ACCESSIBILITY
+   ======================================== */
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+    :root {
+        --custom-primary-base: #000000; /* Pure black - highest contrast */
+        --custom-primary-hover: #1A1A1A;
+    }
+    
+    [data-theme="dark"] {
+        --custom-primary-base: #FFFFFF; /* Pure white for dark mode */
+        --custom-primary-hover: #E8E8E8;
+    }
+}
+
+/* Reduced motion - respect user preferences */
+@media (prefers-reduced-motion: reduce) {
+    .nav-item,
+    .stat-card,
+    fluent-button {
+        transition: none;
+    }
+}
+

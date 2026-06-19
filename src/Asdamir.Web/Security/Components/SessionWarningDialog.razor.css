@@ -1,0 +1,19 @@
+.session-warning-content,
+.session-timeout-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin: 16px 0 24px 0;
+}
+
+.session-warning-content p,
+.session-timeout-content p {
+    margin: 4px 0;
+    line-height: 1.5;
+}
+
+.session-warning-content strong {
+    color: var(--warning-color, #ff8c00);
+    font-weight: 700;
+    font-size: 15px;
+}

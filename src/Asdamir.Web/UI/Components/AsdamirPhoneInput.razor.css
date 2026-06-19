@@ -1,0 +1,39 @@
+/* IntPhone — scoped, theme-aware (reads the global --asd-* tokens).
+   Inputs come from the shared .asd-* design system; only the layout, flag and
+   error/helper rows are local. */
+
+.phone-input-container {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.phone-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.phone-flag {
+    width: 24px;
+    height: 18px;
+    object-fit: contain;
+    flex-shrink: 0;
+    border-radius: 2px;
+}
+
+.phone-cc { width: auto; min-width: 150px; max-width: 220px; }
+.phone-number-input { flex: 1 1 auto; min-width: 0; }
+
+.phone-input-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--asd-danger, #b3261e);
+    font-size: .8rem;
+}
+
+.phone-input-helper {
+    font-size: .78rem;
+    color: var(--asd-ink-soft, #8a8278);
+}

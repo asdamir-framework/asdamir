@@ -1,0 +1,178 @@
+@namespace Asdamir.Web.Security.Components
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Microsoft.JSInterop
+@using Asdamir.Web.Security.Services
+@using Microsoft.Extensions.Localization
+@implements IDisposable
+@inject AutoLogoutService AutoLogout
+@inject AuthState AuthState
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SessionWarningDialog> Localizer
+
+<!-- Warning Dialog - Before Timeout -->
+<FluentDialog @bind-Hidden="@hideWarning" Modal="true" Title="@GetLocalizedString("Session.Warning.Title")" Class="app-dialog-medium">
+
+    <div class="session-warning-content">
+        <span style="font-size: 32px; color: var(--warning-color, #ff8c00);">⚠️</span>
+        <div>
+            <p style="margin: 8px 0; font-size: 14px;">
+                @GetLocalizedString("Session.Warning.Message") <strong>@timeRemaining</strong>
+            </p>
+            <p style="margin: 8px 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                @GetLocalizedString("Session.Warning.Action")
+            </p>
+        </div>
+    </div>
+
+    <FluentButton Appearance="Appearance.Accent" Style="width: 100%;" @onclick="OnExtendSession">
+        @GetLocalizedString("Session.Warning.ExtendButton")
+    </FluentButton>
+
+</FluentDialog>
+
+<!-- Timeout Dialog - After Timeout -->
+<FluentDialog @bind-Hidden="@hideTimeout" Modal="true" Title="@GetLocalizedString("Session.Timeout.Title")" Class="app-dialog-medium">
+
+    <div class="session-timeout-content">
+        <span style="font-size: 32px; color: var(--error-color, #d13438);">🔒</span>
+        <div>
+            <p style="margin: 8px 0; font-size: 14px; font-weight: 600;">
+                @GetLocalizedString("Session.Timeout.Message")
+            </p>
+            <p style="margin: 8px 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+                @GetLocalizedString("Session.Timeout.Reason")
+            </p>
+        </div>
+    </div>
+
+    <FluentButton Appearance="Appearance.Accent" Style="width: 100%;" @onclick="@(async () => await OnReturnToLogin())">
+        @GetLocalizedString("Session.Timeout.LoginButton")
+    </FluentButton>
+
+</FluentDialog>
+
+@code {
+    private bool hideWarning = true;
+    private bool hideTimeout = true;
+    private string timeRemaining = "";
+    private Timer? countdownTimer;
+    private TimeSpan warningTimeLeft;
+
+    protected override void OnInitialized()
+    {
+        AutoLogout.WarningTimeReached += OnWarningTimeReached;
+        AutoLogout.LogoutTimeReached += OnLogoutTimeReached;
+    }
+
+    private void OnWarningTimeReached(object? sender, TimeSpan timeUntilLogout)
+    {
+        warningTimeLeft = timeUntilLogout;
+        hideWarning = false;
+
+        // Audit fix: dispose any prior timer before replacing it. v1 leaked a new
+        // Timer on every warning trigger because the assignment overwrote the field
+        // without disposing the old instance — the GC eventually finalized them but
+        // each one fired a callback into a disposed component first.
+        var previous = Interlocked.Exchange(ref countdownTimer, new Timer(UpdateCountdown, null, TimeSpan.Zero, TimeSpan.FromSeconds(1)));
+        previous?.Dispose();
+
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLogoutTimeReached(object? sender, EventArgs e)
+    {
+        // Audit fix: marshal the logout work through InvokeAsync rather than async-void.
+        // async-void exceptions terminate the process; InvokeAsync surfaces them as
+        // observable task faults the framework can log.
+        _ = InvokeAsync(async () =>
+        {
+            hideWarning = true;
+            var t = Interlocked.Exchange(ref countdownTimer, null);
+            t?.Dispose();
+
+            await AuthState.ClearAsync();
+            await Task.Delay(500);
+            Navigation.NavigateTo("/login", forceLoad: true);
+        });
+    }
+
+    private void UpdateCountdown(object? state)
+    {
+        // Timer callback — must marshal back onto the Blazor sync context before
+        // touching any component-scoped state or calling StateHasChanged.
+        _ = InvokeAsync(() =>
+        {
+            warningTimeLeft = warningTimeLeft.Subtract(TimeSpan.FromSeconds(1));
+
+            if (warningTimeLeft <= TimeSpan.Zero)
+            {
+                hideWarning = true;
+                var t = Interlocked.Exchange(ref countdownTimer, null);
+                t?.Dispose();
+            }
+            else
+            {
+                timeRemaining = FormatTimeRemaining(warningTimeLeft);
+            }
+
+            StateHasChanged();
+            return Task.CompletedTask;
+        });
+    }
+
+    private string FormatTimeRemaining(TimeSpan time)
+    {
+        if (time.TotalMinutes >= 1)
+        {
+            var minutes = (int)time.TotalMinutes;
+            var seconds = time.Seconds;
+            return $"{minutes}:{seconds:D2}";
+        }
+        else
+        {
+            return $"{(int)time.TotalSeconds} {GetLocalizedString("Session.Seconds")}";
+        }
+    }
+
+    private string GetLocalizedString(string key)
+    {
+        var localizedString = Localizer[key];
+        return localizedString.ResourceNotFound ? key : localizedString.Value;
+    }
+
+    private void OnExtendSession()
+    {
+        // Use new ExtendSession method for explicit session extension
+        AutoLogout.ExtendSession();
+
+        hideWarning = true;
+        var t = Interlocked.Exchange(ref countdownTimer, null);
+        t?.Dispose();
+
+        StateHasChanged();
+    }
+
+    private async Task OnReturnToLogin()
+    {
+        hideTimeout = true;
+        
+        // Clear authentication state before navigating
+        await AuthState.ClearAsync();
+        
+        // Wait briefly to ensure auth state is fully cleared
+        await Task.Delay(500);
+        
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        // Audit fix: unsubscribe BEFORE disposing the timer so a late event can't fire
+        // a callback that touches the disposed component.
+        AutoLogout.WarningTimeReached -= OnWarningTimeReached;
+        AutoLogout.LogoutTimeReached -= OnLogoutTimeReached;
+        var t = Interlocked.Exchange(ref countdownTimer, null);
+        t?.Dispose();
+    }
+}

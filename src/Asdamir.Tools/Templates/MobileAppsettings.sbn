@@ -1,0 +1,9 @@
+{
+  "Gateway": {
+    "BaseUrl": "{{ GatewayBaseUrl }}"
+  },
+  "Localization": {
+    "DefaultCulture": "tr-TR",
+    "SupportedCultures": [ "tr-TR", "en-US", "ru-RU" ]
+  }
+}

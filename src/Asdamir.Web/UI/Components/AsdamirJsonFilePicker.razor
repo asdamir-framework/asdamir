@@ -1,0 +1,598 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Text.Json
+@inject IJSRuntime JS
+@inherits ComponentBase
+
+@*
+    JsonFilePicker — INSPINIA-styled (Asdamir design system). FluentUI-free: a scoped drop zone,
+    .asd-card file-info / preview panels, .asd-* buttons + checkboxes, a native <details> analysis
+    panel and scoped error rows. JSON parsing / validation / analysis logic is unchanged.
+*@
+
+<div class="@GetContainerClasses()"
+     @ondrop="HandleDrop"
+     @ondragover="HandleDragOver"
+     @ondragenter="HandleDragEnter"
+     @ondragleave="HandleDragLeave">
+
+    <div class="drop-zone @GetDropZoneClasses()">
+        <div class="drop-zone-icon">
+            @if (IsProcessing)
+            {
+                <span class="jfp-emoji">⏳</span>
+            }
+            else if (IsDragOver)
+            {
+                <span class="jfp-emoji accent">☁️⬇️</span>
+            }
+            else
+            {
+                <span class="jfp-emoji">📄</span>
+            }
+        </div>
+
+        <div class="drop-zone-content">
+            <div class="drop-zone-title">@GetDropZoneTitle()</div>
+            <div class="drop-zone-description">@GetDropZoneDescription()</div>
+
+            @if (ShowFileInfo && SelectedFile != null)
+            {
+                <div class="asd-card file-info-card">
+                    <span class="jfp-file-ico ok">📄</span>
+                    <div class="file-details">
+                        <div class="file-name">@SelectedFile.Name</div>
+                        <div class="file-size">@FormatFileSize(SelectedFile.Size)</div>
+                    </div>
+                    @if (ShowValidationResult)
+                    {
+                        @if (ValidationResult?.IsValid == true)
+                        {
+                            <span class="jfp-vstatus ok" title="Valid JSON">✓</span>
+                        }
+                        else if (ValidationResult?.IsValid == false)
+                        {
+                            <span class="jfp-vstatus err" title="@ValidationResult.ErrorMessage">✕</span>
+                        }
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="jfp-actions">
+            <button type="button" class="asd-btn asd-btn-primary" disabled="@IsProcessing" @onclick="OpenFilePicker" title="Select File">@ButtonText</button>
+
+            @if (AllowClear && SelectedFile != null)
+            {
+                <button type="button" class="asd-btn asd-btn-ghost" @onclick="ClearSelection" title="Clear Selection">Clear</button>
+            }
+
+            @if (ShowPreview && !string.IsNullOrEmpty(JsonContent))
+            {
+                <button type="button" class="asd-btn asd-btn-ghost" @onclick="TogglePreview" title="Toggle Preview">@(ShowPreviewPanel ? "Hide" : "Preview")</button>
+            }
+        </div>
+
+        @if (ShowAdvancedOptions)
+        {
+            <div class="jfp-advanced">
+                <div class="jfp-advanced-title">Advanced Options</div>
+                <div>
+                    <div class="asd-section-label">Max File Size (MB)</div>
+                    <input class="asd-input" type="number" min="1" max="100" @bind="MaxFileSizeMB" />
+                </div>
+                <label class="asd-chk"><input type="checkbox" @bind="ValidateJson" /> Validate JSON Structure</label>
+                <label class="asd-chk"><input type="checkbox" @bind="PrettyPrint" /> Format JSON Output</label>
+                <label class="asd-chk"><input type="checkbox" @bind="AllowMultipleFiles" /> Allow Multiple Files</label>
+                @if (ValidationSchemas.Any())
+                {
+                    <div class="asd-detail-msg">JSON Schema Validation: Currently not supported</div>
+                }
+            </div>
+        }
+    </div>
+
+    @if (ShowPreview && ShowPreviewPanel && !string.IsNullOrEmpty(JsonContent))
+    {
+        <div class="asd-card preview-card">
+            <div class="jfp-preview-head">
+                <span class="ocr-sub jfp-preview-title">JSON Preview</span>
+                <div class="jfp-preview-actions">
+                    <button type="button" class="asd-iconbtn" @onclick="CopyToClipboard" title="Copy to Clipboard">📋</button>
+                    <button type="button" class="asd-iconbtn" @onclick="DownloadFormatted" title="Download Formatted">⬇️</button>
+                </div>
+            </div>
+
+            <pre class="jfp-code">@FormattedJsonContent</pre>
+
+            @if (JsonAnalysis != null)
+            {
+                <details class="jfp-analysis">
+                    <summary>Analysis</summary>
+                    <div class="jfp-analysis-body">
+                        <div>Objects: @JsonAnalysis.ObjectCount</div>
+                        <div>Arrays: @JsonAnalysis.ArrayCount</div>
+                        <div>Properties: @JsonAnalysis.PropertyCount</div>
+                        <div>Max Depth: @JsonAnalysis.MaxDepth</div>
+                        <div>Size: @FormatFileSize(JsonAnalysis.SizeBytes)</div>
+                    </div>
+                </details>
+            }
+        </div>
+    }
+
+    <InputFile @ref="FileInput"
+               class="jfp-hidden-input"
+               OnChange="OnFileSelected"
+               accept="@AcceptedFileTypes"
+               multiple="@AllowMultipleFiles" />
+
+    @if (ErrorMessages.Any())
+    {
+        <div class="jfp-errors">
+            @foreach (var error in ErrorMessages)
+            {
+                <div class="jfp-error">
+                    <span>@error</span>
+                    <button type="button" class="jfp-error-x" @onclick="() => RemoveError(error)" aria-label="Dismiss">×</button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // Component References
+    private InputFile? FileInput;
+
+    // Parameters
+    [Parameter] public string ButtonText { get; set; } = "Select JSON File";
+    [Parameter] public string AcceptedFileTypes { get; set; } = ".json,application/json";
+    [Parameter] public int MaxFileSizeMB { get; set; } = 20;
+    [Parameter] public bool AllowDragDrop { get; set; } = true;
+    [Parameter] public bool AllowMultipleFiles { get; set; } = false;
+    [Parameter] public bool AllowClear { get; set; } = true;
+    [Parameter] public bool ShowFileInfo { get; set; } = true;
+    [Parameter] public bool ShowPreview { get; set; } = true;
+    [Parameter] public bool ShowAdvancedOptions { get; set; } = false;
+    [Parameter] public bool ShowValidationResult { get; set; } = true;
+    [Parameter] public bool ValidateJson { get; set; } = true;
+    [Parameter] public bool PrettyPrint { get; set; } = true;
+    [Parameter] public string DropZoneText { get; set; } = "Drop your JSON files here";
+    [Parameter] public string BrowseText { get; set; } = "or browse to select files";
+    [Parameter] public List<JsonSchema> ValidationSchemas { get; set; } = new();
+    [Parameter] public EventCallback<string> OnJsonLoaded { get; set; }
+    [Parameter] public EventCallback<List<string>> OnMultipleJsonLoaded { get; set; }
+    [Parameter] public EventCallback<JsonFileInfo> OnFileAnalyzed { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    // State
+    private bool IsDragOver { get; set; }
+    private bool IsProcessing { get; set; }
+    private bool ShowPreviewPanel { get; set; }
+    private IBrowserFile? SelectedFile { get; set; }
+    private string JsonContent { get; set; } = string.Empty;
+    private string FormattedJsonContent { get; set; } = string.Empty;
+    private JsonValidationResult? ValidationResult { get; set; }
+    private JsonAnalysisInfo? JsonAnalysis { get; set; }
+    private List<string> ErrorMessages { get; set; } = new();
+    private string SelectedSchemaId { get; set; } = string.Empty;
+
+    private async Task OpenFilePicker()
+    {
+        if (FileInput != null)
+        {
+            await JS.InvokeVoidAsync("enterpriseUtils.triggerFileInput", FileInput.Element);
+        }
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        IsProcessing = true;
+        ErrorMessages.Clear();
+
+        try
+        {
+            if (AllowMultipleFiles && e.FileCount > 1)
+            {
+                await ProcessMultipleFiles(e.GetMultipleFiles());
+            }
+            else
+            {
+                await ProcessSingleFile(e.File);
+            }
+        }
+        finally
+        {
+            IsProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ProcessSingleFile(IBrowserFile file)
+    {
+        if (!ValidateFile(file)) return;
+
+        SelectedFile = file;
+        JsonContent = await ReadFileContent(file);
+
+        if (ValidateJson)
+        {
+            ValidationResult = ValidateJsonContent(JsonContent);
+            if (!ValidationResult.IsValid)
+            {
+                AddError($"Invalid JSON: {ValidationResult.ErrorMessage}");
+                return;
+            }
+        }
+
+        if (PrettyPrint)
+        {
+            FormattedJsonContent = FormatJson(JsonContent);
+        }
+        else
+        {
+            FormattedJsonContent = JsonContent;
+        }
+
+        JsonAnalysis = AnalyzeJson(JsonContent);
+
+        var fileInfo = new JsonFileInfo
+        {
+            FileName = file.Name,
+            FileSizeBytes = file.Size,
+            Content = JsonContent,
+            FormattedContent = FormattedJsonContent,
+            ValidationResult = ValidationResult,
+            Analysis = JsonAnalysis
+        };
+
+        await OnJsonLoaded.InvokeAsync(JsonContent);
+        await OnFileAnalyzed.InvokeAsync(fileInfo);
+    }
+
+    private async Task ProcessMultipleFiles(IEnumerable<IBrowserFile> files)
+    {
+        var jsonContents = new List<string>();
+
+        foreach (var file in files)
+        {
+            if (!ValidateFile(file)) continue;
+
+            var content = await ReadFileContent(file);
+            if (ValidateJson && !ValidateJsonContent(content).IsValid) continue;
+
+            jsonContents.Add(content);
+        }
+
+        await OnMultipleJsonLoaded.InvokeAsync(jsonContents);
+    }
+
+    private async Task<string> ReadFileContent(IBrowserFile file)
+    {
+        using var stream = file.OpenReadStream(MaxFileSizeMB * 1024 * 1024);
+        using var reader = new StreamReader(stream);
+        return await reader.ReadToEndAsync();
+    }
+
+    private bool ValidateFile(IBrowserFile file)
+    {
+        if (file.Size > MaxFileSizeMB * 1024 * 1024)
+        {
+            AddError($"File {file.Name} exceeds maximum size of {MaxFileSizeMB}MB");
+            return false;
+        }
+
+        var allowedExtensions = AcceptedFileTypes.Split(',')
+            .Select(x => x.Trim().TrimStart('.'))
+            .ToList();
+
+        var fileExtension = Path.GetExtension(file.Name).TrimStart('.');
+        if (!allowedExtensions.Contains(fileExtension, StringComparer.OrdinalIgnoreCase) &&
+            !allowedExtensions.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+        {
+            AddError($"File type {fileExtension} is not supported");
+            return false;
+        }
+
+        return true;
+    }
+
+    private JsonValidationResult ValidateJsonContent(string jsonContent)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(jsonContent);
+
+            if (!string.IsNullOrEmpty(SelectedSchemaId))
+            {
+                var schema = ValidationSchemas.FirstOrDefault(s => s.Id == SelectedSchemaId);
+                if (schema != null)
+                {
+                    // Implement JSON schema validation here (requires a schema validation library)
+                }
+            }
+
+            return new JsonValidationResult { IsValid = true };
+        }
+        catch (JsonException ex)
+        {
+            return new JsonValidationResult
+            {
+                IsValid = false,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    private string FormatJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return JsonSerializer.Serialize(doc, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch
+        {
+            return json;
+        }
+    }
+
+    private JsonAnalysisInfo AnalyzeJson(string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return new JsonAnalysisInfo
+            {
+                ObjectCount = CountElements(doc.RootElement, JsonValueKind.Object),
+                ArrayCount = CountElements(doc.RootElement, JsonValueKind.Array),
+                PropertyCount = CountProperties(doc.RootElement),
+                MaxDepth = GetMaxDepth(doc.RootElement),
+                SizeBytes = System.Text.Encoding.UTF8.GetByteCount(json)
+            };
+        }
+        catch
+        {
+            return new JsonAnalysisInfo();
+        }
+    }
+
+    private int CountElements(JsonElement element, JsonValueKind kind, int count = 0)
+    {
+        if (element.ValueKind == kind) count++;
+
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    count = CountElements(property.Value, kind, count);
+                }
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    count = CountElements(item, kind, count);
+                }
+                break;
+        }
+
+        return count;
+    }
+
+    private int CountProperties(JsonElement element, int count = 0)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                count += element.EnumerateObject().Count();
+                foreach (var property in element.EnumerateObject())
+                {
+                    count = CountProperties(property.Value, count);
+                }
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    count = CountProperties(item, count);
+                }
+                break;
+        }
+
+        return count;
+    }
+
+    private int GetMaxDepth(JsonElement element, int currentDepth = 1)
+    {
+        int maxDepth = currentDepth;
+
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                foreach (var property in element.EnumerateObject())
+                {
+                    maxDepth = Math.Max(maxDepth, GetMaxDepth(property.Value, currentDepth + 1));
+                }
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in element.EnumerateArray())
+                {
+                    maxDepth = Math.Max(maxDepth, GetMaxDepth(item, currentDepth + 1));
+                }
+                break;
+        }
+
+        return maxDepth;
+    }
+
+    // Event Handlers
+    private void HandleDragOver(DragEventArgs e)
+    {
+        if (AllowDragDrop)
+        {
+            e.DataTransfer.DropEffect = "copy";
+        }
+    }
+
+    private void HandleDragEnter(DragEventArgs e)
+    {
+        if (AllowDragDrop)
+        {
+            IsDragOver = true;
+        }
+    }
+
+    private void HandleDragLeave(DragEventArgs e)
+    {
+        IsDragOver = false;
+    }
+
+    private void HandleDrop(DragEventArgs e)
+    {
+        IsDragOver = false;
+
+        if (!AllowDragDrop || IsProcessing) return;
+
+        IsProcessing = true;
+        ErrorMessages.Clear();
+
+        try
+        {
+            // Note: drag-drop file handling requires JS interop; use the picker button for now.
+            AddError("Drag and drop is not yet implemented. Please use the file picker button.");
+        }
+        finally
+        {
+            IsProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ClearSelection()
+    {
+        SelectedFile = null;
+        JsonContent = string.Empty;
+        FormattedJsonContent = string.Empty;
+        ValidationResult = null;
+        JsonAnalysis = null;
+        ShowPreviewPanel = false;
+        ErrorMessages.Clear();
+    }
+
+    private void TogglePreview()
+    {
+        ShowPreviewPanel = !ShowPreviewPanel;
+    }
+
+    private async Task CopyToClipboard()
+    {
+        if (!string.IsNullOrEmpty(FormattedJsonContent))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", FormattedJsonContent);
+        }
+    }
+
+    private async Task DownloadFormatted()
+    {
+        if (!string.IsNullOrEmpty(FormattedJsonContent) && SelectedFile != null)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(SelectedFile.Name) + "_formatted.json";
+            await JS.InvokeVoidAsync("enterpriseUtils.downloadFile", FormattedJsonContent, fileName, "application/json");
+        }
+    }
+
+    private void AddError(string message)
+    {
+        ErrorMessages.Add(message);
+        _ = OnError.InvokeAsync(message);
+    }
+
+    private void RemoveError(string message)
+    {
+        ErrorMessages.Remove(message);
+    }
+
+    // Helper Methods
+    private string GetContainerClasses()
+    {
+        var classes = new List<string> { "json-file-picker" };
+
+        if (IsDragOver) classes.Add("drag-over");
+        if (IsProcessing) classes.Add("processing");
+        if (SelectedFile != null) classes.Add("has-file");
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetDropZoneClasses()
+    {
+        var classes = new List<string>();
+
+        if (IsDragOver) classes.Add("drag-over");
+        if (IsProcessing) classes.Add("processing");
+
+        return string.Join(" ", classes);
+    }
+
+    private string GetDropZoneTitle()
+    {
+        if (IsProcessing) return "Processing...";
+        if (IsDragOver) return "Drop files here";
+        if (SelectedFile != null) return "File selected";
+        return "Select JSON File";
+    }
+
+    private string GetDropZoneDescription()
+    {
+        if (IsProcessing) return "Please wait while we process your file(s)";
+        if (IsDragOver) return "Release to upload";
+        if (SelectedFile != null) return "Ready to process";
+        return AllowDragDrop ? DropZoneText + " " + BrowseText : BrowseText;
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+
+    // Models
+    public class JsonFileInfo
+    {
+        public string FileName { get; set; } = string.Empty;
+        public long FileSizeBytes { get; set; }
+        public string Content { get; set; } = string.Empty;
+        public string FormattedContent { get; set; } = string.Empty;
+        public JsonValidationResult? ValidationResult { get; set; }
+        public JsonAnalysisInfo? Analysis { get; set; }
+    }
+
+    public class JsonValidationResult
+    {
+        public bool IsValid { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
+    }
+
+    public class JsonAnalysisInfo
+    {
+        public int ObjectCount { get; set; }
+        public int ArrayCount { get; set; }
+        public int PropertyCount { get; set; }
+        public int MaxDepth { get; set; }
+        public long SizeBytes { get; set; }
+    }
+
+    public class JsonSchema
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string SchemaContent { get; set; } = string.Empty;
+    }
+}

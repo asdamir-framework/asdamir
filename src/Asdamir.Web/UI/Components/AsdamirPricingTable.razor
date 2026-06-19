@@ -1,0 +1,58 @@
+@*
+    AsdamirPricing — reusable, dependency-light INSPINIA-style pricing table.
+
+    Lives in the shared Asdamir.Web UI library (web + MAUI). FluentUI-free; styling is co-located,
+    scoped CSS (AsdamirPricing.razor.css) that reads the shared --asd-* theme tokens, so it themes
+    automatically with the rest of the design system.
+
+      <AsdamirPricing Plans="@_plans" OnSelect="@(p => Choose(p))" />
+*@
+
+<div class="asd-pricing">
+    @foreach (var p in Plans)
+    {
+        <div class="asd-pricing-card @(p.Featured ? "featured" : "")">
+            @if (p.Featured && !string.IsNullOrEmpty(p.Badge))
+            {
+                <span class="asd-pricing-badge">@p.Badge</span>
+            }
+            <div class="asd-pricing-name">@p.Name</div>
+            <div class="asd-pricing-price">
+                <span class="amt">@p.Price</span>
+                @if (!string.IsNullOrEmpty(p.Period))
+                {
+                    <span class="per">@p.Period</span>
+                }
+            </div>
+            @if (!string.IsNullOrEmpty(p.Description))
+            {
+                <div class="asd-pricing-desc">@p.Description</div>
+            }
+            @if (p.Features.Count > 0)
+            {
+                <ul class="asd-pricing-features">
+                    @foreach (var f in p.Features)
+                    {
+                        <li>
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                            <span>@f</span>
+                        </li>
+                    }
+                </ul>
+            }
+            @if (!string.IsNullOrEmpty(p.CtaLabel))
+            {
+                <button type="button" class="asd-pricing-cta @(p.Featured ? "featured" : "")"
+                        @onclick="@(() => OnSelect.InvokeAsync(p))">@p.CtaLabel</button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The pricing tiers to render, left to right.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<AsdamirPricingPlan> Plans { get; set; } = System.Array.Empty<AsdamirPricingPlan>();
+
+    /// <summary>Raised with the chosen plan when its CTA button is clicked.</summary>
+    [Parameter] public EventCallback<AsdamirPricingPlan> OnSelect { get; set; }
+}

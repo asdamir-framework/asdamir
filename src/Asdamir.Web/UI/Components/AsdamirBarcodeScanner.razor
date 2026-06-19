@@ -1,0 +1,65 @@
+@using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
+@inject Asdamir.Web.UI.Services.IComponentLocalizer Localizer
+@implements IAsyncDisposable
+
+@*
+    BarcodeScanner — INSPINIA-styled (Asdamir design system). FluentUI-free: .asd-btn controls;
+    the camera viewport dimensions flow through the --bc-w / --bc-h CSS custom properties.
+    BarcodeReader JS interop is unchanged.
+*@
+
+<div id="@ElementId" class="bc-view @Class" style="--bc-w:@WidthPx;--bc-h:@HeightPx"></div>
+<div class="bc-actions">
+    <button type="button" class="asd-btn asd-btn-primary" @onclick="Start">@Localizer["BarcodeScanner.Action.Start"]</button>
+    <button type="button" class="asd-btn asd-btn-ghost" @onclick="Stop">@Localizer["BarcodeScanner.Action.Stop"]</button>
+</div>
+
+@code {
+    // Audit fix: v1 declared a public Dispose() but did NOT @implements IDisposable,
+    // so Blazor never called it. The camera capture + detection loop ran until the
+    // browser tab closed. We now @implements IAsyncDisposable and stop the JS reader
+    // before releasing the DotNetObjectReference.
+
+    [Parameter] public string ElementId { get; set; } = $"barcode_{Guid.NewGuid():N}";
+    [Parameter] public int Width { get; set; } = 640;
+    [Parameter] public int Height { get; set; } = 360;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback<string> OnDetected { get; set; }
+
+    private string WidthPx => Width + "px";
+    private string HeightPx => Height + "px";
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+    private DotNetObjectReference<AsdamirBarcodeScanner>? _dotNetRef;
+
+    protected override void OnInitialized()
+    {
+        _dotNetRef = DotNetObjectReference.Create(this);
+    }
+
+    [JSInvokable]
+    public async Task OnBarcodeDetectedInternal(string code)
+    {
+        if (OnDetected.HasDelegate)
+            await OnDetected.InvokeAsync(code);
+    }
+
+    public async Task Start() => await JS.InvokeVoidAsync("BarcodeReader.start", _dotNetRef, ElementId);
+    public async Task Stop() => await JS.InvokeVoidAsync("BarcodeReader.stop");
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("BarcodeReader.stop");
+        }
+        catch (JSDisconnectedException) { /* circuit gone — JS side already torn down */ }
+        catch (Microsoft.JSInterop.JSException) { /* tolerate JS errors during teardown */ }
+        finally
+        {
+            _dotNetRef?.Dispose();
+            _dotNetRef = null;
+        }
+    }
+}

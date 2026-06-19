@@ -1,0 +1,74 @@
+/* OCR — scoped, theme-aware (reads the global --asd-* tokens).
+   Cards/inputs/table/pills come from the shared .asd-* design system; the layout, tab strip,
+   upload/camera panes and analytics cards are local. */
+
+.ocr-component { width: 100%; max-width: 1200px; margin: 0 auto; }
+.ocr-root { display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+
+.ocr-head { display: flex; align-items: center; gap: 12px; }
+.ocr-ico { width: 24px; height: 24px; color: var(--asd-accent, #c0552b); }
+.ocr-title { font-size: 1.15rem; font-weight: 700; margin: 0; color: var(--asd-ink, #222); }
+.ocr-sub { font-size: .9rem; font-weight: 600; color: var(--asd-ink, #222); }
+
+.ocr-config { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.ocr-config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    align-items: center;
+}
+
+.ocr-uploads { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 760px) { .ocr-uploads { grid-template-columns: 1fr; } }
+
+.ocr-pane {
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    text-align: center;
+    padding: 20px;
+}
+
+.ocr-pane-ico { width: 48px; height: 48px; color: var(--asd-ink-soft, #8a8278); }
+.ocr-pane-title { font-size: 1rem; font-weight: 600; color: var(--asd-ink, #222); }
+.ocr-pane-sub { font-size: .82rem; color: var(--asd-ink-soft, #8a8278); }
+.ocr-pane-actions { display: flex; gap: 8px; }
+.ocr-hidden-input { display: none; }
+
+.ocr-preview, .ocr-video {
+    max-width: 100%;
+    max-height: 250px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .1);
+}
+
+.ocr-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+
+/* tab strip (shared shape with PermissionManager, scoped here) */
+.pm-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--asd-border, #e3ded7); }
+.pm-tab {
+    appearance: none; background: transparent; border: none;
+    border-bottom: 2px solid transparent; padding: 10px 16px;
+    font: inherit; font-size: .88rem; font-weight: 600;
+    color: var(--asd-ink-soft, #8a8278); cursor: pointer; margin-bottom: -1px;
+}
+.pm-tab:hover { color: var(--asd-ink, #222); }
+.pm-tab.active { color: var(--asd-accent, #c0552b); border-bottom-color: var(--asd-accent, #c0552b); }
+
+.ocr-tabpanel { padding: 14px 2px; }
+.ocr-results-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.ocr-textarea { width: 100%; min-height: 200px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.ocr-analytics { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+.ocr-metric {
+    text-align: center;
+    padding: 16px;
+    border: 1px solid var(--asd-border, #e3ded7);
+    border-radius: 10px;
+    background: var(--asd-surface, #fff);
+}
+.ocr-metric-v { font-size: 1.5rem; font-weight: 800; color: var(--asd-ink, #222); }
+.ocr-metric-l { margin-top: 4px; font-size: .78rem; color: var(--asd-ink-soft, #8a8278); }

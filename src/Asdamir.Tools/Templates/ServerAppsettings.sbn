@@ -1,0 +1,25 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Gateway": {
+    "BaseUrl": "{{ GatewayBaseUrl }}"
+  },
+  "DataProtection": {
+    "_comment": "Auth cookie + antiforgery keys. ApplicationName keeps the key ring stable across deployments; set KeyPath to a shared, durable volume for restart-safe / multi-instance auth (empty = ASP.NET default, fine for single-host dev).",
+    "ApplicationName": "{{ AppName }}",
+    "KeyPath": ""
+  },
+  "AdminConsole": {
+    "LoginUrl": "https://localhost:5300/login?returnUrl=https://localhost:5400/sign-in",
+    "BaseUrl": "https://localhost:5301/"
+  },
+  "OpenTelemetry": {
+    "_comment": "Set Otlp:Endpoint (e.g. http://otel-collector:4317) to export traces+metrics over OTLP; empty = disabled. OTEL_EXPORTER_OTLP_ENDPOINT env var works too. UI-tier value is HttpClient traces to the Gateway.",
+    "Otlp": { "Endpoint": "" }
+  }
+}

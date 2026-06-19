@@ -1,0 +1,46 @@
+@*
+    AsdamirModal — reusable, dependency-light modal/dialog.
+
+    Lives in the shared Asdamir.Web UI library so BOTH the Blazor web app AND the MAUI Blazor-Hybrid
+    mobile app can use it. Deliberately FluentUI-free: it does NOT depend on FluentDialogProvider, so it
+    works inside a Blazor Web App's per-page interactive island (where a provider hosted in the static
+    layout is unreachable and IDialogService throws). Styling comes from the shared design-system CSS
+    (.asd-modal* classes), themed via --asd-* tokens.
+
+      <AsdamirModal Open="_open" OpenChanged="@(v => _open = v)" Title="Detail">
+          <p>…body…</p>
+          <Footer><button class="asd-btn" @onclick="…">OK</button></Footer>
+      </AsdamirModal>
+*@
+
+@if (Open)
+{
+    <div class="asd-modal-overlay" @onclick="CloseAsync">
+        <div class="asd-modal" @onclick:stopPropagation="true" role="dialog" aria-modal="true">
+            <div class="asd-modal-head">
+                <span class="asd-modal-title">@Title</span>
+                <button type="button" class="asd-iconbtn" @onclick="CloseAsync" aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="asd-modal-body">@ChildContent</div>
+            @if (Footer is not null)
+            {
+                <div class="asd-modal-foot">@Footer</div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+
+    private async Task CloseAsync()
+    {
+        if (OpenChanged.HasDelegate) await OpenChanged.InvokeAsync(false);
+    }
+}

@@ -1,0 +1,222 @@
+/* ============================================
+   ENTERPRISE DESIGN TOKENS - LAYER 1
+   Single source of truth for all design values
+   Based on Fluent Design System
+   ============================================ */
+
+:root {
+    /* ========================================
+       SPACING SYSTEM (4px base unit)
+       ======================================== */
+    --ui-space-0: 0;
+    --ui-space-1: 4px;
+    --ui-space-2: 8px;
+    --ui-space-3: 12px;
+    --ui-space-4: 16px;
+    --ui-space-5: 20px;
+    --ui-space-6: 24px;     /* card padding */
+    --ui-space-7: 28px;
+    --ui-space-8: 32px;
+    --ui-space-9: 36px;
+    --ui-space-10: 40px;
+    --ui-space-12: 48px;
+    --ui-space-16: 64px;
+    --ui-space-20: 80px;
+    --ui-space-24: 96px;
+
+    /* ========================================
+       COLOR PALETTE - PRIMARY
+       ======================================== */
+    --ui-color-primary: var(--accent-fill-rest);
+    --ui-color-primary-hover: var(--accent-fill-hover);
+    --ui-color-primary-active: var(--accent-fill-active);
+    --ui-color-primary-light: var(--accent-fill-secondary);
+    --ui-color-primary-foreground: var(--accent-foreground-rest);
+
+    /* ========================================
+       COLOR PALETTE - SEMANTIC
+       ======================================== */
+    /* Success */
+    --ui-color-success: #107c10;
+    --ui-color-success-hover: #0e6b0e;
+    --ui-color-success-light: #dff6dd;
+    --ui-color-success-border: #9fd89c;
+    
+    /* Warning */
+    --ui-color-warning: #ca5010;
+    --ui-color-warning-hover: #b3460e;
+    --ui-color-warning-light: #fff4ce;
+    --ui-color-warning-border: #f9c642;
+    
+    /* Error / Danger */
+    --ui-color-error: #d13438;
+    --ui-color-error-hover: #b82e32;
+    --ui-color-error-light: #fde7e9;
+    --ui-color-error-border: #f1707b;
+    
+    /* Info */
+    --ui-color-info: #2a2a2a;
+    --ui-color-info-hover: #3a3a3a;
+    --ui-color-info-light: #f5f5f5;
+    --ui-color-info-border: #666666;
+
+    /* ========================================
+       TEXT COLORS
+       ======================================== */
+    --ui-text-primary: var(--neutral-foreground-rest);
+    --ui-text-secondary: var(--neutral-foreground-hint);
+    --ui-text-tertiary: var(--neutral-stroke-strong);
+    --ui-text-disabled: var(--neutral-foreground-disabled);
+    --ui-text-inverse: var(--neutral-fill-layer-rest);
+    --ui-text-link: var(--accent-fill-rest);
+    --ui-text-link-hover: var(--accent-fill-hover);
+
+    /* ========================================
+       BACKGROUND COLORS
+       ======================================== */
+    --ui-bg-canvas: var(--neutral-layer-floating);
+    --ui-bg-surface: var(--neutral-layer-1);
+    --ui-bg-surface-secondary: var(--neutral-layer-2);
+    --ui-bg-surface-tertiary: var(--neutral-layer-3);
+    --ui-bg-hover: var(--neutral-fill-stealth-hover);
+    --ui-bg-active: var(--neutral-fill-stealth-active);
+    --ui-bg-selected: var(--neutral-fill-secondary-rest);
+    --ui-bg-overlay: rgba(0, 0, 0, 0.4);
+
+    /* ========================================
+       BORDER COLORS & STYLES
+       ======================================== */
+    --ui-border-default: var(--neutral-stroke-rest);
+    --ui-border-strong: var(--neutral-stroke-strong);
+    --ui-border-subtle: var(--neutral-stroke-subtle);
+    --ui-border-disabled: var(--neutral-stroke-disabled);
+    --ui-border-focus: var(--accent-stroke-focus);
+    
+    --ui-border-width-thin: 1px;
+    --ui-border-width-medium: 2px;
+    --ui-border-width-thick: 3px;
+
+    /* ========================================
+       BORDER RADIUS
+       ======================================== */
+    --ui-border-radius-none: 0;
+    --ui-border-radius-xs: 2px;
+    --ui-border-radius-sm: 4px;
+    --ui-border-radius-md: 6px;
+    --ui-border-radius-lg: 8px;
+    --ui-border-radius-xl: 12px;
+    --ui-border-radius-2xl: 16px;
+    --ui-border-radius-full: 9999px;
+
+    /* ========================================
+       SHADOWS
+       ======================================== */
+    --ui-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --ui-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.15);
+    --ui-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.2);
+    --ui-shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.25);
+    --ui-shadow-2xl: 0 24px 48px rgba(0, 0, 0, 0.3);
+    --ui-shadow-inner: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+    --ui-shadow-focus: 0 0 0 3px var(--accent-fill-secondary);
+
+    /* ========================================
+       TYPOGRAPHY - FONT SIZES
+       ======================================== */
+    --ui-font-size-xs: 11px;
+    --ui-font-size-sm: 12px;
+    --ui-font-size-base: 14px;
+    --ui-font-size-lg: 16px;
+    --ui-font-size-xl: 18px;
+    --ui-font-size-2xl: 24px;
+    --ui-font-size-3xl: 32px;
+    --ui-font-size-4xl: 40px;
+    --ui-font-size-5xl: 48px;
+
+    /* ========================================
+       TYPOGRAPHY - LINE HEIGHTS
+       ======================================== */
+    --ui-line-height-tight: 1.25;
+    --ui-line-height-normal: 1.5;
+    --ui-line-height-relaxed: 1.75;
+    --ui-line-height-loose: 2;
+
+    /* ========================================
+       TYPOGRAPHY - FONT WEIGHTS
+       ======================================== */
+    --ui-font-weight-light: 300;
+    --ui-font-weight-normal: 400;
+    --ui-font-weight-medium: 500;
+    --ui-font-weight-semibold: 600;
+    --ui-font-weight-bold: 700;
+    --ui-font-weight-extrabold: 800;
+
+    /* ========================================
+       TYPOGRAPHY - LETTER SPACING
+       ======================================== */
+    --ui-letter-spacing-tight: -0.02em;
+    --ui-letter-spacing-normal: 0;
+    --ui-letter-spacing-wide: 0.02em;
+    --ui-letter-spacing-wider: 0.04em;
+
+    /* ========================================
+       TRANSITIONS & ANIMATIONS
+       ======================================== */
+    --ui-transition-fast: 150ms ease;
+    --ui-transition-normal: 250ms ease;
+    --ui-transition-slow: 350ms ease;
+    --ui-transition-slowest: 500ms ease;
+    
+    --ui-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ui-ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ui-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    --ui-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    /* ========================================
+       Z-INDEX LAYERS
+       ======================================== */
+    --ui-z-base: 0;
+    --ui-z-dropdown: 1000;
+    --ui-z-sticky: 1020;
+    --ui-z-fixed: 1030;
+    --ui-z-fullscreen: 1035;   /* above nav/fixed, below modal-backdrop so dialogs stay on top */
+    --ui-z-modal-backdrop: 1040;
+    --ui-z-modal: 1050;
+    --ui-z-popover: 1060;
+    --ui-z-tooltip: 1070;
+    --ui-z-notification: 1080;
+    --ui-z-toast: 1090;
+
+    /* ========================================
+       LAYOUT TOKENS
+       ======================================== */
+    --ui-topbar-height: 56px;
+    --ui-sidebar-width: 260px;
+    --ui-sidebar-collapsed-width: 60px;
+    --ui-content-max-width: 1600px;
+    --ui-container-padding: var(--ui-space-6);
+
+    /* ========================================
+       BREAKPOINTS (for reference in JS)
+       ======================================== */
+    --ui-breakpoint-xs: 480px;
+    --ui-breakpoint-sm: 640px;
+    --ui-breakpoint-md: 768px;
+    --ui-breakpoint-lg: 1024px;
+    --ui-breakpoint-xl: 1280px;
+    --ui-breakpoint-2xl: 1536px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    :root {
+        --ui-container-padding: var(--ui-space-4);
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        --ui-container-padding: var(--ui-space-3);
+    }
+}
+

@@ -1,0 +1,28 @@
+// Copyright (C) 2026 Orhan Özşahin — Asdamir.
+// Licensed under the GNU Lesser General Public License v3.0. See LICENSE.
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// This file is part of the Asdamir open core. It is free software: you can redistribute it
+// and/or modify it under the terms of the GNU Lesser General Public License as published by the
+// Free Software Foundation, either version 3 of the License, or (at your option) any later
+// version. It is distributed WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
+
+namespace Asdamir.Core.Dtos;
+
+public class RecurringJobDto
+{
+    public string Id { get; set; } = "";
+    public string Name { get; set; } = "";
+    public string Cron { get; set; } = "";
+    public string Queue { get; set; } = "";
+    public DateTime? NextExecution { get; set; }
+    public DateTime? LastExecution { get; set; }
+    public string? LastJobId { get; set; }
+    public string? LastJobState { get; set; }
+    public string? LastJobResult { get; set; }
+    public bool Removed { get; set; }
+    public string? TimeZoneId { get; set; }
+    public string? Method { get; set; }
+    public string? Class { get; set; }
+}

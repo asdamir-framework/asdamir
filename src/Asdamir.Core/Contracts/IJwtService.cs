@@ -1,0 +1,36 @@
+﻿// Copyright (C) 2026 Orhan Özşahin — Asdamir.
+// Licensed under the GNU Lesser General Public License v3.0. See LICENSE.
+// SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// This file is part of the Asdamir open core. It is free software: you can redistribute it
+// and/or modify it under the terms of the GNU Lesser General Public License as published by the
+// Free Software Foundation, either version 3 of the License, or (at your option) any later
+// version. It is distributed WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
+
+using Asdamir.Core.Models;
+using Asdamir.Core.Dtos;
+
+namespace Asdamir.Core.Contracts;
+
+public interface IJwtService
+{
+    /// <summary>
+    /// Issues an access + refresh token pair. When <paramref name="company"/> is provided it is
+    /// embedded as a <c>company</c> claim so downstream requests know which company (tenant)
+    /// management database the session belongs to (multi-company; see
+    /// docs/design/multi-company-management.md). Null/empty omits the claim (single-company).
+    /// </summary>
+    TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null);
+
+    /// <summary>
+    /// Same as the default issuer but with explicit access/refresh lifetimes — used when the lifetime
+    /// is resolved at runtime (e.g. per-app, from the app's DB-backed configuration) rather than the
+    /// host's startup configuration.
+    /// </summary>
+    TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions,
+        TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null);
+}
+
+
+

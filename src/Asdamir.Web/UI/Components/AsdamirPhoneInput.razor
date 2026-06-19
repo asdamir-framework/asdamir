@@ -1,0 +1,495 @@
+@using System.Linq
+@inject Asdamir.Web.UI.Services.IComponentLocalizer Localizer
+
+@*
+    IntPhone — INSPINIA-styled (Asdamir design system). FluentUI-free: a native country <select>
+    (with flag emoji) + an .asd-input phone field. Country data, parsing and validation are unchanged.
+*@
+
+<div class="phone-input-container @Class">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <div class="asd-section-label">@Label</div>
+    }
+
+    <div class="phone-input-wrapper">
+        @if (!string.IsNullOrEmpty(GetFlagUrl(SelectedCountryCode)))
+        {
+            <img src="@GetFlagUrl(SelectedCountryCode)" alt="Selected" class="phone-flag" />
+        }
+        <select class="asd-input phone-cc" @bind="SelectedCountryCode" @bind:after="OnCountryChanged" disabled="@Disabled">
+            @foreach (var country in CountryCodes.OrderBy(c => c.Country))
+            {
+                <option value="@country.Code">@country.Flag @country.Country (@country.Code)</option>
+            }
+        </select>
+
+        <input class="asd-input phone-number-input"
+               value="@PhoneNumber"
+               @oninput="@(e => OnPhoneNumberChanged(e.Value?.ToString()))"
+               placeholder="@GetPhoneFormat()"
+               disabled="@Disabled"
+               maxlength="@GetMaxInputLength()"
+               autocomplete="@PhoneAutoComplete"
+               name="@InputName"
+               id="@InputId" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="phone-input-error">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>@ErrorMessage</span>
+        </div>
+    }
+
+    @if (ShowHelperText && !string.IsNullOrEmpty(HelperText))
+    {
+        <div class="phone-input-helper">
+            @HelperText
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? InputId { get; set; }
+    [Parameter] public string? InputName { get; set; }
+    [Parameter] public string PhoneAutoComplete { get; set; } = "off";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public int MinLength { get; set; } = 10;
+    [Parameter] public int MaxLength { get; set; } = 15;
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool ShowHelperText { get; set; }
+    [Parameter] public EventCallback<bool> OnValidationChanged { get; set; }
+    
+    private string SelectedCountryCode { get; set; } = "+90";
+    private string PhoneNumber { get; set; } = string.Empty;
+    public string? ErrorMessage { get; set; }
+    
+    private List<CountryCode> CountryCodes => new()
+    {
+        // Popüler ülkeler
+        new CountryCode { 
+            Code = "+90", 
+            Country = Localizer["Country.Turkey"], 
+            Flag = "🇹🇷", 
+            Format = "(5XX) XXX XX XX", 
+            MinDigits = 10, 
+            MaxDigits = 10,
+            ValidationPattern = @"^5\d{9}$", // Must start with 5 and have 10 digits total
+            ValidationErrorKey = "IntPhone.Error.TurkeyFormat"
+        },
+        new CountryCode { Code = "+44", Country = Localizer["Country.UK"], Flag = "🇬🇧", Format = "XXXX XXX XXXX", MinDigits = 10, MaxDigits = 11 },
+        new CountryCode { Code = "+49", Country = Localizer["Country.Germany"], Flag = "🇩🇪", Format = "XXX XXXXXXXX", MinDigits = 10, MaxDigits = 11 },
+        new CountryCode { Code = "+33", Country = Localizer["Country.France"], Flag = "🇫🇷", Format = "X XX XX XX XX", MinDigits = 9, MaxDigits = 9 },
+        
+        // Avrupa
+        new CountryCode { Code = "+31", Country = Localizer["Country.Netherlands"], Flag = "🇳🇱", Format = "X XXXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+32", Country = Localizer["Country.Belgium"], Flag = "🇧🇪", Format = "XXX XX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+34", Country = Localizer["Country.Spain"], Flag = "🇪🇸", Format = "XXX XX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+36", Country = Localizer["Country.Hungary"], Flag = "🇭🇺", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+39", Country = Localizer["Country.Italy"], Flag = "🇮🇹", Format = "XXX XXX XXXX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+40", Country = Localizer["Country.Romania"], Flag = "🇷🇴", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+41", Country = Localizer["Country.Switzerland"], Flag = "🇨🇭", Format = "XX XXX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+43", Country = Localizer["Country.Austria"], Flag = "🇦🇹", Format = "XXX XXXXXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+45", Country = Localizer["Country.Denmark"], Flag = "🇩🇰", Format = "XX XX XX XX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+46", Country = Localizer["Country.Sweden"], Flag = "🇸🇪", Format = "XX XXX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+47", Country = Localizer["Country.Norway"], Flag = "🇳🇴", Format = "XXX XX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+48", Country = Localizer["Country.Poland"], Flag = "🇵🇱", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+351", Country = Localizer["Country.Portugal"], Flag = "🇵🇹", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+352", Country = Localizer["Country.Luxembourg"], Flag = "🇱🇺", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+353", Country = Localizer["Country.Ireland"], Flag = "🇮🇪", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+354", Country = Localizer["Country.Iceland"], Flag = "🇮🇸", Format = "XXX XXXX", MinDigits = 7, MaxDigits = 7 },
+        new CountryCode { Code = "+355", Country = Localizer["Country.Albania"], Flag = "🇦🇱", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+357", Country = Localizer["Country.Cyprus"], Flag = "🇨🇾", Format = "XX XXXXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+358", Country = Localizer["Country.Finland"], Flag = "🇫🇮", Format = "XX XXX XX XX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+359", Country = Localizer["Country.Bulgaria"], Flag = "🇧🇬", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+370", Country = Localizer["Country.Lithuania"], Flag = "🇱🇹", Format = "XXX XXXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+371", Country = Localizer["Country.Latvia"], Flag = "🇱🇻", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+372", Country = Localizer["Country.Estonia"], Flag = "🇪🇪", Format = "XXX XXXX", MinDigits = 7, MaxDigits = 8 },
+        new CountryCode { Code = "+373", Country = Localizer["Country.Moldova"], Flag = "🇲🇩", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+374", Country = Localizer["Country.Armenia"], Flag = "🇦🇲", Format = "XX XXXXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+375", Country = Localizer["Country.Belarus"], Flag = "🇧🇾", Format = "XX XXX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+376", Country = Localizer["Country.Andorra"], Flag = "🇦🇩", Format = "XXX XXX", MinDigits = 6, MaxDigits = 6 },
+        new CountryCode { Code = "+377", Country = Localizer["Country.Monaco"], Flag = "🇲🇨", Format = "XX XX XX XX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+378", Country = Localizer["Country.SanMarino"], Flag = "🇸🇲", Format = "XXXX XXXXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+380", Country = Localizer["Country.Ukraine"], Flag = "🇺🇦", Format = "XX XXX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+381", Country = Localizer["Country.Serbia"], Flag = "🇷🇸", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+382", Country = Localizer["Country.Montenegro"], Flag = "🇲🇪", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+383", Country = Localizer["Country.Kosovo"], Flag = "🇽🇰", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+385", Country = Localizer["Country.Croatia"], Flag = "🇭🇷", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+386", Country = Localizer["Country.Slovenia"], Flag = "🇸🇮", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+387", Country = Localizer["Country.BosniaHerzegovina"], Flag = "🇧🇦", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+389", Country = Localizer["Country.NorthMacedonia"], Flag = "🇲🇰", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+420", Country = Localizer["Country.Czechia"], Flag = "🇨🇿", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+421", Country = Localizer["Country.Slovakia"], Flag = "🇸🇰", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        
+        // Asya
+        new CountryCode { Code = "+7", Country = Localizer["Country.Russia"], Flag = "🇷🇺", Format = "XXX XXX XX XX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+81", Country = Localizer["Country.Japan"], Flag = "🇯🇵", Format = "XX XXXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+82", Country = Localizer["Country.SouthKorea"], Flag = "🇰🇷", Format = "XX XXXX XXXX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+86", Country = Localizer["Country.China"], Flag = "🇨🇳", Format = "XXX XXXX XXXX", MinDigits = 11, MaxDigits = 11 },
+        new CountryCode { Code = "+91", Country = Localizer["Country.India"], Flag = "🇮🇳", Format = "XXXXX XXXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+92", Country = Localizer["Country.Pakistan"], Flag = "🇵🇰", Format = "XXX XXXXXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+93", Country = Localizer["Country.Afghanistan"], Flag = "🇦🇫", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+94", Country = Localizer["Country.SriLanka"], Flag = "🇱🇰", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+95", Country = Localizer["Country.Myanmar"], Flag = "🇲🇲", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+98", Country = Localizer["Country.Iran"], Flag = "🇮🇷", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+60", Country = Localizer["Country.Malaysia"], Flag = "🇲🇾", Format = "XX XXXX XXXX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+62", Country = Localizer["Country.Indonesia"], Flag = "🇮🇩", Format = "XXX XXXX XXXX", MinDigits = 10, MaxDigits = 11 },
+        new CountryCode { Code = "+63", Country = Localizer["Country.Philippines"], Flag = "🇵🇭", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+65", Country = Localizer["Country.Singapore"], Flag = "🇸🇬", Format = "XXXX XXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+66", Country = Localizer["Country.Thailand"], Flag = "🇹🇭", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+84", Country = Localizer["Country.Vietnam"], Flag = "🇻🇳", Format = "XX XXXX XXXX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+880", Country = Localizer["Country.Bangladesh"], Flag = "🇧🇩", Format = "XXXX XXXXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+960", Country = Localizer["Country.Maldives"], Flag = "🇲🇻", Format = "XXX XXXX", MinDigits = 7, MaxDigits = 7 },
+        new CountryCode { Code = "+961", Country = Localizer["Country.Lebanon"], Flag = "🇱🇧", Format = "XX XXX XXX", MinDigits = 7, MaxDigits = 8 },
+        new CountryCode { Code = "+962", Country = Localizer["Country.Jordan"], Flag = "🇯🇴", Format = "X XXXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+963", Country = Localizer["Country.Syria"], Flag = "🇸🇾", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+964", Country = Localizer["Country.Iraq"], Flag = "🇮🇶", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+965", Country = Localizer["Country.Kuwait"], Flag = "🇰🇼", Format = "XXXX XXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+966", Country = Localizer["Country.SaudiArabia"], Flag = "🇸🇦", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+967", Country = Localizer["Country.Yemen"], Flag = "🇾🇪", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+968", Country = Localizer["Country.Oman"], Flag = "🇴🇲", Format = "XXXX XXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+970", Country = Localizer["Country.Palestine"], Flag = "🇵🇸", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+971", Country = Localizer["Country.UAE"], Flag = "🇦🇪", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+972", Country = Localizer["Country.Israel"], Flag = "🇮🇱", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+973", Country = Localizer["Country.Bahrain"], Flag = "🇧🇭", Format = "XXXX XXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+974", Country = Localizer["Country.Qatar"], Flag = "🇶🇦", Format = "XXXX XXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+975", Country = Localizer["Country.Bhutan"], Flag = "🇧🇹", Format = "X XXX XXX", MinDigits = 7, MaxDigits = 8 },
+        new CountryCode { Code = "+976", Country = Localizer["Country.Mongolia"], Flag = "🇲🇳", Format = "XXXX XXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+977", Country = Localizer["Country.Nepal"], Flag = "🇳🇵", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+992", Country = Localizer["Country.Tajikistan"], Flag = "🇹🇯", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+993", Country = Localizer["Country.Turkmenistan"], Flag = "🇹🇲", Format = "XX XXXXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+994", Country = Localizer["Country.Azerbaijan"], Flag = "🇦🇿", Format = "XX XXX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+995", Country = Localizer["Country.Georgia"], Flag = "🇬🇪", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+996", Country = Localizer["Country.Kyrgyzstan"], Flag = "🇰🇬", Format = "XXX XXXXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+998", Country = Localizer["Country.Uzbekistan"], Flag = "🇺🇿", Format = "XX XXX XX XX", MinDigits = 9, MaxDigits = 9 },
+        
+        // Orta Doğu & Afrika
+        new CountryCode { Code = "+20", Country = Localizer["Country.Egypt"], Flag = "🇪🇬", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+212", Country = Localizer["Country.Morocco"], Flag = "🇲🇦", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+213", Country = Localizer["Country.Algeria"], Flag = "🇩🇿", Format = "XXX XX XX XX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+216", Country = Localizer["Country.Tunisia"], Flag = "🇹🇳", Format = "XX XXX XXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+218", Country = Localizer["Country.Libya"], Flag = "🇱🇾", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+27", Country = Localizer["Country.SouthAfrica"], Flag = "🇿🇦", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+233", Country = Localizer["Country.Ghana"], Flag = "🇬🇭", Format = "XXX XXX XXXX", MinDigits = 9, MaxDigits = 10 },
+        new CountryCode { Code = "+234", Country = Localizer["Country.Nigeria"], Flag = "🇳🇬", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+254", Country = Localizer["Country.Kenya"], Flag = "🇰🇪", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        
+        // Amerika
+        new CountryCode { Code = "+52", Country = Localizer["Country.Mexico"], Flag = "🇲🇽", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+53", Country = Localizer["Country.Cuba"], Flag = "🇨🇺", Format = "X XXX XXXX", MinDigits = 8, MaxDigits = 8 },
+        new CountryCode { Code = "+54", Country = Localizer["Country.Argentina"], Flag = "🇦🇷", Format = "XX XXXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+55", Country = Localizer["Country.Brazil"], Flag = "🇧🇷", Format = "XX XXXXX XXXX", MinDigits = 10, MaxDigits = 11 },
+        new CountryCode { Code = "+56", Country = Localizer["Country.Chile"], Flag = "🇨🇱", Format = "X XXXX XXXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+57", Country = Localizer["Country.Colombia"], Flag = "🇨🇴", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        new CountryCode { Code = "+58", Country = Localizer["Country.Venezuela"], Flag = "🇻🇪", Format = "XXX XXX XXXX", MinDigits = 10, MaxDigits = 10 },
+        
+        // Okyanusya
+        new CountryCode { Code = "+61", Country = Localizer["Country.Australia"], Flag = "🇦🇺", Format = "XXX XXX XXX", MinDigits = 9, MaxDigits = 9 },
+        new CountryCode { Code = "+64", Country = Localizer["Country.NewZealand"], Flag = "🇳🇿", Format = "XX XXX XXXX", MinDigits = 9, MaxDigits = 10 },
+    };
+
+    protected override void OnInitialized()
+    {
+        SelectedCountryCode = "+90";
+        
+        if (!string.IsNullOrEmpty(Value))
+        {
+            ParseValue(Value);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Value) && Value != GetFullPhoneNumber())
+        {
+            ParseValue(Value);
+        }
+    }
+    
+    private async Task OnCountryChanged()
+    {
+        await ValidateAndNotify();
+    }
+    
+    private string GetFlagUrl(string phoneCode)
+    {
+        // Map phone codes to country codes for flag SVGs
+        var countryCode = phoneCode switch
+        {
+            // Popüler ülkeler
+            "+90" => "tr",
+            "+44" => "gb",
+            "+49" => "de",
+            "+33" => "fr",
+            "+7" => "ru",
+            
+            // Avrupa
+            "+31" => "nl",
+            "+32" => "be",
+            "+34" => "es",
+            "+36" => "hu",
+            "+39" => "it",
+            "+40" => "ro",
+            "+41" => "ch",
+            "+43" => "at",
+            "+45" => "dk",
+            "+46" => "se",
+            "+47" => "no",
+            "+48" => "pl",
+            "+351" => "pt",
+            "+352" => "lu",
+            "+353" => "ie",
+            "+354" => "is",
+            "+355" => "al",
+            "+357" => "cy",
+            "+358" => "fi",
+            "+359" => "bg",
+            "+370" => "lt",
+            "+371" => "lv",
+            "+372" => "ee",
+            "+373" => "md",
+            "+374" => "am",
+            "+375" => "by",
+            "+376" => "ad",
+            "+377" => "mc",
+            "+378" => "sm",
+            "+380" => "ua",
+            "+381" => "rs",
+            "+382" => "me",
+            "+383" => "xk",
+            "+385" => "hr",
+            "+386" => "si",
+            "+387" => "ba",
+            "+389" => "mk",
+            "+420" => "cz",
+            "+421" => "sk",
+            
+            // Asya
+            "+81" => "jp",
+            "+82" => "kr",
+            "+86" => "cn",
+            "+91" => "in",
+            "+92" => "pk",
+            "+93" => "af",
+            "+94" => "lk",
+            "+95" => "mm",
+            "+98" => "ir",
+            "+60" => "my",
+            "+62" => "id",
+            "+63" => "ph",
+            "+65" => "sg",
+            "+66" => "th",
+            "+84" => "vn",
+            "+880" => "bd",
+            "+960" => "mv",
+            "+961" => "lb",
+            "+962" => "jo",
+            "+963" => "sy",
+            "+964" => "iq",
+            "+965" => "kw",
+            "+966" => "sa",
+            "+967" => "ye",
+            "+968" => "om",
+            "+970" => "ps",
+            "+971" => "ae",
+            "+972" => "il",
+            "+973" => "bh",
+            "+974" => "qa",
+            "+975" => "bt",
+            "+976" => "mn",
+            "+977" => "np",
+            "+992" => "tj",
+            "+993" => "tm",
+            "+994" => "az",
+            "+995" => "ge",
+            "+996" => "kg",
+            "+998" => "uz",
+            
+            // Orta Doğu & Afrika
+            "+20" => "eg",
+            "+212" => "ma",
+            "+213" => "dz",
+            "+216" => "tn",
+            "+218" => "ly",
+            "+27" => "za",
+            "+233" => "gh",
+            "+234" => "ng",
+            "+254" => "ke",
+            
+            // Amerika
+            "+52" => "mx",
+            "+53" => "cu",
+            "+54" => "ar",
+            "+55" => "br",
+            "+56" => "cl",
+            "+57" => "co",
+            "+58" => "ve",
+            
+            // Okyanusya
+            "+61" => "au",
+            "+64" => "nz",
+            
+            _ => ""
+        };
+
+        return !string.IsNullOrEmpty(countryCode) ? $"/flags/{countryCode}.svg" : "";
+    }
+
+    private void ParseValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        var matchingCode = CountryCodes
+            .OrderByDescending(c => c.Code.Length)
+            .FirstOrDefault(c => value.StartsWith(c.Code));
+
+        if (matchingCode != null)
+        {
+            SelectedCountryCode = matchingCode.Code;
+            PhoneNumber = value.Substring(matchingCode.Code.Length).Trim();
+        }
+        else
+        {
+            PhoneNumber = value;
+        }
+    }
+
+    private async Task OnPhoneNumberChanged(string? newValue)
+    {
+        PhoneNumber = newValue ?? string.Empty;
+        await ValidateAndNotify();
+    }
+
+    private async Task ValidateAndNotify()
+    {
+        // Clean phone number - remove non-digit characters except spaces, dashes, parentheses
+        PhoneNumber = System.Text.RegularExpressions.Regex.Replace(PhoneNumber ?? string.Empty, @"[^\d\s\-\(\)]", "");
+        
+        ErrorMessage = null;
+        var isValid = true;
+
+        if (Required && string.IsNullOrWhiteSpace(PhoneNumber))
+        {
+            ErrorMessage = Localizer["IntPhone.Error.Required"];
+            isValid = false;
+        }
+        else if (!string.IsNullOrWhiteSpace(PhoneNumber))
+        {
+            var digitsOnly = System.Text.RegularExpressions.Regex.Replace(PhoneNumber, @"[^\d]", "");
+            
+            // Ülkeye özgü validasyon
+            var country = CountryCodes.FirstOrDefault(c => c.Code == SelectedCountryCode);
+            if (country != null)
+            {
+                if (digitsOnly.Length < country.MinDigits)
+                {
+                    ErrorMessage = string.Format(Localizer["IntPhone.Error.CountryMinLength"].ToString(), country.Country, country.MinDigits);
+                    isValid = false;
+                }
+                else if (digitsOnly.Length > country.MaxDigits)
+                {
+                    ErrorMessage = string.Format(Localizer["IntPhone.Error.CountryMaxLength"].ToString(), country.Country, country.MaxDigits);
+                    isValid = false;
+                }
+                else if (!string.IsNullOrEmpty(country.ValidationPattern))
+                {
+                    // Check if number matches the country-specific pattern
+                    if (!System.Text.RegularExpressions.Regex.IsMatch(digitsOnly, country.ValidationPattern))
+                    {
+                        var errorKey = country.ValidationErrorKey ?? "IntPhone.Error.InvalidFormat";
+                        ErrorMessage = Localizer[errorKey].ToString();
+                        isValid = false;
+                    }
+                }
+            }
+            else
+            {
+                // Fallback: Genel MinLength/MaxLength kontrolü
+                if (digitsOnly.Length < MinLength)
+                {
+                    ErrorMessage = string.Format(Localizer["IntPhone.Error.MinLength"].ToString(), MinLength);
+                    isValid = false;
+                }
+                else if (digitsOnly.Length > MaxLength)
+                {
+                    ErrorMessage = string.Format(Localizer["IntPhone.Error.MaxLength"].ToString(), MaxLength);
+                    isValid = false;
+                }
+            }
+        }
+
+        if (OnValidationChanged.HasDelegate)
+        {
+            await OnValidationChanged.InvokeAsync(isValid);
+        }
+
+        // Always notify parent of value change, even if invalid
+        // Parent will decide whether to accept the value or not
+        if (ValueChanged.HasDelegate)
+        {
+            var fullNumber = GetFullPhoneNumber();
+            await ValueChanged.InvokeAsync(fullNumber);
+        }
+        
+        StateHasChanged();
+    }
+
+    private string GetFullPhoneNumber()
+    {
+        if (string.IsNullOrWhiteSpace(PhoneNumber) || string.IsNullOrWhiteSpace(SelectedCountryCode))
+            return string.Empty;
+
+        var digitsOnly = System.Text.RegularExpressions.Regex.Replace(PhoneNumber, @"[^\d]", "");
+        return $"{SelectedCountryCode}{digitsOnly}";
+    }
+
+    public async Task<bool> ValidateAsync()
+    {
+        await ValidateAndNotify();
+        return string.IsNullOrEmpty(ErrorMessage);
+    }
+
+    public void Clear()
+    {
+        PhoneNumber = string.Empty;
+        ErrorMessage = null;
+        StateHasChanged();
+    }
+
+    private class CountryCode
+    {
+        public string Code { get; set; } = string.Empty;
+        public string Country { get; set; } = string.Empty;
+        public string Flag { get; set; } = string.Empty;
+        public string Format { get; set; } = "XXX XXX XXXX";
+        public int MinDigits { get; set; } = 10;
+        public int MaxDigits { get; set; } = 10;
+        public string? ValidationPattern { get; set; } // Regex pattern for validation
+        public string? ValidationErrorKey { get; set; } // Localization key for pattern error
+    }
+    
+    private string GetPhoneFormat()
+    {
+        var country = CountryCodes.FirstOrDefault(c => c.Code == SelectedCountryCode);
+        return country?.Format ?? "XXX XXX XXXX";
+    }
+    
+    private int GetMaxInputLength()
+    {
+        var country = CountryCodes.FirstOrDefault(c => c.Code == SelectedCountryCode);
+        if (country == null) return 15;
+        
+        // Format içindeki boşluk ve özel karakterleri de say
+        return country.MaxDigits + country.Format.Count(ch => !char.IsLetter(ch) && ch != 'X');
+    }
+}

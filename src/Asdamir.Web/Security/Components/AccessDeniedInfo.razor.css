@@ -1,0 +1,134 @@
+.access-denied-container {
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 0 16px;
+}
+
+.access-denied-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.access-denied-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.access-denied-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #d13438;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.access-denied-title-section {
+    flex: 1;
+}
+
+.access-denied-title {
+    margin: 0 0 4px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #242424;
+}
+
+.access-denied-subtitle {
+    margin: 0;
+    font-size: 14px;
+    color: #666;
+}
+
+.access-denied-alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.access-denied-alert.error {
+    background: #fef0f0;
+    border-left: 4px solid #d13438;
+    color: #d13438;
+}
+
+.access-denied-alert.warning {
+    background: #fff9e6;
+    border-left: 4px solid #f7b500;
+    color: #8b6200;
+}
+
+.access-denied-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.access-denied-section strong {
+    font-size: 15px;
+    font-weight: 600;
+    color: #242424;
+}
+
+.access-denied-section ul {
+    margin: 0;
+    padding-left: 24px;
+    list-style: disc;
+}
+
+.access-denied-section li {
+    margin: 4px 0;
+    font-size: 14px;
+    color: #424242;
+}
+
+.access-denied-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-primary {
+    background: #0078d4;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #005a9e;
+}
+
+.btn-secondary {
+    background: transparent;
+    color: #0078d4;
+    border: 1px solid #0078d4;
+}
+
+.btn-secondary:hover {
+    background: #f3f2f1;
+}
+
+.access-denied-help {
+    margin: 0;
+    font-size: 12px;
+    color: #666;
+    text-align: center;
+}

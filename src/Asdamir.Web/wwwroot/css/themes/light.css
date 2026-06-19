@@ -1,0 +1,10 @@
+/* ============================================
+   LIGHT THEME OVERRIDES - LAYER 1
+   Applied when [data-theme="light"]
+   ============================================ */
+
+[data-theme="light"] {
+    /* Light theme is default, minimal overrides needed */
+    color-scheme: light;
+}
+

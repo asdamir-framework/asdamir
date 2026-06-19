@@ -1,0 +1,215 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.Extensions.Logging
+@inject AuthenticationStateProvider AuthProvider
+@inject ILogger<AuthorizeView> Logger
+
+@if (_isAuthorized && !_isLoading)
+{
+    @ChildContent
+}
+else if (!_isAuthenticated && !_isLoading)
+{
+    @if (NotAuthorized != null)
+    {
+        @NotAuthorized
+    }
+    else
+    {
+        <div class="unauthorized-access">
+            <div class="unauthorized-content">
+                <div class="error-icon">🔐</div>
+                <h3>Yetkisiz Erişim</h3>
+                <p>Bu sayfaya erişim yetkiniz bulunmamaktadır.</p>
+                <a href="/login" class="btn btn-primary">Giriş Yap</a>
+            </div>
+        </div>
+    }
+}
+else if (_isAuthenticated && !_isAuthorized && !_isLoading)
+{
+    @if (NotAuthorized != null)
+    {
+        @NotAuthorized
+    }
+    else
+    {
+        <div class="forbidden-access">
+            <div class="forbidden-content">
+                <div class="error-icon">🚫</div>
+                <h3>Erişim Reddedildi</h3>
+                <p>Bu işlemi gerçekleştirmek için gerekli yetkiniz bulunmamaktadır.</p>
+                <a href="/dashboard" class="btn btn-secondary">Ana Sayfaya Dön</a>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? NotAuthorized { get; set; }
+    [Parameter] public string? RequiredPermission { get; set; }
+    [Parameter] public string? RequiredRole { get; set; }
+    [Parameter] public string[]? RequiredPermissions { get; set; }
+    [Parameter] public string[]? RequiredRoles { get; set; }
+    [Parameter] public bool RequireAll { get; set; } = true; // AND logic vs OR logic
+
+    private bool _isAuthenticated;
+    private bool _isAuthorized;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthorizationAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await CheckAuthorizationAsync();
+    }
+
+    private async Task CheckAuthorizationAsync()
+    {
+        try
+        {
+            _isLoading = true;
+            StateHasChanged();
+
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            _isAuthenticated = user?.Identity?.IsAuthenticated == true;
+
+            if (!_isAuthenticated)
+            {
+                _isAuthorized = false;
+                return;
+            }
+
+            _isAuthorized = user != null && CheckAuthorization(user);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking authorization");
+            _isAuthenticated = false;
+            _isAuthorized = false;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool CheckAuthorization(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (user == null) return false;
+
+        var hasPermissions = CheckPermissions(user);
+        var hasRoles = CheckRoles(user);
+
+        // If no requirements specified, just check authentication
+        if (string.IsNullOrEmpty(RequiredPermission) && 
+            string.IsNullOrEmpty(RequiredRole) && 
+            (RequiredPermissions?.Length ?? 0) == 0 && 
+            (RequiredRoles?.Length ?? 0) == 0)
+        {
+            return true;
+        }
+
+        if (RequireAll)
+        {
+            return hasPermissions && hasRoles;
+        }
+        else
+        {
+            return hasPermissions || hasRoles;
+        }
+    }
+
+    private bool CheckPermissions(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var permissions = new List<string>();
+        
+        if (!string.IsNullOrEmpty(RequiredPermission))
+            permissions.Add(RequiredPermission);
+            
+        if (RequiredPermissions?.Length > 0)
+            permissions.AddRange(RequiredPermissions);
+
+        if (permissions.Count == 0) return true;
+
+        if (RequireAll)
+        {
+            return permissions.All(p => user.HasClaim("perm", p));
+        }
+        else
+        {
+            return permissions.Any(p => user.HasClaim("perm", p));
+        }
+    }
+
+    private bool CheckRoles(System.Security.Claims.ClaimsPrincipal user)
+    {
+        var roles = new List<string>();
+        
+        if (!string.IsNullOrEmpty(RequiredRole))
+            roles.Add(RequiredRole);
+            
+        if (RequiredRoles?.Length > 0)
+            roles.AddRange(RequiredRoles);
+
+        if (roles.Count == 0) return true;
+
+        if (RequireAll)
+        {
+            return roles.All(r => user.IsInRole(r));
+        }
+        else
+        {
+            return roles.Any(r => user.IsInRole(r));
+        }
+    }
+}
+
+<style>
+    .unauthorized-access, .forbidden-access {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 50vh;
+        padding: 20px;
+    }
+
+    .unauthorized-content, .forbidden-content {
+        text-align: center;
+        max-width: 400px;
+        padding: 40px;
+        background: var(--neutral-layer-1);
+        border-radius: 8px;
+        border: 1px solid var(--neutral-stroke-rest);
+    }
+
+    .error-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 4px;
+        font-weight: 500;
+        margin-top: 16px;
+    }
+
+    .btn-primary {
+        background: var(--accent-fill-rest);
+        color: var(--neutral-foreground-on-accent);
+    }
+
+    .btn-secondary {
+        background: var(--neutral-fill-rest);
+        color: var(--neutral-foreground-rest);
+        border: 1px solid var(--neutral-stroke-rest);
+    }
+</style>

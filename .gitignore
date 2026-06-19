@@ -1,0 +1,80 @@
+# Build results
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ll]og/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+[Pp]ackages/
+
+# Rider
+.idea/
+
+# VS Code (keep workspace settings only)
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Test results / coverage
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+# .NET artifacts
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Publish output (NEVER commit binaries)
+publish/
+PublishProfiles/
+*.[Pp]ublish.xml
+
+# Secrets / configuration (NEVER commit)
+**/appsettings.Local.json
+**/appsettings.*.Local.json
+*.env
+.env.*
+secrets.json
+*.pfx
+*.snk
+
+# Application logs (NEVER commit). `*.log` instead of `**/logs/` —
+# the latter matches the `Logs/` source folder on case-insensitive
+# filesystems (macOS) and silently drops .cs files from the index.
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local NuGet feed
+local-nuget/
+
+# Claude Code (keep shared config + memory; ignore machine-local settings)
+.claude/settings.local.json

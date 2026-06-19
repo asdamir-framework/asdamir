@@ -1,0 +1,633 @@
+/* ============================================
+   SHARED COMPONENT STYLES - LAYER 1
+   FluentUI component overrides and enhancements
+   Requires: design-tokens.css
+   ============================================ */
+
+/* ========================================
+   FLUENT DATA GRID
+   ======================================== */
+fluent-data-grid {
+    /* Header styling */
+    --header-cell-background: var(--neutral-layer-2);
+    --header-cell-font-weight: 600;
+    --header-cell-padding: 12px 20px;
+    
+    /* Row styling */
+    --row-hover-background: var(--neutral-fill-stealth-hover);
+    --row-striped-background: rgba(0, 0, 0, 0.02);
+    
+    /* Cell styling */
+    --cell-padding-block: 12px;
+    --cell-padding-inline: 20px;
+    --cell-line-height: 1.5;
+    
+    /* Border styling */
+    --border-width: 1px;
+    --border-color: var(--neutral-stroke-divider);
+    
+    /* General */
+    border-radius: var(--ui-border-radius-lg);
+    overflow-x: auto;
+    overflow-y: visible;
+    border: 1px solid var(--neutral-stroke-rest);
+    display: block !important;
+    width: 100% !important;
+}
+
+/* Shadow DOM içindeki table'ı zorla genişlet */
+fluent-data-grid::part(grid),
+fluent-data-grid table {
+    width: 100% !important;
+}
+
+[data-theme="dark"] fluent-data-grid {
+    --row-striped-background: rgba(255, 255, 255, 0.02);
+}
+
+/* DataGrid Action Buttons - Global styling to bypass Shadow DOM */
+.row-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.row-actions fluent-button {
+    --control-corner-radius: 4px;
+}
+
+.row-actions fluent-button::part(control) {
+    min-width: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.row-actions fluent-button::part(content) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+}
+
+.row-actions fluent-button svg,
+.row-actions fluent-button fluent-icon,
+.row-actions svg,
+.row-actions fluent-icon {
+    width: 16px !important;
+    height: 16px !important;
+    display: inline-block !important;
+}
+
+/* Column resize support - Force auto layout for responsive columns */
+fluent-data-grid::part(grid) {
+    table-layout: auto !important;
+    width: 100% !important;
+}
+
+fluent-data-grid [role="columnheader"] {
+    position: relative;
+    user-select: none;
+}
+
+/* ========================================
+   FLUENT CARD
+   ======================================== */
+fluent-card {
+    --card-padding: var(--ui-space-6);
+    border-radius: var(--ui-border-radius-lg);
+    margin: 0 !important; /* Remove default margins */
+    box-shadow: var(--ui-shadow-sm);
+}
+
+/* ========================================
+   FLUENT BUTTON
+   ======================================== */
+fluent-button {
+    --neutral-fill-stealth-rest: transparent;
+    border-radius: var(--ui-border-radius-md);
+}
+
+/* ========================================
+   FLUENT DIALOG
+   ======================================== */
+fluent-dialog {
+    --ui-dialog-default-width: 840px;
+    --ui-dialog-max-width: 1240px;
+    --ui-dialog-padding-x: var(--ui-space-6);
+    --ui-dialog-padding-y: var(--ui-space-5);
+    --dialog-width: var(--ui-dialog-default-width);
+    --dialog-height: auto;
+}
+
+fluent-dialog:not([hidden]) {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 12000 !important;
+}
+
+fluent-dialog.app-dialog-small {
+    --dialog-width: 460px;
+    --ui-dialog-max-width: 460px;
+}
+
+fluent-dialog.app-dialog-medium {
+    --dialog-width: 840px;
+    --ui-dialog-max-width: 840px;
+}
+
+fluent-dialog.app-dialog-large {
+    --dialog-width: 1020px;
+    --ui-dialog-max-width: 1020px;
+}
+
+fluent-dialog.app-dialog-xlarge {
+    --dialog-width: 1240px;
+    --ui-dialog-max-width: 1240px;
+}
+
+fluent-dialog::part(control) {
+    position: relative;
+    z-index: 12001 !important;
+    width: min(var(--dialog-width, var(--ui-dialog-default-width)), calc(100vw - 64px));
+    max-width: min(var(--ui-dialog-max-width), calc(100vw - 64px));
+    max-height: calc(100dvh - 72px);
+    margin: 36px auto !important;
+    border-radius: var(--ui-border-radius-xl);
+    box-shadow: var(--ui-shadow-2xl);
+    border: 1px solid var(--ui-border-default);
+    background: var(--ui-bg-surface);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+fluent-dialog::part(overlay),
+fluent-dialog::part(positioning-region),
+fluent-dialog::part(dialog) {
+    z-index: 12001 !important;
+}
+
+fluent-dialog::part(dialog) {
+    border-radius: var(--ui-border-radius-xl);
+    box-shadow: var(--ui-shadow-2xl);
+}
+
+fluent-dialog .fluent-dialog-header {
+    display: flex;
+    align-items: center;
+    gap: var(--ui-space-3);
+    padding: var(--ui-dialog-padding-y) var(--ui-dialog-padding-x);
+    border-bottom: 1px solid var(--ui-border-default);
+    background: var(--ui-bg-surface);
+}
+
+fluent-dialog .fluent-dialog-header fluent-label,
+fluent-dialog .fluent-dialog-header h1,
+fluent-dialog .fluent-dialog-header h2,
+fluent-dialog .fluent-dialog-header h3 {
+    margin: 0;
+    font-size: var(--ui-font-size-xl);
+    font-weight: var(--ui-font-weight-semibold);
+    color: var(--ui-text-primary);
+    line-height: 1.3;
+}
+
+fluent-dialog .fluent-dialog-body {
+    padding: var(--ui-space-6) var(--ui-dialog-padding-x);
+    max-height: calc(100dvh - 220px);
+    overflow: auto;
+    background: var(--ui-bg-surface);
+}
+
+fluent-dialog .fluent-dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-4) var(--ui-dialog-padding-x);
+    border-top: 1px solid var(--ui-border-default);
+    background: var(--ui-bg-surface-secondary);
+}
+
+fluent-dialog fluent-label {
+    line-height: 1.45;
+}
+
+fluent-dialog fluent-text-field,
+fluent-dialog fluent-text-area,
+fluent-dialog fluent-select,
+fluent-dialog fluent-number-field,
+fluent-dialog fluent-combobox,
+fluent-dialog fluent-search {
+    width: 100%;
+}
+
+/* ========================================
+   SHARED DIALOG CONTENT SYSTEM
+   ======================================== */
+.enterprise-dialog-body,
+fluent-dialog .fluent-dialog-body {
+    font-size: var(--ui-font-size-sm);
+    color: var(--ui-text-primary);
+}
+
+.enterprise-dialog-body fluent-label,
+.enterprise-dialog-body label,
+.enterprise-dialog-body p,
+.enterprise-dialog-body span,
+.enterprise-dialog-body li,
+fluent-dialog .fluent-dialog-body fluent-label,
+fluent-dialog .fluent-dialog-body label,
+fluent-dialog .fluent-dialog-body p,
+fluent-dialog .fluent-dialog-body span,
+fluent-dialog .fluent-dialog-body li {
+    font-size: var(--ui-font-size-sm);
+    line-height: 1.45;
+}
+
+.enterprise-dialog-body pre,
+fluent-dialog .fluent-dialog-body pre {
+    margin: 0;
+    padding: var(--ui-space-3);
+    border-radius: var(--ui-border-radius-md);
+    border: 1px solid var(--ui-border-default);
+    background: var(--ui-bg-surface-secondary);
+    font-size: var(--ui-font-size-xs);
+    line-height: 1.5;
+    overflow: auto;
+    max-height: 300px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.enterprise-dialog-body fluent-stack[orientation="vertical"],
+fluent-dialog .fluent-dialog-body fluent-stack[orientation="vertical"] {
+    gap: var(--ui-space-4) !important;
+}
+
+.enterprise-dialog-body fluent-stack[orientation="horizontal"],
+fluent-dialog .fluent-dialog-body fluent-stack[orientation="horizontal"] {
+    gap: var(--ui-space-4) !important;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.enterprise-dialog-body fluent-stack[orientation="horizontal"] > *,
+fluent-dialog .fluent-dialog-body fluent-stack[orientation="horizontal"] > * {
+    min-width: 0;
+}
+
+.dialog-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-space-5);
+}
+
+.dialog-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-space-2);
+    min-width: 0;
+}
+
+.dialog-label {
+    font-size: var(--ui-font-size-sm);
+    font-weight: var(--ui-font-weight-semibold);
+    color: var(--ui-text-primary);
+    line-height: 1.4;
+}
+
+.dialog-required {
+    color: var(--ui-color-error);
+}
+
+.dialog-hint,
+.dialog-validation-message {
+    font-size: var(--ui-font-size-xs);
+    line-height: 1.45;
+}
+
+.dialog-hint {
+    color: var(--ui-text-secondary);
+}
+
+.dialog-validation-message {
+    color: var(--ui-color-error);
+}
+
+.dialog-options-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-space-4);
+    padding: var(--ui-space-4);
+    border: 1px solid var(--ui-border-default);
+    border-radius: var(--ui-border-radius-lg);
+    background: var(--ui-bg-surface-secondary);
+}
+
+.dialog-options-title {
+    margin: 0;
+    font-size: var(--ui-font-size-md);
+    font-weight: var(--ui-font-weight-semibold);
+    color: var(--ui-text-primary);
+}
+
+.dialog-two-column-row,
+.dialog-content-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--ui-space-4);
+}
+
+.dialog-content-grid {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-space-5);
+}
+
+.dialog-content-row--triple {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.dialog-content-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ui-space-1);
+    min-width: 0;
+}
+
+.dialog-content-label {
+    font-size: var(--ui-font-size-sm);
+    font-weight: var(--ui-font-weight-semibold);
+    color: var(--ui-text-primary);
+}
+
+.dialog-content-value {
+    min-width: 0;
+    font-size: var(--ui-font-size-sm);
+    line-height: 1.5;
+    color: var(--ui-text-primary);
+    overflow-wrap: anywhere;
+}
+
+.dialog-content-scroll {
+    max-height: 200px;
+    overflow: auto;
+    white-space: pre-wrap;
+}
+
+.dialog-warning-message {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ui-space-2);
+    padding: var(--ui-space-3) var(--ui-space-4);
+    border-radius: var(--ui-border-radius-md);
+    border: 1px solid color-mix(in srgb, var(--ui-color-warning) 35%, transparent);
+    background: color-mix(in srgb, var(--ui-color-warning) 10%, transparent);
+    color: var(--ui-text-primary);
+}
+
+.validation-summary-box {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--ui-space-3);
+    padding: var(--ui-space-3) var(--ui-space-10) var(--ui-space-3) var(--ui-space-4);
+    margin-bottom: var(--ui-space-4);
+    background: color-mix(in srgb, var(--ui-color-error) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--ui-color-error) 30%, transparent);
+    border-radius: var(--ui-border-radius-md);
+    color: var(--ui-color-error);
+}
+
+.validation-summary-content {
+    flex: 1;
+}
+
+.validation-summary-content strong,
+.validation-summary-content ul {
+    color: var(--ui-color-error);
+}
+
+.validation-summary-close {
+    position: absolute;
+    top: var(--ui-space-2);
+    right: var(--ui-space-2);
+    background: transparent;
+    border: none;
+    font-size: calc(var(--ui-font-size-xl) * 1.1);
+    line-height: 1;
+    color: var(--ui-color-error);
+    cursor: pointer;
+    padding: 2px 6px;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.validation-summary-close:hover {
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    fluent-dialog {
+        --ui-dialog-padding-x: var(--ui-space-4);
+        --ui-dialog-padding-y: var(--ui-space-4);
+    }
+
+    fluent-dialog::part(control) {
+        width: calc(100vw - 24px);
+        max-width: calc(100vw - 24px);
+        max-height: calc(100dvh - 32px);
+        margin: 16px auto !important;
+    }
+
+    fluent-dialog .fluent-dialog-body {
+        max-height: calc(100dvh - 180px);
+        padding: var(--ui-space-5) var(--ui-dialog-padding-x);
+    }
+
+    .dialog-two-column-row,
+    .dialog-content-row,
+    .dialog-content-row--triple {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ========================================
+   FLUENT TEXT FIELD
+   ======================================== */
+fluent-text-field,
+fluent-text-area {
+    --neutral-fill-input-rest: var(--ui-bg-surface);
+    border-radius: var(--ui-border-radius-md);
+}
+
+/* ========================================
+   FLUENT TABS
+   ======================================== */
+fluent-tabs {
+    --neutral-stroke-rest: var(--ui-border-default);
+}
+
+fluent-tab[aria-selected="true"] {
+    --accent-fill-rest: var(--ui-color-primary);
+}
+
+/* ========================================
+   FLUENT TOAST
+   ======================================== */
+fluent-toast {
+    border-radius: var(--ui-border-radius-lg);
+    box-shadow: var(--ui-shadow-lg);
+}
+
+/* ========================================
+   FLUENT PROGRESS
+   ======================================== */
+fluent-progress {
+    --accent-fill-rest: var(--ui-color-primary);
+}
+
+fluent-progress-ring {
+    --accent-fill-rest: var(--ui-color-primary);
+}
+
+/* ========================================
+   FLUENT BADGE
+   ======================================== */
+fluent-badge {
+    border-radius: var(--ui-border-radius-full);
+}
+
+/* ========================================
+   FLUENT DIVIDER
+   ======================================== */
+fluent-divider {
+    --neutral-stroke-rest: var(--ui-border-default);
+}
+
+/* ========================================
+   FLUENT TOOLTIP
+   ======================================== */
+fluent-tooltip {
+    --tooltip-background: var(--neutral-layer-floating);
+    --tooltip-foreground: var(--neutral-foreground-rest);
+    border-radius: var(--ui-border-radius-md);
+    box-shadow: var(--ui-shadow-md);
+}
+
+/* ========================================
+   FLUENT MENU
+   ======================================== */
+fluent-menu {
+    border-radius: var(--ui-border-radius-md);
+    box-shadow: var(--ui-shadow-lg);
+    border: 1px solid var(--ui-border-default);
+    z-index: 11000 !important;
+}
+
+fluent-menu::part(positioning-region),
+fluent-tooltip::part(positioning-region),
+fluent-select::part(listbox),
+fluent-combobox::part(listbox),
+fluent-autocomplete::part(listbox) {
+    z-index: 11000 !important;
+}
+
+fluent-menu-item:hover {
+    background: var(--ui-bg-hover);
+}
+
+/* ========================================
+   FLUENT ACCORDION
+   ======================================== */
+fluent-accordion-item {
+    border-radius: var(--ui-border-radius-md);
+}
+
+/* ========================================
+   FLUENT CHECKBOX & RADIO
+   ======================================== */
+fluent-checkbox,
+fluent-radio {
+    --accent-fill-rest: var(--ui-color-primary);
+}
+
+/* ========================================
+   FLUENT SWITCH
+   ======================================== */
+fluent-switch {
+    --accent-fill-rest: var(--ui-color-primary);
+}
+
+/* ========================================
+   FLUENT SLIDER
+   ======================================== */
+fluent-slider {
+    --accent-fill-rest: var(--ui-color-primary);
+}
+
+/* ========================================
+   FLUENT TREE VIEW
+   ======================================== */
+fluent-tree-item:hover {
+    background: var(--ui-bg-hover);
+}
+
+/* ========================================
+   FLUENT BREADCRUMB
+   ======================================== */
+fluent-breadcrumb-item a {
+    color: var(--ui-text-link);
+    text-decoration: none;
+    transition: color var(--ui-transition-fast);
+}
+
+fluent-breadcrumb-item a:hover {
+    color: var(--ui-text-link-hover);
+    text-decoration: underline;
+}
+
+/* ========================================
+   FLUENT SKELETON
+   ======================================== */
+fluent-skeleton {
+    border-radius: var(--ui-border-radius-md);
+}
+
+/* ========================================
+   FLUENT ANCHOR
+   ======================================== */
+fluent-anchor {
+    color: var(--ui-text-link);
+    transition: color var(--ui-transition-fast);
+}
+
+fluent-anchor:hover {
+    color: var(--ui-text-link-hover);
+}
+
+/* ========================================
+   CUSTOM ENHANCEMENTS
+   ======================================== */
+
+/* Add subtle transitions to all FluentUI components */
+fluent-button,
+fluent-menu-item,
+fluent-tree-item,
+fluent-tab {
+    transition: all var(--ui-transition-fast);
+}
+
+/* Focus improvements */
+fluent-button:focus-visible,
+fluent-text-field:focus-visible,
+fluent-text-area:focus-visible {
+    outline: 2px solid var(--ui-border-focus);
+    outline-offset: 2px;
+}

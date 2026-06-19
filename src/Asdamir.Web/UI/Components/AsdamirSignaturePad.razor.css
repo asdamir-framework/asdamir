@@ -1,0 +1,112 @@
+/* SignaturePad — scoped, theme-aware (reads the global --asd-* tokens).
+   Buttons/pills/modal come from the shared .asd-* design system; the toolbar, pen swatches,
+   range slider, canvas area and info panel are local. */
+
+.sp-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--asd-surface, #fff);
+    border: 1px solid var(--asd-border, #e3ded7);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.sp-grow { flex: 1 1 auto; }
+.sp-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sp-title { font-size: 1.05rem; font-weight: 700; color: var(--asd-ink, #222); }
+.sp-lbl { font-size: .82rem; color: var(--asd-ink-soft, #8a8278); }
+
+/* pen colour swatches */
+.sp-pens { display: inline-flex; gap: 6px; }
+
+.sp-pen {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--asd-border-strong, #cfc7bc);
+    cursor: pointer;
+    padding: 0;
+}
+
+.sp-pen.sel { outline: 2px solid var(--asd-accent, #c0552b); outline-offset: 2px; }
+.sp-pen.c0 { background: #000000; }
+.sp-pen.c1 { background: #0000FF; }
+.sp-pen.c2 { background: #FF0000; }
+.sp-pen.c3 { background: #008000; }
+.sp-pen.c4 { background: #800080; }
+
+.sp-range { width: 110px; accent-color: var(--asd-accent, #c0552b); }
+.sp-sel { width: auto; min-width: 150px; }
+
+/* canvas */
+.sp-content {
+    position: relative;
+    border: 1px solid var(--asd-border, #e3ded7);
+    border-radius: 10px;
+    padding: 12px;
+    min-height: 320px;
+}
+
+.sp-content.fullscreen {
+    position: fixed;
+    inset: 16px;
+    z-index: 200;
+    background: var(--asd-surface, #fff);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+    overflow: auto;
+}
+
+.sp-canvas-wrap { position: relative; display: inline-block; }
+
+.sp-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: .5; pointer-events: none; }
+
+.sp-canvas {
+    border: 1px dashed var(--asd-border-strong, #cfc7bc);
+    border-radius: 8px;
+    background: var(--asd-surface, #fff);
+    touch-action: none;
+    cursor: crosshair;
+    display: block;
+}
+
+.sp-watermark {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: color-mix(in srgb, var(--asd-ink-soft, #8a8278) 30%, transparent);
+    pointer-events: none;
+    user-select: none;
+}
+
+.sp-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--asd-ink-soft, #8a8278);
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.sp-info {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px 12px;
+    border: 1px solid var(--asd-border, #e3ded7);
+    border-radius: 8px;
+    background: var(--asd-surface-muted, #f6f3ee);
+}
+
+.sp-info-title { font-weight: 600; color: var(--asd-ink, #222); }
+.sp-info-meta { font-size: .78rem; color: var(--asd-ink-soft, #8a8278); }
+
+.sp-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sp-actions-l, .sp-actions-r { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

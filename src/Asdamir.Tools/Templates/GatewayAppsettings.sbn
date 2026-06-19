@@ -1,0 +1,31 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "App": {
+    "_comment": "This app's registered code in AppManagement (Apps.Code). Login is scoped to it.",
+    "Code": "{{ AppName }}"
+  },
+  "ConnectionStrings": {
+    "_comment": "This app's OWN (business) DB. Left empty on purpose — set it via user-secrets / env (cross-platform SQL auth, never committed). The generator's next steps print the exact 'dotnet user-secrets set ConnectionStrings:Default' command.",
+    "Default": "{{ ConnectionStringForAppsettings }}"
+  },
+  "Jwt": {
+    "_comment": "Issuer/Audience MUST match AppManagement (it issues the tokens this Gateway validates). Jwt:Key is the shared signing key — set it via user-secrets / env, never here.",
+    "Issuer": "asdamir-adminconsole-api",
+    "Audience": "asdamir-adminconsole-clients"
+  },
+  "AdminConsole": {
+    "_comment": "BaseUrl points at AppManagement's API (auth proxy target). ClientId for /admin/* orchestration.",
+    "ClientId": "admin-console",
+    "BaseUrl": "https://localhost:5202/"
+  },
+  "OpenTelemetry": {
+    "_comment": "Set Otlp:Endpoint (e.g. http://otel-collector:4317) to export traces+metrics over OTLP; empty = disabled. The standard OTEL_EXPORTER_OTLP_ENDPOINT env var works too. Logs stay on Serilog.",
+    "Otlp": { "Endpoint": "" }
+  }
+}

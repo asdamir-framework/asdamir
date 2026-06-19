@@ -1,0 +1,88 @@
+-- V{{ MigrationStamp }} — create {{ TableName }} (+ CRUD stored procedures)
+-- Generated on {{ GeneratedAtUtc }}.
+--
+-- Conventions baked in:
+--   * TenantId is the first non-key column and is NOT NULL — multi-tenant scope.
+--   * CreatedAtUtc / UpdatedAtUtc default to SYSUTCDATETIME(); app code reads/writes UTC throughout.
+--   * Index on (TenantId, Id DESC) supports the typical "latest first by tenant" list query.
+--   * ALL data access goes through stored procedures (no inline SQL in the repository) — the CRUD
+--     procs below back {{ EntityName }}Repository.
+
+IF OBJECT_ID(N'dbo.{{ TableName }}', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.{{ TableName }}
+    (
+        Id              INT IDENTITY(1, 1) NOT NULL CONSTRAINT PK_{{ TableName }} PRIMARY KEY,
+        TenantId        NVARCHAR(64) NOT NULL,
+{{~ for f in Fields ~}}
+        {{ f.Name }} {{ f.SqlType }}{{ if f.IsNullable }} NULL{{ else }} NOT NULL{{ end }},
+{{ end ~}}
+        CreatedAtUtc    DATETIME2 NOT NULL CONSTRAINT DF_{{ TableName }}_CreatedAtUtc DEFAULT (SYSUTCDATETIME()),
+        UpdatedAtUtc    DATETIME2     NULL
+    );
+
+    CREATE INDEX IX_{{ TableName }}_TenantId_Id ON dbo.{{ TableName }} (TenantId, Id DESC);
+END;
+GO
+
+CREATE OR ALTER PROCEDURE dbo.{{ TableName }}_GetById
+    @Id INT,
+    @TenantId NVARCHAR(64)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT * FROM dbo.{{ TableName }} WHERE Id = @Id AND TenantId = @TenantId;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.{{ TableName }}_List
+    @TenantId NVARCHAR(64)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT * FROM dbo.{{ TableName }} WHERE TenantId = @TenantId ORDER BY Id DESC;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.{{ TableName }}_Insert
+    @TenantId NVARCHAR(64),
+{{~ for f in Fields ~}}
+    @{{ f.Name }} {{ f.SqlType }},
+{{ end ~}}
+    @CreatedAtUtc DATETIME2
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO dbo.{{ TableName }} (TenantId,{{ for f in Fields ~}}{{ f.Name }},{{ end }}CreatedAtUtc)
+    OUTPUT INSERTED.Id
+    VALUES (@TenantId,{{ for f in Fields ~}}@{{ f.Name }},{{ end }}@CreatedAtUtc);
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.{{ TableName }}_Update
+    @Id INT,
+    @TenantId NVARCHAR(64),
+{{~ for f in Fields ~}}
+    @{{ f.Name }} {{ f.SqlType }},
+{{ end ~}}
+    @UpdatedAtUtc DATETIME2
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE dbo.{{ TableName }}
+       SET {{ for f in Fields ~}}{{ f.Name }} = @{{ f.Name }}, {{ end }}UpdatedAtUtc = @UpdatedAtUtc
+     WHERE Id = @Id AND TenantId = @TenantId;
+    SELECT @@ROWCOUNT;
+END
+GO
+
+CREATE OR ALTER PROCEDURE dbo.{{ TableName }}_Delete
+    @Id INT,
+    @TenantId NVARCHAR(64)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.{{ TableName }} WHERE Id = @Id AND TenantId = @TenantId;
+    SELECT @@ROWCOUNT;
+END
+GO

@@ -1,0 +1,517 @@
+@using Microsoft.JSInterop
+@typeparam TItem
+@inherits ComponentBase
+@implements IAsyncDisposable
+
+@*
+    Chart — INSPINIA-styled (Asdamir design system). FluentUI-free: header/controls/legend/stats
+    restyled with .asd-* buttons + scoped CSS. The Chart.js (fluentCharts JS) config and interop are
+    unchanged. Dynamic chart height / series colours flow through CSS custom properties.
+*@
+
+@* Chart Types and Options *@
+@code {
+    public enum Curve { Straight, Smooth }
+    public enum ChartType { Line, Bar, Area, Pie, Doughnut, Scatter }
+
+    public class ChartOptions
+    {
+        public string? Title { get; set; }
+        public int Height { get; set; } = 300;
+        public bool DarkMode { get; set; }
+        public Curve Curve { get; set; } = Curve.Smooth;
+        public ChartType DefaultType { get; set; } = ChartType.Line;
+        public bool ShowLegend { get; set; } = true;
+        public string LegendPosition { get; set; } = "top";
+        public bool ShowGrid { get; set; } = true;
+        public bool ShowTooltips { get; set; } = true;
+        public bool ShowXAxis { get; set; } = true;
+        public bool ShowYAxis { get; set; } = true;
+        public string? XAxisTitle { get; set; }
+        public string? YAxisTitle { get; set; }
+        public bool StartFromZero { get; set; } = false;
+        public bool FillArea { get; set; } = false;
+        public int AnimationDuration { get; set; } = 750;
+        public IEnumerable<string>? Colors { get; set; }
+        public bool SecondaryAxisEnabled { get; set; } = false;
+        public string SecondaryAxisPosition { get; set; } = "right";
+        public string? SecondaryAxisTitle { get; set; }
+        public string? Currency { get; set; }
+        public string? DateFormat { get; set; }
+        public bool UseTimeScale { get; set; } = false;
+    }
+
+    public class ChartSeries<T>
+    {
+        public string Name { get; set; } = string.Empty;
+        public IEnumerable<T> Data { get; set; } = Array.Empty<T>();
+        public Func<T, object> XSelector { get; set; } = _ => string.Empty;
+        public Func<T, object> YSelector { get; set; } = _ => 0d;
+        public ChartType? Type { get; set; }
+        public string? Color { get; set; }
+        public bool UseSecondaryAxis { get; set; } = false;
+        public bool IsVisible { get; set; } = true;
+        public bool FillArea { get; set; } = false;
+        public int? PointRadius { get; set; }
+        public int? PointHoverRadius { get; set; }
+        public int? BorderWidth { get; set; }
+    }
+}
+
+<div class="chart-container">
+    @if (!string.IsNullOrWhiteSpace(Title) || ShowControls)
+    {
+        <div class="chart-header">
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <span class="chart-title">@Title</span>
+            }
+            <span class="chart-grow"></span>
+
+            @if (ShowControls)
+            {
+                @if (AllowTypeChange)
+                {
+                    <select class="asd-input chart-sel" @bind="selectedChartType" @bind:after="OnChartTypeChangedInternal">
+                        @foreach (var opt in chartTypeOptions)
+                        {
+                            <option value="@opt">@opt</option>
+                        }
+                    </select>
+                }
+
+                @if (ShowTimeRangeSelector && IsTimeBasedChart)
+                {
+                    <select class="asd-input chart-sel" @bind="selectedTimeRange" @bind:after="OnTimeRangeChangedInternal">
+                        @foreach (var opt in timeRangeOptions)
+                        {
+                            <option value="@opt">@opt</option>
+                        }
+                    </select>
+                }
+
+                @if (AllowDownload)
+                {
+                    <button type="button" class="asd-iconbtn" @onclick="DownloadChart" title="Download Chart">📥</button>
+                }
+                @if (AllowFullscreen)
+                {
+                    <button type="button" class="asd-iconbtn" @onclick="ToggleFullscreen" title="Fullscreen">🔍</button>
+                }
+                @if (AllowRefresh)
+                {
+                    <button type="button" class="asd-iconbtn" @onclick="RefreshChart" title="Refresh" disabled="@isRefreshing">🔄</button>
+                }
+            }
+        </div>
+    }
+
+    @* Audit fix: @key on each state branch so the canvas isn't reused across a
+       loading→error→canvas transition. *@
+    <div class="chart-content @(isFullscreen ? "fullscreen" : "")" style="--chart-h:@Height">
+        @if (isLoading)
+        {
+            <div @key="@("chart-state-loading")" class="asd-tnote">Loading chart...</div>
+        }
+        else if (hasError)
+        {
+            <div @key="@("chart-state-error")" class="asd-tnote asd-tnote-err">
+                <div>⚠️ Failed to load chart</div>
+                <button type="button" class="asd-btn asd-btn-primary" @onclick="RetryLoad">Retry</button>
+            </div>
+        }
+        else
+        {
+            <canvas @key="@("chart-state-canvas")" @ref="canvasRef" width="100%" height="100%"></canvas>
+        }
+    </div>
+
+    @if (ShowExternalLegend && chartData != null)
+    {
+        <div class="chart-legend">
+            @foreach (var series in Series)
+            {
+                <div class="legend-item @(series.IsVisible ? "" : "dim")" @onclick="() => ToggleSeriesVisibility(series)">
+                    <span class="legend-color" style="--c:@GetSeriesColor(series)"></span>
+                    <span>@series.Name</span>
+                </div>
+            }
+        </div>
+    }
+
+    @if (ShowStatistics && Statistics != null)
+    {
+        <div class="chart-statistics">
+            @foreach (var stat in Statistics)
+            {
+                <div class="chart-stat">
+                    <span class="chart-stat-l">@stat.Label</span>
+                    <span class="chart-stat-v">@stat.Value</span>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // Basic Parameters
+    [Parameter] public List<ChartSeries<TItem>> Series { get; set; } = new();
+    [Parameter] public ChartOptions? Options { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Height { get; set; } = "400px";
+
+    // Enterprise Parameters
+    [Parameter] public bool ShowControls { get; set; } = true;
+    [Parameter] public bool AllowTypeChange { get; set; } = true;
+    [Parameter] public bool AllowDownload { get; set; } = true;
+    [Parameter] public bool AllowFullscreen { get; set; } = true;
+    [Parameter] public bool AllowRefresh { get; set; } = true;
+    [Parameter] public bool ShowTimeRangeSelector { get; set; } = true;
+    [Parameter] public bool ShowExternalLegend { get; set; } = false;
+    [Parameter] public bool ShowStatistics { get; set; } = false;
+    [Parameter] public List<ChartStatistic>? Statistics { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback<string> OnTimeRangeChanged { get; set; }
+    [Parameter] public EventCallback<ChartType> OnChartTypeChanged { get; set; }
+
+    private ElementReference canvasRef;
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    private bool isLoading = false;
+    private bool isRefreshing = false;
+    private bool hasError = false;
+    private bool isFullscreen = false;
+    private object? chartData;
+    private string selectedChartType = "Line";
+    private string selectedTimeRange = "30d";
+
+    private readonly string[] chartTypeOptions = { "Line", "Bar", "Area", "Pie", "Doughnut", "Scatter" };
+    private readonly string[] timeRangeOptions = { "7d", "30d", "90d", "1y", "All" };
+
+    public class ChartStatistic
+    {
+        public string Label { get; set; } = "";
+        public string Value { get; set; } = "";
+        public string? Color { get; set; }
+    }
+
+    private bool IsTimeBasedChart => Options?.UseTimeScale == true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        selectedChartType = (Options?.DefaultType ?? ChartType.Line).ToString();
+        await LoadChartData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || hasError || isLoading) return;
+
+        try
+        {
+            await RenderChart();
+        }
+        catch (Exception)
+        {
+            hasError = true;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadChartData()
+    {
+        isLoading = true;
+        hasError = false;
+        StateHasChanged();
+
+        try
+        {
+            await Task.Delay(100); // Simulate loading
+            
+            chartData = GenerateChartConfiguration();
+            isLoading = false;
+            StateHasChanged();
+        }
+        catch (Exception)
+        {
+            hasError = true;
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private object GenerateChartConfiguration()
+    {
+        var chartType = Enum.Parse<ChartType>(selectedChartType);
+        
+        return new
+        {
+            type = GetChartJsType(chartType),
+            data = new
+            {
+                labels = GetChartLabels(),
+                datasets = GetChartDatasets(chartType)
+            },
+            options = new
+            {
+                responsive = true,
+                maintainAspectRatio = false,
+                interaction = new
+                {
+                    mode = "index",
+                    intersect = false
+                },
+                plugins = new
+                {
+                    legend = new 
+                    { 
+                        display = !ShowExternalLegend && (Options?.ShowLegend != false),
+                        position = Options?.LegendPosition ?? "top"
+                    },
+                    title = new 
+                    { 
+                        display = !string.IsNullOrWhiteSpace(Options?.Title), 
+                        text = Options?.Title 
+                    },
+                    tooltip = new
+                    {
+                        enabled = Options?.ShowTooltips != false,
+                        mode = "index",
+                        intersect = false
+                    }
+                },
+                scales = GenerateScalesConfiguration(chartType),
+                animation = new
+                {
+                    duration = Options?.AnimationDuration ?? 750
+                }
+            }
+        };
+    }
+
+    private string GetChartJsType(ChartType type) => type switch
+    {
+        ChartType.Line => "line",
+        ChartType.Bar => "bar",
+        ChartType.Area => "line",
+        ChartType.Pie => "pie",
+        ChartType.Doughnut => "doughnut",
+        ChartType.Scatter => "scatter",
+        _ => "line"
+    };
+
+    private object[] GetChartLabels()
+    {
+        if (!Series.Any()) return Array.Empty<object>();
+        
+        var firstSeries = Series.First();
+        return firstSeries.Data.Select(d => firstSeries.XSelector(d)).ToArray();
+    }
+
+    private object[] GetChartDatasets(ChartType chartType)
+    {
+        return Series.Where(s => s.IsVisible).Select((s, index) => new
+        {
+            label = s.Name,
+            data = s.Data.Select(d => s.YSelector(d)).ToArray(),
+            borderColor = GetSeriesColor(s, index),
+            backgroundColor = GetSeriesBackgroundColor(s, index, chartType),
+            tension = Options?.Curve == Curve.Smooth ? 0.4 : 0.0,
+            fill = chartType == ChartType.Area || s.FillArea,
+            yAxisID = s.UseSecondaryAxis && Options?.SecondaryAxisEnabled == true ? "y1" : "y",
+            pointRadius = s.PointRadius ?? (chartType == ChartType.Scatter ? 5 : 3),
+            pointHoverRadius = s.PointHoverRadius ?? (chartType == ChartType.Scatter ? 7 : 5),
+            borderWidth = s.BorderWidth ?? 2,
+            hidden = !s.IsVisible
+        }).ToArray();
+    }
+
+    private object? GenerateScalesConfiguration(ChartType chartType)
+    {
+        if (chartType == ChartType.Pie || chartType == ChartType.Doughnut)
+            return null;
+
+        var scales = new Dictionary<string, object>
+        {
+            ["x"] = new
+            {
+                display = Options?.ShowXAxis != false,
+                grid = new { display = Options?.ShowGrid != false },
+                type = Options?.UseTimeScale == true ? "time" : "category",
+                time = Options?.UseTimeScale == true ? new 
+                { 
+                    unit = "day", 
+                    displayFormats = new { day = Options?.DateFormat ?? "MMM dd" } 
+                } : null,
+                title = new
+                {
+                    display = !string.IsNullOrWhiteSpace(Options?.XAxisTitle),
+                    text = Options?.XAxisTitle
+                }
+            },
+            ["y"] = new
+            {
+                display = Options?.ShowYAxis != false,
+                grid = new { display = Options?.ShowGrid != false },
+                title = new
+                {
+                    display = !string.IsNullOrWhiteSpace(Options?.YAxisTitle),
+                    text = Options?.YAxisTitle
+                },
+                beginAtZero = Options?.StartFromZero == true
+            }
+        };
+
+        if (Options?.SecondaryAxisEnabled == true)
+        {
+            scales["y1"] = new
+            {
+                type = "linear",
+                display = true,
+                position = Options?.SecondaryAxisPosition ?? "right",
+                grid = new { drawOnChartArea = false },
+                title = new
+                {
+                    display = !string.IsNullOrWhiteSpace(Options?.SecondaryAxisTitle),
+                    text = Options?.SecondaryAxisTitle
+                }
+            };
+        }
+
+        return scales;
+    }
+
+    private string GetSeriesColor(ChartSeries<TItem> series, int? index = null)
+    {
+        if (!string.IsNullOrWhiteSpace(series.Color))
+            return series.Color;
+
+        if (Options?.Colors?.Any() == true)
+        {
+            var colorIndex = index ?? Series.IndexOf(series);
+            var colorsList = Options.Colors.ToList();
+            return colorsList[colorIndex % colorsList.Count];
+        }
+
+        // Updated chart colors - pure grayscale palette
+        var defaultColors = new[] { "#2a2a2a", "#3a3a3a", "#4a4a4a", "#5a5a5a", "#6a6a6a", "#7a7a7a", "#8a8a8a", "#9a9a9a" };
+        var seriesIndex = index ?? Series.IndexOf(series);
+        return defaultColors[seriesIndex % defaultColors.Length];
+    }
+
+    private string GetSeriesBackgroundColor(ChartSeries<TItem> series, int index, ChartType chartType)
+    {
+        var color = GetSeriesColor(series, index);
+        
+        if (chartType == ChartType.Area || series.FillArea)
+            return color + "33"; // 20% opacity
+        
+        if (chartType == ChartType.Bar || chartType == ChartType.Pie || chartType == ChartType.Doughnut)
+            return color + "CC"; // 80% opacity
+        
+        return color;
+    }
+
+    private async Task RenderChart()
+    {
+        if (chartData == null) return;
+        
+        await JS.InvokeVoidAsync("fluentCharts.render", canvasRef, chartData);
+    }
+
+    private async Task OnChartTypeChangedInternal()
+    {
+        var newType = Enum.Parse<ChartType>(selectedChartType);
+        await OnChartTypeChanged.InvokeAsync(newType);
+        await RefreshChart();
+    }
+
+    private async Task OnTimeRangeChangedInternal()
+    {
+        await OnTimeRangeChanged.InvokeAsync(selectedTimeRange);
+        await RefreshChart();
+    }
+
+    private async Task RefreshChart()
+    {
+        isRefreshing = true;
+        StateHasChanged();
+
+        try
+        {
+            await OnRefresh.InvokeAsync();
+            await LoadChartData();
+            
+            if (!hasError)
+            {
+                await RenderChart();
+            }
+        }
+        finally
+        {
+            isRefreshing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task RetryLoad()
+    {
+        await LoadChartData();
+        if (!hasError)
+        {
+            await RenderChart();
+        }
+    }
+
+    private async Task DownloadChart()
+    {
+        await JS.InvokeVoidAsync("fluentCharts.download", canvasRef, $"chart_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+    }
+
+    private void ToggleFullscreen()
+    {
+        isFullscreen = !isFullscreen;
+    }
+
+    private async Task ToggleSeriesVisibility(ChartSeries<TItem> series)
+    {
+        series.IsVisible = !series.IsVisible;
+        await RefreshChart();
+    }
+
+    // Public methods
+    public async Task UpdateData(List<ChartSeries<TItem>> newSeries)
+    {
+        Series = newSeries;
+        await RefreshChart();
+    }
+
+    public async Task AddSeries(ChartSeries<TItem> series)
+    {
+        Series.Add(series);
+        await RefreshChart();
+    }
+
+    public async Task RemoveSeries(string seriesName)
+    {
+        var series = Series.FirstOrDefault(s => s.Name == seriesName);
+        if (series != null)
+        {
+            Series.Remove(series);
+            await RefreshChart();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // Audit fix: tell Chart.js to dispose its instance + listeners so the JS
+        // side doesn't accumulate orphan charts each time the component unmounts.
+        try
+        {
+            await JS.InvokeVoidAsync("fluentCharts.dispose", canvasRef);
+        }
+        catch (JSDisconnectedException) { /* circuit gone, JS side already torn down */ }
+        catch (Microsoft.JSInterop.JSException) { /* function missing in older JS bundle — tolerate */ }
+    }
+}
+

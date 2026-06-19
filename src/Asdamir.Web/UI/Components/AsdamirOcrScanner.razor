@@ -1,0 +1,444 @@
+@using Microsoft.JSInterop
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
+
+@*
+    OCR — INSPINIA-styled (Asdamir design system). FluentUI-free: .asd-card panels, .asd-input
+    config controls, a scoped tab strip (replaces FluentTabs), an .asd-table detailed-results grid
+    and scoped analytics cards. The OCRComponent JS interop is unchanged.
+*@
+
+@code {
+    [Parameter] public string? ApiEndpoint { get; set; }
+    [Parameter] public string? ApiKey { get; set; }
+    [Parameter] public bool ShowConfiguration { get; set; } = true;
+    [Parameter] public bool ShowPreview { get; set; } = true;
+    [Parameter] public bool ShowResults { get; set; } = true;
+    [Parameter] public EventCallback<string> OnTextExtracted { get; set; }
+    [Parameter] public EventCallback<byte[]> OnImageProcessed { get; set; }
+}
+
+<div class="ocr-component">
+    <div class="asd-card ocr-root">
+        <div class="ocr-head">
+            <svg class="ocr-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <h2 class="ocr-title">Enterprise OCR Engine</h2>
+            <span class="asd-pill info">v2.1.0</span>
+        </div>
+
+        <div class="asd-card ocr-config">
+            <div class="ocr-sub">⚙️ OCR Settings</div>
+            <div class="ocr-config-grid">
+                <div>
+                    <div class="asd-section-label">OCR Engine</div>
+                    <select class="asd-input asd-form-w" @bind="selectedEngine">
+                        <option value="tesseract">Tesseract 5.x</option>
+                        <option value="azure-vision">Azure Computer Vision</option>
+                        <option value="aws-textract">AWS Textract</option>
+                        <option value="google-vision">Google Vision API</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="asd-section-label">Language</div>
+                    <select class="asd-input asd-form-w" @bind="selectedLanguage">
+                        <option value="eng">English</option>
+                        <option value="tur">Turkish</option>
+                        <option value="deu">German</option>
+                        <option value="fra">French</option>
+                        <option value="spa">Spanish</option>
+                        <option value="rus">Russian</option>
+                        <option value="ara">Arabic</option>
+                        <option value="chi_sim">Chinese (Simplified)</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="asd-section-label">Processing Mode</div>
+                    <select class="asd-input asd-form-w" @bind="processingMode">
+                        <option value="fast">Fast (Speed optimized)</option>
+                        <option value="accurate">Accurate (Quality optimized)</option>
+                        <option value="balanced">Balanced</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="asd-section-label">Confidence Threshold</div>
+                    <input class="asd-input asd-form-w" type="number" min="0" max="100" step="5" @bind="confidenceThreshold" />
+                </div>
+                <label class="asd-chk"><input type="checkbox" @bind="enablePreprocessing" /> Enable Image Preprocessing</label>
+                <label class="asd-chk"><input type="checkbox" @bind="enableSpellcheck" /> Enable Spell Check</label>
+            </div>
+        </div>
+
+        <div class="ocr-uploads">
+            <div class="asd-card ocr-pane">
+                @if (isProcessing)
+                {
+                    <div class="asd-tnote">Processing image with @selectedEngine...<div>@processingStatus</div></div>
+                }
+                else if (!string.IsNullOrEmpty(uploadedImageUrl))
+                {
+                    <img src="@uploadedImageUrl" class="ocr-preview" alt="Uploaded" />
+                    <button type="button" class="asd-btn asd-btn-ghost" @onclick="ClearImage">🗑️ Clear Image</button>
+                }
+                else
+                {
+                    <svg class="ocr-pane-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16l-4-4-4 4"/><path d="M12 12v9"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+                    <div class="ocr-pane-title">Drop image here or click to upload</div>
+                    <div class="ocr-pane-sub">Supports: PNG, JPEG, PDF, TIFF · Max size: 10MB</div>
+                    <InputFile OnChange="HandleFileSelected" accept=".png,.jpg,.jpeg,.pdf,.tiff,.bmp" class="ocr-hidden-input" id="@fileInputId" />
+                    <button type="button" class="asd-btn asd-btn-primary" @onclick="TriggerFileInput">📂 Select File</button>
+                }
+            </div>
+
+            <div class="asd-card ocr-pane">
+                @if (isCameraActive)
+                {
+                    <video id="camera-preview" autoplay class="ocr-video"></video>
+                    <div class="ocr-pane-actions">
+                        <button type="button" class="asd-btn asd-btn-primary" @onclick="CaptureImage">📷 Capture</button>
+                        <button type="button" class="asd-btn asd-btn-ghost" @onclick="StopCamera">⏹ Stop</button>
+                    </div>
+                }
+                else
+                {
+                    <svg class="ocr-pane-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    <div class="ocr-pane-title">Live Camera Capture</div>
+                    <div class="ocr-pane-sub">Capture documents directly from camera</div>
+                    <button type="button" class="asd-btn asd-btn-primary" @onclick="StartCamera">＋ Start Camera</button>
+                }
+            </div>
+        </div>
+
+        <div class="ocr-actions">
+            <button type="button" class="asd-btn asd-btn-primary" disabled="@(string.IsNullOrEmpty(uploadedImageUrl) || isProcessing)" @onclick="ProcessImage">▶ Start OCR Processing</button>
+            <button type="button" class="asd-btn asd-btn-ghost" disabled="@(string.IsNullOrEmpty(extractedText))" @onclick="CopyToClipboard">⧉ Copy Text</button>
+            <button type="button" class="asd-btn asd-btn-ghost" disabled="@(string.IsNullOrEmpty(extractedText))" @onclick="ExportResults">⬇ Export</button>
+        </div>
+
+        @if (!string.IsNullOrEmpty(extractedText) || ocrResults.Any())
+        {
+            <div class="pm-tabs ocr-tabs">
+                <button type="button" class="pm-tab @(activeTab == "text" ? "active" : "")" @onclick='() => activeTab = "text"'>Extracted Text</button>
+                <button type="button" class="pm-tab @(activeTab == "detail" ? "active" : "")" @onclick='() => activeTab = "detail"'>Detailed Results</button>
+                <button type="button" class="pm-tab @(activeTab == "analytics" ? "active" : "")" @onclick='() => activeTab = "analytics"'>Analytics</button>
+            </div>
+
+            @if (activeTab == "text")
+            {
+                <div class="ocr-tabpanel">
+                    <div class="ocr-results-head">
+                        <span class="ocr-sub">Extracted Text (@extractedText.Length characters)</span>
+                        @if (overallConfidence > 0)
+                        {
+                            <span class="asd-pill @ConfidencePill(overallConfidence)">@overallConfidence.ToString("F1")% confidence</span>
+                        }
+                    </div>
+                    <textarea class="asd-input ocr-textarea" @bind="extractedText" placeholder="Extracted text will appear here..."></textarea>
+                </div>
+            }
+            else if (activeTab == "detail")
+            {
+                <div class="ocr-tabpanel">
+                    <table class="asd-table">
+                        <thead><tr><th>Text</th><th class="num">Confidence</th><th>Position</th><th>Language</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in ocrResults)
+                            {
+                                <tr>
+                                    <td class="wrap">@r.Text</td>
+                                    <td class="num">@r.Confidence.ToString("F1")</td>
+                                    <td class="muted">@r.BoundingBox</td>
+                                    <td>@r.Language</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="ocr-tabpanel">
+                    <div class="ocr-analytics">
+                        <div class="ocr-metric"><div class="ocr-metric-v">@extractedText.Split(' ').Length</div><div class="ocr-metric-l">Words Detected</div></div>
+                        <div class="ocr-metric"><div class="ocr-metric-v">@extractedText.Split('\n').Length</div><div class="ocr-metric-l">Lines Detected</div></div>
+                        <div class="ocr-metric"><div class="ocr-metric-v">@processingTime</div><div class="ocr-metric-l">Processing Time</div></div>
+                        <div class="ocr-metric"><div class="ocr-metric-v">@overallConfidence.ToString("F1")%</div><div class="ocr-metric-l">Overall Confidence</div></div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private string selectedEngine = "tesseract";
+    private string selectedLanguage = "eng";
+    private string processingMode = "balanced";
+    private int confidenceThreshold = 75;
+    private bool enablePreprocessing = true;
+    private bool enableSpellcheck = false;
+    private string activeTab = "text";
+
+    private string uploadedImageUrl = string.Empty;
+    private bool isProcessing = false;
+    private bool isCameraActive = false;
+    private string processingStatus = string.Empty;
+
+    private string extractedText = string.Empty;
+    private double overallConfidence = 0;
+    private string processingTime = "0ms";
+
+    private List<OCRResult> ocrResults = new();
+    private readonly string fileInputId = Guid.NewGuid().ToString();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("OCRComponent.initialize", fileInputId);
+        }
+    }
+
+    private async Task TriggerFileInput()
+    {
+        await JSRuntime.InvokeVoidAsync("eval", $"document.getElementById('{fileInputId}').click()");
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            if (file.Size > 10 * 1024 * 1024)
+            {
+                await ShowToast("File size exceeds 10MB limit", ToastType.Error);
+                return;
+            }
+
+            var allowedTypes = new[] { "image/png", "image/jpeg", "image/jpg", "application/pdf", "image/tiff", "image/bmp" };
+            if (!allowedTypes.Contains(file.ContentType))
+            {
+                await ShowToast("Unsupported file type. Please use PNG, JPEG, PDF, or TIFF.", ToastType.Error);
+                return;
+            }
+
+            try
+            {
+                using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+                var buffer = new byte[stream.Length];
+                await stream.ReadAsync(buffer);
+
+                var base64 = Convert.ToBase64String(buffer);
+                uploadedImageUrl = $"data:{file.ContentType};base64,{base64}";
+
+                StateHasChanged();
+                await ShowToast($"File '{file.Name}' uploaded successfully", ToastType.Success);
+            }
+            catch (Exception ex)
+            {
+                await ShowToast($"Error uploading file: {ex.Message}", ToastType.Error);
+            }
+        }
+    }
+
+    private async Task StartCamera()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("OCRComponent.startCamera");
+            isCameraActive = true;
+        }
+        catch (Exception ex)
+        {
+            await ShowToast($"Camera error: {ex.Message}", ToastType.Error);
+        }
+    }
+
+    private async Task StopCamera()
+    {
+        await JSRuntime.InvokeVoidAsync("OCRComponent.stopCamera");
+        isCameraActive = false;
+    }
+
+    private async Task CaptureImage()
+    {
+        try
+        {
+            uploadedImageUrl = await JSRuntime.InvokeAsync<string>("OCRComponent.captureImage");
+            await StopCamera();
+            await ShowToast("Image captured successfully", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            await ShowToast($"Capture error: {ex.Message}", ToastType.Error);
+        }
+    }
+
+    private void ClearImage()
+    {
+        uploadedImageUrl = string.Empty;
+        extractedText = string.Empty;
+        ocrResults.Clear();
+        overallConfidence = 0;
+        processingTime = "0ms";
+    }
+
+    private async Task ProcessImage()
+    {
+        if (string.IsNullOrEmpty(uploadedImageUrl))
+        {
+            await ShowToast("Please upload an image first", ToastType.Warning);
+            return;
+        }
+
+        isProcessing = true;
+        processingStatus = "Initializing OCR engine...";
+        StateHasChanged();
+
+        try
+        {
+            var startTime = DateTime.Now;
+
+            await SimulateOCRProcessing();
+
+            var endTime = DateTime.Now;
+            processingTime = $"{(endTime - startTime).TotalMilliseconds:F0}ms";
+
+            await ShowToast("OCR processing completed successfully", ToastType.Success);
+        }
+        catch (Exception ex)
+        {
+            await ShowToast($"OCR processing failed: {ex.Message}", ToastType.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+            processingStatus = string.Empty;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SimulateOCRProcessing()
+    {
+        if (enablePreprocessing)
+        {
+            processingStatus = "Preprocessing image (noise reduction, rotation correction)...";
+            StateHasChanged();
+            await Task.Delay(800);
+        }
+
+        processingStatus = "Detecting text regions...";
+        StateHasChanged();
+        await Task.Delay(600);
+
+        processingStatus = $"Performing OCR with {selectedEngine}...";
+        StateHasChanged();
+        await Task.Delay(1200);
+
+        if (enableSpellcheck)
+        {
+            processingStatus = "Running spell check and validation...";
+            StateHasChanged();
+            await Task.Delay(400);
+        }
+
+        await GenerateSampleResults();
+    }
+
+    private async Task GenerateSampleResults()
+    {
+        var sampleTexts = new[]
+        {
+            "Enterprise Document Management System",
+            "Invoice Number: INV-2024-001234",
+            "Date: October 3, 2025",
+            "Amount: $1,250.00",
+            "Description: Professional OCR Processing Service",
+            "Terms: Net 30 days",
+            "Thank you for your business!"
+        };
+
+        extractedText = string.Join(Environment.NewLine, sampleTexts);
+
+        ocrResults.Clear();
+        var random = new Random();
+
+        foreach (var text in sampleTexts)
+        {
+            var confidence = selectedEngine switch
+            {
+                "azure-vision" => random.Next(85, 98),
+                "aws-textract" => random.Next(82, 96),
+                "google-vision" => random.Next(88, 99),
+                _ => random.Next(70, 90) // tesseract
+            };
+
+            ocrResults.Add(new OCRResult
+            {
+                Text = text,
+                Confidence = confidence,
+                BoundingBox = $"({random.Next(10, 100)}, {random.Next(10, 100)}, {random.Next(200, 400)}, {random.Next(20, 40)})",
+                Language = selectedLanguage
+            });
+        }
+
+        overallConfidence = ocrResults.Average(r => r.Confidence);
+        await Task.CompletedTask;
+    }
+
+    private async Task CopyToClipboard()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", extractedText);
+        await ShowToast("Text copied to clipboard", ToastType.Success);
+    }
+
+    private async Task ExportResults()
+    {
+        var exportData = new
+        {
+            ExtractedText = extractedText,
+            OverallConfidence = overallConfidence,
+            ProcessingTime = processingTime,
+            Engine = selectedEngine,
+            Language = selectedLanguage,
+            Results = ocrResults,
+            ExportedAt = DateTime.Now
+        };
+
+        var json = System.Text.Json.JsonSerializer.Serialize(exportData, new System.Text.Json.JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        await JSRuntime.InvokeVoidAsync("OCRComponent.downloadFile", json, $"ocr-results-{DateTime.Now:yyyyMMdd-HHmmss}.json", "application/json");
+        await ShowToast("Results exported successfully", ToastType.Success);
+    }
+
+    private static string ConfidencePill(double confidence) => confidence switch
+    {
+        >= 90 => "ok",
+        >= 75 => "warn",
+        _ => "neutral"
+    };
+
+    private async Task ShowToast(string message, ToastType type)
+    {
+        await JSRuntime.InvokeVoidAsync("console.log", $"{type}: {message}");
+    }
+
+    public enum ToastType
+    {
+        Success,
+        Warning,
+        Error,
+        Info
+    }
+
+    public class OCRResult
+    {
+        public string Text { get; set; } = string.Empty;
+        public double Confidence { get; set; }
+        public string BoundingBox { get; set; } = string.Empty;
+        public string Language { get; set; } = string.Empty;
+    }
+}

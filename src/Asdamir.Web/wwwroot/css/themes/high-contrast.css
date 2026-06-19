@@ -1,0 +1,37 @@
+/* ============================================
+   HIGH CONTRAST THEME - LAYER 1
+   For accessibility (WCAG AAA compliance)
+   ============================================ */
+
+[data-theme="high-contrast"] {
+    /* High contrast colors */
+    --ui-text-primary: #000000;
+    --ui-text-secondary: #1a1a1a;
+    --ui-bg-surface: #ffffff;
+    --ui-border-default: #000000;
+    --ui-border-strong: #000000;
+    
+    /* Semantic colors - higher contrast */
+    --ui-color-success: #0f7c0f;
+    --ui-color-warning: #c94f0f;
+    --ui-color-error: #c91a1e;
+    --ui-color-info: #006bb3;
+    
+    /* Stronger shadows */
+    --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --ui-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+    
+    /* Increase border widths */
+    --ui-border-width-thin: 2px;
+    --ui-border-width-medium: 3px;
+    
+    color-scheme: light;
+}
+
+@media (prefers-contrast: more) {
+    :root {
+        --ui-border-width-thin: 2px;
+        --ui-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    }
+}
+

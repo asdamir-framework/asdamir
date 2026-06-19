@@ -1,0 +1,151 @@
+@implements IDisposable
+@inject INotificationService Notify
+@*
+    AsdamirNotificationHost — drop-in host that wires INotificationService to UI. Render ONE instance in
+    a layout to enable toasts, confirmation dialogs, the loading overlay and action notifications app-wide:
+
+        <AsdamirNotificationHost />
+
+    Dependency-light (no FluentUI), like AsdamirToaster/AsdamirModal, so it works inside a Blazor Web App
+    interactive island and the MAUI Blazor-Hybrid app. Without this host, ConfirmAsync DENIES (returns
+    false) — a destructive action never proceeds un-confirmed.
+*@
+
+<AsdamirToaster @ref="_toaster" />
+
+@if (_actionNotifications.Count > 0)
+{
+    <div class="asd-actiontoaster">
+        @foreach (var n in _actionNotifications)
+        {
+            <div class="asd-actiontoast @SeverityCss(n.Severity)" @key="n" role="status">
+                <span class="asd-actiontoast-msg">@n.Message</span>
+                <div class="asd-actiontoast-btns">
+                    @foreach (var a in n.Actions)
+                    {
+                        <button type="button" class="asd-btn @ActionCss(a.Style)" @onclick="@(() => RunAction(n, a))">
+                            @a.LabelKey
+                        </button>
+                    }
+                    <button type="button" class="asd-actiontoast-x" @onclick="@(() => _actionNotifications.Remove(n))" aria-label="Close">✕</button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<AsdamirModal Open="_confirm is not null" OpenChanged="OnConfirmOpenChanged" Title="@(_confirm?.Title ?? DefaultTitle)">
+    <ChildContent>
+        <p class="asd-confirm-msg">@_confirm?.Message</p>
+    </ChildContent>
+    <Footer>
+        <button type="button" class="asd-btn" @onclick="@(() => CompleteConfirm(false))">@CancelText</button>
+        <button type="button" class="asd-btn @(_confirm?.IsDanger == true ? "asd-btn-danger" : "asd-btn-primary")"
+                @onclick="@(() => CompleteConfirm(true))">@ConfirmText</button>
+    </Footer>
+</AsdamirModal>
+
+@if (_loading is { IsVisible: true })
+{
+    <div class="asd-loading-overlay" role="alert" aria-busy="true">
+        <div class="asd-loading-box">
+            <span class="asd-loading-spinner" aria-hidden="true"></span>
+            @if (!string.IsNullOrEmpty(_loading.Message))
+            {
+                <span class="asd-loading-msg">@_loading.Message</span>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    /// <summary>Confirm/cancel button labels + the default dialog title. Pass localized strings
+    /// (e.g. <c>CancelText="@L["Common.Cancel"]"</c>) from a localized app; defaults are English.</summary>
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public string ConfirmText { get; set; } = "OK";
+    [Parameter] public string DefaultTitle { get; set; } = "Confirm";
+
+    private AsdamirToaster? _toaster;
+    private ConfirmationRequest? _confirm;
+    private LoadingRequest? _loading;
+    private readonly List<ActionNotificationRequest> _actionNotifications = new();
+
+    protected override void OnInitialized()
+    {
+        Notify.NotificationRequested += OnNotification;
+        Notify.ConfirmationRequested += OnConfirmation;
+        Notify.LoadingChanged += OnLoading;
+        Notify.ActionNotificationRequested += OnActionNotification;
+    }
+
+    private void OnNotification(object? sender, NotificationRequest r) =>
+        InvokeAsync(() => _toaster?.Show(r.Message, MapKind(r.Severity), r.TimeoutMs > 0 ? r.TimeoutMs : 5000));
+
+    private void OnConfirmation(object? sender, ConfirmationRequest r) =>
+        InvokeAsync(() =>
+        {
+            // Only one dialog at a time — if another is somehow open, deny it first.
+            _confirm?.Completion.TrySetResult(false);
+            _confirm = r;
+            StateHasChanged();
+        });
+
+    private void OnLoading(object? sender, LoadingRequest r) =>
+        InvokeAsync(() => { _loading = r; StateHasChanged(); });
+
+    private void OnActionNotification(object? sender, ActionNotificationRequest r) =>
+        InvokeAsync(() => { _actionNotifications.Add(r); StateHasChanged(); });
+
+    private void CompleteConfirm(bool result)
+    {
+        var pending = _confirm;
+        _confirm = null;
+        pending?.Completion.TrySetResult(result);
+        StateHasChanged();
+    }
+
+    // Dismissing the modal (overlay click / X) counts as "no".
+    private void OnConfirmOpenChanged(bool open)
+    {
+        if (!open) CompleteConfirm(false);
+    }
+
+    private void RunAction(ActionNotificationRequest n, NotificationAction a)
+    {
+        a.OnClick?.Invoke();
+        if (a.CloseOnClick) _actionNotifications.Remove(n);
+        StateHasChanged();
+    }
+
+    private static AsdamirToaster.Kind MapKind(NotificationSeverity s) => s switch
+    {
+        NotificationSeverity.Success => AsdamirToaster.Kind.Ok,
+        NotificationSeverity.Error or NotificationSeverity.Critical => AsdamirToaster.Kind.Err,
+        _ => AsdamirToaster.Kind.Info,
+    };
+
+    private static string SeverityCss(NotificationSeverity s) => s switch
+    {
+        NotificationSeverity.Success => "ok",
+        NotificationSeverity.Warning => "warn",
+        NotificationSeverity.Error or NotificationSeverity.Critical => "err",
+        _ => "info",
+    };
+
+    private static string ActionCss(NotificationActionStyle s) => s switch
+    {
+        NotificationActionStyle.Primary => "asd-btn-primary",
+        NotificationActionStyle.Danger => "asd-btn-danger",
+        _ => string.Empty,
+    };
+
+    public void Dispose()
+    {
+        Notify.NotificationRequested -= OnNotification;
+        Notify.ConfirmationRequested -= OnConfirmation;
+        Notify.LoadingChanged -= OnLoading;
+        Notify.ActionNotificationRequested -= OnActionNotification;
+        // Release any awaiter so a torn-down host never leaves ConfirmAsync hanging.
+        _confirm?.Completion.TrySetResult(false);
+    }
+}

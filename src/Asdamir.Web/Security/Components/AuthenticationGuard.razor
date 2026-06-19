@@ -1,0 +1,136 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+@using Asdamir.Web.Security.Services
+@inject AuthenticationStateProvider AuthStateProvider
+@inject AuthState AuthState
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject ILogger<AuthenticationGuard> Logger
+@implements IAsyncDisposable
+
+@if (_isAuthenticated)
+{
+    @ChildContent
+}
+else if (_shouldRedirect)
+{
+    <RedirectToLogin />
+}
+else
+{
+    <div class="authentication-required">
+        <h3>Oturum Gerekli</h3>
+        <p>Bu sayfayı görüntülemek için oturum açmanız gerekiyor.</p>
+        <FluentButton Appearance="Appearance.Accent" @onclick="HandleRedirectToLogin">Giriş Yap</FluentButton>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _isAuthenticated = false;
+    private bool _shouldRedirect = false;
+    private IJSObjectReference? _authGuardModule;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckAuthenticationState();
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        // Audit fix: replaced JS.InvokeVoidAsync("eval", "...") with a typed ES module.
+        // The eval form breaks under strict CSP and is an XSS amplifier if the script
+        // body is ever templated with user content. The module is loaded once per
+        // circuit and disposed in DisposeAsync.
+        try
+        {
+            _authGuardModule = await JS.InvokeAsync<IJSObjectReference>(
+                "import",
+                "./_content/Asdamir.Web.Security/js/auth-guard.js");
+            await _authGuardModule.InvokeVoidAsync("preventBackButtonAfterLogout");
+        }
+        catch (JSDisconnectedException)
+        {
+            // Circuit gone before the import resolved — nothing to clean up.
+        }
+        catch (Exception ex)
+        {
+            Logger.LogDebug(ex, "[AuthenticationGuard] auth-guard module load failed");
+        }
+    }
+
+    private async Task CheckAuthenticationState()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            
+            _isAuthenticated = user.Identity?.IsAuthenticated == true;
+            
+            // Token kontrolü
+            if (_isAuthenticated)
+            {
+                var token = await AuthState.GetAccessTokenAsync();
+                if (string.IsNullOrEmpty(token))
+                {
+                    _isAuthenticated = false;
+                    await AuthState.ClearAsync();
+                }
+            }
+            
+            // Eğer authenticated değilse ve login sayfasında değilse, otomatik redirect
+            if (!_isAuthenticated && !Navigation.Uri.Contains("/login"))
+            {
+                _shouldRedirect = true;
+                await Task.Delay(100); // Asdamir.Web.UI'ın render olması için kısa bir süre
+                await RedirectToLogin();
+            }
+        }
+        catch
+        {
+            _isAuthenticated = false;
+        }
+    }
+
+    private void HandleRedirectToLogin()
+    {
+        _shouldRedirect = true;
+        StateHasChanged();
+        _ = Task.Run(async () => 
+        {
+            await Task.Delay(100);
+            await InvokeAsync(async () => await RedirectToLogin());
+        });
+    }
+
+    private async Task RedirectToLogin()
+    {
+        var returnUrl = Navigation.ToAbsoluteUri(Navigation.Uri).PathAndQuery;
+        
+        // Don't redirect if already on login page (prevent loop)
+        if (returnUrl.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+        
+        await AuthState.ClearAsync();
+        
+        // Redirect to login with return URL
+        var loginUrl = $"/login?returnUrl={Uri.EscapeDataString(returnUrl)}";
+        Navigation.NavigateTo(loginUrl, forceLoad: true);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_authGuardModule is not null)
+        {
+            try { await _authGuardModule.DisposeAsync(); }
+            catch (JSDisconnectedException) { /* circuit gone, nothing to dispose */ }
+        }
+    }
+}

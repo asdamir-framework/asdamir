@@ -1,0 +1,148 @@
+@using Asdamir.Core.Scheduling
+@using Asdamir.Web.UI.Services
+@inject ILogger<AsdamirScheduler> Logger
+@inject Asdamir.Web.UI.Services.INotificationService Toasts
+@inject IServiceProvider Services
+
+@*
+    Scheduler — INSPINIA-styled (Asdamir design system). FluentUI-free: .asd-page head,
+    .asd-card job panels, .asd-pill result badges and .asd-btn actions. The optional
+    ISchedulerDataProvider data layer and cron preview are unchanged.
+*@
+
+<div class="asd-page">
+    <div class="asd-pagehead">
+        <div class="asd-pagehead-l">
+            <h1 class="asd-pagehead-title">Scheduler Monitoring</h1>
+            <p class="asd-pagehead-sub">Monitor and trigger recurring jobs</p>
+        </div>
+        <div class="asd-pagehead-r">
+            <button type="button" class="asd-btn asd-btn-ghost" @onclick="LoadJobs">Refresh</button>
+        </div>
+    </div>
+
+    <div class="asd-card">
+        <div class="sc-body">
+            @if (_provider is null)
+            {
+                <div class="asd-tnote">No scheduler data provider is registered. Register an <code>ISchedulerDataProvider</code> to monitor recurring jobs here.</div>
+            }
+            else if (_loading)
+            {
+                <div class="asd-tnote">Loading…</div>
+            }
+            else if (_jobs.Count == 0)
+            {
+                <div class="asd-tnote">No recurring jobs configured.</div>
+            }
+            else
+            {
+                @foreach (var job in _jobs)
+                {
+                    <div class="sc-job" @key="job.Id">
+                        <div class="sc-job-row">
+                            <svg class="sc-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3 2 6"/><path d="m22 6-3-3"/></svg>
+                            <span class="sc-job-name">@job.Name</span>
+                            <span class="asd-pill @ResultPill(job.LastResult)">@(job.LastResult ?? "—")</span>
+                            <span class="sc-grow"></span>
+                            <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => ToggleDetails(job.Id))">Details</button>
+                            <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => TriggerAsync(job))">Run now</button>
+                        </div>
+                        @if (_expanded.Contains(job.Id))
+                        {
+                            <div class="sc-detail">
+                                <div>Cron: <code>@job.Cron</code></div>
+                                <div>Queue: @(job.Queue ?? "default")</div>
+                                <div>Last Run: @FormatUtc(job.LastRunUtc)</div>
+                                <div>Next Run: @FormatNextRun(job.Cron)</div>
+                                <div>Last Result: @(job.LastResult ?? "—")</div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private ISchedulerDataProvider? _provider;
+    private IReadOnlyList<ScheduledJobInfo> _jobs = Array.Empty<ScheduledJobInfo>();
+    private readonly HashSet<string> _expanded = new();
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Optional dependency: resolve without throwing when the host hasn't registered a provider.
+        _provider = Services.GetService(typeof(ISchedulerDataProvider)) as ISchedulerDataProvider;
+        await LoadJobs();
+    }
+
+    private async Task LoadJobs()
+    {
+        if (_provider is null) return;
+        _loading = true;
+        try
+        {
+            _jobs = await _provider.GetRecurringJobsAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to load recurring jobs");
+            Toasts?.Error("Could not load recurring jobs.");
+            _jobs = Array.Empty<ScheduledJobInfo>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ToggleDetails(string jobId)
+    {
+        if (!_expanded.Remove(jobId)) _expanded.Add(jobId);
+    }
+
+    private async Task TriggerAsync(ScheduledJobInfo job)
+    {
+        if (_provider is null) return;
+        try
+        {
+            var ok = await _provider.TriggerAsync(job.Id);
+            if (ok)
+            {
+                Toasts?.Info($"Job '{job.Name}' triggered.");
+                await LoadJobs();
+            }
+            else
+            {
+                Toasts?.Error($"Job '{job.Name}' not found.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Failed to trigger job {JobId}", job.Id);
+            Toasts?.Error($"Could not trigger '{job.Name}'.");
+        }
+    }
+
+    /// <summary>In-house cron next-run preview (no external dependency). Falls back to a hint when
+    /// the cron can't be parsed.</summary>
+    private static string FormatNextRun(string cron)
+    {
+        var schedule = CronSchedule.TryParse(cron);
+        if (schedule is null) return "—  (unparseable cron)";
+        var next = schedule.GetNextOccurrence(DateTime.UtcNow);
+        return next is null ? "—" : FormatUtc(next);
+    }
+
+    private static string FormatUtc(DateTime? utc)
+        => utc is null ? "—" : utc.Value.ToString("yyyy-MM-dd HH:mm 'UTC'");
+
+    private static string ResultPill(string? result) => result switch
+    {
+        "Succeeded" => "ok",
+        "Failed" => "err",
+        _ => "neutral"
+    };
+}

@@ -1,0 +1,129 @@
+/* AsdamirPricing — scoped, theme-aware (reads the global --asd-* tokens). INSPINIA-style cards. */
+
+.asd-pricing {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    align-items: stretch;
+}
+
+.asd-pricing-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--asd-surface, #fff);
+    border: 1px solid var(--asd-border, #e3ded7);
+    border-radius: 14px;
+    padding: 28px 24px;
+    transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+
+.asd-pricing-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .10);
+    transform: translateY(-3px);
+}
+
+/* Featured tier: accent border + lift, stands out from the row. */
+.asd-pricing-card.featured {
+    border-color: var(--asd-accent, #c0552b);
+    box-shadow: 0 12px 34px color-mix(in srgb, var(--asd-accent, #c0552b) 22%, transparent);
+}
+
+.asd-pricing-badge {
+    position: absolute;
+    top: -11px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--asd-accent, #c0552b);
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+.asd-pricing-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--asd-ink, #222);
+}
+
+.asd-pricing-price {
+    margin: 10px 0 4px;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.asd-pricing-price .amt {
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--asd-ink, #222);
+}
+
+.asd-pricing-price .per {
+    font-size: .85rem;
+    color: var(--asd-ink-soft, #8a8278);
+}
+
+.asd-pricing-desc {
+    font-size: .85rem;
+    color: var(--asd-ink-soft, #8a8278);
+    margin-bottom: 16px;
+}
+
+.asd-pricing-features {
+    list-style: none;
+    margin: 8px 0 20px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1 1 auto;
+}
+
+.asd-pricing-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    font-size: .86rem;
+    color: var(--asd-ink, #222);
+}
+
+.asd-pricing-features li svg {
+    color: var(--asd-accent, #c0552b);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.asd-pricing-cta {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 9px;
+    border: 1px solid var(--asd-accent, #c0552b);
+    background: transparent;
+    color: var(--asd-accent, #c0552b);
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .12s, color .12s;
+}
+
+.asd-pricing-cta:hover {
+    background: var(--asd-accent-soft, color-mix(in srgb, var(--asd-accent, #c0552b) 12%, transparent));
+}
+
+/* The featured card's CTA is solid accent for emphasis. */
+.asd-pricing-cta.featured {
+    background: var(--asd-accent, #c0552b);
+    color: #fff;
+}
+
+.asd-pricing-cta.featured:hover {
+    background: var(--asd-accent-hover, #a8471f);
+}

@@ -1,0 +1,47 @@
+/* Chart — scoped, theme-aware (reads the global --asd-* tokens).
+   Buttons come from the shared .asd-* design system; the container/header/legend/stats are local.
+   Dynamic chart height + series colours arrive as the --chart-h / --c custom properties. */
+
+.chart-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--asd-surface, #fff);
+    border: 1px solid var(--asd-border, #e3ded7);
+    border-radius: 12px;
+    padding: 14px;
+}
+
+.chart-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.chart-grow { flex: 1 1 auto; }
+.chart-title { font-size: 1.05rem; font-weight: 600; color: var(--asd-ink, #222); }
+.chart-sel { width: auto; min-width: 100px; }
+
+.chart-content {
+    position: relative;
+    height: var(--chart-h, 400px);
+}
+
+.chart-content.fullscreen {
+    position: fixed;
+    inset: 16px;
+    z-index: 200;
+    height: auto;
+    background: var(--asd-surface, #fff);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.chart-content canvas { max-width: 100%; }
+
+.chart-legend { display: flex; flex-wrap: wrap; gap: 16px; }
+
+.legend-item { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: .85rem; color: var(--asd-ink, #222); }
+.legend-item.dim { opacity: .5; }
+.legend-color { width: 14px; height: 14px; border-radius: 3px; background: var(--c, var(--asd-accent, #c0552b)); }
+
+.chart-statistics { display: flex; flex-wrap: wrap; gap: 24px; }
+.chart-stat { display: flex; flex-direction: column; }
+.chart-stat-l { font-size: .72rem; color: var(--asd-ink-soft, #8a8278); text-transform: uppercase; letter-spacing: .03em; }
+.chart-stat-v { font-size: 1rem; font-weight: 700; color: var(--asd-ink, #222); }

@@ -1,0 +1,181 @@
+.content-card {
+  display: block;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  background: var(--ui-bg-surface, #fff);
+  border: 1px solid var(--ui-border-default, #e5e7eb);
+  border-radius: var(--ui-border-radius-lg, 8px);
+  box-shadow: var(--ui-shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+  overflow: visible; /* kritik: dropdownların kırpılmasını engeller */
+  box-sizing: border-box !important;
+}
+
+.content-card ::deep fluent-stack {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.content-card-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--ui-border-default, #e5e7eb);
+  background: var(--ui-bg-surface, transparent);
+}
+
+.content-card-body {
+  padding: 16px;
+  position: relative; /* body içindeki absolute popup'lar için referans, ancak overflow visible */
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.content-card-body ::deep fluent-stack {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.content-card-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--ui-border-default, #e5e7eb);
+  background: var(--ui-bg-surface-secondary, transparent);
+}
+
+/* Grid Card - for DataGrid wrapper */
+.content-card.grid-card {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  -webkit-overflow-scrolling: touch;
+  display: flex !important;
+  flex-direction: column;
+  box-sizing: border-box !important;
+}
+
+.content-card.grid-card .content-card-body {
+  padding: 0;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* DataGrid fill + internal scrolling (only matters when parent height is constrained) */
+.content-card.grid-card ::deep .enterprise-datagrid {
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.content-card.grid-card ::deep .datagrid-container {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neutral-stroke-rest) var(--neutral-layer-1);
+}
+
+.content-card.grid-card ::deep .datagrid-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.content-card.grid-card ::deep .datagrid-container::-webkit-scrollbar-track {
+  background: var(--neutral-layer-1);
+}
+
+.content-card.grid-card ::deep .datagrid-container::-webkit-scrollbar-thumb {
+  background: var(--neutral-stroke-rest);
+  border-radius: 4px;
+}
+
+.content-card.grid-card ::deep .datagrid-container::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-stroke-hover);
+}
+
+/* Generic scrollable card body (for non-DataGrid admin cards) */
+.content-card.admin-scroll .content-card-body {
+  overflow: auto;
+  max-height: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: var(--neutral-stroke-rest) var(--neutral-layer-1);
+}
+
+.content-card.admin-scroll .content-card-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.content-card.admin-scroll .content-card-body::-webkit-scrollbar-track {
+  background: var(--neutral-layer-1);
+}
+
+.content-card.admin-scroll .content-card-body::-webkit-scrollbar-thumb {
+  background: var(--neutral-stroke-rest);
+  border-radius: 4px;
+}
+
+.content-card.admin-scroll .content-card-body::-webkit-scrollbar-thumb:hover {
+  background: var(--neutral-stroke-hover);
+}
+
+/* DataGrid içindeyken çift border/shadow olmasın */
+.content-card.grid-card .enterprise-datagrid {
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* DataGrid container scroll garantisi */
+.content-card.grid-card .datagrid-container {
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .content-card {
+    border-radius: var(--ui-border-radius-md, 6px);
+  }
+
+  .content-card-header,
+  .content-card-body {
+    padding: 12px;
+  }
+
+  .content-card-footer {
+    padding: 10px 12px;
+  }
+
+  /* Grid card responsive */
+  .content-card.grid-card {
+    overflow-x: auto;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .content-card-header,
+  .content-card-body {
+    padding: 10px;
+  }
+
+  .content-card-footer {
+    padding: 8px 10px;
+  }
+}

@@ -1,0 +1,70 @@
+@implements IDisposable
+@*
+    AsdamirToaster — reusable, dependency-light toast host.
+
+    Lives in the shared Asdamir.Web UI library (web + MAUI Blazor-Hybrid). Deliberately FluentUI-free:
+    it does NOT depend on FluentToastProvider/IToastService, so it works inside a Blazor Web App's
+    per-page interactive island (where a provider hosted in the static layout is unreachable and the
+    service throws, crashing the circuit). Drop one instance on a page and call it imperatively:
+
+      <AsdamirToaster @ref="_toaster" />
+      ...
+      _toaster.Show("Saved.", AsdamirToaster.Kind.Ok);
+
+    Each toast auto-dismisses; styling comes from the shared design-system CSS (.asd-toast*).
+*@
+
+<div class="asd-toaster">
+    @foreach (var t in _toasts)
+    {
+        <div class="asd-toast @t.CssKind" @key="t.Id" role="status">
+            <span class="asd-toast-msg">@t.Message</span>
+            <button type="button" class="asd-toast-x" @onclick="@(() => Dismiss(t.Id))" aria-label="Close">✕</button>
+        </div>
+    }
+</div>
+
+@code {
+    public enum Kind { Ok, Err, Info }
+
+    private readonly List<ToastItem> _toasts = new();
+    private readonly List<CancellationTokenSource> _timers = new();
+    private bool _disposed;
+
+    /// <summary>Show a toast; it auto-dismisses after <paramref name="durationMs"/> ms.</summary>
+    public void Show(string message, Kind kind = Kind.Ok, int durationMs = 3500)
+    {
+        var item = new ToastItem(Guid.NewGuid(), message, kind);
+        _toasts.Add(item);
+        StateHasChanged();
+
+        var cts = new CancellationTokenSource();
+        _timers.Add(cts);
+        _ = AutoDismissAsync(item.Id, durationMs, cts);
+    }
+
+    private async Task AutoDismissAsync(Guid id, int durationMs, CancellationTokenSource cts)
+    {
+        try { await Task.Delay(durationMs, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        if (!_disposed) await InvokeAsync(() => Dismiss(id));
+    }
+
+    private void Dismiss(Guid id)
+    {
+        _toasts.RemoveAll(t => t.Id == id);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        foreach (var t in _timers) { t.Cancel(); t.Dispose(); }
+        _timers.Clear();
+    }
+
+    private sealed record ToastItem(Guid Id, string Message, Kind Kind)
+    {
+        public string CssKind => Kind switch { Kind.Ok => "ok", Kind.Err => "err", _ => "info" };
+    }
+}
