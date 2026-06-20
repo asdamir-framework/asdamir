@@ -13,13 +13,13 @@ using System.CommandLine;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework new page &lt;Name&gt; --fields "F1:type,..." [--route /customers] [--output dir] [--namespace MyApp]</c>
+/// <c>asdamir new page &lt;Name&gt; --fields "F1:type,..." [--route /customers] [--output dir] [--namespace MyApp]</c>
 ///
 /// Produces a Blazor Web App CRUD page that mirrors the AppsList / Users pattern in
 /// the admin console: FluentDataGrid + inline edit dialog + delete confirmation,
 /// with [Authorize] applied and standard loading/empty/error states.
 ///
-/// Pair with <c>framework new entity &lt;Name&gt; --fields ...</c> — use the same field list
+/// Pair with <c>asdamir new entity &lt;Name&gt; --fields ...</c> — use the same field list
 /// so the generated page binds to the matching DTO. The page assumes the entity's
 /// REST controller lives at <c>api/&lt;plural-lowercase&gt;</c>.
 /// </summary>

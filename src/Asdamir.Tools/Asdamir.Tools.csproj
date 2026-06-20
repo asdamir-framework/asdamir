@@ -10,7 +10,7 @@
 
     <!-- dotnet tool packaging -->
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>framework</ToolCommandName>
+    <ToolCommandName>asdamir</ToolCommandName>
     <PackageOutputPath>./nupkg</PackageOutputPath>
 
     <!-- NuGet metadata -->
@@ -30,7 +30,7 @@
          templates only use substitution + iteration + conditionals, so a hand-rolled
          engine is simpler, audit-clean, and zero-dependency. -->
     <PackageReference Include="System.CommandLine" />
-    <!-- `framework db apply` / `secrets rotate-key` connect to SQL Server. -->
+    <!-- `asdamir db apply` / `secrets rotate-key` connect to SQL Server. -->
     <PackageReference Include="Microsoft.Data.SqlClient" />
     <!-- NOTE: deliberately NO Asdamir.Core reference. The `secrets` command re-implements Core's
          encryption locally (Commands/SecretCrypto.cs, byte-compatible, pinned by a cross-compat test)

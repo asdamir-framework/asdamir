@@ -13,7 +13,7 @@ using System.CommandLine;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework new module &lt;Name&gt; [--description "..."] [--output dir]</c>
+/// <c>asdamir new module &lt;Name&gt; [--description "..."] [--output dir]</c>
 ///
 /// Produces an audit-shaped Core.* module skeleton that builds out-of-the-box and
 /// matches the conventions used by existing modules (Core.Validation, Web.Security, …):

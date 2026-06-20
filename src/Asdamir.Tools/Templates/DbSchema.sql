@@ -7,12 +7,12 @@
  * AppManagement control plane. The app consumes identity / authz / error-handling /
  * localization from the framework packages (DI), not from its own tables.
  *
- * Start with a single demo table; add real tables with `framework new entity`.
+ * Start with a single demo table; add real tables with `asdamir new entity`.
  * Idempotent (IF OBJECT_ID ... IS NULL / CREATE OR ALTER), so re-runs are no-ops.
  *
  * ALL data access goes through stored procedures — no inline SQL in repositories/Gateway. This is
  * single-tenant (the app IS the tenant; cross-app scoping by AppId lives in AsdamirVault, not here),
- * so these procs take no @appId. `framework new entity` emits the same proc-backed shape per table.
+ * so these procs take no @appId. `asdamir new entity` emits the same proc-backed shape per table.
  */
 SET ANSI_NULLS ON;
 GO

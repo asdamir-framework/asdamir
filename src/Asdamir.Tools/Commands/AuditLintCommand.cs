@@ -14,7 +14,7 @@ using System.Text.RegularExpressions;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework audit lint [--path dir] [--min-severity info|warning|error] [--format text|json]</c>
+/// <c>asdamir audit lint [--path dir] [--min-severity info|warning|error] [--format text|json]</c>
 ///
 /// Scans .cs files for the Asdamir audit pattern set (see <see cref="AuditRuleSet"/>).
 /// Each rule corresponds to a real finding from the v1 → v2 audit; running this

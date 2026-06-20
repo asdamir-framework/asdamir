@@ -13,7 +13,7 @@ using System.CommandLine;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework new entity &lt;Name&gt; --fields "F1:type,F2:type?,..." [--output path] [--namespace MyApp]</c>
+/// <c>asdamir new entity &lt;Name&gt; --fields "F1:type,F2:type?,..." [--output path] [--namespace MyApp]</c>
 ///
 /// Produces (one set per invocation):
 ///   - Domain/&lt;Name&gt;.cs            — POCO entity, audit-aware ([AuditLog])

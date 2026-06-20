@@ -24,4 +24,4 @@ Full guides: **[Asdamir documentation](https://github.com/asdamir-framework/asda
 
 ## License
 
-MIT
+LGPL-3.0 — see the bundled `LICENSE` file.

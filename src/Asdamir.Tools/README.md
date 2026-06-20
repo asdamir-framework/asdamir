@@ -22,4 +22,4 @@ Full guide: **[CLI documentation](https://github.com/asdamir-framework/asdamir/t
 
 ## License
 
-MIT
+LGPL-3.0 — see the bundled `LICENSE` file.

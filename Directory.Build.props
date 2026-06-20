@@ -20,6 +20,11 @@
     <Product>Asdamir</Product>
     <Copyright>Copyright (c) 2026 Asdamir</Copyright>
     <RepositoryType>git</RepositoryType>
+    <!-- PUBLIC URLs for the NuGet package page. -->
+    <PackageProjectUrl>https://github.com/asdamir-framework/asdamir</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/asdamir-framework/asdamir</RepositoryUrl>
+    <!-- Don't let the build auto-embed the (private) dev git remote/commit into the package. -->
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
   </PropertyGroup>
 
 </Project>

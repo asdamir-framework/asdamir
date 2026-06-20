@@ -13,7 +13,7 @@ using System.CommandLine;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework new mobile &lt;Name&gt; [--output dir] [--namespace ns] [--gateway-url URL] [--local-feed PATH]</c>
+/// <c>asdamir new mobile &lt;Name&gt; [--output dir] [--namespace ns] [--gateway-url URL] [--local-feed PATH]</c>
 ///
 /// Bootstraps a .NET MAUI Blazor Hybrid mobile app skeleton:
 ///

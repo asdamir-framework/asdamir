@@ -5,6 +5,14 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
+  <!-- Open-core packages — used only when AppManagement is built standalone (commercial repo, no src/).
+       In this dev monorepo the open core is consumed via ProjectReference, so these stay inactive. -->
+  <ItemGroup Label="Asdamir open core (standalone consumption)">
+    <PackageVersion Include="Asdamir.Core" Version="1.0.0" />
+    <PackageVersion Include="Asdamir.Data" Version="1.0.0" />
+    <PackageVersion Include="Asdamir.Web" Version="1.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Microsoft.Extensions (.NET 10)">
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.8" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.8" />

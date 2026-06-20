@@ -16,7 +16,7 @@ using System.Text.Json;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework app register --api &lt;url&gt; --token &lt;jwt&gt; --code &lt;clientId&gt;
+/// <c>asdamir app register --api &lt;url&gt; --token &lt;jwt&gt; --code &lt;clientId&gt;
 ///     --display-name &lt;name&gt; --gateway-url &lt;url&gt; --environment &lt;env&gt;
 ///     --client-secret &lt;secret&gt; [--app-id-header &lt;guid&gt;]</c>
 ///

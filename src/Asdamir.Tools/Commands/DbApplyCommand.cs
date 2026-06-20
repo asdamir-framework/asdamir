@@ -17,7 +17,7 @@ using Microsoft.Data.SqlClient;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework db apply --connection "&lt;connstr&gt;" [--migrations db/migrations] [--create-database]</c>
+/// <c>asdamir db apply --connection "&lt;connstr&gt;" [--migrations db/migrations] [--create-database]</c>
 /// (or <c>--server S --database D [--user U --password P]</c>).
 ///
 /// A small, journaled migration runner: creates the target database (optional), then applies every

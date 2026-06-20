@@ -16,28 +16,28 @@ namespace Asdamir.Tools;
 /// <summary>
 /// Entry point for the `framework` dotnet tool.
 ///
-/// Today: working commands — `framework new app`, `new entity`, `new page`,
+/// Today: working commands — `asdamir new app`, `new entity`, `new page`,
 /// `new module`, `add field`, `audit lint`, and `db apply`. The `new app` command
 /// bootstraps a complete managed-app skeleton (Blazor Server + REST Gateway + tests +
 /// sln + migrations including the full DB schema + AdminConsole onboarding script)
 /// wired into the AdminConsole orchestration pattern. `db apply` creates the database
 /// and runs those migrations against SQL Server.
 ///
-/// Roadmap (per the framework audit plan):
-///   framework new app      ← shipped
-///   framework new mobile   ← shipped (MAUI Blazor Hybrid: Mobile + Shared + Data + tests)
-///   framework new entity   ← shipped
-///   framework new page     ← shipped
-///   framework new module   ← shipped
-///   framework add field    ← shipped
-///   framework audit lint   ← shipped
-///   framework db apply     ← shipped (create database + run *.sql migrations)
+/// Roadmap (per the asdamir audit plan):
+///   asdamir new app      ← shipped
+///   asdamir new mobile   ← shipped (MAUI Blazor Hybrid: Mobile + Shared + Data + tests)
+///   asdamir new entity   ← shipped
+///   asdamir new page     ← shipped
+///   asdamir new module   ← shipped
+///   asdamir add field    ← shipped
+///   asdamir audit lint   ← shipped
+///   asdamir db apply     ← shipped (create database + run *.sql migrations)
 /// </summary>
 public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
-        var root = new RootCommand("framework — scaffolding and code generation for Asdamir")
+        var root = new RootCommand("asdamir — scaffolding and code generation for Asdamir")
         {
             BuildNewCommand(),
             BuildAddCommand(),

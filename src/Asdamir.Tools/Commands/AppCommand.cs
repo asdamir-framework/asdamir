@@ -14,7 +14,7 @@ using System.CommandLine.Invocation;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework new app [Name] [--server-name N] [--api-name N] [--database D] [--db-server S]
+/// <c>asdamir new app [Name] [--server-name N] [--api-name N] [--database D] [--db-server S]
 ///                      [--connection-string CS] [--gateway-url U] [--output dir] [--namespace ns]
 ///                      [--local-feed dir] [--yes]</c>
 ///
@@ -25,7 +25,7 @@ namespace Asdamir.Tools.Commands;
 /// Identity &amp; management (apps / users / roles / permissions / menus) live in AsdamirVault and
 /// are administered from the AppManagement control plane; this app only VALIDATES the JWT that
 /// AppManagement issued. Its OWN database holds only its business data (starts with one demo table;
-/// grow it with `framework new entity`).
+/// grow it with `asdamir new entity`).
 ///
 ///   &lt;Name&gt;/
 ///   ├── &lt;Name&gt;.sln, Directory.Packages.props, Directory.Build.props, nuget.config, .gitignore, README.md
@@ -295,7 +295,7 @@ public static class AppCommand
         Console.WriteLine($"     cd ../..");
         Console.WriteLine($"  3. dotnet build {name}.sln && dotnet test {name}.sln");
         Console.WriteLine($"  4. Create the app's own (business) database + demo table (migrations are journaled — re-runs apply only new ones):");
-        Console.WriteLine($"     framework db apply --server {dbServer} --database {database} --user <sql-login> --password <pwd> --create-database --migrations db/migrations");
+        Console.WriteLine($"     asdamir db apply --server {dbServer} --database {database} --user <sql-login> --password <pwd> --create-database --migrations db/migrations");
         Console.WriteLine($"     # On Windows you may drop --user/--password to use integrated auth; or pass a full --connection \"<connstr>\".");
         Console.WriteLine($"  5. Register + seed the app in AppManagement (control plane): run");
         Console.WriteLine($"     db/admin-onboarding/register_{model.AppNameLower}.sql against the AsdamirVault DB —");
@@ -304,7 +304,7 @@ public static class AppCommand
         Console.WriteLine($"  6. Run both tiers:");
         Console.WriteLine($"     dotnet run --project src/{gatewayProject}   # {gatewayUrl}");
         Console.WriteLine($"     dotnet run --project src/{serverProject}");
-        Console.WriteLine($"  7. Add your first real table/page: cd src/{gatewayProject} && framework new entity <Name> --fields \"...\"");
+        Console.WriteLine($"  7. Add your first real table/page: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
     }
 
     private static int WriteAsset(string appRoot, string relPath, string assetName)

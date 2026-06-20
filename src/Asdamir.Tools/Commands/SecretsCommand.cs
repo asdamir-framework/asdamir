@@ -14,7 +14,7 @@ using Microsoft.Data.SqlClient;
 namespace Asdamir.Tools.Commands;
 
 /// <summary>
-/// <c>framework secrets …</c> — operator tooling for the at-rest encryption key
+/// <c>asdamir secrets …</c> — operator tooling for the at-rest encryption key
 /// (<c>Security:EncryptionKey</c>) used by Core's EncryptionService. The crypto is re-implemented locally
 /// in <see cref="SecretCrypto"/> (byte-compatible) so this CLI tool doesn't bundle all of Asdamir.Core.
 ///
