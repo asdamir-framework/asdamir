@@ -548,6 +548,7 @@ h1:focus { outline: none; }
 .asd-pagebtn:disabled { opacity: .45; cursor: default; }
 /* round icon action button (INSPINIA eye/edit/trash style) */
 .asd-iconbtn {
+    position: relative;
     width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
     display: inline-grid; place-items: center; color: var(--asd-ink-soft);
     background: var(--asd-surface-muted); transition: background .12s, color .12s;
@@ -555,6 +556,19 @@ h1:focus { outline: none; }
 .asd-iconbtn:hover { background: var(--asd-accent-soft); color: var(--asd-accent); }
 .asd-iconbtn svg { width: 16px; height: 16px; }
 .asd-iconbtn.danger:hover { background: rgba(217,83,79,.14); color: #d9534f; }
+
+/* Single, instant, theme-consistent hover hint for action icons. Driven by aria-label (NOT title)
+   so the slow/duplicate native tooltip never appears; aria-label keeps the control accessible. */
+.asd-iconbtn[aria-label]::after {
+    content: attr(aria-label);
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: var(--asd-ink); color: #fff; font-size: .72rem; font-weight: 500; line-height: 1;
+    white-space: nowrap; padding: 6px 9px; border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, .08); box-shadow: 0 6px 18px rgba(30, 34, 48, .28);
+    opacity: 0; pointer-events: none; transition: opacity .12s ease; z-index: 300;
+}
+.asd-iconbtn[aria-label]:hover::after,
+.asd-iconbtn[aria-label]:focus-visible::after { opacity: 1; }
 
 /* INSPINIA page-title bar — flush under the topbar, full width. Rendered as the page's first element;
    negative margins cancel .page's padding (24px 26px) so it spans edge-to-edge under the topbar. */
