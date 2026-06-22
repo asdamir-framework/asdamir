@@ -569,6 +569,9 @@ h1:focus { outline: none; }
 }
 .asd-iconbtn[aria-label]:hover::after,
 .asd-iconbtn[aria-label]:focus-visible::after { opacity: 1; }
+/* The modal close (X) is self-evident — never show a hover hint on it. aria-label stays for screen
+   readers; this just suppresses the visual ::after tooltip. */
+.asd-modal-head .asd-iconbtn[aria-label]::after { content: none; }
 
 /* INSPINIA page-title bar — flush under the topbar, full width. Rendered as the page's first element;
    negative margins cancel .page's padding (24px 26px) so it spans edge-to-edge under the topbar. */
