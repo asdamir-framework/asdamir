@@ -62,7 +62,7 @@ one management database per company, every app's admin data sliced by `AppId`:
 
 ```
 Company (firma)                         one management DB per company
-  └── App            (Apps row)         CLI-registered; `framework app register`
+  └── App            (Apps row)         CLI-registered; `asdamir app register`
         └── User                        company-unique identity
               └── Permissions           role + menu, scoped by AppId (Tier-2)
 ```

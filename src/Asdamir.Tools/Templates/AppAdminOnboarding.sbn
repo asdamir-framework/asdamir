@@ -230,7 +230,12 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'App.Dash.DemoItemsHint',       N'ru-RU', N'Хранится в собственной базе данных приложения'),
     (N'App.Dash.StatusHint',          N'tr-TR', N'Gateway + arayüz çevrimiçi'),
     (N'App.Dash.StatusHint',          N'en-US', N'Gateway + UI online'),
-    (N'App.Dash.StatusHint',          N'ru-RU', N'Gateway + интерфейс онлайн');
+    (N'App.Dash.StatusHint',          N'ru-RU', N'Gateway + интерфейс онлайн'),
+    -- Generic user-facing error fallback (error-display contract — see CLAUDE.md). Shown when an API
+    -- response carries no ProblemDetails body; the real error is logged by the Gateway's engine.
+    (N'Common.UnexpectedError',       N'tr-TR', N'Beklenmeyen bir hata oluştu, lütfen tekrar deneyin.'),
+    (N'Common.UnexpectedError',       N'en-US', N'An unexpected error occurred. Please try again.'),
+    (N'Common.UnexpectedError',       N'ru-RU', N'Произошла непредвиденная ошибка. Пожалуйста, попробуйте ещё раз.');
 
 DECLARE @Key NVARCHAR(200), @Culture NVARCHAR(20), @Value NVARCHAR(MAX);
 DECLARE seed_cur CURSOR LOCAL FAST_FORWARD FOR SELECT [Key],[Culture],[Value] FROM @Seed;

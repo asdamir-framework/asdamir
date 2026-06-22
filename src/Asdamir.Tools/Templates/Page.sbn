@@ -5,11 +5,13 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Asdamir.Web.UI.Components
+@using Asdamir.Web.Http
 @using {{ Namespace }}.Dtos
 @attribute [Authorize(Policy = "{{ Policy }}")]
 
 @inject IHttpClientFactory Http
 @inject ILogger<{{ EntityPlural }}List> Logger
+@inject Asdamir.Web.Localization.ApiStringLocalizer L
 
 <PageTitle>{{ EntityPlural }}</PageTitle>
 
@@ -169,9 +171,10 @@
 
             if (!response.IsSuccessStatusCode)
             {
-                var body = await response.Content.ReadAsStringAsync();
-                Logger.LogWarning("Save failed: {Status} {Body}", response.StatusCode, body);
-                _toaster.Show("Kaydedilemedi.", AsdamirToaster.Kind.Err);
+                // The Gateway logged the real error (Console + File + DB AppLog) and returned a
+                // localized ProblemDetails.Title; surface THAT — never the raw status code.
+                Logger.LogWarning("Save failed: {Status}", response.StatusCode);
+                _toaster.Show(await response.ToUserMessageAsync(L), AsdamirToaster.Kind.Err);
                 return;
             }
 
@@ -207,7 +210,8 @@
             var response = await api.DeleteAsync("{{ ApiPath }}/" + item.Id);
             if (!response.IsSuccessStatusCode)
             {
-                _toaster.Show("Silinemedi.", AsdamirToaster.Kind.Err);
+                Logger.LogWarning("Delete failed: {Status}", response.StatusCode);
+                _toaster.Show(await response.ToUserMessageAsync(L), AsdamirToaster.Kind.Err);
                 return;
             }
             _toaster.Show("Silindi.", AsdamirToaster.Kind.Ok);

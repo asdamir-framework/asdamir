@@ -23,7 +23,7 @@ Asdamir gives you two things at once:
 
 - **Skip months of plumbing.** Authentication (JWT + 2FA + refresh-token rotation with reuse detection), two-tier RBAC, validation, RFC-7807 error handling, DB-backed localization & configuration, structured logging, a transactional outbox, Hangfire jobs and an enterprise FluentUI component library all ship working. You write features, not infrastructure.
 - **Secure by default, not bolted on.** Safe defaults everywhere: CSP nonce, security headers, request rate limiting, AES-256-GCM encryption with PBKDF2, ASP.NET Data Protection key persistence, audit logging, PII-safe logging. A static **audit-lint** gate fails the build on anti-patterns (sync-over-async, silent failures, leaked API surface, unsafe defaults).
-- **Scaffold in seconds.** `framework new app`, `new mobile` (MAUI Blazor Hybrid), `new entity`, `new page`, `new module` emit code that already follows the framework's audited conventions — entity → DTO → repository → service → controller → tests → migration.
+- **Scaffold in seconds.** `asdamir new app`, `new mobile` (MAUI Blazor Hybrid), `new entity`, `new page`, `new module` emit code that already follows the framework's audited conventions — entity → DTO → repository → service → controller → tests → migration.
 - **Observability that actually helps.** OpenTelemetry traces **and** metrics (incl. SQL/Dapper DB spans) over OTLP, Kubernetes-style liveness/readiness health probes, correlation-ID propagation, and Serilog to console / file / database. Point it at a collector and you get full-stack traces end-to-end.
 - **Built to run in production.** A journaled, idempotent migration runner; encryption-key rotation tooling; DB-backed (scale-out) rate limiting; restart-safe Data Protection keys; offline-resilient mobile. **0-warning builds** (`TreatWarningsAsErrors` + latest analyzers) and **300+ automated tests**.
 
@@ -92,8 +92,8 @@ flowchart TB
 
 | Concern | What you get |
 |---|---|
-| **Database migrations** | `framework db apply` — journaled, idempotent, incremental runner (`dbo.__SchemaMigrations`); re-runs apply only what's new |
-| **Secrets & key rotation** | `framework secrets rotate-key` re-encrypts at-rest secrets old-key → new-key (transactional, idempotent); `secrets encrypt` for config values — [runbook](docs/secret-rotation.md) |
+| **Database migrations** | `asdamir db apply` — journaled, idempotent, incremental runner (`dbo.__SchemaMigrations`); re-runs apply only what's new |
+| **Secrets & key rotation** | `asdamir secrets rotate-key` re-encrypts at-rest secrets old-key → new-key (transactional, idempotent); `secrets encrypt` for config values — [runbook](docs/secret-rotation.md) |
 | **Health probes** | `/health/live` (liveness) + `/health/ready` (readiness — gates traffic on the DB, Dapper mode) on every API tier; liveness on the UI hosts. k8s-ready |
 | **Tracing & metrics** | OpenTelemetry over OTLP — ASP.NET Core + HttpClient + .NET runtime + **SQL/Dapper** spans, correlated across tiers (opt-in via an OTLP endpoint) |
 | **Scale-out** | DB-backed rate limiting (counters aggregate across instances); DB-backed refresh-token store; restart-safe Data Protection keys |
@@ -127,7 +127,7 @@ dotnet run
 Create the schema with the journaled runner, then sign in as the seeded SuperAdmin:
 
 ```bash
-framework db apply --server <sql> --database AsdamirVault --user <login> --password <pwd> \
+asdamir db apply --server <sql> --database AsdamirVault --user <login> --password <pwd> \
   --create-database --migrations AppManagement/db/migrations
 ```
 
@@ -136,9 +136,9 @@ Migration runbook + first-SuperAdmin seed are provided with AppManagement (the c
 **Scaffold a new app:**
 
 ```bash
-framework new app MyPortal          # Server (Blazor) + Gateway (REST API) + DB schema/seed
-framework new mobile MyPortal       # MAUI Blazor Hybrid app
-framework new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
+asdamir new app MyPortal          # Server (Blazor) + Gateway (REST API) + DB schema/seed
+asdamir new mobile MyPortal       # MAUI Blazor Hybrid app
+asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
 ```
 
 ### Configuration & secrets

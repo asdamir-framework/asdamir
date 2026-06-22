@@ -42,7 +42,7 @@ public sealed class SecretStore(IEncryptionService crypto)
 //   prod: environment variable  Security__EncryptionKey
 ```
 
-The key must be **≥ 32 characters**. Rotating it is a data-migration event: values encrypted under the old key cannot be read under a new one, so decrypt-then-re-encrypt during rotation — use `framework secrets rotate-key`. See the **[Secret Management & Key Rotation runbook](../secret-rotation.md)**.
+The key must be **≥ 32 characters**. Rotating it is a data-migration event: values encrypted under the old key cannot be read under a new one, so decrypt-then-re-encrypt during rotation — use `asdamir secrets rotate-key`. See the **[Secret Management & Key Rotation runbook](../secret-rotation.md)**.
 
 ## Hashing
 

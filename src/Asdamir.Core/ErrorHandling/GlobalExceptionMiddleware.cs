@@ -80,28 +80,11 @@ public class GlobalExceptionMiddleware
             "Unhandled exception caught by GlobalExceptionMiddleware - ErrorCode={ErrorCode}, StatusCode={StatusCode}, TraceId={TraceId}, ErrorKey={ErrorKey}, Path={Path}, CaughtBy={CaughtBy}",
             errorCode, statusCode, traceId, errorKey, context.Request.Path, nameof(GlobalExceptionMiddleware));
 
-        // Get translated message from LocalizationResource (Category='ERROR')
+        // Resolve the USER-FACING message from LocalizationResource (Category='ERROR') by culture.
+        // Fallback chain: error.<specificKey> → generic error message → a neutral last resort. We
+        // never surface the raw error key (an internal token) to the user.
         var localizationService = context.RequestServices.GetService<ILocalizationService>();
-        string userMessage = errorKey; // fallback to error key
-
-        if (localizationService != null)
-        {
-            try
-            {
-                var translatedMessage = await localizationService.GetAsync(userLanguage, $"error.{errorKey}", CancellationToken.None);
-                if (!string.IsNullOrEmpty(translatedMessage))
-                {
-                    userMessage = translatedMessage;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Asdamir.Core.ErrorHandling.GlobalException: Failed to get translated message - ErrorKey={ErrorKey}, Language={Language}", 
-                    errorKey, userLanguage);
-            }
-        }
-
-        problemDetails.Title = userMessage;
+        problemDetails.Title = await ResolveUserMessageAsync(localizationService, userLanguage, errorKey);
         problemDetails.Extensions["errorKey"] = errorKey;
         problemDetails.Extensions["userLanguage"] = userLanguage;
 
@@ -138,6 +121,43 @@ public class GlobalExceptionMiddleware
             return "tr-TR";
         return "tr-TR";
     }
+
+    // Translate the error to a localized, user-safe message. Tries the specific key first, then a
+    // generic error message, then a neutral last resort — so the user never sees a raw key or code.
+    private async Task<string> ResolveUserMessageAsync(ILocalizationService? localizationService, string userLanguage, string errorKey)
+    {
+        if (localizationService is null)
+        {
+            return DefaultUserMessage;
+        }
+
+        var specific = await TryLocalizeAsync(localizationService, userLanguage, $"error.{errorKey}");
+        if (!string.IsNullOrEmpty(specific))
+        {
+            return specific;
+        }
+
+        var generic = await TryLocalizeAsync(localizationService, userLanguage, GenericErrorKey);
+        return !string.IsNullOrEmpty(generic) ? generic : DefaultUserMessage;
+    }
+
+    private async Task<string?> TryLocalizeAsync(ILocalizationService localizationService, string userLanguage, string key)
+    {
+        try
+        {
+            return await localizationService.GetAsync(userLanguage, key, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Asdamir.Core.ErrorHandling.GlobalException: localization lookup failed - Key={Key}, Language={Language}", key, userLanguage);
+            return null;
+        }
+    }
+
+    // The generic error message key seeded in LocalizationResource (Category='ERROR') for all cultures.
+    private const string GenericErrorKey = "error.error.generic";
+    // Absolute last resort if localization is entirely unavailable (never a raw status code or key).
+    private const string DefaultUserMessage = "An unexpected error occurred. Please try again.";
 
     private string GetErrorKey(Exception exception, string errorCode)
     {

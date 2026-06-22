@@ -11,7 +11,7 @@ they're stored, and how to rotate them **without losing data or locking users ou
 | Secret | Protects | Storage | Rotation impact |
 |---|---|---|---|
 | **`Jwt:Key`** | Signs & validates all JWTs (HMAC-SHA256). **Shared** by AppManagement and every managed app's Gateway so tokens are mutually trusted. | env var `Jwt__Key` (prod) / user-secrets (dev). ≥64 bytes. | All **access** tokens signed with the old key are rejected. Clients silently refresh (refresh tokens are stored as SHA-256 **hashes**, not signed, so they survive). Must be rolled out to **all** tiers together. |
-| **`Security:EncryptionKey`** | Derives the AES-256-GCM key (PBKDF2) that encrypts at-rest values: `Apps.EncryptedClientSecret`, `AppConfigurations` rows with `IsEncrypted=1`, and any `v2:`-prefixed Companies connection string. | env var `Security__EncryptionKey` / user-secrets. ≥32 chars. | **Destructive** — every value encrypted under the old key becomes unreadable the moment the key changes. **Re-encrypt first** with `framework secrets rotate-key` (below). |
+| **`Security:EncryptionKey`** | Derives the AES-256-GCM key (PBKDF2) that encrypts at-rest values: `Apps.EncryptedClientSecret`, `AppConfigurations` rows with `IsEncrypted=1`, and any `v2:`-prefixed Companies connection string. | env var `Security__EncryptionKey` / user-secrets. ≥32 chars. | **Destructive** — every value encrypted under the old key becomes unreadable the moment the key changes. **Re-encrypt first** with `asdamir secrets rotate-key` (below). |
 | **`Security:EncryptionSalt`** | Optional explicit PBKDF2 salt. When unset, a deterministic salt is derived from the key. | env / user-secrets. ≥16 chars. | Changing it changes the derived key → same impact as rotating `EncryptionKey`. Rotate the two **together**. |
 | **`ConnectionStrings:*`** | DB credentials (AsdamirVault; each app's own business DB on its API tier). | env / user-secrets only — **never** `appsettings.json`. | Restart the affected tier. No re-encryption. |
 | **Per-app `ClientSecret`** | The `client_credentials` secret a managed app validates on `gateway/auth/client-token`; AppManagement stores it as `Apps.EncryptedClientSecret`. | AsdamirVault (encrypted at rest). The app keeps its copy in its own secret store. | Rotate via the AdminConsole / API (below); update the app's configured copy. Not tied to `EncryptionKey` rotation. |
@@ -28,7 +28,7 @@ never its value — so you can confirm a host is configured before cutover.
 Because this key encrypts data at rest, you must re-encrypt that data **before** switching the deployment
 to the new key. The CLI does the re-encryption pass in one transaction.
 
-`framework secrets rotate-key` re-encrypts, from the OLD key to the NEW key:
+`asdamir secrets rotate-key` re-encrypts, from the OLD key to the NEW key:
 
 - `dbo.Apps.EncryptedClientSecret` (every registered app's client secret)
 - `dbo.AppConfigurations` rows where `IsEncrypted = 1`
@@ -49,10 +49,10 @@ export ASDAMIR_NEW_ENCRYPTION_KEY='<new 32+ char key>'
 # If you use an explicit salt, also export ASDAMIR_OLD_ENCRYPTION_SALT / ASDAMIR_NEW_ENCRYPTION_SALT.
 
 # 2) DRY-RUN — verify every value re-encrypts & round-trips, see the counts, write nothing.
-framework secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd>
+asdamir secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd>
 
 # 3) APPLY — commit the re-encrypted values (single transaction).
-framework secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd> --apply
+asdamir secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd> --apply
 
 # 4) Deploy the NEW key as Security:EncryptionKey on AppManagement (and restart it).
 #    Token cache auto-evicts on 401, so orchestration picks up the re-encrypted secrets.
@@ -65,7 +65,7 @@ Auth flags work like `db apply`: `--connection "<connstr>"` (wins over the parts
 
 ### Not covered by the tool (do these manually)
 - **Companies connection strings in `appsettings.json`** (multi-company catalog, `v2:`-prefixed): produce
-  new ciphertext under the new key with `framework secrets encrypt` and paste it in.
+  new ciphertext under the new key with `asdamir secrets encrypt` and paste it in.
 - **Managed apps' own encrypted config** in their own databases: run `rotate-key` against each app's DB
   too if it stores `IsEncrypted=1` values (the column/table names are the same).
 
@@ -77,8 +77,8 @@ To seed an encrypted `AppConfigurations` value or a `v2:` Companies connection s
 
 ```bash
 export ASDAMIR_ENCRYPTION_KEY='<Security:EncryptionKey>'
-framework secrets encrypt --value 'the-plaintext'      # prints: v2:....
-echo 'the-plaintext' | framework secrets encrypt        # or pipe it on stdin
+asdamir secrets encrypt --value 'the-plaintext'      # prints: v2:....
+echo 'the-plaintext' | asdamir secrets encrypt        # or pipe it on stdin
 ```
 
 The output uses the exact format the runtime expects (v2 AES-GCM), so it decrypts in-app with no further

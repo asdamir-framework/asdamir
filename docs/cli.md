@@ -14,7 +14,7 @@ dotnet run --project src/Asdamir.Tools -- <command> [options]
 
 ### Install as a global tool
 
-The packaged command is `asdamir <command>` (the tool command name is also `framework`).
+The packaged command is `asdamir <command>` (formerly `framework`).
 
 **From nuget.org** (stable `1.0.0`):
 
@@ -86,11 +86,11 @@ retried on the next run.
 
 ```bash
 # Cross-platform (SQL auth):
-framework db apply --server localhost --database MyAppDb \
+asdamir db apply --server localhost --database MyAppDb \
   --user <login> --password <pwd> --create-database --migrations db/migrations
 
 # Or a full connection string (e.g. from a secret); on Windows you may omit --user for integrated auth:
-framework db apply --connection "<connstr>" --migrations db/migrations
+asdamir db apply --connection "<connstr>" --migrations db/migrations
 ```
 
 Options: `--connection/-c` (full string, wins over the parts), `--server/-S`, `--database/-d`,
@@ -105,7 +105,7 @@ database — by calling the running AdminConsole.Api (`POST /api/admin/apps`). A
 secret encryption are delegated to the API, so the CLI stays credential- and crypto-free.
 
 ```bash
-framework app register \
+asdamir app register \
   --api https://admin-api.example.com/ \
   --token <SuperAdmin JWT from an authenticated console session> \
   --code acme.portal \
@@ -134,8 +134,8 @@ can't be decrypted with the old key.
 ```bash
 export ASDAMIR_OLD_ENCRYPTION_KEY='<current key>'
 export ASDAMIR_NEW_ENCRYPTION_KEY='<new 32+ char key>'
-framework secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd>          # dry-run
-framework secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd> --apply  # commit
+asdamir secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd>          # dry-run
+asdamir secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd> --apply  # commit
 ```
 
 Connection flags match `db apply` (`--connection` / `--server`+`--database`+`--user`+`--password`; omit
@@ -150,7 +150,7 @@ a stored secret back.)
 
 ```bash
 export ASDAMIR_ENCRYPTION_KEY='<key>'
-framework secrets encrypt --value 'the-plaintext'     # or: echo 'the-plaintext' | framework secrets encrypt
+asdamir secrets encrypt --value 'the-plaintext'     # or: echo 'the-plaintext' | asdamir secrets encrypt
 ```
 
 Full procedures (incl. `Jwt:Key` and per-app client-secret rotation): **[Secret Management & Key Rotation](secret-rotation.md)**.
