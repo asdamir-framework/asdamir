@@ -110,6 +110,15 @@ curl -s http://localhost:7055/gateway/health     # → 200 {"status":"ok","app":
 curl -s -o /dev/null -w '%{http_code}\n' http://localhost:7055/api/customers   # → 401 (auth enforced)
 ```
 
+## Full login + on-screen CRUD (identity is central)
+
+The generated app's **identity is central** — login is proxied to **AppManagement** (the control plane),
+which owns users/roles/menus in a central store, and the JWT it signs is validated by your Gateway
+(shared `Jwt:Key`). So the complete *log in → open the pages → add/see data* flow needs AppManagement
+running and your app **registered** there with a seeded admin. That full run-and-see runbook (DB setup,
+secrets, app registration, both hosts, login + CRUD proof) ships with the AppManagement product Help.
+The open-core build above (generate → build 0/0 → run → health) is fully self-contained and offline.
+
 ---
 
 ## Optional: the Claude Code agent/skill accelerator
