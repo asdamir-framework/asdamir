@@ -92,11 +92,13 @@ The pure-CLI output **builds clean with zero manual edits** (since 1.0.2).
 
 ## 6. To make CRUD fully run (normal integration, not defects)
 
-The output builds and tests green; to run live CRUD you still wire what's inherently app-specific:
-1. **Gateway DI** — register the repositories/services (`AddScoped`) + `AddMultiTenancy()` (runtime; build/tests pass without it).
-2. **Server** — an `"AdminApi"` HttpClient + an `"AdminAccess"` policy (the pages use them; `new page` prints a "Next:" reminder).
-3. **Relationships** — an FK-constraint/index migration (the CLI has no relationship concept).
-4. **SQL Server** + `ConnectionStrings:Default` + `asdamir db apply` for the business data.
+The output builds and tests green. The Server's authenticated UI path (the `AdminApi` client, the
+`AdminAccess` policy, and the per-call Bearer token from the login claim) is **generated for you** since
+1.0.3, so clickable CRUD works once the app is wired to its data + identity. What's still app-specific:
+1. **Gateway DI** — register the entity repositories/services (`AddScoped`) + `AddMultiTenancy()` (runtime; build/tests pass without it).
+2. **Relationships** — an FK-constraint/index migration (the CLI has no relationship concept).
+3. **SQL Server** + `ConnectionStrings:Default` + `asdamir db apply` for the business data.
+4. **Identity is central** — register the app + an admin in AppManagement (the control plane), and add the page nav entries there (menus are central). See the AppManagement Help for the full run-and-see runbook.
 
 ## 7. Run it locally (verified)
 
