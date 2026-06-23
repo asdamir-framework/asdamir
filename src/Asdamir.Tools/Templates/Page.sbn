@@ -6,12 +6,14 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Asdamir.Web.UI.Components
 @using Asdamir.Web.Http
+@using Microsoft.AspNetCore.Components.Authorization
 @using {{ Namespace }}.Dtos
 @attribute [Authorize(Policy = "{{ Policy }}")]
 
 @inject IHttpClientFactory Http
 @inject ILogger<{{ EntityPlural }}List> Logger
 @inject Asdamir.Web.Localization.ApiStringLocalizer L
+@inject AuthenticationStateProvider AuthState
 
 <PageTitle>{{ EntityPlural }}</PageTitle>
 
@@ -126,7 +128,7 @@
         _loadError = null;
         try
         {
-            var api = Http.CreateClient("AdminApi");
+            var api = await AuthedApiAsync();
             _items = await api.GetFromJsonAsync<List<{{ EntityName }}Dto>>("{{ ApiPath }}") ?? new();
         }
         catch (Exception ex)
@@ -164,7 +166,7 @@
         _saving = true;
         try
         {
-            var api = Http.CreateClient("AdminApi");
+            var api = await AuthedApiAsync();
             var response = _isNew
                 ? await api.PostAsJsonAsync("{{ ApiPath }}", _draft)
                 : await api.PutAsJsonAsync("{{ ApiPath }}/" + _draft.Id, _draft);
@@ -206,7 +208,7 @@
         _deleting = true;
         try
         {
-            var api = Http.CreateClient("AdminApi");
+            var api = await AuthedApiAsync();
             var response = await api.DeleteAsync("{{ ApiPath }}/" + item.Id);
             if (!response.IsSuccessStatusCode)
             {
@@ -237,4 +239,15 @@
         {{ f.Name }} = src.{{ f.Name }}{{ if !for.last }},{{ end }}
 {{ end ~}}
     };
+
+    // Authenticated Gateway client: attaches the signed-in user's access token (the `access_token`
+    // claim minted at login) as Bearer. Works on the interactive circuit (HttpContext is null there).
+    private async Task<HttpClient> AuthedApiAsync()
+    {
+        var client = Http.CreateClient("AdminApi");
+        var token = (await AuthState.GetAuthenticationStateAsync()).User.FindFirst("access_token")?.Value;
+        if (!string.IsNullOrWhiteSpace(token))
+            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return client;
+    }
 }

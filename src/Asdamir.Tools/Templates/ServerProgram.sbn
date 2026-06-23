@@ -102,6 +102,9 @@ builder.Services.Configure<RequestLocalizationOptions>(opts =>
 var gatewayUrl = builder.Configuration["Gateway:BaseUrl"]
     ?? throw new InvalidOperationException("Gateway:BaseUrl is required.");
 builder.Services.AddHttpClient("gatewayNoAuth", c => c.BaseAddress = new Uri(gatewayUrl));
+// Authenticated client used by the generated CRUD pages: same Gateway base address; each page attaches
+// the signed-in user's access token (the `access_token` claim) as Bearer per call.
+builder.Services.AddHttpClient("AdminApi", c => c.BaseAddress = new Uri(gatewayUrl));
 
 // DB-backed UI localization, consumed from the framework: the app's strings live CENTRALLY in
 // AppManagement (LocalizationResource scoped to this app's AppId). AddFrameworkLocalization wires
@@ -130,7 +133,8 @@ builder.Services
         opts.SlidingExpiration = true;
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(o =>
+    o.AddPolicy("AdminAccess", p => p.RequireAuthenticatedUser()));
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAntiforgery();
 // Topbar theme/dark-mode/language components read the preference cookies via HttpContext.

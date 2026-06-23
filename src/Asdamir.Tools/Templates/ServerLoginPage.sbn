@@ -134,6 +134,9 @@
         var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "";
         claims.Add(new Claim(ClaimTypes.NameIdentifier, sub));
         claims.Add(new Claim(ClaimTypes.Name, jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? sub));
+        // Carry the access token as a claim so interactive (circuit) pages can attach it as Bearer on
+        // Gateway API calls — HttpContext/cookies aren't available on the Blazor Server circuit.
+        claims.Add(new Claim("access_token", body.Tokens.AccessToken));
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,

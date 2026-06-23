@@ -42,7 +42,7 @@
 /* ── Main column ─────────────────────────────────────────────────────────── */
 .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .topbar {
-    height: 62px; flex: 0 0 62px; display: flex; align-items: center; gap: 14px; padding: 0 22px;
+    height: 62px; flex: 0 0 62px; display: flex; align-items: center; gap: 8px; padding: 0 22px;
     background: var(--asd-surface); border-bottom: 1px solid var(--asd-border-strong);
     position: sticky; top: 0; z-index: 20;
 }
