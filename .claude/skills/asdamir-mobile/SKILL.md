@@ -1,16 +1,16 @@
 ---
 name: asdamir-mobile
-description: Use for MAUI Blazor Hybrid MOBILE work — the `framework new mobile` output (`<App>.Mobile` / `.Mobile.Shared` / `.Mobile.Data`). Mobile-only concerns: SecureStorage token store, the named "gateway" HttpClient + 401 refresh-and-retry, offline SQLite cache, MauiProgram DI, appsettings Gateway:BaseUrl, Android build/platform notes. NOT web Blazor Server UI (that's asdamir-blazor-ui). Trigger on "MAUI / mobile app / MauiProgram", "token store / SecureStorage on mobile", "offline / SQLite cache", "gateway client / 401 refresh on mobile", "framework new mobile", "Android / iOS build".
+description: Use for MAUI Blazor Hybrid MOBILE work — the `asdamir new mobile` output (`<App>.Mobile` / `.Mobile.Shared` / `.Mobile.Data`). Mobile-only concerns: SecureStorage token store, the named "gateway" HttpClient + 401 refresh-and-retry, offline SQLite cache, MauiProgram DI, appsettings Gateway:BaseUrl, Android build/platform notes. NOT web Blazor Server UI (that's asdamir-blazor-ui). Trigger on "MAUI / mobile app / MauiProgram", "token store / SecureStorage on mobile", "offline / SQLite cache", "gateway client / 401 refresh on mobile", "asdamir new mobile", "Android / iOS build".
 ---
 
 # Asdamir mobile (MAUI Blazor Hybrid)
 
 Distilled from the **single source of truth**: the CLI scaffold templates `src/Asdamir.Tools/Templates/Mobile*.sbn`
-(what `framework new mobile <Name>` generates). Deep reference: `docs/mobile.md`, memory
+(what `asdamir new mobile <Name>` generates). Deep reference: `docs/mobile.md`, memory
 `2026-06-14-mobile-offline-hardening`. For shared web Blazor UI rules see `asdamir-blazor-ui`; for the
 identity/JWT model behind login see `asdamir-security`.
 
-## Structure (`framework new mobile <Name>` → 4 projects)
+## Structure (`asdamir new mobile <Name>` → 4 projects)
 - **`<App>.Mobile`** — MAUI head: `MauiProgram` (DI bootstrap), platform glue, `App.xaml`. Target today is
   **`net10.0-android`** only (iOS/maccatalyst/windows are commented-out in the csproj — not yet enabled).
 - **`<App>.Mobile.Shared`** — shared Razor UI + `Services/` (token store, api client, auth, localization,

@@ -37,4 +37,30 @@ public static class NameHelper
         }
         return word + "s";
     }
+
+    /// <summary>
+    /// Resolves the default root namespace for generated code when <c>--namespace</c> is omitted:
+    /// the containing project's namespace (its <c>&lt;RootNamespace&gt;</c>, else the .csproj file name).
+    /// Walks up from <paramref name="dir"/> to the nearest project. Returns "" if no project is found
+    /// (the caller then falls back). Using the project namespace avoids the footgun where defaulting to
+    /// the entity name makes e.g. <c>Customer</c> both a namespace and a type (CS0118).
+    /// </summary>
+    public static string ResolveProjectNamespace(DirectoryInfo dir)
+    {
+        for (var d = dir; d is not null; d = d.Parent)
+        {
+            var csproj = d.GetFiles("*.csproj").FirstOrDefault();
+            if (csproj is null) continue;
+            try
+            {
+                var text = File.ReadAllText(csproj.FullName);
+                var m = System.Text.RegularExpressions.Regex.Match(
+                    text, @"<RootNamespace>\s*([^<\s]+)\s*</RootNamespace>");
+                if (m.Success) return m.Groups[1].Value;
+            }
+            catch { /* unreadable csproj — fall through to the file-name default */ }
+            return Path.GetFileNameWithoutExtension(csproj.Name); // MSBuild's default RootNamespace
+        }
+        return "";
+    }
 }

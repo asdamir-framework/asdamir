@@ -6,7 +6,7 @@ description: Use when writing or applying a SQL schema/seed migration for Asdami
 # Asdamir migrations
 
 Migrations are plain `*.sql` applied **in filename order, exactly once each**, by the journaled runner
-`framework db apply` (records applied files in `dbo.__SchemaMigrations`; re-runs skip what's done). Deep
+`asdamir db apply` (records applied files in `dbo.__SchemaMigrations`; re-runs skip what's done). Deep
 reference: `AppManagement/db/README.md`, `docs/cli.md` → `db apply`, memory `2026-06-14-journaled-migration-runner`.
 
 ## Where a migration goes (the placement RULE — highest priority)
@@ -15,7 +15,7 @@ reference: `AppManagement/db/README.md`, `docs/cli.md` → `db apply`, memory `2
   **`AppId` column** separating each app's rows: `Users`, `Roles`, `Permissions`, `RolePermissions`,
   `UserRoles`, `Menus`, `UserMenuPermissions`, `AppConfigurations`, `LocalizationResource`, `AppLog`, …
 - **A generated app's own DB** (`<App>/db/migrations/`, e.g. `GeneratedAppDb`) holds **ONLY its business
-  data** (starts with `DemoItems`; grows via `framework new entity`).
+  data** (starts with `DemoItems`; grows via `asdamir new entity`).
 - **NEVER** put `Users`/`Roles`/`Permissions`/`Menus`/`AppConfigurations`/… or their seed into a generated
   app's `DbSchema.sql` / `DbSeed.sql`. The app reaches that central data through AppManagement's API.
   (See `CLAUDE.md` → the CENTRAL RULE.)
@@ -41,7 +41,7 @@ reference: `AppManagement/db/README.md`, `docs/cli.md` → `db apply`, memory `2
 
 ## Applying + verifying (cross-platform)
 ```bash
-framework db apply --server <sql> --database AsdamirVault --user <login> --password <pwd> \
+asdamir db apply --server <sql> --database AsdamirVault --user <login> --password <pwd> \
   --migrations AppManagement/db/migrations
 #   add --create-database for a fresh catalog; on Windows you may drop --user for integrated auth.
 ```

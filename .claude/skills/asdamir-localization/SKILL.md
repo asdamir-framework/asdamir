@@ -45,7 +45,7 @@ for `Persistence:UseInMemory=true` (dev/test). Deep reference: `docs/fundamental
    <span>@L["Apps.Subtitle"]</span>
    ```
 
-5. **Apply the migration** with the journaled runner (`asdamir-migration` → `framework db apply`).
+5. **Apply the migration** with the journaled runner (`asdamir-migration` → `asdamir db apply`).
 
 6. **Interactive Server pages:** culture is re-applied per circuit by `CultureCircuitHandler`
    (`UseRequestLocalization` only covers SSR) — already wired; don't re-implement.

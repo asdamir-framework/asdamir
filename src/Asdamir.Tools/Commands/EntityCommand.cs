@@ -83,7 +83,10 @@ public static class EntityCommand
             return;
         }
 
-        var ns = string.IsNullOrWhiteSpace(nsOverride) ? name : nsOverride;
+        // --namespace wins; else the containing project's namespace; else (no project) the entity name.
+        var ns = !string.IsNullOrWhiteSpace(nsOverride) ? nsOverride
+               : NameHelper.ResolveProjectNamespace(output) is { Length: > 0 } proj ? proj
+               : name;
         var pluralLower = NameHelper.Pluralize(name).ToLowerInvariant();
 
         var model = new
@@ -96,7 +99,9 @@ public static class EntityCommand
             Namespace = ns,                   // root namespace
             Fields = fields,
             GeneratedAtUtc = DateTime.UtcNow.ToString("u"),
-            MigrationStamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss"),
+            // ms precision (…fff) so two entities scaffolded in the same second get distinct, ordered
+            // migration stamps instead of colliding on V<yyyyMMddHHmmss>__create_*.sql.
+            MigrationStamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"),
         };
 
         var outputs = new[]
@@ -113,30 +118,58 @@ public static class EntityCommand
             ($"db/migrations/V{model.MigrationStamp}__create_{pluralLower}.sql", "Migration"),
         };
 
+        // The entity is scaffolded from its project dir (e.g. <app>/src/<App>.Gateway). xUnit test
+        // files must NOT land in that app project (it has no test refs → CS0246). Route them to the
+        // matching test project (<app>/tests/<App>.Gateway.Tests/Entities/) when it exists.
+        var testTarget = ResolveTestTarget(output, name);
+
         var written = 0;
         var skipped = 0;
         foreach (var (relPath, templateName) in outputs)
         {
-            var target = Path.Combine(output.FullName, relPath);
+            var target = (templateName == "Tests" && testTarget is not null)
+                ? testTarget
+                : Path.Combine(output.FullName, relPath);
+            var display = (templateName == "Tests" && testTarget is not null)
+                ? Path.GetRelativePath(output.FullName, target)
+                : relPath;
             var dir = Path.GetDirectoryName(target)!;
             Directory.CreateDirectory(dir);
 
             if (File.Exists(target))
             {
-                Console.WriteLine($"  SKIP (exists): {relPath}");
+                Console.WriteLine($"  SKIP (exists): {display}");
                 skipped++;
                 continue;
             }
 
             var content = TemplateRenderer.Render(templateName, model);
             File.WriteAllText(target, content);
-            Console.WriteLine($"  WROTE: {relPath}");
+            Console.WriteLine($"  WROTE: {display}");
             written++;
         }
 
         Console.WriteLine();
         Console.WriteLine($"Done. {written} written, {skipped} skipped.");
         Console.WriteLine($"Next: review the generated files, register {name}Service / {name}Repository in DI, and apply the migration.");
+    }
+
+    // Finds the conventional test project for the project the entity is scaffolded into: walk up to the
+    // app root (the nearest ancestor containing a 'tests' folder) and look for tests/<ProjectDir>.Tests.
+    // Returns the absolute path for the entity's test file there, or null to fall back to writing it
+    // next to the entity (non-standard layout — the file would still need to be moved by hand).
+    private static string? ResolveTestTarget(DirectoryInfo projectDir, string name)
+    {
+        for (var dir = projectDir; dir is not null; dir = dir.Parent)
+        {
+            var testsRoot = Path.Combine(dir.FullName, "tests");
+            if (!Directory.Exists(testsRoot)) continue;
+            var testProj = Path.Combine(testsRoot, projectDir.Name + ".Tests");
+            return Directory.Exists(testProj)
+                ? Path.Combine(testProj, "Entities", $"{name}Tests.cs")
+                : null;
+        }
+        return null;
     }
 
 }

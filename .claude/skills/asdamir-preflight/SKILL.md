@@ -51,9 +51,9 @@ Must be `0 findings at or above warning`. Fix findings, or suppress deliberately
 ### 4. (Only if you touched migrations / `db apply`) verify migrations apply
 Apply all migrations to a throwaway DB, then re-run to prove the journal skips them:
 ```bash
-framework db apply --server localhost --database AsdamirPreflight --user <login> --password <pwd> \
+asdamir db apply --server localhost --database AsdamirPreflight --user <login> --password <pwd> \
   --create-database --migrations AppManagement/db/migrations          # fresh: N applied
-framework db apply --server localhost --database AsdamirPreflight --user <login> --password <pwd> \
+asdamir db apply --server localhost --database AsdamirPreflight --user <login> --password <pwd> \
   --migrations AppManagement/db/migrations                            # re-run: 0 new, N skipped
 # then drop AsdamirPreflight
 ```

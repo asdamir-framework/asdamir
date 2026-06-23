@@ -21,7 +21,7 @@ app.UseAuthorization();
   registration fails at startup). Don't change the lifetime.
 - Serilog writes **three sinks: Console + File + DB (`dbo.AppLog`)**; the DB sink persists Warning+ with
   the selected app's `AppId` (+ Source/ErrorKey/CaughtBy) so ErrorMonitoring shows which app failed.
-- The `framework new app` scaffold already emits this in `GatewayProgram.sbn` — keep it.
+- The `asdamir new app` scaffold already emits this in `GatewayProgram.sbn` — keep it.
 
 ## Blazor UI hosts are different
 UI hosts (AdminConsole, generated Server) use the **Blazor error boundary + `app.UseExceptionHandler("/Error")`**,

@@ -5,7 +5,7 @@ description: Use when scaffolding a brand-new application (or mobile app) on the
 
 # Asdamir: scaffold a new app end-to-end
 
-`framework new app <Name>` emits a self-contained skeleton: **`<Name>.Server`** (Blazor Web App, the UI
+`asdamir new app <Name>` emits a self-contained skeleton: **`<Name>.Server`** (Blazor Web App, the UI
 tier) + **`<Name>.Gateway`** (REST API tier) + the app's own DB schema/seed + a
 `db/admin-onboarding/register_<name>.sql`. Deep reference: `docs/MANAGED_APP_TEMPLATE.md`, `docs/cli.md`,
 `docs/mobile.md`, and `CLAUDE.md` → CENTRAL + Layered rules.
@@ -26,7 +26,7 @@ tier) + **`<Name>.Gateway`** (REST API tier) + the app's own DB schema/seed + a
 
 ## Steps
 ```bash
-framework new app MyPortal            # → MyPortal.Server + MyPortal.Gateway + db + register_myportal.sql
+asdamir new app MyPortal            # → MyPortal.Server + MyPortal.Gateway + db + register_myportal.sql
 cd MyPortal
 ```
 1. **Dev secrets on the GATEWAY** (never in appsettings.json):
@@ -39,7 +39,7 @@ cd MyPortal
 2. `dotnet build MyPortal.sln && dotnet test MyPortal.sln`
 3. **Create the app's own (business) DB** with the journaled runner (`asdamir-migration`):
    ```bash
-   framework db apply --server <sql> --database MyPortalDb --user <login> --password <pwd> \
+   asdamir db apply --server <sql> --database MyPortalDb --user <login> --password <pwd> \
      --create-database --migrations db/migrations
    ```
 4. **Register + seed in AppManagement** — run `db/admin-onboarding/register_myportal.sql` **against
@@ -48,7 +48,7 @@ cd MyPortal
 5. **Run both tiers:** `dotnet run --project src/MyPortal.Gateway` and `dotnet run --project src/MyPortal.Server`. Sign in with the seeded admin.
 6. Add real tables/pages with the `asdamir-new-entity` skill.
 
-## Mobile (`framework new mobile <Name>`)
+## Mobile (`asdamir new mobile <Name>`)
 MAUI Blazor Hybrid app (login, nav drawer, dashboard, 401 refresh, offline cache). Needs
 `dotnet workload install maui-android` + an Android SDK platform; build a **single RID**
 (`dotnet build … -f net10.0-android -r android-arm64` — a plain multi-RID build fails NETSDK1047). See

@@ -15,10 +15,10 @@ Layered rules).
 Run from the app's API/Gateway project (where data access lives):
 ```bash
 cd src/<App>.Gateway        # the REST API tier of the generated app
-framework new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool,DueAtUtc:datetime"
+asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool,DueAtUtc:datetime"
 ```
 This emits the full slice following audited conventions: **entity + DTO + repository + service +
-controller + tests + a migration** for the app's own DB. (`framework add field <Entity> --fields "…"`
+controller + tests + a migration** for the app's own DB. (`asdamir add field <Entity> --fields "…"`
 later appends a field across the whole set.)
 
 ## After scaffolding
@@ -26,10 +26,10 @@ later appends a field across the whole set.)
 1. **Apply the generated migration** to the app's own DB with the journaled runner (see
    `asdamir-migration`):
    ```bash
-   framework db apply --server <sql> --database <AppDb> --user <login> --password <pwd> \
+   asdamir db apply --server <sql> --database <AppDb> --user <login> --password <pwd> \
      --migrations db/migrations
    ```
-2. **UI** — add a page that calls the new controller over HTTP (`framework new page <Name>`). The UI tier
+2. **UI** — add a page that calls the new controller over HTTP (`asdamir new page <Name>`). The UI tier
    reaches the data **through the API**, never via a `DbConnection`.
 3. **Permissions** — gate the UI/actions by the user's permission claims (RBAC is central in
    AppManagement); register any new permission there, not in the app's DB.

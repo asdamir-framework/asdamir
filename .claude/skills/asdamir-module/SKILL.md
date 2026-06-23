@@ -1,6 +1,6 @@
 ---
 name: asdamir-module
-description: Use when packaging a feature as a self-registering module (IModule) or scaffolding a new module project. Trigger on "add a module", "IModule", "self-registering feature", "framework new module", "plug-in / feature package".
+description: Use when packaging a feature as a self-registering module (IModule) or scaffolding a new module project. Trigger on "add a module", "IModule", "self-registering feature", "asdamir new module", "plug-in / feature package".
 ---
 
 # Asdamir modules
@@ -12,7 +12,7 @@ and it's discovered + wired without hand-editing the composition root.
 
 ## Add one
 ```bash
-framework new module Billing          # scaffolds a self-registering IModule project
+asdamir new module Billing          # scaffolds a self-registering IModule project
 ```
 - Implement `IModule` (registration + lifecycle hooks); the module system (`AddModuleSystem()`) discovers
   and orders it. Keep the module's services behind its own `Add…` extension so it composes cleanly.

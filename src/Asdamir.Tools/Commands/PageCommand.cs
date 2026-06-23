@@ -91,7 +91,10 @@ public static class PageCommand
             return;
         }
 
-        var ns = string.IsNullOrWhiteSpace(nsOverride) ? name : nsOverride;
+        // --namespace wins; else the containing project's namespace; else (no project) the entity name.
+        var ns = !string.IsNullOrWhiteSpace(nsOverride) ? nsOverride
+               : NameHelper.ResolveProjectNamespace(output) is { Length: > 0 } proj ? proj
+               : name;
         var plural = NameHelper.Pluralize(name);
         var pluralLower = plural.ToLowerInvariant();
         var resolvedRoute = string.IsNullOrWhiteSpace(route) ? "/" + pluralLower : route;
@@ -115,6 +118,9 @@ public static class PageCommand
 
         var outputs = new[]
         {
+            // The UI tier keeps its OWN DTO copy (layering rule) so the page compiles standalone —
+            // it does NOT reference the Gateway's DTO. Rendered into this (Server) project's Dtos/.
+            ($"Dtos/{name}Dto.cs",                         "Dto"),
             ($"Components/Pages/{plural}List.razor",       "Page"),
             ($"Components/Pages/{name}EditorDialog.razor", "PageDialog"),
         };

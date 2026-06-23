@@ -13,7 +13,7 @@
 {{ else if f.InputKind == "bool" ~}}
     <FluentSwitch @bind-Value="Model.{{ f.Name }}" Label="{{ f.Name }}" />
 {{ else if f.InputKind == "date" ~}}
-    <FluentDatePicker @bind-Value="Model.{{ f.Name }}" Label="{{ f.Name }}" />
+    <FluentDatePicker @bind-Value="{{ f.Name }}Picker" Label="{{ f.Name }}" />
 {{ else if f.InputKind == "guid" ~}}
     <FluentTextField Value="@Model.{{ f.Name }}.ToString()" Label="{{ f.Name }}" ReadOnly="true" Class="asd-form-w" />
 {{ end ~}}
@@ -22,4 +22,16 @@
 
 @code {
     [Parameter] public {{ EntityName }}Dto Model { get; set; } = default!;
+{{ for f in Fields ~}}
+{{ if f.InputKind == "date" ~}}
+
+    // FluentDatePicker.Value is DateTime?; bridge it to the DTO's {{ f.CSharpType }} {{ f.Name }}
+    // so a non-nullable DateTime field also binds (no CS1503).
+    private DateTime? {{ f.Name }}Picker
+    {
+        get => Model.{{ f.Name }};
+        set => Model.{{ f.Name }} = value{{ if f.IsNullable }}{{ else }}.GetValueOrDefault(){{ end }};
+    }
+{{ end ~}}
+{{ end ~}}
 }

@@ -13,19 +13,19 @@ memory `2026-06-14-secrets-rotation-and-health-probes`.
 
 ## Security:EncryptionKey (at-rest encryption) — re-encrypt FIRST
 Rotating this key without re-encrypting bricks every encrypted value (`Apps.EncryptedClientSecret`,
-`AppConfigurations` rows with `IsEncrypted=1`). Use `framework secrets rotate-key`:
+`AppConfigurations` rows with `IsEncrypted=1`). Use `asdamir secrets rotate-key`:
 ```bash
 # 0) BACK UP AsdamirVault first.
 export ASDAMIR_OLD_ENCRYPTION_KEY='<current key>'
 export ASDAMIR_NEW_ENCRYPTION_KEY='<new 32+ char key>'   # + ASDAMIR_OLD/NEW_ENCRYPTION_SALT if you use a salt
 # 1) DRY-RUN (verifies + counts, writes nothing):
-framework secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd>
+asdamir secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd>
 # 2) APPLY (one transaction, idempotent, aborts+rolls back on a key that can't decrypt):
-framework secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd> --apply
+asdamir secrets rotate-key --server <sql> --database AsdamirVault --user <login> --password <pwd> --apply
 # 3) Deploy the NEW key as Security:EncryptionKey, restart AppManagement. Token cache evicts on 401.
 ```
 Not covered by the tool (do manually): `appsettings.json` Companies connection strings (`v2:`-prefixed —
-re-encrypt with `framework secrets encrypt`) and each managed app's own `IsEncrypted=1` config (run
+re-encrypt with `asdamir secrets encrypt`) and each managed app's own `IsEncrypted=1` config (run
 `rotate-key` against that app's DB too).
 
 ## Jwt:Key (token signing) — coordinated
@@ -42,7 +42,7 @@ update the **managed app's own** configured secret to match and restart its Gate
 ## Seed an encrypted config value
 ```bash
 export ASDAMIR_ENCRYPTION_KEY='<Security:EncryptionKey>'
-framework secrets encrypt --value 'the-plaintext'      # prints v2:…  (no `decrypt` command, by design)
+asdamir secrets encrypt --value 'the-plaintext'      # prints v2:…  (no `decrypt` command, by design)
 ```
 
 ## DON'T
