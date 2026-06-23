@@ -102,6 +102,11 @@ public static class PageCommand
 
         var fieldViews = fields.Select(f => new FieldView(f)).ToList();
 
+        // The per-page localization seed must resolve this app's AppId in AsdamirVault by the app Code.
+        // `new page` doesn't take a Code, so derive it from the app root's .sln file name (the same value
+        // `new app` used for dbo.Apps.Code). If we can't find one, leave a clear placeholder the dev fills.
+        var (appRoot, appCode) = ResolveAppRootAndCode(output);
+
         var model = new
         {
             EntityName = name,
@@ -113,6 +118,7 @@ public static class PageCommand
             Policy = string.IsNullOrWhiteSpace(policy) ? "AdminAccess" : policy,
             Fields = fieldViews,
             ApiPath = $"api/{pluralLower}",
+            AppCode = appCode,
             GeneratedAtUtc = DateTime.UtcNow.ToString("u"),
         };
 
@@ -146,9 +152,54 @@ public static class PageCommand
             written++;
         }
 
+        // Per-entity localization seed (Page.Title + Field.* in 3 cultures), scoped by AppId in AsdamirVault.
+        // Lands under <app-root>/db/admin-onboarding/localize_<pluralLower>.sql (next to register_*.sql); if no
+        // app root was found, fall back to the output dir so the file is never silently dropped.
+        var locDir = appRoot is not null
+            ? Path.Combine(appRoot, "db", "admin-onboarding")
+            : output.FullName;
+        Directory.CreateDirectory(locDir);
+        var locTarget = Path.Combine(locDir, $"localize_{pluralLower}.sql");
+        var locRel = Path.GetRelativePath(output.FullName, locTarget);
+        if (File.Exists(locTarget))
+        {
+            Console.WriteLine($"  SKIP (exists): {locRel}");
+            skipped++;
+        }
+        else
+        {
+            File.WriteAllText(locTarget, TemplateRenderer.Render("PageLocalization", model));
+            Console.WriteLine($"  WROTE: {locRel}");
+            written++;
+        }
+
         Console.WriteLine();
         Console.WriteLine($"Done. {written} written, {skipped} skipped.");
         Console.WriteLine($"Next: register the AdminApi HttpClient (named 'AdminApi') in DI and ensure the [Authorize] policy '{model.Policy}' is configured.");
+        Console.WriteLine($"Next: apply {Path.Combine("db", "admin-onboarding", $"localize_{pluralLower}.sql")} against AsdamirVault to seed the page's localization keys.");
+        if (string.IsNullOrEmpty(appCode))
+            Console.WriteLine("  NOTE: couldn't resolve the app Code (no .sln found) — edit @AppCode at the top of that SQL before running it.");
+    }
+
+    /// <summary>
+    /// Resolves the app root and the app Code for the localization seed. Walks up from the output dir to
+    /// the nearest ancestor that contains a <c>db/admin-onboarding</c> folder or a <c>.sln</c> file; the
+    /// app Code is that <c>.sln</c>'s file name (the value <c>new app</c> wrote to <c>dbo.Apps.Code</c>).
+    /// Returns (null, "") when neither marker is found — the caller then falls back to the output dir and
+    /// emits a placeholder the developer fills in.
+    /// </summary>
+    private static (string? AppRoot, string AppCode) ResolveAppRootAndCode(DirectoryInfo output)
+    {
+        for (var dir = output; dir is not null; dir = dir.Parent)
+        {
+            var sln = dir.GetFiles("*.sln").FirstOrDefault();
+            var hasOnboarding = Directory.Exists(Path.Combine(dir.FullName, "db", "admin-onboarding"));
+            if (sln is not null)
+                return (dir.FullName, Path.GetFileNameWithoutExtension(sln.Name));
+            if (hasOnboarding)
+                return (dir.FullName, "");
+        }
+        return (null, "");
     }
 
     /// <summary>

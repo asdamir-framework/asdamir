@@ -8,9 +8,9 @@
   <!-- Open-core packages — used only when AppManagement is built standalone (commercial repo, no src/).
        In this dev monorepo the open core is consumed via ProjectReference, so these stay inactive. -->
   <ItemGroup Label="Asdamir open core (standalone consumption)">
-    <PackageVersion Include="Asdamir.Core" Version="1.0.3" />
-    <PackageVersion Include="Asdamir.Data" Version="1.0.3" />
-    <PackageVersion Include="Asdamir.Web" Version="1.0.3" />
+    <PackageVersion Include="Asdamir.Core" Version="1.0.4" />
+    <PackageVersion Include="Asdamir.Data" Version="1.0.4" />
+    <PackageVersion Include="Asdamir.Web" Version="1.0.4" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions (.NET 10)">

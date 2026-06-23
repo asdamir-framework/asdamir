@@ -15,23 +15,23 @@
 @inject Asdamir.Web.Localization.ApiStringLocalizer L
 @inject AuthenticationStateProvider AuthState
 
-<PageTitle>{{ EntityPlural }}</PageTitle>
+<PageTitle>@L["Page.{{ EntityName }}.Title"]</PageTitle>
 
 <div class="asd-pagebar">
-    <h1 class="asd-pagebar-title">{{ EntityPlural }}</h1>
+    <h1 class="asd-pagebar-title">@L["Page.{{ EntityName }}.Title"]</h1>
     <ol class="asd-crumbs">
-        <li><a href="/">Ana Sayfa</a></li>
+        <li><a href="/">@L["App.Nav.Dashboard"]</a></li>
         <li class="sep">›</li>
-        <li class="cur">{{ EntityPlural }}</li>
+        <li class="cur">@L["Page.{{ EntityName }}.Title"]</li>
     </ol>
 </div>
 
 <div class="asd-page">
     <div class="asd-toolbar">
-        <FluentSearch @bind-Value="_search" Placeholder="Ara…" Label="Ara" Class="u-w-260" />
+        <FluentSearch @bind-Value="_search" Placeholder="@L["Common.Search"].Value" Label="@L["Common.Search"].Value" Class="u-w-260" />
         <div class="asd-toolbar-actions">
-            <button type="button" class="asd-btn asd-btn-primary" @onclick="OnNewAsync" disabled="@_isLoading">Yeni</button>
-            <button type="button" class="asd-btn" @onclick="ReloadAsync" disabled="@_isLoading">Yenile</button>
+            <button type="button" class="asd-btn asd-btn-primary" @onclick="OnNewAsync" disabled="@_isLoading">@L["Common.New"]</button>
+            <button type="button" class="asd-btn" @onclick="ReloadAsync" disabled="@_isLoading">@L["Common.Refresh"]</button>
         </div>
     </div>
 
@@ -45,17 +45,17 @@
     }
     else
     {
-        <AsdamirGrid TItem="{{ EntityName }}Dto" Items="@Filtered" PageSize="25" ShowSearch="false" EmptyText="Kayıt yok.">
+        <AsdamirGrid TItem="{{ EntityName }}Dto" Items="@Filtered" PageSize="25" ShowSearch="false" EmptyText="@L["Common.NoRecords"].Value">
             <HeaderTemplate>
 {{ for f in Fields ~}}
-                <th>{{ f.Name }}</th>
+                <th>@L["Field.{{ EntityName }}.{{ f.Name }}"]</th>
 {{ end ~}}
-                <th class="num">Aksiyon</th>
+                <th class="num">@L["Common.Actions"]</th>
             </HeaderTemplate>
             <RowTemplate Context="row">
 {{ for f in Fields ~}}
 {{ if f.InputKind == "bool" ~}}
-                <td><span class="asd-pill @(row.{{ f.Name }} ? "ok" : "neutral")">@(row.{{ f.Name }} ? "Evet" : "Hayır")</span></td>
+                <td><span class="asd-pill @(row.{{ f.Name }} ? "ok" : "neutral")">@(row.{{ f.Name }} ? L["Common.Yes"].Value : L["Common.No"].Value)</span></td>
 {{ else if f.InputKind == "date" ~}}
                 <td>@row.{{ f.Name }}.ToString("dd.MM.yyyy HH:mm")</td>
 {{ else ~}}
@@ -64,10 +64,10 @@
 {{ end ~}}
                 <td class="num">
                     <div class="asd-rowactions">
-                        <button type="button" class="asd-iconbtn" aria-label="Düzenle" @onclick="@(() => OnEditAsync(row))">
+                        <button type="button" class="asd-iconbtn" aria-label="@L["Common.Edit"].Value" @onclick="@(() => OnEditAsync(row))">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
                         </button>
-                        <button type="button" class="asd-iconbtn danger" aria-label="Sil" @onclick="@(() => AskDelete(row))">
+                        <button type="button" class="asd-iconbtn danger" aria-label="@L["Common.Delete"].Value" @onclick="@(() => AskDelete(row))">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                         </button>
                     </div>
@@ -78,23 +78,23 @@
 </div>
 
 @* Editor + delete-confirm modals + toaster all render inside this interactive island (no FluentUI providers). *@
-<AsdamirModal Open="_editorOpen" OpenChanged="@(v => _editorOpen = v)" Title="@(_isNew ? "Yeni {{ EntityName }}" : "{{ EntityName }} Düzenle")">
+<AsdamirModal Open="_editorOpen" OpenChanged="@(v => _editorOpen = v)" Title="@((_isNew ? L["Common.New"].Value : L["Common.Edit"].Value) + " " + L["Page.{{ EntityName }}.Title"].Value)">
     <ChildContent>
         <{{ EntityName }}EditorDialog Model="_draft" />
     </ChildContent>
     <Footer>
-        <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => _editorOpen = false)">Vazgeç</button>
-        <button type="button" class="asd-btn asd-btn-primary" @onclick="SaveAsync" disabled="@_saving">Kaydet</button>
+        <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => _editorOpen = false)">@L["Common.Cancel"]</button>
+        <button type="button" class="asd-btn asd-btn-primary" @onclick="SaveAsync" disabled="@_saving">@L["Common.Save"]</button>
     </Footer>
 </AsdamirModal>
 
-<AsdamirModal Open="_deleteOpen" OpenChanged="@(v => _deleteOpen = v)" Title="{{ EntityName }} sil">
+<AsdamirModal Open="_deleteOpen" OpenChanged="@(v => _deleteOpen = v)" Title="@(L["Common.Delete"].Value + " " + L["Page.{{ EntityName }}.Title"].Value)">
     <ChildContent>
-        <div class="asd-confirm-body">Bu kaydı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</div>
+        <div class="asd-confirm-body">@L["Common.DeleteConfirm"]</div>
     </ChildContent>
     <Footer>
-        <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => _deleteOpen = false)">Vazgeç</button>
-        <button type="button" class="asd-btn asd-btn-primary" @onclick="ConfirmDeleteAsync" disabled="@_deleting">Sil</button>
+        <button type="button" class="asd-btn asd-btn-ghost" @onclick="@(() => _deleteOpen = false)">@L["Common.Cancel"]</button>
+        <button type="button" class="asd-btn asd-btn-primary" @onclick="ConfirmDeleteAsync" disabled="@_deleting">@L["Common.Delete"]</button>
     </Footer>
 </AsdamirModal>
 
@@ -134,7 +134,7 @@
         catch (Exception ex)
         {
             Logger.LogError(ex, "Failed to load {{ EntityPluralLower }}");
-            _loadError = "Liste yüklenemedi.";
+            _loadError = L["Common.LoadFailed"].Value;
         }
         finally
         {
@@ -180,14 +180,14 @@
                 return;
             }
 
-            _toaster.Show(_isNew ? "Eklendi." : "Güncellendi.", AsdamirToaster.Kind.Ok);
+            _toaster.Show(_isNew ? L["Common.Added"].Value : L["Common.Updated"].Value, AsdamirToaster.Kind.Ok);
             _editorOpen = false;
             await ReloadAsync();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Save threw");
-            _toaster.Show("Kaydedilemedi.", AsdamirToaster.Kind.Err);
+            _toaster.Show(L["Common.SaveFailed"].Value, AsdamirToaster.Kind.Err);
         }
         finally
         {
@@ -216,14 +216,14 @@
                 _toaster.Show(await response.ToUserMessageAsync(L), AsdamirToaster.Kind.Err);
                 return;
             }
-            _toaster.Show("Silindi.", AsdamirToaster.Kind.Ok);
+            _toaster.Show(L["Common.Deleted"].Value, AsdamirToaster.Kind.Ok);
             _deleteOpen = false;
             await ReloadAsync();
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Delete threw");
-            _toaster.Show("Silinemedi.", AsdamirToaster.Kind.Err);
+            _toaster.Show(L["Common.DeleteFailed"].Value, AsdamirToaster.Kind.Err);
         }
         finally
         {

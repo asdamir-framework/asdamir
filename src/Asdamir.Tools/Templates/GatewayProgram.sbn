@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
 using Asdamir.Core.ErrorHandling.Extensions;
 using Asdamir.Data.DataAccess;
+using Asdamir.Core.MultiTenancy;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -140,6 +141,21 @@ builder.Services.AddHttpClient("appmgmt", c => c.BaseAddress = new Uri(adminCons
 // here by AddDataAccess. Controllers/repositories inject IDbConnectionFactory and call CreateAsync(ct)
 // — never `new SqlConnection` (audit-lint AUD002). Set ConnectionStrings:Default via user-secrets / env.
 builder.Services.AddDataAccess(dbConnString ?? string.Empty);
+
+// Multi-tenancy: the generated repositories inject ITenantContext to scope every query by TenantId.
+builder.Services.AddMultiTenancy();
+
+// Auto-register entity repositories + services by convention — every `asdamir new entity` is picked up
+// here, so you never edit DI by hand. Matches I<Name>Repository → <Name>Repository and
+// I<Name>Service → <Name>Service in this assembly.
+foreach (var impl in typeof(Program).Assembly.GetTypes()
+             .Where(t => t is { IsClass: true, IsAbstract: false }
+                         && (t.Name.EndsWith("Repository", StringComparison.Ordinal)
+                             || t.Name.EndsWith("Service", StringComparison.Ordinal))))
+{
+    var iface = impl.GetInterface("I" + impl.Name);
+    if (iface is not null) builder.Services.AddScoped(iface, impl);
+}
 
 var app = builder.Build();
 

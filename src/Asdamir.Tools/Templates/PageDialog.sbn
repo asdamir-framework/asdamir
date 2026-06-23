@@ -4,18 +4,20 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using {{ Namespace }}.Dtos
 
+@inject Asdamir.Web.Localization.ApiStringLocalizer L
+
 <div class="asd-form-grid">
 {{ for f in Fields ~}}
 {{ if f.InputKind == "text" ~}}
-    <FluentTextField @bind-Value="Model.{{ f.Name }}" Label="{{ f.Name }}" Required="@({{ if f.IsRequired }}true{{ else }}false{{ end }})" Class="asd-form-w" />
+    <FluentTextField @bind-Value="Model.{{ f.Name }}" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" Required="@({{ if f.IsRequired }}true{{ else }}false{{ end }})" Class="asd-form-w" />
 {{ else if f.InputKind == "number" ~}}
-    <FluentNumberField TValue="{{ f.CSharpType }}" @bind-Value="Model.{{ f.Name }}" Label="{{ f.Name }}" Class="asd-form-w" />
+    <FluentNumberField TValue="{{ f.CSharpType }}" @bind-Value="Model.{{ f.Name }}" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" Class="asd-form-w" />
 {{ else if f.InputKind == "bool" ~}}
-    <FluentSwitch @bind-Value="Model.{{ f.Name }}" Label="{{ f.Name }}" />
+    <FluentSwitch @bind-Value="Model.{{ f.Name }}" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" />
 {{ else if f.InputKind == "date" ~}}
-    <FluentDatePicker @bind-Value="{{ f.Name }}Picker" Label="{{ f.Name }}" />
+    <FluentDatePicker @bind-Value="{{ f.Name }}Picker" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" />
 {{ else if f.InputKind == "guid" ~}}
-    <FluentTextField Value="@Model.{{ f.Name }}.ToString()" Label="{{ f.Name }}" ReadOnly="true" Class="asd-form-w" />
+    <FluentTextField Value="@Model.{{ f.Name }}.ToString()" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" ReadOnly="true" Class="asd-form-w" />
 {{ end ~}}
 {{ end ~}}
 </div>
