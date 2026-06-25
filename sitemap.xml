@@ -1,95 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/</loc>
+         <loc>https://docs.asdamir.com/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/ARCHITECTURE/</loc>
+         <loc>https://docs.asdamir.com/ARCHITECTURE/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/cli/</loc>
+         <loc>https://docs.asdamir.com/cli/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/getting-started/</loc>
+         <loc>https://docs.asdamir.com/getting-started/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/mobile/</loc>
+         <loc>https://docs.asdamir.com/mobile/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/secret-rotation/</loc>
+         <loc>https://docs.asdamir.com/secret-rotation/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/ui-components/</loc>
+         <loc>https://docs.asdamir.com/ui-components/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/web-security/</loc>
+         <loc>https://docs.asdamir.com/web-security/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/demo/customer-order-management/</loc>
+         <loc>https://docs.asdamir.com/demo/customer-order-management/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/audit-logging/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/audit-logging/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/authentication/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/authentication/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/authorization/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/authorization/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/background-jobs/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/background-jobs/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/configuration/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/configuration/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/data-access/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/data-access/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/encryption/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/encryption/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/error-handling/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/error-handling/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/localization/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/localization/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/modules/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/modules/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/multi-tenancy/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/multi-tenancy/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/observability/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/observability/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/outbox/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/outbox/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
     <url>
-         <loc>https://asdamir-framework.github.io/asdamir/fundamentals/validation/</loc>
+         <loc>https://docs.asdamir.com/fundamentals/validation/</loc>
          <lastmod>2026-06-25</lastmod>
     </url>
 </urlset>
