@@ -70,9 +70,11 @@
 /* ── Search box: constant width + visible magnifier (desktop inline search). ── */
 /* The box grows via .md-search__inner (11.7rem → 23.4/34.4rem on focus) — pin it so it
    stays a fixed, slightly larger size and never jumps. (Mobile overlay search untouched.) */
+/* Resting search bar a touch wider than Material's default — but DON'T clamp the focused
+   width: the results dropdown shares this element, so a fixed-narrow value clipped the
+   result text. Letting it expand on focus keeps the results panel full-width & readable. */
 @media screen and (min-width: 60em) {
-  .md-search__inner { width: 23.4rem !important; }
-  [data-md-toggle="search"]:checked ~ .md-header .md-search__inner { width: 23.4rem !important; }
+  .md-search__inner { width: 18rem; }
 }
 /* Magnifier: Material colours it with --md-primary-bg-color (white) — invisible on our light
    header. Force a visible, scheme-aware tone in both modes. */
