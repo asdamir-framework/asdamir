@@ -2,7 +2,9 @@
 
 > A hands-on tutorial: scaffold a small Customer/Order management web app with the `asdamir` CLI —
 > **100% offline, no AI required** — then (optionally) accelerate the integration work with the Claude
-> Code agent/skill layer. Every command below was really run and verified. Requires open core **1.0.2+**.
+> Code agent/skill layer. Every command below was really run and verified. Requires the `asdamir` CLI
+> **1.0.4+** (since 1.0.4 the generated app wires its DI automatically; 1.0.5 also localizes nav-menu labels).
+> A **mobile (MAUI)** version of the same app can be generated too — see [Mobile](#mobile-maui) below.
 
 ## What we build
 
@@ -23,7 +25,7 @@ roles, menus and localization are **central** (managed by AppManagement), never 
 
 - **.NET 10 SDK**.
 - The CLI: `dotnet tool install --global Asdamir.Tools` → command `asdamir`.
-- Open-core packages from a **local feed** for the offline loop (next step), or pin `Asdamir.* = 1.0.2`
+- Open-core packages from a **local feed** for the offline loop (next step), or pin `Asdamir.* = 1.0.4`
   from nuget.org in the generated `Directory.Packages.props`.
 - **SQL Server** is needed to run CRUD (the generated app's business data uses Dapper/SQL). The app boots
   and serves `/gateway/health` without a DB; business endpoints need a connection + applied migrations.
@@ -42,7 +44,7 @@ for pkg in Core Data Web; do
 done
 ```
 > `0.1.0-preview.999999` sorts highest so the float resolves to it. (Online alternative: pin
-> `Asdamir.* = 1.0.2` and restore from nuget.org.)
+> `Asdamir.* = 1.0.4` and restore from nuget.org.)
 
 ## 2. Generate the app
 
@@ -92,13 +94,13 @@ The pure-CLI output **builds clean with zero manual edits** (since 1.0.2).
 
 ## 6. To make CRUD fully run (normal integration, not defects)
 
-The output builds and tests green. The Server's authenticated UI path (the `AdminApi` client, the
-`AdminAccess` policy, and the per-call Bearer token from the login claim) is **generated for you** since
-1.0.3, so clickable CRUD works once the app is wired to its data + identity. What's still app-specific:
-1. **Gateway DI** — register the entity repositories/services (`AddScoped`) + `AddMultiTenancy()` (runtime; build/tests pass without it).
-2. **Relationships** — an FK-constraint/index migration (the CLI has no relationship concept).
-3. **SQL Server** + `ConnectionStrings:Default` + `asdamir db apply` for the business data.
-4. **Identity is central** — register the app + an admin in AppManagement (the control plane), and add the page nav entries there (menus are central). See the AppManagement Help for the full run-and-see runbook.
+The output builds and tests green. The runtime wiring is **generated for you**: the Gateway auto-registers
+its repositories/services + `AddMultiTenancy()` by convention (since 1.0.4), and the Server ships the
+authenticated `AdminApi` client + `AdminAccess` policy + the per-call Bearer token from the login claim
+(since 1.0.3) — so clickable CRUD works once the app is wired to its data + identity. What's still app-specific:
+1. **Relationships** — an FK-constraint/index migration (the CLI has no relationship concept).
+2. **SQL Server** + `ConnectionStrings:Default` + `asdamir db apply` for the business data.
+3. **Identity is central** — register the app + an admin in AppManagement (the control plane), and add the page nav entries there (menus are central). See the AppManagement Help for the full run-and-see runbook.
 
 ## 7. Run it locally (verified)
 
@@ -127,13 +129,30 @@ The open-core build above (generate → build 0/0 → run → health) is fully s
 
 The same app can be produced (and finished) by Asdamir's Claude Code layer — a 6-role agent team
 (architect, backend, frontend, database, security, reviewer) that reads the project's skills as its source
-of truth. The agents **use the same CLI** above, and on top of it they automate the integration the CLI
-leaves to you: the runtime DI wiring, the relationship (FK constraint/index) migration with the correct
-column types, and a non-negotiable quality gate (0-warning build + tests + audit-lint).
+of truth. The agents **use the same CLI** above, and on top of it they automate what the CLI leaves to you:
+the relationship (FK constraint/index) migration with the correct column types, and a non-negotiable quality
+gate (0-warning build + tests + audit-lint). (Runtime DI/policy wiring is now emitted by the scaffold itself.)
 
 **Is AI required? No.** The CLI alone is fully offline and AI-free, and its output builds, passes audit
 and tests. The agent layer is an **optional accelerator** (it runs with Claude Code) that does the
 integration + relationship correctness + review for you.
+
+## Mobile (MAUI)
+
+The same app has a mobile side: `asdamir new mobile CustomerOrders` scaffolds a **.NET MAUI Blazor Hybrid**
+app (a Mobile host + a shared Blazor layer + a **real SQLite offline cache**) that talks to the same Gateway
+API. Tokens are kept in native secure storage (Keychain/Keystore), login is proxied centrally, and the UI is
+localized (TR/EN/RU).
+
+```bash
+asdamir new mobile CustomerOrders --gateway-url https://localhost:7001/
+# build a single RID (else NETSDK1047), then deploy + run on a running emulator:
+dotnet build src/CustomerOrders.Mobile/CustomerOrders.Mobile.csproj -f net10.0-android -r android-arm64 -t:Run
+```
+
+> **Scope (honest):** `new mobile` currently generates the **skeleton** — login + dashboard, with the offline
+> SQLite cache and secure token storage. Per-entity mobile CRUD screens are not yet auto-generated (roadmap).
+> For store publishing the usual steps apply (app icon, signing, privacy policy, versioning). See [Mobile](../mobile.md).
 
 ## Verification (this demo)
 
