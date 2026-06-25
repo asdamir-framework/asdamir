@@ -16,40 +16,26 @@ dotnet run --project src/Asdamir.Tools -- <command> [options]
 
 The packaged command is `asdamir <command>` (formerly `framework`).
 
-**From nuget.org** (stable `1.0.0`):
-
 ```bash
 dotnet tool install --global Asdamir.Tools
 #   update later:  dotnet tool update --global Asdamir.Tools
 ```
 
-This is the public channel — generated apps also restore `Asdamir.Core` / `.Data` / `.Web` from nuget.org.
-
-**Fallback (no secret needed)** — the tool is also attached as an asset on the latest **GitHub Release**
-(GitHub Packages' NuGet endpoint can't ingest the self-contained tool package, so it isn't on that feed):
-
-```bash
-# download Asdamir.Tools.1.0.0.nupkg from the latest release into a folder, then:
-dotnet tool install --global Asdamir.Tools --add-source <folder>
-```
-
-The framework **libraries** are also on the **GitHub Packages** NuGet feed (`Asdamir.Core` / `.Data` /
-`.Web`) for consumers who prefer it.
-
-> **To activate nuget.org:** create an API key at nuget.org (scoped to push `Asdamir.*`, or "all
-> packages" / glob `Asdamir.*`), then add it as the repo secret **`NUGET_API_KEY`** (Settings → Secrets
-> and variables → Actions). The next `main` build publishes; before that, the nuget.org step is skipped.
+`Asdamir.Tools` is published on **nuget.org** (currently `1.0.5`). Generated apps restore the framework
+**libraries** — `Asdamir.Core` / `.Data` / `.Web` (currently `1.0.4`) — from nuget.org as well.
 
 ## Scaffolding
 
 | Command | Generates |
 |---|---|
-| `app new <Name>` | A full application (Server + Gateway) wired to the framework |
-| `entity new <Name>` | Entity + DTO + repository + service + controller + tests + migration |
-| `page new <Name>` | A Blazor page (+ dialog variant) |
-| `module new <Name>` | A self-registering [module](fundamentals/modules.md) project |
-| `mobile new <Name>` | A .NET MAUI **Blazor Hybrid** app — `.Mobile` (Android host) + `.Mobile.Shared` (UI) + `.Mobile.Data` (SQLite) + tests. Login, left nav drawer, dashboard; talks to the app's Gateway. See [Mobile App](mobile.md). |
-| `add-field` | Adds a field across the entity/DTO/repository/migration set |
+| `new app <Name>` | A full application (Server + Gateway) wired to the framework |
+| `new entity <Name>` | Entity + DTO + repository + service + controller + tests + migration |
+| `new page <Name>` | A Blazor CRUD page (+ editor-dialog variant) |
+| `new module <Name>` | A self-registering [module](fundamentals/modules.md) project |
+| `new mobile <Name>` | A .NET MAUI **Blazor Hybrid** app — `.Mobile` (Android host) + `.Mobile.Shared` (UI) + `.Mobile.Data` (SQLite) + tests. Login, left nav drawer, dashboard; talks to the app's Gateway. See [Mobile App](mobile.md). |
+| `add field <Name>` | Adds a field across the entity/DTO/repository/migration set |
+
+> The verb comes first: **`asdamir new app|entity|page|module|mobile`** and **`asdamir add field`**.
 
 Generated output uses the framework's templates (`src/Asdamir.Tools/Templates/*.sbn`) and references the `Asdamir.*` packages.
 
