@@ -86,8 +86,8 @@ How a request resolves its slice:
 - **Background jobs.** Apps sharing a company's single Hangfire schema isolate via a per-app queue
   + `{appCode}:{jobName}` recurring-id prefix (see [Background Jobs](background-jobs.md)).
 
-Full architecture + the file-by-file record: [Multi-Company Management design](../design/multi-company-management.md).
+Full multi-company architecture is covered in the AppManagement documentation.
 
 ## See also
 
-- [Configuration & Feature Flags](configuration.md) · [Authentication](authentication.md) · [AdminConsole](../admin-console.md)
+- [Configuration & Feature Flags](configuration.md) · [Authentication](authentication.md)

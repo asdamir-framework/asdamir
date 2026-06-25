@@ -1,0 +1,11 @@
+/* Asdamir brand palette — match asdamir.com (teal #0F766E primary, gold #B8860B accent, navy ink). */
+:root {
+  --md-primary-fg-color:        #0F766E;
+  --md-primary-fg-color--light: #14857b;
+  --md-primary-fg-color--dark:  #0c5e57;
+  --md-accent-fg-color:         #B8860B;
+}
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #0F766E;
+  --md-accent-fg-color:         #d4af52;
+}

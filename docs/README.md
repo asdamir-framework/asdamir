@@ -44,13 +44,9 @@ The framework is organized as composable building blocks. Each can be enabled in
 | Page | Summary |
 |---|---|
 | [CLI (`asdamir`)](cli.md) | Scaffolding, `audit lint`, `db apply` (journaled migrations), `secrets` |
-| [AdminConsole](admin-console.md) | The management application — app registry, orchestration, RBAC |
 | [Web Security](web-security.md) | CSP, headers, rate limiting (scale-out), Data Protection keys |
 | [Secret Management & Rotation](secret-rotation.md) | Secret inventory + EncryptionKey / Jwt:Key / client-secret rotation |
 | [Mobile App (MAUI)](mobile.md) | MAUI Blazor Hybrid scaffold — login, nav drawer, offline cache |
-| [Release Runbook](RELEASE.md) | Versioning, packaging and publishing the NuGet packages |
-| [Managed App Template](MANAGED_APP_TEMPLATE.md) | Scaffold a new app that the AdminConsole can orchestrate |
-| [Roadmap](ROADMAP.md) | Planned work (and what's shipped) |
 
 ## Conventions used in these docs
 

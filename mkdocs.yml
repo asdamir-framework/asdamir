@@ -1,0 +1,88 @@
+site_name: Asdamir Docs
+site_description: A security-first, offline application framework for .NET 10 + Blazor — multi-tenant, multi-database, two-tier RBAC.
+site_url: https://asdamir-framework.github.io/asdamir/
+repo_url: https://github.com/asdamir-framework/asdamir
+repo_name: asdamir-framework/asdamir
+edit_uri: edit/main/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  logo: assets/favicon.svg
+  favicon: assets/favicon.svg
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: teal
+      toggle: { icon: material/weather-night, name: Switch to dark mode }
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: teal
+      toggle: { icon: material/weather-sunny, name: Switch to light mode }
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - navigation.tracking
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+extra_css:
+  - assets/extra.css
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.details
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: README.md
+  - Getting Started: getting-started.md
+  - Architecture: ARCHITECTURE.md
+  - Fundamentals:
+      - Modules: fundamentals/modules.md
+      - Authentication: fundamentals/authentication.md
+      - Authorization: fundamentals/authorization.md
+      - Multi-Tenancy: fundamentals/multi-tenancy.md
+      - Validation: fundamentals/validation.md
+      - Error Handling: fundamentals/error-handling.md
+      - Data Access: fundamentals/data-access.md
+      - Configuration & Feature Flags: fundamentals/configuration.md
+      - Background Jobs: fundamentals/background-jobs.md
+      - Transactional Outbox: fundamentals/outbox.md
+      - Localization: fundamentals/localization.md
+      - Audit Logging: fundamentals/audit-logging.md
+      - Encryption: fundamentals/encryption.md
+      - Observability: fundamentals/observability.md
+  - Web & UI:
+      - Web Security: web-security.md
+      - UI Components: ui-components.md
+  - Tooling & Operations:
+      - CLI (asdamir): cli.md
+      - Secret Management & Rotation: secret-rotation.md
+      - Mobile App (MAUI): mobile.md
+  - Demo:
+      - Customer / Order Management: demo/customer-order-management.md

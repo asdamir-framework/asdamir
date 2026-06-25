@@ -17,7 +17,7 @@ dotnet add package Asdamir.Data    # data access, configuration, jobs, outbox
 dotnet add package Asdamir.Web     # Blazor + FluentUI, web security, localization
 ```
 
-> Inside this repository the four packages are consumed via **ProjectReference** (lockstep versioning). External consumers use **PackageReference**; `nuget.config` maps the `Asdamir.*` prefix to your private feed. See the [Release Runbook](RELEASE.md).
+> Inside this repository the four packages are consumed via **ProjectReference** (lockstep versioning). External consumers use **PackageReference** against the published `Asdamir.*` NuGet packages.
 
 ## Wire up the framework
 

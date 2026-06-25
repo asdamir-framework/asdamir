@@ -116,7 +116,7 @@ asdamir app register \
 ```
 
 Exit codes: `0` ok · `1` API/HTTP error (401/403/unreachable/non-2xx) · `2` bad arguments. The
-company is taken from the token's `company` claim. See [Multi-Company](admin-console.md#multi-company-firma-operation).
+company is taken from the token's `company` claim. See the AppManagement console's multi-company (firma) operation.
 
 ## `secrets`
 

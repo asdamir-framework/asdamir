@@ -57,7 +57,7 @@ public sealed class Bootstrap(IHangfireJobService jobs)
 ## Per-app isolation (multi-company)
 
 When several apps share one company's Hangfire schema, configure `HangfireJobsOptions` so each app
-stays isolated (see the [Multi-Company design](../design/multi-company-management.md) §5.1):
+stays isolated (per the AppManagement multi-company design):
 
 - **`AppQueue`** (e.g. the app's `Code`) — enqueued and recurring jobs route to this queue and the
   app's worker listens only on it, so one app's job surge can't starve another.
