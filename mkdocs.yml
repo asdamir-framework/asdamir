@@ -6,6 +6,12 @@ repo_name: asdamir-framework/asdamir
 edit_uri: edit/main/docs/
 docs_dir: docs
 
+# Brand cohesion with asdamir.com: clicking the logo returns to the main site,
+# and the footer links back to it.
+extra:
+  homepage: https://asdamir.com
+copyright: '© Asdamir · <a href="https://asdamir.com">asdamir.com</a> · open core LGPL-3.0'
+
 theme:
   name: material
   language: en
