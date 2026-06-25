@@ -1,6 +1,6 @@
 site_name: Asdamir Docs
 site_description: A security-first, offline application framework for .NET 10 + Blazor — multi-tenant, multi-database, two-tier RBAC.
-site_url: https://asdamir-framework.github.io/asdamir/
+site_url: https://docs.asdamir.com/
 repo_url: https://github.com/asdamir-framework/asdamir
 repo_name: asdamir-framework/asdamir
 edit_uri: edit/main/docs/
