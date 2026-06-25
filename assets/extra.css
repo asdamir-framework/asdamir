@@ -1,27 +1,58 @@
-/* Asdamir brand palette — match asdamir.com (teal #0F766E primary, gold #B8860B accent, navy ink). */
+/* Asdamir brand palette — match asdamir.com (teal #0F766E primary, gold #B8860B accent). */
 :root {
   --md-primary-fg-color:        #0F766E;
   --md-primary-fg-color--light: #14857b;
   --md-primary-fg-color--dark:  #0c5e57;
   --md-accent-fg-color:         #B8860B;
+  --asd-line:                   rgba(16, 24, 40, .10);
 }
 [data-md-color-scheme="slate"] {
   --md-primary-fg-color:        #0F766E;
   --md-accent-fg-color:         #d4af52;
+  --asd-line:                   rgba(255, 255, 255, .12);
 }
 
-/* ── Layout & readability ───────────────────────────────────────────────── */
-/* Use more horizontal space (Material's default content column is narrow → big
-   left/right whitespace on wide screens). */
-.md-grid { max-width: 1280px; }
+/* ── Header — slim & light, like asdamir.com (no full teal banner) ─────────── */
+.md-header,
+.md-tabs {
+  background-color: rgba(255, 255, 255, .85);
+  color: var(--md-default-fg-color);
+  -webkit-backdrop-filter: saturate(180%) blur(8px);
+  backdrop-filter: saturate(180%) blur(8px);
+}
+.md-header { box-shadow: 0 1px 0 var(--asd-line); }
+.md-tabs { box-shadow: 0 1px 0 var(--asd-line); }
+[data-md-color-scheme="slate"] .md-header,
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: rgba(21, 22, 28, .85);
+  color: var(--md-default-fg-color);
+}
+/* Title + icons inherit the (now dark) header text colour. */
+.md-header__title { color: inherit; font-weight: 700; }
+.md-header__button { color: inherit; }
+/* Search field on a light header: subtle filled pill instead of translucent-on-teal. */
+.md-search__form { background-color: rgba(16, 24, 40, .05); }
+.md-search__form:hover { background-color: rgba(16, 24, 40, .08); }
+[data-md-color-scheme="slate"] .md-search__form { background-color: rgba(255, 255, 255, .06); }
+.md-search__input,
+.md-search__input::placeholder { color: var(--md-default-fg-color--light); }
+/* Tabs: muted by default, brand teal when active/hovered. */
+.md-tabs__link { color: inherit; opacity: .72; }
+.md-tabs__link--active,
+.md-tabs__link:hover { color: var(--md-primary-fg-color); opacity: 1; }
 
-/* Wide preformatted blocks (ASCII diagrams, long code lines) must SCROLL, never
-   wrap or get clipped. */
+/* ── Layout & readability ──────────────────────────────────────────────────── */
+/* Use more horizontal space — Material's default content column leaves big
+   whitespace on wide screens. Wider grid, but the content keeps a readable
+   measure (the nav + ToC flank it, so lines stay ~80-90 chars). */
+.md-grid { max-width: 1440px; }
+
+/* Wide preformatted blocks (ASCII diagrams, long code lines) must SCROLL,
+   never wrap or get clipped. */
 .md-typeset pre { overflow-x: auto; }
 .md-typeset pre > code {
   white-space: pre;
   word-break: normal;
   overflow-wrap: normal;
 }
-/* Tables wider than the column scroll horizontally instead of squishing. */
 .md-typeset__table { overflow-x: auto; }
