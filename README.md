@@ -180,11 +180,11 @@ Suppress a single finding with `// audit-lint:ignore AUDxxx` (+ a reason); whole
 
 ## Documentation
 
-Full guides live in [`docs/`](docs/README.md) (ABP-style, with an MkDocs site):
+Full guides live in [`docs/`](docs/README.md) (ABP-style, readable markdown on GitHub):
 
 - [Getting Started](docs/getting-started.md) · [Architecture](docs/ARCHITECTURE.md)
 - Fundamentals: [Authentication](docs/fundamentals/authentication.md) · [Authorization](docs/fundamentals/authorization.md) · [Multi-Tenancy](docs/fundamentals/multi-tenancy.md) · [Validation](docs/fundamentals/validation.md) · [Error Handling](docs/fundamentals/error-handling.md) · [Data Access](docs/fundamentals/data-access.md) · [Configuration](docs/fundamentals/configuration.md) · [Background Jobs](docs/fundamentals/background-jobs.md) · [Outbox](docs/fundamentals/outbox.md) · [Localization](docs/fundamentals/localization.md) · [Audit Logging](docs/fundamentals/audit-logging.md) · [Encryption](docs/fundamentals/encryption.md) · [Observability](docs/fundamentals/observability.md)
-- Operations: [CLI](docs/cli.md) · [AdminConsole](docs/admin-console.md) · [Secret Rotation](docs/secret-rotation.md) · [Mobile](docs/mobile.md) · [Web Security](docs/web-security.md)
+- Operations: [CLI](docs/cli.md) · [Secret Rotation](docs/secret-rotation.md) · [Mobile](docs/mobile.md) · [Web Security](docs/web-security.md)
 
 ---
 
