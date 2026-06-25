@@ -1436,6 +1436,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mobile-maui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mobile (MAUI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#verification-this-demo" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1610,6 +1621,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#mobile-maui" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Mobile (MAUI)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#verification-this-demo" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1644,7 +1666,9 @@
 <blockquote>
 <p>A hands-on tutorial: scaffold a small Customer/Order management web app with the <code>asdamir</code> CLI —
 <strong>100% offline, no AI required</strong> — then (optionally) accelerate the integration work with the Claude
-Code agent/skill layer. Every command below was really run and verified. Requires open core <strong>1.0.2+</strong>.</p>
+Code agent/skill layer. Every command below was really run and verified. Requires the <code>asdamir</code> CLI
+<strong>1.0.4+</strong> (since 1.0.4 the generated app wires its DI automatically; 1.0.5 also localizes nav-menu labels).
+A <strong>mobile (MAUI)</strong> version of the same app can be generated too — see <a href="#mobile-maui">Mobile</a> below.</p>
 </blockquote>
 <h2 id="what-we-build">What we build<a class="headerlink" href="#what-we-build" title="Permanent link">&para;</a></h2>
 <table>
@@ -1686,7 +1710,7 @@ roles, menus and localization are <strong>central</strong> (managed by AppManage
 <ul>
 <li><strong>.NET 10 SDK</strong>.</li>
 <li>The CLI: <code>dotnet tool install --global Asdamir.Tools</code> → command <code>asdamir</code>.</li>
-<li>Open-core packages from a <strong>local feed</strong> for the offline loop (next step), or pin <code>Asdamir.* = 1.0.2</code>
+<li>Open-core packages from a <strong>local feed</strong> for the offline loop (next step), or pin <code>Asdamir.* = 1.0.4</code>
   from nuget.org in the generated <code>Directory.Packages.props</code>.</li>
 <li><strong>SQL Server</strong> is needed to run CRUD (the generated app's business data uses Dapper/SQL). The app boots
   and serves <code>/gateway/health</code> without a DB; business endpoints need a connection + applied migrations.</li>
@@ -1702,7 +1726,7 @@ roles, menus and localization are <strong>central</strong> (managed by AppManage
 </code></pre></div>
 <blockquote>
 <p><code>0.1.0-preview.999999</code> sorts highest so the float resolves to it. (Online alternative: pin
-<code>Asdamir.* = 1.0.2</code> and restore from nuget.org.)</p>
+<code>Asdamir.* = 1.0.4</code> and restore from nuget.org.)</p>
 </blockquote>
 <h2 id="2-generate-the-app">2. Generate the app<a class="headerlink" href="#2-generate-the-app" title="Permanent link">&para;</a></h2>
 <p><div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>mkdir<span class="w"> </span>-p<span class="w"> </span>/tmp/asdamir-demo/app<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>/tmp/asdamir-demo/app
@@ -1740,13 +1764,13 @@ Server-side DTO (the UI keeps its own copy — layering).</p>
 </code></pre></div>
 The pure-CLI output <strong>builds clean with zero manual edits</strong> (since 1.0.2).</p>
 <h2 id="6-to-make-crud-fully-run-normal-integration-not-defects">6. To make CRUD fully run (normal integration, not defects)<a class="headerlink" href="#6-to-make-crud-fully-run-normal-integration-not-defects" title="Permanent link">&para;</a></h2>
-<p>The output builds and tests green. The Server's authenticated UI path (the <code>AdminApi</code> client, the
-<code>AdminAccess</code> policy, and the per-call Bearer token from the login claim) is <strong>generated for you</strong> since
-1.0.3, so clickable CRUD works once the app is wired to its data + identity. What's still app-specific:
-1. <strong>Gateway DI</strong> — register the entity repositories/services (<code>AddScoped</code>) + <code>AddMultiTenancy()</code> (runtime; build/tests pass without it).
-2. <strong>Relationships</strong> — an FK-constraint/index migration (the CLI has no relationship concept).
-3. <strong>SQL Server</strong> + <code>ConnectionStrings:Default</code> + <code>asdamir db apply</code> for the business data.
-4. <strong>Identity is central</strong> — register the app + an admin in AppManagement (the control plane), and add the page nav entries there (menus are central). See the AppManagement Help for the full run-and-see runbook.</p>
+<p>The output builds and tests green. The runtime wiring is <strong>generated for you</strong>: the Gateway auto-registers
+its repositories/services + <code>AddMultiTenancy()</code> by convention (since 1.0.4), and the Server ships the
+authenticated <code>AdminApi</code> client + <code>AdminAccess</code> policy + the per-call Bearer token from the login claim
+(since 1.0.3) — so clickable CRUD works once the app is wired to its data + identity. What's still app-specific:
+1. <strong>Relationships</strong> — an FK-constraint/index migration (the CLI has no relationship concept).
+2. <strong>SQL Server</strong> + <code>ConnectionStrings:Default</code> + <code>asdamir db apply</code> for the business data.
+3. <strong>Identity is central</strong> — register the app + an admin in AppManagement (the control plane), and add the page nav entries there (menus are central). See the AppManagement Help for the full run-and-see runbook.</p>
 <h2 id="7-run-it-locally-verified">7. Run it locally (verified)<a class="headerlink" href="#7-run-it-locally-verified" title="Permanent link">&para;</a></h2>
 <p>The Gateway needs <code>Jwt:Key</code> (≥64 bytes) to boot (fail-closed); it boots without a DB:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>/tmp/asdamir-demo/app/CustomerOrders/src/CustomerOrders.Gateway
@@ -1766,12 +1790,26 @@ The open-core build above (generate → build 0/0 → run → health) is fully s
 <h2 id="optional-the-claude-code-agentskill-accelerator">Optional: the Claude Code agent/skill accelerator<a class="headerlink" href="#optional-the-claude-code-agentskill-accelerator" title="Permanent link">&para;</a></h2>
 <p>The same app can be produced (and finished) by Asdamir's Claude Code layer — a 6-role agent team
 (architect, backend, frontend, database, security, reviewer) that reads the project's skills as its source
-of truth. The agents <strong>use the same CLI</strong> above, and on top of it they automate the integration the CLI
-leaves to you: the runtime DI wiring, the relationship (FK constraint/index) migration with the correct
-column types, and a non-negotiable quality gate (0-warning build + tests + audit-lint).</p>
+of truth. The agents <strong>use the same CLI</strong> above, and on top of it they automate what the CLI leaves to you:
+the relationship (FK constraint/index) migration with the correct column types, and a non-negotiable quality
+gate (0-warning build + tests + audit-lint). (Runtime DI/policy wiring is now emitted by the scaffold itself.)</p>
 <p><strong>Is AI required? No.</strong> The CLI alone is fully offline and AI-free, and its output builds, passes audit
 and tests. The agent layer is an <strong>optional accelerator</strong> (it runs with Claude Code) that does the
 integration + relationship correctness + review for you.</p>
+<h2 id="mobile-maui">Mobile (MAUI)<a class="headerlink" href="#mobile-maui" title="Permanent link">&para;</a></h2>
+<p>The same app has a mobile side: <code>asdamir new mobile CustomerOrders</code> scaffolds a <strong>.NET MAUI Blazor Hybrid</strong>
+app (a Mobile host + a shared Blazor layer + a <strong>real SQLite offline cache</strong>) that talks to the same Gateway
+API. Tokens are kept in native secure storage (Keychain/Keystore), login is proxied centrally, and the UI is
+localized (TR/EN/RU).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>mobile<span class="w"> </span>CustomerOrders<span class="w"> </span>--gateway-url<span class="w"> </span>https://localhost:7001/
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="c1"># build a single RID (else NETSDK1047), then deploy + run on a running emulator:</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>dotnet<span class="w"> </span>build<span class="w"> </span>src/CustomerOrders.Mobile/CustomerOrders.Mobile.csproj<span class="w"> </span>-f<span class="w"> </span>net10.0-android<span class="w"> </span>-r<span class="w"> </span>android-arm64<span class="w"> </span>-t:Run
+</code></pre></div>
+<blockquote>
+<p><strong>Scope (honest):</strong> <code>new mobile</code> currently generates the <strong>skeleton</strong> — login + dashboard, with the offline
+SQLite cache and secure token storage. Per-entity mobile CRUD screens are not yet auto-generated (roadmap).
+For store publishing the usual steps apply (app icon, signing, privacy policy, versioning). See <a href="../../mobile/">Mobile</a>.</p>
+</blockquote>
 <h2 id="verification-this-demo">Verification (this demo)<a class="headerlink" href="#verification-this-demo" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
