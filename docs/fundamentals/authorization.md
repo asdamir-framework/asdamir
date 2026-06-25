@@ -38,7 +38,7 @@ The management application layers two independent RBAC scopes:
 1. **Admin-pool RBAC** — `OrchestrationAppAccessFilter` gates which *managed apps* an operator may touch. SuperAdmins reach every app; everyone else reaches only the apps assigned to them in the `UserAppRoles` matrix.
 2. **Managed-app RBAC** — each managed app defines its own `Roles` + `RolePermissions` + `UserRoles` for its end users.
 
-See [Architecture → Two-Tier RBAC](../ARCHITECTURE.md#two-tier-rbac).
+See [Architecture → Security & multi-tenancy](../ARCHITECTURE.md#security-multi-tenancy).
 
 ## Authorization audit
 

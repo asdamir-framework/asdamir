@@ -9,3 +9,19 @@
   --md-primary-fg-color:        #0F766E;
   --md-accent-fg-color:         #d4af52;
 }
+
+/* ── Layout & readability ───────────────────────────────────────────────── */
+/* Use more horizontal space (Material's default content column is narrow → big
+   left/right whitespace on wide screens). */
+.md-grid { max-width: 1280px; }
+
+/* Wide preformatted blocks (ASCII diagrams, long code lines) must SCROLL, never
+   wrap or get clipped. */
+.md-typeset pre { overflow-x: auto; }
+.md-typeset pre > code {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+/* Tables wider than the column scroll horizontally instead of squishing. */
+.md-typeset__table { overflow-x: auto; }
