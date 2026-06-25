@@ -71,8 +71,8 @@
 /* The box grows via .md-search__inner (11.7rem → 23.4/34.4rem on focus) — pin it so it
    stays a fixed, slightly larger size and never jumps. (Mobile overlay search untouched.) */
 @media screen and (min-width: 60em) {
-  .md-search__inner { width: 17rem !important; }
-  [data-md-toggle="search"]:checked ~ .md-header .md-search__inner { width: 17rem !important; }
+  .md-search__inner { width: 23.4rem !important; }
+  [data-md-toggle="search"]:checked ~ .md-header .md-search__inner { width: 23.4rem !important; }
 }
 /* Magnifier: Material colours it with --md-primary-bg-color (white) — invisible on our light
    header. Force a visible, scheme-aware tone in both modes. */
