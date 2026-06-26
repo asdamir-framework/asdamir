@@ -1792,7 +1792,11 @@ is taken from the project automatically — no <code>--namespace</code> needed.<
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>asdamir<span class="w"> </span>new<span class="w"> </span>entity<span class="w"> </span>OrderItem<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;OrderId:int,ProductId:int,Quantity:int,UnitPrice:decimal&quot;</span>
 </code></pre></div>
 Each entity → Domain + DTO + Repository(+interface) + Service(+interface) + Controller + Validator +
-a migration, plus a test placed in the test project automatically.</p>
+a migration, plus tests placed in the test project automatically. <strong>Since 1.1.0, 6 tests per entity</strong>
+(all DB-free): create/get round-trip, validator rejection, delete, <strong>update round-trip</strong>, <strong>list</strong>
+(service-level, in-memory fake repo) + an <strong>API auth-guard</strong> (<code>WebApplicationFactory</code>, token-less
+<code>GET</code> → 401, proving the controller is <code>[Authorize]</code>-protected). The WAF fixture (<code>SmokeFactory</code>) is
+shared with the health smoke test.</p>
 <h2 id="4-pages-run-from-the-server-ui-project">4. Pages — run from the Server (UI) project<a class="headerlink" href="#4-pages-run-from-the-server-ui-project" title="Permanent link">&para;</a></h2>
 <p><div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="nb">cd</span><span class="w"> </span>/tmp/asdamir-demo/app/CustomerOrders/src/CustomerOrders.Server
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>asdamir<span class="w"> </span>new<span class="w"> </span>page<span class="w"> </span>Customer<span class="w">  </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Email:string,Phone:string?&quot;</span><span class="w">                    </span>--route<span class="w"> </span>/customers
@@ -1806,7 +1810,7 @@ Server-side DTO (the UI keeps its own copy — layering).</p>
 <p><div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">cd</span><span class="w"> </span>/tmp/asdamir-demo/app/CustomerOrders
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>dotnet<span class="w"> </span>build<span class="w"> </span>CustomerOrders.sln<span class="w">     </span><span class="c1"># → 0 warnings / 0 errors</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>src<span class="w">       </span><span class="c1"># → 46 files, 0 findings</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>dotnet<span class="w"> </span><span class="nb">test</span><span class="w"> </span>CustomerOrders.sln<span class="w">      </span><span class="c1"># → 15/15 (14 Gateway + 1 Server)</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>dotnet<span class="w"> </span><span class="nb">test</span><span class="w"> </span>CustomerOrders.sln<span class="w">      </span><span class="c1"># → 27/27 (26 Gateway + 1 Server)</span>
 </code></pre></div>
 The pure-CLI output <strong>builds clean with zero manual edits</strong> (since 1.0.2).</p>
 <h2 id="6-to-make-crud-fully-run-normal-integration-not-defects">6. To make CRUD fully run (normal integration, not defects)<a class="headerlink" href="#6-to-make-crud-fully-run-normal-integration-not-defects" title="Permanent link">&para;</a></h2>
@@ -1879,7 +1883,7 @@ For store publishing the usual steps apply (app icon, signing, privacy policy, v
 <tr>
 <td>Tests</td>
 <td><code>dotnet test CustomerOrders.sln</code></td>
-<td>✅ 15/15</td>
+<td>✅ 27/27 (26 Gateway + 1 Server)</td>
 </tr>
 <tr>
 <td>Runs locally</td>

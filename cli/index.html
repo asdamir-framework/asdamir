@@ -1731,7 +1731,7 @@
 </tr>
 <tr>
 <td><code>new entity &lt;Name&gt;</code></td>
-<td>Entity + DTO + repository + service + controller + tests + migration</td>
+<td>Entity + DTO + repository + service + controller + tests + migration. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, <strong>update round-trip</strong>, <strong>list</strong>, and an <strong>API auth-guard</strong> (<code>GET</code> without a token → 401) — all DB-free (in-memory fake repo + <code>WebApplicationFactory</code>).</td>
 </tr>
 <tr>
 <td><code>new page &lt;Name&gt;</code></td>
