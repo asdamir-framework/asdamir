@@ -29,7 +29,7 @@ dotnet tool install --global Asdamir.Tools
 | Command | Generates |
 |---|---|
 | `new app <Name>` | A full application (Server + Gateway) wired to the framework |
-| `new entity <Name>` | Entity + DTO + repository + service + controller + tests + migration |
+| `new entity <Name>` | Entity + DTO + repository + service + controller + tests + migration. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, **update round-trip**, **list**, and an **API auth-guard** (`GET` without a token → 401) — all DB-free (in-memory fake repo + `WebApplicationFactory`). |
 | `new page <Name>` | A Blazor CRUD page (+ editor-dialog variant) |
 | `new module <Name>` | A self-registering [module](fundamentals/modules.md) project |
 | `new mobile <Name>` | A .NET MAUI **Blazor Hybrid** app — `.Mobile` (Android host) + `.Mobile.Shared` (UI) + `.Mobile.Data` (SQLite) + tests. Login, left nav drawer, dashboard; talks to the app's Gateway. See [Mobile App](mobile.md). |

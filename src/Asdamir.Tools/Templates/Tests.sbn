@@ -79,6 +79,92 @@ public sealed class {{ EntityName }}Tests
         ok.Should().BeFalse("non-existent id must surface as false, not throw");
     }
 
+    [Fact]
+    public async Task Update_Persists_Changes()
+    {
+        var repo = new InMemory{{ EntityName }}Repository();
+        var service = new {{ EntityName }}Service(repo, NullLogger<{{ EntityName }}Service>.Instance);
+
+        var id = await service.CreateAsync(new {{ EntityName }}Dto
+        {
+{{~ for f in Fields ~}}
+{{~ if f.CSharpType == "string" ~}}
+            {{ f.Name }} = "sample-{{ f.CamelCase }}",
+{{~ else if f.CSharpType == "int" || f.CSharpType == "long" ~}}
+            {{ f.Name }} = 42,
+{{~ else if f.CSharpType == "bool" ~}}
+            {{ f.Name }} = true,
+{{~ else if f.CSharpType == "decimal" || f.CSharpType == "double" ~}}
+            {{ f.Name }} = 1,
+{{~ else if f.CSharpType == "DateTime" ~}}
+            {{ f.Name }} = DateTime.UtcNow,
+{{~ else if f.CSharpType == "Guid" ~}}
+            {{ f.Name }} = Guid.NewGuid(),
+{{ end ~}}
+{{ end ~}}
+        });
+
+        var fetched = await service.GetByIdAsync(id);
+        fetched.Should().NotBeNull();
+
+{{~ for f in Fields ~}}
+{{~ if for.first ~}}
+{{~ if f.CSharpType == "string" || f.CSharpType == "string?" ~}}
+        var newValue = "updated-{{ f.CamelCase }}";
+{{~ else if f.CSharpType == "bool" || f.CSharpType == "bool?" ~}}
+        var newValue = false;
+{{~ else if f.CSharpType == "decimal" || f.CSharpType == "decimal?" ~}}
+        var newValue = 2m;
+{{~ else if f.CSharpType == "double" || f.CSharpType == "double?" ~}}
+        var newValue = 2d;
+{{~ else if f.CSharpType == "DateTime" || f.CSharpType == "DateTime?" ~}}
+        var newValue = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+{{~ else if f.CSharpType == "Guid" || f.CSharpType == "Guid?" ~}}
+        var newValue = Guid.NewGuid();
+{{~ else if f.CSharpType == "long" || f.CSharpType == "long?" ~}}
+        var newValue = 7L;
+{{~ else ~}}
+        var newValue = 7;
+{{~ end ~}}
+        fetched!.{{ f.Name }} = newValue;
+        (await service.UpdateAsync(fetched)).Should().BeTrue();
+        (await service.GetByIdAsync(id))!.{{ f.Name }}.Should().Be(newValue);
+{{~ end ~}}
+{{~ end ~}}
+    }
+
+    [Fact]
+    public async Task List_Returns_AllInserted()
+    {
+        var repo = new InMemory{{ EntityName }}Repository();
+        var service = new {{ EntityName }}Service(repo, NullLogger<{{ EntityName }}Service>.Instance);
+
+        for (var i = 0; i < 3; i++)
+        {
+            await service.CreateAsync(new {{ EntityName }}Dto
+            {
+{{~ for f in Fields ~}}
+{{~ if f.CSharpType == "string" ~}}
+                {{ f.Name }} = "sample-{{ f.CamelCase }}",
+{{~ else if f.CSharpType == "int" || f.CSharpType == "long" ~}}
+                {{ f.Name }} = 42,
+{{~ else if f.CSharpType == "bool" ~}}
+                {{ f.Name }} = true,
+{{~ else if f.CSharpType == "decimal" || f.CSharpType == "double" ~}}
+                {{ f.Name }} = 1,
+{{~ else if f.CSharpType == "DateTime" ~}}
+                {{ f.Name }} = DateTime.UtcNow,
+{{~ else if f.CSharpType == "Guid" ~}}
+                {{ f.Name }} = Guid.NewGuid(),
+{{ end ~}}
+{{ end ~}}
+            });
+        }
+
+        var all = await service.ListAsync();
+        all.Should().HaveCount(3);
+    }
+
     // Minimal in-memory fake to keep this test file self-contained. Replace with NSubstitute
     // if you want to assert on call shapes.
     private sealed class InMemory{{ EntityName }}Repository : I{{ EntityName }}Repository
@@ -108,5 +194,26 @@ public sealed class {{ EntityName }}Tests
 
         public Task<bool> DeleteAsync(int id, CancellationToken ct = default)
             => Task.FromResult(_store.Remove(id));
+    }
+}
+
+/// <summary>
+/// DB-FREE API guard for {{ EntityName }}: the endpoints are <c>[Authorize]</c>-protected, so an
+/// anonymous request is rejected by auth BEFORE any data access. Proves the controller is wired and
+/// secured without needing a database (uses the shared <c>SmokeFactory</c>).
+/// </summary>
+public sealed class {{ EntityName }}ApiTests : IClassFixture<SmokeFactory>
+{
+    private readonly SmokeFactory _factory;
+
+    public {{ EntityName }}ApiTests(SmokeFactory factory) => _factory = factory;
+
+    [Fact]
+    public async Task List_WithoutToken_Returns_401()
+    {
+        var client = _factory.CreateClient();
+        var resp = await client.GetAsync("api/{{ EntityPluralLower }}");
+        resp.StatusCode.Should().Be(System.Net.HttpStatusCode.Unauthorized,
+            "api/{{ EntityPluralLower }} is [Authorize]-protected — anonymous access must be 401");
     }
 }

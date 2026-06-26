@@ -68,7 +68,11 @@ asdamir new entity Order     --fields "CustomerId:int,OrderDate:datetime,Status:
 asdamir new entity OrderItem --fields "OrderId:int,ProductId:int,Quantity:int,UnitPrice:decimal"
 ```
 Each entity → Domain + DTO + Repository(+interface) + Service(+interface) + Controller + Validator +
-a migration, plus a test placed in the test project automatically.
+a migration, plus tests placed in the test project automatically. **Since 1.1.0, 6 tests per entity**
+(all DB-free): create/get round-trip, validator rejection, delete, **update round-trip**, **list**
+(service-level, in-memory fake repo) + an **API auth-guard** (`WebApplicationFactory`, token-less
+`GET` → 401, proving the controller is `[Authorize]`-protected). The WAF fixture (`SmokeFactory`) is
+shared with the health smoke test.
 
 ## 4. Pages — run from the Server (UI) project
 
@@ -88,7 +92,7 @@ Server-side DTO (the UI keeps its own copy — layering).
 cd /tmp/asdamir-demo/app/CustomerOrders
 dotnet build CustomerOrders.sln     # → 0 warnings / 0 errors
 asdamir audit lint --path src       # → 46 files, 0 findings
-dotnet test CustomerOrders.sln      # → 15/15 (14 Gateway + 1 Server)
+dotnet test CustomerOrders.sln      # → 27/27 (26 Gateway + 1 Server)
 ```
 The pure-CLI output **builds clean with zero manual edits** (since 1.0.2).
 
@@ -160,6 +164,6 @@ dotnet build src/CustomerOrders.Mobile/CustomerOrders.Mobile.csproj -f net10.0-a
 | ----- | ------- | ------ |
 | Build 0/0 (no manual fixes) | `dotnet build CustomerOrders.sln` | ✅ 0 warnings / 0 errors |
 | audit-lint | `asdamir audit lint --path src` | ✅ 46 files, 0 findings |
-| Tests | `dotnet test CustomerOrders.sln` | ✅ 15/15 |
+| Tests | `dotnet test CustomerOrders.sln` | ✅ 27/27 (26 Gateway + 1 Server) |
 | Runs locally | `curl …/gateway/health` | ✅ HTTP 200 |
 | Security enforced | `curl …/api/customers` | ✅ HTTP 401 |

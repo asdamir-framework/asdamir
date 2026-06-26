@@ -247,6 +247,7 @@ public static class AppCommand
             ($"tests/{serverProject}.Tests/HomePageRenderTests.cs",       "ServerTestsHome"),
             ($"tests/{serverProject}.Tests/Usings.cs",                    "ServerTestsUsings"),
             ($"tests/{gatewayProject}.Tests/{gatewayProject}.Tests.csproj","GatewayTestsCsproj"),
+            ($"tests/{gatewayProject}.Tests/SmokeFactory.cs",             "GatewayTestsSmokeFactory"),
             ($"tests/{gatewayProject}.Tests/HealthEndpointTests.cs",      "GatewayTestsHealth"),
             ($"tests/{gatewayProject}.Tests/Usings.cs",                   "GatewayTestsUsings"),
 
