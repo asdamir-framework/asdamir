@@ -21,7 +21,7 @@ dotnet tool install --global Asdamir.Tools
 #   update later:  dotnet tool update --global Asdamir.Tools
 ```
 
-`Asdamir.Tools` is published on **nuget.org** (currently `1.0.5`). Generated apps restore the framework
+`Asdamir.Tools` is published on **nuget.org** (currently `1.1.0`). Generated apps restore the framework
 **libraries** — `Asdamir.Core` / `.Data` / `.Web` (currently `1.0.4`) — from nuget.org as well.
 
 ## Scaffolding
