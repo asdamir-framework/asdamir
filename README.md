@@ -13,7 +13,9 @@ Asdamir gives you two things at once:
 ![Open core](https://img.shields.io/badge/open%20core-LGPL--3.0-blue)
 ![Commercial](https://img.shields.io/badge/AppManagement-commercial-orange)
 
-> Status: stable (`1.0.0`). Production-ready; semantic versioning — breaking changes bump the major. The production-readiness features below are in place.
+📚 **Docs:** [docs.asdamir.com](https://docs.asdamir.com) · 🧩 **Offline & AI-free** — the CLI needs no cloud and no AI; an optional [Claude Code](https://docs.asdamir.com) skill/agent layer is there if you want it.
+
+> Status: stable (`1.1.0`). Production-ready; semantic versioning — breaking changes bump the major. The production-readiness features below are in place.
 
 ---
 
@@ -23,7 +25,7 @@ Asdamir gives you two things at once:
 
 - **Skip months of plumbing.** Authentication (JWT + 2FA + refresh-token rotation with reuse detection), two-tier RBAC, validation, RFC-7807 error handling, DB-backed localization & configuration, structured logging, a transactional outbox, Hangfire jobs and an enterprise FluentUI component library all ship working. You write features, not infrastructure.
 - **Secure by default, not bolted on.** Safe defaults everywhere: CSP nonce, security headers, request rate limiting, AES-256-GCM encryption with PBKDF2, ASP.NET Data Protection key persistence, audit logging, PII-safe logging. A static **audit-lint** gate fails the build on anti-patterns (sync-over-async, silent failures, leaked API surface, unsafe defaults).
-- **Scaffold in seconds.** `asdamir new app`, `new mobile` (MAUI Blazor Hybrid), `new entity`, `new page`, `new module` emit code that already follows the framework's audited conventions — entity → DTO → repository → service → controller → tests → migration.
+- **Scaffold in seconds — with tests.** `asdamir new app`, `new mobile` (MAUI Blazor Hybrid), `new entity`, `new page`, `new module` emit code that already follows the framework's audited conventions — entity → DTO → repository → service → controller → **tests** → migration. Every scaffolded entity ships with **working tests** (CRUD round-trips, validation, and an API auth-guard that asserts the endpoint returns `401` without a token) that run **DB-free**. You generate a *tested* app, not just an app.
 - **Observability that actually helps.** OpenTelemetry traces **and** metrics (incl. SQL/Dapper DB spans) over OTLP, Kubernetes-style liveness/readiness health probes, correlation-ID propagation, and Serilog to console / file / database. Point it at a collector and you get full-stack traces end-to-end.
 - **Built to run in production.** A journaled, idempotent migration runner; encryption-key rotation tooling; DB-backed (scale-out) rate limiting; restart-safe Data Protection keys; offline-resilient mobile. **0-warning builds** (`TreatWarningsAsErrors` + latest analyzers) and **300+ automated tests**.
 
@@ -84,7 +86,7 @@ flowchart TB
 | **Asdamir.Core** | `Asdamir.Core.*` | Models, DTOs, contracts, modules, multi-tenancy, error handling, validation, JWT, AES-GCM encryption, authorization |
 | **Asdamir.Data** | `Asdamir.Data.*` | Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox + dispatchers |
 | **Asdamir.Web** | `Asdamir.Web.*` | Blazor + FluentUI components, API-backed localization, web security (JWT / Data Protection / CSP / rate limiting) |
-| **Asdamir.Tools** | `Asdamir.Tools.*` | The `asdamir` / `framework` CLI: scaffolding, `audit lint`, `db apply`, `secrets`, `app register` |
+| **Asdamir.Tools** | `Asdamir.Tools.*` | The `asdamir` CLI: scaffolding, `audit lint`, `db apply`, `secrets`, `app register` |
 
 ---
 
@@ -102,6 +104,21 @@ flowchart TB
 ---
 
 ## Quick start
+
+### Try it in 5 minutes (no clone, no database)
+
+Install the CLI from nuget.org and scaffold a fully wired app — it builds with **0 warnings** and its generated tests pass **DB-free**:
+
+```bash
+dotnet tool install --global Asdamir.Tools     # provides the `asdamir` command
+asdamir new app MyPortal                        # Server (Blazor) + Gateway (REST API) + tests
+cd MyPortal
+asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
+dotnet build MyPortal.sln                        # 0 warnings
+dotnet test  MyPortal.sln                        # generated tests pass — no SQL Server needed
+```
+
+### Build the repo from source
 
 **Prerequisites:** .NET 10 SDK; SQL Server (LocalDB or remote) for the `AsdamirVault` catalog. The test suite runs fully in-memory — no database or secrets needed.
 
@@ -156,8 +173,8 @@ asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
 ## CLI — `Asdamir.Tools`
 
 ```bash
-dotnet run --project src/Asdamir.Tools -- <command>      # from source
-# or install the dotnet tool (see docs/cli.md): asdamir <command>  /  framework <command>
+asdamir <command>                                        # after: dotnet tool install --global Asdamir.Tools
+dotnet run --project src/Asdamir.Tools -- <command>      # or from source
 ```
 
 | Command | What it does |
@@ -180,7 +197,7 @@ Suppress a single finding with `// audit-lint:ignore AUDxxx` (+ a reason); whole
 
 ## Documentation
 
-Full guides live in [`docs/`](docs/README.md) (ABP-style, readable markdown on GitHub):
+📚 **Browse the full documentation site: [docs.asdamir.com](https://docs.asdamir.com)** (searchable, ABP-style). The same guides live in [`docs/`](docs/README.md) as readable markdown on GitHub:
 
 - [Getting Started](docs/getting-started.md) · [Architecture](docs/ARCHITECTURE.md)
 - Fundamentals: [Authentication](docs/fundamentals/authentication.md) · [Authorization](docs/fundamentals/authorization.md) · [Multi-Tenancy](docs/fundamentals/multi-tenancy.md) · [Validation](docs/fundamentals/validation.md) · [Error Handling](docs/fundamentals/error-handling.md) · [Data Access](docs/fundamentals/data-access.md) · [Configuration](docs/fundamentals/configuration.md) · [Background Jobs](docs/fundamentals/background-jobs.md) · [Outbox](docs/fundamentals/outbox.md) · [Localization](docs/fundamentals/localization.md) · [Audit Logging](docs/fundamentals/audit-logging.md) · [Encryption](docs/fundamentals/encryption.md) · [Observability](docs/fundamentals/observability.md)
@@ -216,7 +233,7 @@ Asdamir is **dual-licensed (open core)**:
 - **Commercial — AppManagement.** The management/control plane (`AdminConsole` + `AdminConsole.Api`) is
   **not** open source. It requires a separate commercial license (**Team / Business / Enterprise**).
   Copying, distribution, or sublicensing without a license is prohibited. See
-  [packaging/LICENSING.md](packaging/LICENSING.md). Contact: _[placeholder — sales@asdamir.example]_.
+  [docs.asdamir.com](https://docs.asdamir.com) for plans, or contact _[placeholder — sales@asdamir.example]_.
 
 **FAQ — "Can I use Asdamir in my own commercial/closed app?"** **Yes.** LGPL-3.0 allows it; you only
 have to publish changes you make *to the framework itself*. Building a closed product *on top of* Asdamir
@@ -235,8 +252,8 @@ Asdamir **çift lisanslıdır (open core)**:
   gerekir. Asdamir'i sadece *kullanan* kendi kodun sana ait kalır.
 - **Ticari — AppManagement.** Yönetim/kontrol düzlemi (`AdminConsole` + `AdminConsole.Api`) açık kaynak
   **değildir**; ayrı ticari lisans (**Team / Business / Enterprise**) gerektirir. Lisanssız kopyalama,
-  dağıtım veya alt-lisanslama yasaktır. Bkz. [packaging/LICENSING.md](packaging/LICENSING.md).
-  İletişim: _[placeholder]_.
+  dağıtım veya alt-lisanslama yasaktır. Planlar için [docs.asdamir.com](https://docs.asdamir.com);
+  iletişim: _[placeholder]_.
 
 **SSS — "Asdamir'i kendi ticari/kapalı uygulamamda kullanabilir miyim?"** **Evet.** LGPL-3.0 buna izin
 verir; yalnızca *çekirdekte* yaptığın değişiklikleri açman gerekir. Asdamir'in *üzerine* kapalı bir ürün
