@@ -291,7 +291,7 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'Common.LoadFailed',            N'tr-TR', N'Liste yüklenemedi.'),
     (N'Common.LoadFailed',            N'en-US', N'Failed to load the list.'),
     (N'Common.LoadFailed',            N'ru-RU', N'Не удалось загрузить список.'),
-    (N'Common.Actions',               N'tr-TR', N'Aksiyon'),
+    (N'Common.Actions',               N'tr-TR', N'Eylem'),
     (N'Common.Actions',               N'en-US', N'Actions'),
     (N'Common.Actions',               N'ru-RU', N'Действия'),
     (N'Common.DeleteConfirm',         N'tr-TR', N'Bu kaydı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.'),

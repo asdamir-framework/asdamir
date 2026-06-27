@@ -503,6 +503,11 @@ h1:focus { outline: none; }
 /* INSPINIA-style data table */
 .asd-tablewrap { overflow-x: auto; overflow-y: auto; max-height: 62vh; }
 .asd-table { width: 100%; border-collapse: collapse; font-size: .85rem; white-space: nowrap; }
+/* Headers are UPPERCASE. The dotted-İ problem (English label "Quantity" -> "QUANTİTY" on a tr-TR page)
+   is solved by LOCALIZING the labels per culture — never by dropping the uppercase. Under an English
+   page uppercase yields plain "QUANTITY"; under Turkish the seeded tr-TR value must itself be Turkish
+   (e.g. "Miktar" -> "MİKTAR"). So: translate the generated Field/Page/Menu tr-TR (and ru-RU) values;
+   do NOT leave the raw English name as the tr-TR value. (See CLAUDE.md "Turkish dotted-İ".) */
 .asd-table thead th { position: sticky; top: 0; z-index: 1; text-align: left; padding: 12px 16px; font-size: .7rem; text-transform: uppercase; letter-spacing: .4px; font-weight: 700; color: color-mix(in srgb, var(--asd-ink) 78%, var(--asd-ink-soft)); background: var(--asd-surface); border-bottom: 1px solid var(--asd-border-strong); }
 .asd-table tbody td { padding: 10px 16px; border-bottom: 1px solid var(--asd-border); color: var(--asd-ink); font-weight: 500; vertical-align: middle; }
 .asd-table tbody td.muted { color: var(--asd-ink-soft); font-weight: 400; }
