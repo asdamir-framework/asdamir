@@ -1792,7 +1792,9 @@ is taken from the project automatically — no <code>--namespace</code> needed.<
 <a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>asdamir<span class="w"> </span>new<span class="w"> </span>entity<span class="w"> </span>OrderItem<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;OrderId:int,ProductId:int,Quantity:int,UnitPrice:decimal&quot;</span>
 </code></pre></div>
 Each entity → Domain + DTO + Repository(+interface) + Service(+interface) + Controller + Validator +
-a migration, plus tests placed in the test project automatically. <strong>Since 1.1.0, 6 tests per entity</strong>
+a create migration + an <strong>idempotent sample-seed migration</strong> (since 1.1.1: 3 typed sample rows,
+<code>IF NOT EXISTS</code> guard, <code>TenantId='default'</code>, so the grid is populated after <code>db apply</code> instead of empty),
+plus tests placed in the test project automatically. <strong>Since 1.1.0, 6 tests per entity</strong>
 (all DB-free): create/get round-trip, validator rejection, delete, <strong>update round-trip</strong>, <strong>list</strong>
 (service-level, in-memory fake repo) + an <strong>API auth-guard</strong> (<code>WebApplicationFactory</code>, token-less
 <code>GET</code> → 401, proving the controller is <code>[Authorize]</code>-protected). The WAF fixture (<code>SmokeFactory</code>) is

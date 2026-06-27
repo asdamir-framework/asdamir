@@ -1731,7 +1731,7 @@
 </tr>
 <tr>
 <td><code>new entity &lt;Name&gt;</code></td>
-<td>Entity + DTO + repository + service + controller + tests + migration. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, <strong>update round-trip</strong>, <strong>list</strong>, and an <strong>API auth-guard</strong> (<code>GET</code> without a token → 401) — all DB-free (in-memory fake repo + <code>WebApplicationFactory</code>).</td>
+<td>Entity + DTO + repository + service + controller + tests + a create migration + an <strong>idempotent sample-seed migration</strong>. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, <strong>update round-trip</strong>, <strong>list</strong>, and an <strong>API auth-guard</strong> (<code>GET</code> without a token → 401) — all DB-free (in-memory fake repo + <code>WebApplicationFactory</code>). The seed migration (since 1.1.1) writes 3 typed sample rows (guarded by <code>IF NOT EXISTS</code>, <code>TenantId='default'</code>) so the entity's grid is populated after <code>db apply</code> instead of empty.</td>
 </tr>
 <tr>
 <td><code>new page &lt;Name&gt;</code></td>
