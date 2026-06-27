@@ -102,6 +102,15 @@ public static class EntityCommand
             // ms precision (…fff) so two entities scaffolded in the same second get distinct, ordered
             // migration stamps instead of colliding on V<yyyyMMddHHmmss>__create_*.sql.
             MigrationStamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff"),
+            // Drives EntitySeed.sbn (the in-house templater can't loop a literal array): 3 sample rows.
+            // String values get the Index suffix; numeric fields reuse IntVal/DecVal (pre-formatted, so
+            // the template needs no arithmetic, which the templater also lacks).
+            SeedRows = new[]
+            {
+                new { Index = "1", IntVal = "10", DecVal = "100.00" },
+                new { Index = "2", IntVal = "20", DecVal = "200.00" },
+                new { Index = "3", IntVal = "30", DecVal = "300.00" },
+            },
         };
 
         var outputs = new[]
@@ -116,6 +125,9 @@ public static class EntityCommand
             ($"Validators/{name}DtoValidator.cs",                    "Validator"),
             ($"Tests/{name}Tests.cs",                                "Tests"),
             ($"db/migrations/V{model.MigrationStamp}__create_{pluralLower}.sql", "Migration"),
+            // Idempotent sample-seed so the new entity's grid isn't empty on first run. Same stamp as
+            // the create migration; "create" sorts before "seed" so the table exists when it runs.
+            ($"db/migrations/V{model.MigrationStamp}__seed_{pluralLower}.sql", "EntitySeed"),
         };
 
         // The entity is scaffolded from its project dir (e.g. <app>/src/<App>.Gateway). xUnit test
