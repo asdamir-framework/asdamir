@@ -68,7 +68,9 @@ asdamir new entity Order     --fields "CustomerId:int,OrderDate:datetime,Status:
 asdamir new entity OrderItem --fields "OrderId:int,ProductId:int,Quantity:int,UnitPrice:decimal"
 ```
 Each entity → Domain + DTO + Repository(+interface) + Service(+interface) + Controller + Validator +
-a migration, plus tests placed in the test project automatically. **Since 1.1.0, 6 tests per entity**
+a create migration + an **idempotent sample-seed migration** (since 1.1.1: 3 typed sample rows,
+`IF NOT EXISTS` guard, `TenantId='default'`, so the grid is populated after `db apply` instead of empty),
+plus tests placed in the test project automatically. **Since 1.1.0, 6 tests per entity**
 (all DB-free): create/get round-trip, validator rejection, delete, **update round-trip**, **list**
 (service-level, in-memory fake repo) + an **API auth-guard** (`WebApplicationFactory`, token-less
 `GET` → 401, proving the controller is `[Authorize]`-protected). The WAF fixture (`SmokeFactory`) is
