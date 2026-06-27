@@ -97,9 +97,9 @@ public class InMemoryRateLimitService : IRateLimitService
         };
         entryOptions.RegisterPostEvictionCallback((evictedKey, _, _, _) =>
         {
-            if (evictedKey is string sk && _locks.TryRemove(sk, out var semaphore))
+            if (evictedKey is string sk)
             {
-                semaphore.Dispose();
+                _locks.TryRemove(sk, out _);
             }
         });
         _cache.Set(cacheKey, counter, entryOptions);
