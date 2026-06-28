@@ -1,0 +1,34 @@
+#!/bin/bash
+# Temiz test çıktısı: her test PASS/FAIL, sıfır gürültü. TRX üretir, parse eder, render eder.
+cd "$(dirname "$0")"
+rm -rf TestResults
+dotnet test --logger "trx;LogFileName=results.trx" > /tmp/asd-test-build.log 2>&1
+TRX=$(find . -path "*/TestResults/*" -name "results.trx" 2>/dev/null)
+if [ -z "$TRX" ]; then
+  echo "BUILD/TEST FAILED — derleme veya test çalışmadı. Detay:"
+  tail -30 /tmp/asd-test-build.log
+  exit 1
+fi
+python3 - $TRX <<'PYEOF'
+import sys, xml.etree.ElementTree as ET
+ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
+G, R, B, Z = '\033[32m', '\033[31m', '\033[1m', '\033[0m'
+results = []
+for path in sys.argv[1:]:
+    root = ET.parse(path).getroot()
+    for r in root.findall('.//t:UnitTestResult', ns):
+        results.append((r.get('testName',''), r.get('outcome','')))
+results.sort(key=lambda x: x[0])
+passed = failed = 0
+for name, outcome in results:
+    parts = name.split('.')
+    short = parts[-2] + '.' + parts[-1] if len(parts) >= 2 else name
+    if outcome == 'Passed':
+        print(f"{G}PASS{Z}  {short}"); passed += 1
+    else:
+        print(f"{R}FAIL{Z}  {short}  [{outcome}]"); failed += 1
+total = passed + failed
+c = G if failed == 0 else R
+print(f"\n{B}{c}{passed} passed, {failed} failed — {total} total{Z}")
+sys.exit(0 if failed == 0 else 1)
+PYEOF

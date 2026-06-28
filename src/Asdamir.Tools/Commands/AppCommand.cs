@@ -197,6 +197,9 @@ public static class AppCommand
             ("Directory.Packages.props",                                  "DirectoryPackages"),
             ("Directory.Build.props",                                     "DirectoryBuild"),
             ("nuget.config",                                              "NugetConfig"),
+            // Clean test output: `./run-tests.sh` runs the suite and prints one PASS/FAIL line per test
+            // (parses the TRX), with zero build/host/xUnit noise. See the script header.
+            ("run-tests.sh",                                              "RunTestsSh"),
             (".gitignore",                                                "GitIgnore"),
             ("README.md",                                                 "AppReadme"),
 
@@ -265,6 +268,10 @@ public static class AppCommand
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             if (File.Exists(target)) { Console.WriteLine($"  SKIP (exists): {relPath}"); continue; }
             File.WriteAllText(target, TemplateRenderer.Render(templateName, model));
+            // Shell scripts (run-tests.sh) need the executable bit so `./run-tests.sh` works out of the box.
+            if (!OperatingSystem.IsWindows() && relPath.EndsWith(".sh", StringComparison.Ordinal))
+                File.SetUnixFileMode(target, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
+                    | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
             Console.WriteLine($"  WROTE: {relPath}");
             written++;
         }

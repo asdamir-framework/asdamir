@@ -34,7 +34,8 @@ cd ../..
 
 # 2) Build + test
 dotnet build {{ AppName }}.sln
-dotnet test  {{ AppName }}.sln
+./run-tests.sh                 # clean output: one PASS/FAIL line per test, zero noise
+dotnet test  {{ AppName }}.sln # (raw .NET test summary, if you prefer)
 
 # 3) Create this app's OWN (business) database + demo table
 asdamir db apply --server localhost --database {{ DatabaseName }} --create-database --migrations db/migrations
