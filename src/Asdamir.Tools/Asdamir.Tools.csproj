@@ -15,6 +15,8 @@
 
     <!-- NuGet metadata -->
     <PackageId>Asdamir.Tools</PackageId>
+    <!-- Tools-only version (generator emits run-tests.sh); Core/Data/Web stay at the shared 1.1.1. -->
+    <Version>1.1.2</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>
