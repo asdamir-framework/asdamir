@@ -25,7 +25,7 @@ Asdamir gives you two things at once:
 
 - **Skip months of plumbing.** Authentication (JWT + 2FA + refresh-token rotation with reuse detection), two-tier RBAC, validation, RFC-7807 error handling, DB-backed localization & configuration, structured logging, a transactional outbox, Hangfire jobs and an enterprise FluentUI component library all ship working. You write features, not infrastructure.
 - **Secure by default, not bolted on.** Safe defaults everywhere: CSP nonce, security headers, request rate limiting, AES-256-GCM encryption with PBKDF2, ASP.NET Data Protection key persistence, audit logging, PII-safe logging. A static **audit-lint** gate fails the build on anti-patterns (sync-over-async, silent failures, leaked API surface, unsafe defaults).
-- **Scaffold in seconds — with tests.** `asdamir new app`, `new mobile` (MAUI Blazor Hybrid), `new entity`, `new page`, `new module` emit code that already follows the framework's audited conventions — entity → DTO → repository → service → controller → **tests** → migration. Every scaffolded entity ships with **working tests** (CRUD round-trips, validation, and an API auth-guard that asserts the endpoint returns `401` without a token) that run **DB-free**. You generate a *tested* app, not just an app.
+- **Scaffold in seconds — with tests.** `asdamir new app`, `new mobile` (MAUI Blazor Hybrid), `new entity`, `new page`, `new feature` (one command: entity + page + menu/permission), `new module` emit code that already follows the framework's audited conventions — entity → DTO → repository → service → controller → **tests** → migration. Every scaffolded entity ships with **working tests** (CRUD round-trips, validation, and an API auth-guard that asserts the endpoint returns `401` without a token) that run **DB-free**. You generate a *tested* app, not just an app.
 - **Observability that actually helps.** OpenTelemetry traces **and** metrics (incl. SQL/Dapper DB spans) over OTLP, Kubernetes-style liveness/readiness health probes, correlation-ID propagation, and Serilog to console / file / database. Point it at a collector and you get full-stack traces end-to-end.
 - **Built to run in production.** A journaled, idempotent migration runner; encryption-key rotation tooling; DB-backed (scale-out) rate limiting; restart-safe Data Protection keys; offline-resilient mobile. **0-warning builds** (`TreatWarningsAsErrors` + latest analyzers) and **300+ automated tests**.
 
@@ -179,7 +179,9 @@ dotnet run --project src/Asdamir.Tools -- <command>      # or from source
 
 | Command | What it does |
 |---|---|
-| `new app` · `new mobile` · `new entity` · `new page` · `new module` | Scaffold apps & code from audited conventions |
+| `new app` · `new mobile` · `new entity` · `new page` · `new feature` · `new module` | Scaffold apps & code from audited conventions |
+| `new feature <Name>` | One command: entity + page + menu/permission seed (optionally applied) — the full-CRUD fast path |
+| `rollback <Name>` | Tear down a generated feature (code + DB table + menu/permissions); interactive confirm by default |
 | `db apply` | Journaled, idempotent SQL migration runner |
 | `secrets rotate-key` · `secrets encrypt` | At-rest key rotation + value encryption |
 | `audit lint` | Static anti-pattern gate (run it before every push) |

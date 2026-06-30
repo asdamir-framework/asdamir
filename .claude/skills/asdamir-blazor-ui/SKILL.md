@@ -8,6 +8,12 @@ description: Use when adding or editing a Blazor component/page in Asdamir.Web, 
 Deep reference: `CLAUDE.md` → "Blazor styling" + "Combobox dropdown layering", `docs/ui-components.md`,
 memory `2026-06-14-notification-service-real`.
 
+> **Scaffolding a page is more than `.razor`.** `asdamir new page` (and `asdamir new feature`) emit not
+> just `<Plural>List.razor` + `<Name>EditorDialog.razor` but also `db/admin-onboarding/seed_menu_<plural>.sql`
+> (a role-based menu + `<plural>.view` permission seed) and `localize_<plural>.sql` — apply both to
+> **AsdamirVault**. So a generated page already ships its nav-menu entry + permission; you don't register
+> the menu by hand. See `asdamir-new-feature`.
+
 ## CSS — isolation only, no inline styles
 - Styles live in a **co-located `<Component>.razor.css`** (scoped). Use **`::deep`** to reach child /
   FluentUI rendered elements.
