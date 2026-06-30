@@ -46,22 +46,58 @@ public static class EntityCommand
             description: "Root namespace for generated code. Defaults to the entity name.",
             getDefaultValue: () => "");
 
+        // Optional: apply the generated migration right away (reuses `db apply`'s journaled runner against
+        // <output>/db/migrations). Connection options mirror `db apply` exactly — required when --apply is set.
+        var applyOpt = new Option<bool>(
+            "--apply",
+            description: "After generating, apply the migration via the journaled `db apply` runner. Requires a connection (below).",
+            getDefaultValue: () => false);
+        var connOpt = new Option<string>(
+            new[] { "--connection", "-c" },
+            description: "Full ADO.NET connection string for --apply. Takes precedence over --server/--database/--user/--password.",
+            getDefaultValue: () => "");
+        var serverOpt = new Option<string>(
+            new[] { "--server", "-S" }, description: "SQL Server instance for --apply (when --connection is omitted).",
+            getDefaultValue: () => "localhost");
+        var databaseOpt = new Option<string>(
+            new[] { "--database", "-d" }, description: "Target database for --apply (required when --connection is omitted).",
+            getDefaultValue: () => "");
+        var userOpt = new Option<string>(
+            new[] { "--user", "-U" }, description: "SQL login for --apply (SQL auth). Omit for Windows integrated auth.",
+            getDefaultValue: () => "");
+        var passwordOpt = new Option<string>(
+            new[] { "--password", "-P" }, description: "Password for --user.",
+            getDefaultValue: () => "");
+
         var entityCmd = new Command("entity", "Generate a complete entity slice (POCO + DTO + repo + service + controller + tests + migration).")
         {
-            nameArg, fieldsOpt, outputOpt, namespaceOpt,
+            nameArg, fieldsOpt, outputOpt, namespaceOpt, applyOpt, connOpt, serverOpt, databaseOpt, userOpt, passwordOpt,
         };
 
-        entityCmd.SetHandler(Run, nameArg, fieldsOpt, outputOpt, namespaceOpt);
+        entityCmd.SetHandler(async ctx =>
+        {
+            ctx.ExitCode = await RunAsync(
+                ctx.ParseResult.GetValueForArgument(nameArg),
+                ctx.ParseResult.GetValueForOption(fieldsOpt) ?? "",
+                ctx.ParseResult.GetValueForOption(outputOpt)!,
+                ctx.ParseResult.GetValueForOption(namespaceOpt) ?? "",
+                ctx.ParseResult.GetValueForOption(applyOpt),
+                ctx.ParseResult.GetValueForOption(connOpt) ?? "",
+                ctx.ParseResult.GetValueForOption(serverOpt) ?? "localhost",
+                ctx.ParseResult.GetValueForOption(databaseOpt) ?? "",
+                ctx.ParseResult.GetValueForOption(userOpt) ?? "",
+                ctx.ParseResult.GetValueForOption(passwordOpt) ?? "");
+        });
         return entityCmd;
     }
 
-    private static void Run(string name, string fieldsRaw, DirectoryInfo output, string nsOverride)
+    internal static async Task<int> RunAsync(string name, string fieldsRaw, DirectoryInfo output, string nsOverride,
+        bool apply, string connection, string server, string database, string user, string password)
     {
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
-            Environment.Exit(2);
-            return;
+            return 2;
         }
 
         IReadOnlyList<FieldSpec> fields;
@@ -72,15 +108,13 @@ public static class EntityCommand
         catch (ArgumentException ex)
         {
             Console.Error.WriteLine($"Field parse error: {ex.Message}");
-            Environment.Exit(2);
-            return;
+            return 2;
         }
 
         if (fields.Count == 0)
         {
             Console.Error.WriteLine("At least one field is required via --fields.");
-            Environment.Exit(2);
-            return;
+            return 2;
         }
 
         // --namespace wins; else the containing project's namespace; else (no project) the entity name.
@@ -137,6 +171,8 @@ public static class EntityCommand
 
         var written = 0;
         var skipped = 0;
+        var testCount = 0;
+        var rows = new List<(string Layer, string Path, bool Skipped)>();
         foreach (var (relPath, templateName) in outputs)
         {
             var target = (templateName == "Tests" && testTarget is not null)
@@ -150,21 +186,55 @@ public static class EntityCommand
 
             if (File.Exists(target))
             {
-                Console.WriteLine($"  SKIP (exists): {display}");
+                rows.Add((LayerOf(templateName), display, true));
                 skipped++;
                 continue;
             }
 
             var content = TemplateRenderer.Render(templateName, model);
             File.WriteAllText(target, content);
-            Console.WriteLine($"  WROTE: {display}");
+            if (templateName == "Tests")
+                testCount = content.Split("[Fact]").Length - 1 + (content.Split("[Theory]").Length - 1);
+            rows.Add((LayerOf(templateName), display, false));
             written++;
         }
 
         Console.WriteLine();
-        Console.WriteLine($"Done. {written} written, {skipped} skipped.");
-        Console.WriteLine($"Next: review the generated files, register {name}Service / {name}Repository in DI, and apply the migration.");
+        Console.WriteLine($"✓ Generated entity '{name}' ({written} files{(skipped > 0 ? $", {skipped} skipped" : "")})");
+        Console.WriteLine();
+        OutputFormatter.PrintGroupedFiles(rows);
+        Console.WriteLine();
+        var testNote = testCount > 0 ? $"{testCount} tests" : "";
+
+        if (apply)
+        {
+            if (testNote.Length > 0) Console.WriteLine($"  {testNote} · applying migration via db apply…");
+            Console.WriteLine();
+            // Reuse db apply's journaled runner: it validates the connection (errors if neither --connection
+            // nor --database is given), prints applied/skipped, and returns the exit code we propagate.
+            // createDatabase:false — the app DB already exists by the time you add entities.
+            var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
+            return await DbApplyCommand.RunAsync(connection, server, database, user, password, migDir, createDatabase: false);
+        }
+
+        var prefix = testNote.Length > 0 ? testNote + " · " : "";
+        Console.WriteLine($"  {prefix}next: asdamir db apply  (apply the migration · DI auto-registers by convention)");
+        return 0;
     }
+
+    // Maps a template name to the human-readable layer label shown in the grouped output table.
+    private static string LayerOf(string template) => template switch
+    {
+        "Entity" => "Domain",
+        "Dto" => "DTO",
+        "IRepository" or "Repository" => "Repository",
+        "IService" or "Service" => "Service",
+        "Controller" => "Controller",
+        "Validator" => "Validator",
+        "Tests" => "Tests",
+        "Migration" or "EntitySeed" => "Migration",
+        _ => template,
+    };
 
     // Finds the conventional test project for the project the entity is scaffolded into: walk up to the
     // app root (the nearest ancestor containing a 'tests' folder) and look for tests/<ProjectDir>.Tests.

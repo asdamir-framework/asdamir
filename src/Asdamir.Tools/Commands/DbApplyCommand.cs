@@ -91,7 +91,9 @@ public static class DbApplyCommand
         return cmd;
     }
 
-    private static async Task<int> RunAsync(
+    /// <summary>The journaled migration runner. Exposed (internal) so other commands — e.g.
+    /// <c>new entity --apply</c> — can reuse the exact same apply path instead of re-implementing it.</summary>
+    internal static async Task<int> RunAsync(
         string connection, string server, string database, string user, string password,
         DirectoryInfo migrations, bool createDatabase)
     {
@@ -274,8 +276,9 @@ public static class DbApplyCommand
     private static string Sha256(string text)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text.Replace("\r\n", "\n"))));
 
-    /// <summary>Splits a script on lines that are exactly <c>GO</c> (the sqlcmd/SSMS batch separator).</summary>
-    private static List<string> SplitBatches(string script)
+    /// <summary>Splits a script on lines that are exactly <c>GO</c> (the sqlcmd/SSMS batch separator).
+    /// Internal so other commands (e.g. <c>new feature</c> applying AsdamirVault seeds) reuse the same split.</summary>
+    internal static List<string> SplitBatches(string script)
     {
         var batches = new List<string>();
         var sb = new StringBuilder();

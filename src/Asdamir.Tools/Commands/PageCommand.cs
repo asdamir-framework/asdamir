@@ -54,22 +54,33 @@ public static class PageCommand
             description: "Authorization policy applied to the page. Defaults to 'AdminAccess'.",
             getDefaultValue: () => "AdminAccess");
 
+        var iconOpt = new Option<string>(
+            new[] { "--icon", "-i" },
+            description: "Nav-menu icon for the generated menu row (seed_menu_<plural>.sql). Defaults to 'list'.",
+            getDefaultValue: () => "list");
+
         var pageCmd = new Command("page", "Generate a Blazor CRUD page (DataGrid + edit dialog + delete confirm) bound to an entity DTO.")
         {
-            nameArg, fieldsOpt, routeOpt, outputOpt, namespaceOpt, policyOpt,
+            nameArg, fieldsOpt, routeOpt, outputOpt, namespaceOpt, policyOpt, iconOpt,
         };
 
-        pageCmd.SetHandler(Run, nameArg, fieldsOpt, routeOpt, outputOpt, namespaceOpt, policyOpt);
+        pageCmd.SetHandler(ctx => ctx.ExitCode = Run(
+            ctx.ParseResult.GetValueForArgument(nameArg),
+            ctx.ParseResult.GetValueForOption(fieldsOpt) ?? "",
+            ctx.ParseResult.GetValueForOption(routeOpt) ?? "",
+            ctx.ParseResult.GetValueForOption(outputOpt)!,
+            ctx.ParseResult.GetValueForOption(namespaceOpt) ?? "",
+            ctx.ParseResult.GetValueForOption(policyOpt) ?? "AdminAccess",
+            ctx.ParseResult.GetValueForOption(iconOpt) ?? "list"));
         return pageCmd;
     }
 
-    private static void Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy)
+    internal static int Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy, string icon)
     {
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
-            Environment.Exit(2);
-            return;
+            return 2;
         }
 
         IReadOnlyList<FieldSpec> fields;
@@ -80,15 +91,13 @@ public static class PageCommand
         catch (ArgumentException ex)
         {
             Console.Error.WriteLine($"Field parse error: {ex.Message}");
-            Environment.Exit(2);
-            return;
+            return 2;
         }
 
         if (fields.Count == 0)
         {
             Console.Error.WriteLine("At least one field is required via --fields.");
-            Environment.Exit(2);
-            return;
+            return 2;
         }
 
         // --namespace wins; else the containing project's namespace; else (no project) the entity name.
@@ -115,7 +124,9 @@ public static class PageCommand
             EntityPluralLower = pluralLower,
             Namespace = ns,
             Route = resolvedRoute,
+            MenuKey = MenuKeyFromUrl(resolvedRoute),
             Policy = string.IsNullOrWhiteSpace(policy) ? "AdminAccess" : policy,
+            Icon = string.IsNullOrWhiteSpace(icon) ? "list" : icon,
             Fields = fieldViews,
             ApiPath = $"api/{pluralLower}",
             AppCode = appCode,
@@ -133,52 +144,59 @@ public static class PageCommand
 
         var written = 0;
         var skipped = 0;
+        var rows = new List<(string Layer, string Path, bool Skipped)>();
+
+        void Emit(string templateName, string target, string display)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            if (File.Exists(target)) { rows.Add((LayerOf(templateName), display, true)); skipped++; return; }
+            File.WriteAllText(target, TemplateRenderer.Render(templateName, model));
+            rows.Add((LayerOf(templateName), display, false)); written++;
+        }
+
         foreach (var (relPath, templateName) in outputs)
-        {
-            var target = Path.Combine(output.FullName, relPath);
-            var dir = Path.GetDirectoryName(target)!;
-            Directory.CreateDirectory(dir);
+            Emit(templateName, Path.Combine(output.FullName, relPath), relPath);
 
-            if (File.Exists(target))
-            {
-                Console.WriteLine($"  SKIP (exists): {relPath}");
-                skipped++;
-                continue;
-            }
-
-            var content = TemplateRenderer.Render(templateName, model);
-            File.WriteAllText(target, content);
-            Console.WriteLine($"  WROTE: {relPath}");
-            written++;
-        }
-
-        // Per-entity localization seed (Page.Title + Field.* in 3 cultures), scoped by AppId in AsdamirVault.
-        // Lands under <app-root>/db/admin-onboarding/localize_<pluralLower>.sql (next to register_*.sql); if no
-        // app root was found, fall back to the output dir so the file is never silently dropped.
-        var locDir = appRoot is not null
-            ? Path.Combine(appRoot, "db", "admin-onboarding")
-            : output.FullName;
-        Directory.CreateDirectory(locDir);
+        // localization + menu/permission seeds (AppId-scoped, AsdamirVault). Land under
+        // <app-root>/db/admin-onboarding/ next to register_*.sql; fall back to the output dir if no app root.
+        var locDir = appRoot is not null ? Path.Combine(appRoot, "db", "admin-onboarding") : output.FullName;
         var locTarget = Path.Combine(locDir, $"localize_{pluralLower}.sql");
-        var locRel = Path.GetRelativePath(output.FullName, locTarget);
-        if (File.Exists(locTarget))
-        {
-            Console.WriteLine($"  SKIP (exists): {locRel}");
-            skipped++;
-        }
-        else
-        {
-            File.WriteAllText(locTarget, TemplateRenderer.Render("PageLocalization", model));
-            Console.WriteLine($"  WROTE: {locRel}");
-            written++;
-        }
+        var menuTarget = Path.Combine(locDir, $"seed_menu_{pluralLower}.sql");
+        Emit("PageLocalization", locTarget, Path.GetRelativePath(output.FullName, locTarget));
+        Emit("PageMenuSeed", menuTarget, Path.GetRelativePath(output.FullName, menuTarget));
 
         Console.WriteLine();
-        Console.WriteLine($"Done. {written} written, {skipped} skipped.");
-        Console.WriteLine($"Next: register the AdminApi HttpClient (named 'AdminApi') in DI and ensure the [Authorize] policy '{model.Policy}' is configured.");
-        Console.WriteLine($"Next: apply {Path.Combine("db", "admin-onboarding", $"localize_{pluralLower}.sql")} against AsdamirVault to seed the page's localization keys.");
+        Console.WriteLine($"✓ Generated page '{name}' ({written} files{(skipped > 0 ? $", {skipped} skipped" : "")})");
+        Console.WriteLine();
+        OutputFormatter.PrintGroupedFiles(rows);
+        Console.WriteLine();
+        Console.WriteLine($"  next: apply db/admin-onboarding/{{localize,seed_menu}}_{pluralLower}.sql to AsdamirVault (menu + permission + localization)");
+        Console.WriteLine($"        register the 'AdminApi' HttpClient in DI · ensure the '{model.Policy}' policy is configured");
         if (string.IsNullOrEmpty(appCode))
-            Console.WriteLine("  NOTE: couldn't resolve the app Code (no .sln found) — edit @AppCode at the top of that SQL before running it.");
+            Console.WriteLine("        NOTE: app Code unresolved (no .sln) — set @AppCode at the top of those SQL files before running them");
+        return 0;
+    }
+
+    // Maps a template name to the human-readable layer label shown in the grouped output table.
+    private static string LayerOf(string template) => template switch
+    {
+        "Dto" => "DTO",
+        "Page" or "PageDialog" => "Page",
+        "PageLocalization" => "Localization",
+        "PageMenuSeed" => "Menu+Perms",
+        _ => template,
+    };
+
+    /// <summary>
+    /// Derives the stable menu-label localization key from the page Url — MUST match the generated
+    /// NavMenu's MenuKey() so the central menu entry resolves the same key ("/order-items" -> "Menu.OrderItems").
+    /// </summary>
+    private static string MenuKeyFromUrl(string url)
+    {
+        var parts = url.Trim('/').Split(new[] { '/', '-' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return "Menu.Item";
+        var slug = string.Concat(parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
+        return "Menu." + slug;
     }
 
     /// <summary>

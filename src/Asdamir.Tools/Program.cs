@@ -41,6 +41,7 @@ public static class Program
         {
             BuildNewCommand(),
             BuildAddCommand(),
+            RollbackCommand.Build(),
             BuildAuditCommand(),
             BuildDbCommand(),
             BuildAppCommand(),
@@ -78,6 +79,7 @@ public static class Program
         newCmd.AddCommand(MobileCommand.Build());
         newCmd.AddCommand(EntityCommand.Build());
         newCmd.AddCommand(PageCommand.Build());
+        newCmd.AddCommand(FeatureCommand.Build());
         newCmd.AddCommand(ModuleCommand.Build());
         return newCmd;
     }
