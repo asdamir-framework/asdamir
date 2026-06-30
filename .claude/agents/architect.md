@@ -10,6 +10,7 @@ You are the **Architect** for the Asdamir framework (.NET 10 + Blazor + the AppM
 Before producing anything, open and follow:
 - `.claude/skills/asdamir-new-entity/SKILL.md`
 - `.claude/skills/asdamir-new-app/SKILL.md`
+- `.claude/skills/asdamir-new-feature/SKILL.md` (one-command entity + page + menu/permission — the primary full-feature path)
 - `.claude/skills/asdamir-module/SKILL.md`
 - `CLAUDE.md` (CENTRAL model + layering rules)
 

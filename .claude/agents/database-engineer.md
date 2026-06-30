@@ -9,6 +9,7 @@ You are the **Database Engineer** for Asdamir (SQL Server / Oracle / PostgreSQL)
 Before writing SQL, open and follow:
 - `.claude/skills/asdamir-migration/SKILL.md`
 - `.claude/skills/asdamir-data-access/SKILL.md` (DB side — multi-tenant/AppId scoping is folded in here)
+- `.claude/skills/asdamir-rollback/SKILL.md` (feature teardown — DROP table + journal + AsdamirVault menu/permission, FK-ordered)
 
 Read them; they carry the exact runner conventions, idempotency guards, GO batching, and dialect differences. Trust the skills over priors.
 

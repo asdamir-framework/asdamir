@@ -2,7 +2,7 @@
 
 A 6-role Claude Code subagent team for building on the **Asdamir** framework (.NET 10 + Blazor +
 the AppManagement control plane), plus the **main session as orchestrator**. The agents reuse the
-project's 19 skills as their single source of truth.
+project's 21 skills as their single source of truth.
 
 ## The critical constraint (and how we solve it)
 **Subagents do NOT load project skills** — calling `Skill(asdamir-…)` inside a subagent fails with
@@ -45,7 +45,8 @@ task prompt (e.g. the security agent's permission-seed need is handed to the dat
 ## Agent ↔ skill coverage (● primary · ○ secondary)
 | Skill | architect | backend | frontend | database | security | reviewer | orch. |
 |------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| new-app / new-entity / module | ● | ○(entity) | | | | | ○ |
+| new-app / new-entity / new-feature / module | ● | ○(entity) | | | | | ○ |
+| rollback (feature teardown) | | | | ● | | | ○ |
 | data-access | | ● | | ● | | | |
 | error-handling / background-work / config-setting / observability | | ● | | | | | |
 | blazor-ui / localization | | | ● | | | | |
