@@ -15,9 +15,11 @@
 
     <!-- NuGet metadata -->
     <PackageId>Asdamir.Tools</PackageId>
-    <!-- Tools-only version (core workflow automation: new feature, rollback, auto menu/permission seed,
-         entity --apply); Core/Data/Web stay at the shared 1.1.1. -->
-    <Version>1.1.3</Version>
+    <!-- Tools-only patch (1.1.4): generated-template fixes — pin Microsoft.OpenApi 2.7.5 in the generated
+         Directory.Packages (closes NU1903/GHSA-v5pm so a scaffolded app builds under TreatWarningsAsErrors),
+         templater fail-fast on an unknown member / unsupported parenthesis, and the stale-TRX + skip-as-fail
+         fix in the generated run-tests.sh. Core/Data/Web version is set in Directory.Build.props. -->
+    <Version>1.1.4</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

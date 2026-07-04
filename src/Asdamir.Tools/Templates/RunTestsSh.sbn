@@ -1,9 +1,12 @@
 #!/bin/bash
-# Temiz test çıktısı: her test PASS/FAIL, sıfır gürültü. TRX üretir, parse eder, render eder.
+# Temiz test çıktısı: her test PASS/FAIL/SKIP, sıfır gürültü. TRX üretir, parse eder, render eder.
 cd "$(dirname "$0")"
-rm -rf TestResults
+# Bayat-TRX temizliği: TRX her test projesinin kendi TestResults/ klasörüne yazılır (kök ./TestResults'a
+# değil). Yalnız kökü silmek, derlemesi kırılan bir projenin ESKİ results.trx'ini bırakır → parser onu
+# yanlışlıkla "yeşil" sayar. Bu yüzden koşumdan önce TÜM per-project results.trx'leri sil (bin/ hariç).
+find . -path "*/TestResults/*" -name "results.trx" -not -path '*/bin/*' -delete 2>/dev/null
 dotnet test --logger "trx;LogFileName=results.trx" > /tmp/asd-test-build.log 2>&1
-TRX=$(find . -path "*/TestResults/*" -name "results.trx" 2>/dev/null)
+TRX=$(find . -path "*/TestResults/*" -name "results.trx" -not -path '*/bin/*' 2>/dev/null)
 if [ -z "$TRX" ]; then
   echo "BUILD/TEST FAILED — derleme veya test çalışmadı. Detay:"
   tail -30 /tmp/asd-test-build.log
@@ -12,23 +15,28 @@ fi
 python3 - $TRX <<'PYEOF'
 import sys, xml.etree.ElementTree as ET
 ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
-G, R, B, Z = '\033[32m', '\033[31m', '\033[1m', '\033[0m'
+G, R, Y, B, Z = '\033[32m', '\033[31m', '\033[33m', '\033[1m', '\033[0m'
+# Skip (NotExecuted/Inconclusive) bir HATA DEĞİLDİR — ayrı say; koşumu KIRMIZIYA çevirmemeli.
+SKIP = {'NotExecuted', 'Inconclusive'}
 results = []
 for path in sys.argv[1:]:
     root = ET.parse(path).getroot()
     for r in root.findall('.//t:UnitTestResult', ns):
         results.append((r.get('testName',''), r.get('outcome','')))
 results.sort(key=lambda x: x[0])
-passed = failed = 0
+passed = failed = skipped = 0
 for name, outcome in results:
     parts = name.split('.')
     short = parts[-2] + '.' + parts[-1] if len(parts) >= 2 else name
     if outcome == 'Passed':
         print(f"{G}PASS{Z}  {short}"); passed += 1
+    elif outcome in SKIP:
+        print(f"{Y}SKIP{Z}  {short}"); skipped += 1
     else:
         print(f"{R}FAIL{Z}  {short}  [{outcome}]"); failed += 1
-total = passed + failed
+total = passed + failed + skipped
 c = G if failed == 0 else R
-print(f"\n{B}{c}{passed} passed, {failed} failed — {total} total{Z}")
+tail = f", {skipped} skipped" if skipped else ""
+print(f"\n{B}{c}{passed} passed, {failed} failed{tail} — {total} total{Z}")
 sys.exit(0 if failed == 0 else 1)
 PYEOF

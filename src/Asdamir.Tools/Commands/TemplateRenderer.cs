@@ -119,7 +119,14 @@ internal static class Resolver
         var prop = type.GetProperty(name, BindingFlags.Public | BindingFlags.Instance);
         if (prop is not null) return prop.GetValue(obj);
         var field = type.GetField(name, BindingFlags.Public | BindingFlags.Instance);
-        return field?.GetValue(obj);
+        if (field is not null) return field.GetValue(obj);
+        // Fail-fast on a genuinely-missing member (a typo'd `{{ EntityNam }}` or a member the model
+        // doesn't expose) — silently returning null would emit an empty/wrong fragment into the
+        // generated source. A member that EXISTS but is null is fine (prop/field found → null value):
+        // only the "no such member on the type" case throws.
+        throw new InvalidOperationException(
+            $"Unknown template member '{name}' on model type '{type.Name}'. " +
+            "Check the template for a typo or a member the model does not expose.");
     }
 }
 
@@ -308,12 +315,16 @@ internal static class ExpressionEvaluator
                 }
             }
 
-            if (c is '!' or '(' or ')')
+            if (c == '!')
             {
                 tokens.Add(c.ToString());
                 i++;
                 continue;
             }
+            // Parentheses are NOT supported: the parser has no grouping rule, so a lexed '(' used to be
+            // silently mis-evaluated (resolved as a null identifier → the whole condition collapsed to
+            // false, trailing tokens dropped). Let '(' / ')' fall through to the "Unexpected character"
+            // throw below so an unsupported grouping fails fast instead of generating wrong code.
 
             if (char.IsLetter(c) || c == '_')
             {
