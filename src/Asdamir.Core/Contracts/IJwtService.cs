@@ -20,16 +20,24 @@ public interface IJwtService
     /// embedded as a <c>company</c> claim so downstream requests know which company (tenant)
     /// management database the session belongs to (multi-company; see
     /// docs/design/multi-company-management.md). Null/empty omits the claim (single-company).
+    /// <para>
+    /// <paramref name="tokenUse"/> marks the token's audience boundary — <c>"console"</c> for a
+    /// control-plane operator, <c>"app"</c> for a managed-app end-user (with <paramref name="appCode"/>
+    /// as the app's code). Every token shares the same signing key/issuer/audience, so this claim is what
+    /// lets control-plane endpoints reject app-login tokens. Null omits both claims (treated as console/legacy).
+    /// </para>
     /// </summary>
-    TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null);
+    TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null,
+        string? tokenUse = null, string? appCode = null);
 
     /// <summary>
     /// Same as the default issuer but with explicit access/refresh lifetimes — used when the lifetime
     /// is resolved at runtime (e.g. per-app, from the app's DB-backed configuration) rather than the
-    /// host's startup configuration.
+    /// host's startup configuration. See the other overload for <paramref name="tokenUse"/>/<paramref name="appCode"/>.
     /// </summary>
     TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions,
-        TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null);
+        TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null,
+        string? tokenUse = null, string? appCode = null);
 }
 
 

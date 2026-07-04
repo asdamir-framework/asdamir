@@ -16,10 +16,7 @@ namespace Asdamir.Web.Security.Services;
 public interface IRateLimitService
 {
     Task<bool> TryAcquireAsync(string key, int maxRequests, TimeSpan window);
-    Task<RateLimitInfo> GetLimitInfoAsync(string key);
 }
-
-public record RateLimitInfo(int Remaining, TimeSpan ResetTime, bool IsBlocked);
 
 public class RateLimitMiddleware
 {

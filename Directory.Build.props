@@ -14,7 +14,7 @@
   <PropertyGroup Label="NuGet Packaging Defaults">
     <!-- Single source of truth for the open-core package version. All four public packages
          (Core/Data/Web/Tools) inherit this; bump here to release a new version everywhere. -->
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <Authors>Asdamir</Authors>
     <Company>Asdamir</Company>
     <Product>Asdamir</Product>

@@ -78,7 +78,7 @@ builder.Services.AddFrameworkDataProtection(builder.Configuration);
 Asdamir.Web.UI.UIExtensions.AddUIServices(builder.Services);
 
 // Localization. Three cultures — TR (default), EN, RU. Data lives in the Gateway's
-// LocalizationResource table; Core.Localization's DatabaseDynamicResourceStore reads
+// LocalizationResource table; Core.Localization's LocalizationHttpClient reads
 // it through the `gatewayNoAuth` named HttpClient.
 var supportedCultures = new[]
 {

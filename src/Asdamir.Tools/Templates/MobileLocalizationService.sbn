@@ -9,7 +9,7 @@ namespace {{ SharedNamespace }}.Services;
 /// <summary>
 /// Reads localization keys from the configured Gateway's
 /// <c>/gateway/localization/all?culture=...</c> endpoint and caches them
-/// in-process. Same shape as the web app's <c>DatabaseDynamicResourceStore</c>.
+/// in-process. Same shape as the web app's <c>LocalizationHttpClient</c>.
 /// </summary>
 public sealed class MobileLocalizationService
 {

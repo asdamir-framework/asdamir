@@ -5,7 +5,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; the CLI (`Asdamir.Tools`) versions independently. Current published state:
-**Core/Data/Web `1.1.1`**, **Tools `1.1.4`** (nuget.org). AppManagement (the commercial control plane)
+**Core/Data/Web `1.1.2`**, **Tools `1.1.4`** (nuget.org). AppManagement (the commercial control plane)
 is not packed to NuGet — it ships as a compiled release for commercial customers.
 
 ## [Unreleased]
@@ -15,6 +15,17 @@ is not packed to NuGet — it ships as a compiled release for commercial custome
 - **No CI/CD** — `.github/workflows/*` were removed (GitHub Actions billing). The process is plain
   `git pull` / `git push` to `main`; verify locally before every push (`dotnet build` 0 warnings ·
   `./run-tests.sh` · `audit lint`).
+
+## [1.1.2] — 2026-07-04  ·  Core / Data / Web
+
+- **`Asdamir.Core`** — token-audience support: `IJwtService.IssueTokens` gains optional `tokenUse` /
+  `appCode` parameters that emit `token_use` (control-plane vs app) and `app_code` claims, so a
+  control-plane endpoint can reject an app-login token at the authorization layer.
+- **`Asdamir.Web`** — removed unused code: the uncalled `IRateLimitService.GetLimitInfoAsync` /
+  `RateLimitInfo`, and the dead `DatabaseDynamicResourceStore` (the active DB-backed localizer is
+  `LocalizationHttpClient`). No behaviour change.
+- **`Asdamir.Data`** — no change; republished at 1.1.2 to keep the Core/Data/Web trio version-aligned.
+- Still FluentUI **v4**-based — the v5 migration stays on its branch until GA.
 
 ## [Tools 1.1.4] — 2026-07-04
 

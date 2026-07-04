@@ -73,22 +73,6 @@ public class InMemoryRateLimitService : IRateLimitService
         }
     }
 
-    public Task<RateLimitInfo> GetLimitInfoAsync(string key)
-    {
-        var cacheKey = $"rate_limit:{key}";
-
-        if (_cache.TryGetValue(cacheKey, out RateLimitCounter? counter) && counter is not null)
-        {
-            var remaining = Math.Max(0, 100 - counter.Count);
-            var resetTime = TimeSpan.FromMinutes(1) - (DateTimeOffset.UtcNow - counter.WindowStart);
-            var isBlocked = counter.Count >= 100;
-
-            return Task.FromResult(new RateLimitInfo(remaining, resetTime, isBlocked));
-        }
-
-        return Task.FromResult(new RateLimitInfo(100, TimeSpan.FromMinutes(1), false));
-    }
-
     private void StoreCounter(string cacheKey, RateLimitCounter counter, TimeSpan window)
     {
         var entryOptions = new MemoryCacheEntryOptions

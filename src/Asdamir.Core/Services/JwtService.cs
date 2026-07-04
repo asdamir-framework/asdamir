@@ -62,11 +62,13 @@ public class JwtService : IJwtService
         _refreshLifetime = TimeSpan.FromDays(refreshDays);
     }
 
-    public TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null)
-        => IssueTokens(user, permissions, _accessLifetime, _refreshLifetime, company);
+    public TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null,
+        string? tokenUse = null, string? appCode = null)
+        => IssueTokens(user, permissions, _accessLifetime, _refreshLifetime, company, tokenUse, appCode);
 
     public TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions,
-        TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null)
+        TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null,
+        string? tokenUse = null, string? appCode = null)
     {
         var now = DateTime.UtcNow;
         var expiresAtUtc = now.Add(accessLifetime);
@@ -82,6 +84,13 @@ public class JwtService : IJwtService
         // resolves the right management database (consumed by ICompanyContext middleware).
         if (!string.IsNullOrWhiteSpace(company))
             claims.Add(new Claim("company", company));
+        // Audience boundary: token_use marks whether this is a control-plane ("console") token or a
+        // managed-app end-user ("app") token (app_code names the app). Every token shares the same
+        // signing key/audience, so this claim is what lets control-plane endpoints reject app tokens.
+        if (!string.IsNullOrWhiteSpace(tokenUse))
+            claims.Add(new Claim("token_use", tokenUse));
+        if (!string.IsNullOrWhiteSpace(appCode))
+            claims.Add(new Claim("app_code", appCode));
         claims.AddRange(permissions.Select(p => new Claim("perm", p)));
 
         var jwtToken = new JwtSecurityToken(
