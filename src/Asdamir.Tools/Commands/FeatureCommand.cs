@@ -118,22 +118,31 @@ public static class FeatureCommand
         var pageExit = PageCommand.Run(name, fields, route, new DirectoryInfo(serverDir), ns, policy, icon);
         if (pageExit != 0) { Console.Error.WriteLine("\n✗ page step failed — stopping."); return pageExit; }
 
-        // 3) AsdamirVault seeds (menu/permission + localization) — applied only with --apply AND --vault-connection.
+        // 3) Menu/permission + localization seeds. In FREE mode PageCommand emitted them as journaled
+        // migrations into the app's OWN db/migrations (auto-applied by `db apply`, no AsdamirVault) — so
+        // there is no Vault step. In commercial mode they are AppId-scoped AsdamirVault scripts.
         var pluralLower = NameHelper.Pluralize(name).ToLowerInvariant();
-        var seedDir = Path.Combine(appRoot, "db", "admin-onboarding");
-        var menuSeed = Path.Combine(seedDir, $"seed_menu_{pluralLower}.sql");
-        var locSeed = Path.Combine(seedDir, $"localize_{pluralLower}.sql");
-
         Console.WriteLine();
-        if (apply && !string.IsNullOrWhiteSpace(vaultConnection))
+        if (PageCommand.IsFreeModeApp(appRoot))
         {
-            var vaultExit = await ApplyVaultSeedsAsync(vaultConnection, new[] { menuSeed, locSeed });
-            if (vaultExit != 0) return vaultExit;
+            Console.WriteLine($"  free mode: menu/permission + localization seeded as db/migrations/V*__freemode_{{menu,localize}}_{pluralLower}.sql");
+            Console.WriteLine("  apply to the app's own DB with `asdamir db apply` (no --vault-connection needed).");
         }
-        else if (apply)
+        else
         {
-            Console.WriteLine("  menu/permission + localization seed generated but NOT applied (no --vault-connection).");
-            Console.WriteLine($"  apply to AsdamirVault: re-run with --vault-connection \"<AsdamirVault connstr>\", or run {Path.GetRelativePath(appRoot, menuSeed)} via sqlcmd.");
+            var seedDir = Path.Combine(appRoot, "db", "admin-onboarding");
+            var menuSeed = Path.Combine(seedDir, $"seed_menu_{pluralLower}.sql");
+            var locSeed = Path.Combine(seedDir, $"localize_{pluralLower}.sql");
+            if (apply && !string.IsNullOrWhiteSpace(vaultConnection))
+            {
+                var vaultExit = await ApplyVaultSeedsAsync(vaultConnection, new[] { menuSeed, locSeed });
+                if (vaultExit != 0) return vaultExit;
+            }
+            else if (apply)
+            {
+                Console.WriteLine("  menu/permission + localization seed generated but NOT applied (no --vault-connection).");
+                Console.WriteLine($"  apply to AsdamirVault: re-run with --vault-connection \"<AsdamirVault connstr>\", or run {Path.GetRelativePath(appRoot, menuSeed)} via sqlcmd.");
+            }
         }
 
         Console.WriteLine();

@@ -70,12 +70,15 @@ public static class AppCommand
             description: "Password for the starter admin (only its PBKDF2 hash is seeded; the password is printed once). Defaults to a generated one.", getDefaultValue: () => "");
         var yesOpt = new Option<bool>(new[] { "--yes", "-y" },
             description: "Non-interactive: accept every default without prompting (CI).", getDefaultValue: () => false);
+        var modeOpt = new Option<string>(new[] { "--mode" },
+            description: "'commercial' (default) — identity/menus/permissions/localization/config live CENTRALLY in AsdamirVault and are managed from AppManagement. 'free' — self-contained: those management tables are emitted into the app's OWN database (single-tenant), so the app needs no AppManagement.",
+            getDefaultValue: () => "commercial");
 
         var appCmd = new Command("app", "Generate a standalone Asdamir app (Server + Gateway + tests + sln + demo DB) that consumes the framework via DI and is managed from AppManagement.")
         {
             nameArg, outputOpt, namespaceOpt, localFeedOpt,
             serverNameOpt, apiNameOpt, databaseOpt, dbServerOpt, connStringOpt, gatewayUrlOpt,
-            adminEmailOpt, adminPasswordOpt, yesOpt,
+            adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt,
         };
 
         appCmd.SetHandler((InvocationContext ctx) =>
@@ -94,7 +97,8 @@ public static class AppCommand
                 GatewayUrl: r.GetValueForOption(gatewayUrlOpt) ?? "",
                 AdminEmail: r.GetValueForOption(adminEmailOpt) ?? "",
                 AdminPassword: r.GetValueForOption(adminPasswordOpt) ?? "",
-                Yes: r.GetValueForOption(yesOpt)));
+                Yes: r.GetValueForOption(yesOpt),
+                Mode: r.GetValueForOption(modeOpt) ?? "commercial"));
         });
         return appCmd;
     }
@@ -102,11 +106,22 @@ public static class AppCommand
     private sealed record RawInputs(
         string Name, DirectoryInfo Output, string NsOverride, string LocalFeed,
         string ServerName, string ApiName, string Database, string DbServer,
-        string ConnString, string GatewayUrl, string AdminEmail, string AdminPassword, bool Yes);
+        string ConnString, string GatewayUrl, string AdminEmail, string AdminPassword, bool Yes,
+        string Mode);
 
     private static void Run(RawInputs raw)
     {
         var interactive = !raw.Yes && !Console.IsInputRedirected;
+
+        // Tier mode: 'commercial' (default, unchanged behaviour) vs 'free' (self-contained — emit the
+        // management schema into the app's own DB). Any other value is an error.
+        var isFreeMode = string.Equals(raw.Mode, "free", StringComparison.OrdinalIgnoreCase);
+        if (!isFreeMode && !string.Equals(raw.Mode, "commercial", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.Error.WriteLine("--mode must be 'free' or 'commercial'.");
+            Environment.Exit(2);
+            return;
+        }
 
         var name = raw.Name;
         if (string.IsNullOrWhiteSpace(name))
@@ -178,15 +193,29 @@ public static class AppCommand
             Namespace = ns,
             ServerNamespace = serverProject,
             GatewayNamespace = gatewayProject,
+            // Free mode → the Gateway issues JWTs + reads identity/menu/localization from its OWN DB
+            // (local controllers); commercial → proxies to AppManagement. Templates branch on this.
+            IsFreeMode = isFreeMode,
             GeneratedAtUtc = now.ToString("u"),
             SchemaStamp = now.ToString("yyyyMMddHHmmss"),
             MigrationStamp = now.AddSeconds(1).ToString("yyyyMMddHHmmss"),
             SeedStamp = now.AddSeconds(2).ToString("yyyyMMddHHmmss"),
+            // Free-mode management schema applies before the business schema (earliest stamp); its
+            // stored procs apply right after the tables exist (-4s), then the management seed (-3s) —
+            // all still before the business schema.
+            FreeModeSchemaStamp = now.AddSeconds(-5).ToString("yyyyMMddHHmmss"),
+            FreeModeProcsStamp = now.AddSeconds(-4).ToString("yyyyMMddHHmmss"),
+            FreeModeSeedStamp = now.AddSeconds(-3).ToString("yyyyMMddHHmmss"),
             LocalFeedPath = string.IsNullOrWhiteSpace(raw.LocalFeed) ? "" : raw.LocalFeed.Replace('\\', '/'),
             HasLocalFeed = !string.IsNullOrWhiteSpace(raw.LocalFeed),
             DatabaseName = database,
             ConnectionStringForAppsettings = connForAppsettings,
             GatewayBaseUrl = gatewayUrl,
+            // launchSettings.json applicationUrl values — fixed ports so `dotnet run` never falls back to
+            // the ASP.NET default :5000 (which collides with macOS AirPlay Receiver). The Gateway port
+            // MUST equal Gateway:BaseUrl (the Server calls it there); the slash is trimmed for Kestrel.
+            GatewayUrlNoSlash = gatewayUrl.TrimEnd('/'),
+            ServerUrl = "https://localhost:7010",
         };
 
         // (relative target path, template resource name)
@@ -201,7 +230,8 @@ public static class AppCommand
             // (parses the TRX), with zero build/host/xUnit noise. See the script header.
             ("run-tests.sh",                                              "RunTestsSh"),
             (".gitignore",                                                "GitIgnore"),
-            ("README.md",                                                 "AppReadme"),
+            // Free apps get a self-contained README (no control plane); commercial gets the proxy one.
+            ("README.md",                                                 isFreeMode ? "FreeAppReadme" : "AppReadme"),
 
             // Server (consumes framework UI/auth/localization via DI)
             ($"src/{serverProject}/{serverProject}.csproj",               "ServerCsproj"),
@@ -233,17 +263,21 @@ public static class AppCommand
             ($"src/{serverProject}/Auth/ThemeEndpoints.cs",               "ServerThemeEndpoints"),
             ($"src/{serverProject}/Services/LocalizationWarmupService.cs", "ServerLocalizationWarmup"),
             ($"src/{serverProject}/appsettings.json",                     "ServerAppsettings"),
+            ($"src/{serverProject}/Properties/launchSettings.json",       "ServerLaunchSettings"),
             ($"src/{serverProject}/wwwroot/app.css",                      "ServerAppCss"),
 
             // Gateway (framework error handling + JWT validation + health)
             ($"src/{gatewayProject}/{gatewayProject}.csproj",             "GatewayCsproj"),
             ($"src/{gatewayProject}/Program.cs",                          "GatewayProgram"),
             ($"src/{gatewayProject}/Controllers/HealthController.cs",     "GatewayHealthController"),
-            ($"src/{gatewayProject}/Controllers/AuthController.cs",       "GatewayAuthController"),
-            ($"src/{gatewayProject}/Controllers/MenuController.cs",       "GatewayMenuController"),
-            ($"src/{gatewayProject}/Controllers/LocalizationController.cs", "GatewayLocalizationController"),
+            // Free mode → local controllers that read the app's OWN DB + issue JWTs; commercial → proxies
+            // to AppManagement. Same target filenames, different templates.
+            ($"src/{gatewayProject}/Controllers/AuthController.cs",       isFreeMode ? "FreeGatewayAuthController" : "GatewayAuthController"),
+            ($"src/{gatewayProject}/Controllers/MenuController.cs",       isFreeMode ? "FreeGatewayMenuController" : "GatewayMenuController"),
+            ($"src/{gatewayProject}/Controllers/LocalizationController.cs", isFreeMode ? "FreeGatewayLocalizationController" : "GatewayLocalizationController"),
             ($"src/{gatewayProject}/Controllers/DemoItemsController.cs",   "GatewayDemoItemsController"),
             ($"src/{gatewayProject}/appsettings.json",                   "GatewayAppsettings"),
+            ($"src/{gatewayProject}/Properties/launchSettings.json",     "GatewayLaunchSettings"),
 
             // Tests
             ($"tests/{serverProject}.Tests/{serverProject}.Tests.csproj", "ServerTestsCsproj"),
@@ -256,9 +290,8 @@ public static class AppCommand
 
             // Migrations (rendered placeholder; schema/seed are static assets below)
             ($"db/migrations/V{model.MigrationStamp}__bootstrap.sql",     "AppMigrationBootstrap"),
-
-            // AppManagement onboarding (run against the AsdamirVault DB, not this app's).
-            ($"db/admin-onboarding/register_{model.AppNameLower}.sql",    "AppAdminOnboarding"),
+            // NOTE: the AppManagement onboarding script (register_<app>.sql) is emitted below, COMMERCIAL
+            // ONLY — a free app is self-contained and has no control plane to register against.
         };
 
         var written = 0;
@@ -276,6 +309,33 @@ public static class AppCommand
             written++;
         }
 
+        // Free-mode ONLY: the management schema (identity / RBAC / menu / localization / config) into
+        // THIS app's OWN database — single-tenant, no AppId. Commercial mode omits it (that data lives
+        // centrally in AsdamirVault, managed from AppManagement).
+        if (isFreeMode)
+        {
+            written += WriteAsset(appRoot, $"db/migrations/V{model.FreeModeSchemaStamp}__freemode_management_schema.sql", "FreeModeManagementSchema.sql");
+            // Companion procs (login / RBAC / menu / localization / config) — AppId-free, single-tenant.
+            written += WriteAsset(appRoot, $"db/migrations/V{model.FreeModeProcsStamp}__freemode_management_procs.sql", "FreeModeManagementProcs.sql");
+            // Management seed (admin user + Admin role + grants + Dashboard menu + config + localization)
+            // into THIS app's OWN DB — rendered (placeholders), so it goes through Render, not WriteAsset.
+            written += WriteRendered(appRoot, $"db/migrations/V{model.FreeModeSeedStamp}__freemode_management_seed.sql", "FreeModeManagementSeed", model);
+            // Local identity data access (login/RBAC procs) — auto-registered by the Gateway's
+            // DI-by-convention scan (IFreeIdentityRepository -> FreeIdentityRepository).
+            written += WriteRendered(appRoot, $"src/{gatewayProject}/Auth/FreeIdentityRepository.cs", "FreeGatewayIdentityRepository", model);
+            // Local menu / localization / config reads (auto-registered) + the client-settings controller
+            // that the commercial Gateway never served (a gap) — all reading the app's OWN DB.
+            written += WriteRendered(appRoot, $"src/{gatewayProject}/Auth/FreeManagementRepository.cs", "FreeGatewayManagementRepository", model);
+            written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/ClientSettingsController.cs", "FreeGatewayClientSettingsController", model);
+        }
+        else
+        {
+            // Commercial ONLY: the AppManagement onboarding script (run against the AsdamirVault DB, not
+            // this app's) — registers the app + seeds its central AppId-scoped management data. A free app
+            // has no control plane, so this is not emitted there.
+            written += WriteRendered(appRoot, $"db/admin-onboarding/register_{model.AppNameLower}.sql", "AppAdminOnboarding", model);
+        }
+
         // Demo-only schema + seed (this app's OWN business DB — no management tables/data).
         written += WriteAsset(appRoot, $"db/migrations/V{model.SchemaStamp}__schema.sql", "DbSchema.sql");
         written += WriteAsset(appRoot, $"db/migrations/V{model.SeedStamp}__seed.sql", "DbSeed.sql");
@@ -283,6 +343,44 @@ public static class AppCommand
         Console.WriteLine();
         Console.WriteLine($"Done. {written} files written to '{appRoot}'.");
         Console.WriteLine();
+        if (isFreeMode)
+        {
+            // Free mode — self-contained app. The starter admin + menu + localization + config are seeded
+            // into THIS app's OWN database by the free-mode migrations (applied by `db apply`); there is no
+            // control plane to register against, and the Gateway issues + validates its own JWTs.
+            Console.WriteLine("  ┌─────────────────────────────────────────────────────────────────────────┐");
+            Console.WriteLine("  │  STARTER ADMIN — seeded into THIS app's OWN database, applied");
+            Console.WriteLine("  │  automatically by `asdamir db apply`. Change it after first sign-in.");
+            Console.WriteLine($"  │    Email:    {adminEmail,-58}│");
+            Console.WriteLine($"  │    Password: {adminPassword,-58}│");
+            Console.WriteLine("  └─────────────────────────────────────────────────────────────────────────┘");
+            Console.WriteLine();
+            Console.WriteLine("Next steps (free mode — self-contained; no control plane):");
+            Console.WriteLine($"  1. cd {name}");
+            Console.WriteLine($"  2. Dev secrets (NEVER in appsettings.json):");
+            Console.WriteLine($"     cd src/{gatewayProject}");
+            Console.WriteLine($"     # the Gateway ISSUES + validates its own JWTs — use any 64+ byte CSPRNG-generated key");
+            Console.WriteLine($"     dotnet user-secrets set \"Jwt:Key\" \"<a 64+ byte random key>\"");
+            if (connNeedsSecret)
+            {
+                Console.WriteLine($"     # this app's OWN database (management + business tables) — cross-platform (SQL auth). On Windows you may use Trusted_Connection=True instead.");
+                Console.WriteLine($"     dotnet user-secrets set \"ConnectionStrings:Default\" \"{connSecretExample}\"");
+            }
+            Console.WriteLine($"     cd ../..");
+            Console.WriteLine($"  3. dotnet build {name}.sln && dotnet test {name}.sln");
+            Console.WriteLine($"  4. Create the app's own database + apply ALL migrations (journaled — the management");
+            Console.WriteLine($"     schema/procs/seed AND the business schema in one pass; this seeds the starter admin +");
+            Console.WriteLine($"     menu + localization + config into THIS app's OWN database):");
+            Console.WriteLine($"     asdamir db apply --create-database --migrations db/migrations");
+            Console.WriteLine($"     # reads ConnectionStrings:Default from the Gateway user-secret you set in step 2 — no");
+            Console.WriteLine($"     # password on the command line. (You can still pass --connection / --server / --user / --password.)");
+            Console.WriteLine($"  5. Run both tiers, then sign in with the starter admin above:");
+            Console.WriteLine($"     dotnet run --project src/{gatewayProject}   # {gatewayUrl}");
+            Console.WriteLine($"     dotnet run --project src/{serverProject}");
+            Console.WriteLine($"  6. Add your first real table/page: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
+        }
+        else
+        {
         Console.WriteLine("  ┌─────────────────────────────────────────────────────────────────────────┐");
         Console.WriteLine("  │  STARTER ADMIN — seeded into AsdamirVault (scoped by this app's AppId)     │");
         Console.WriteLine("  │  when you run register_" + model.AppNameLower + ".sql. Change it after first sign-in.");
@@ -313,6 +411,7 @@ public static class AppCommand
         Console.WriteLine($"     dotnet run --project src/{gatewayProject}   # {gatewayUrl}");
         Console.WriteLine($"     dotnet run --project src/{serverProject}");
         Console.WriteLine($"  7. Add your first real table/page: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
+        }
     }
 
     private static int WriteAsset(string appRoot, string relPath, string assetName)
@@ -321,6 +420,18 @@ public static class AppCommand
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         if (File.Exists(target)) { Console.WriteLine($"  SKIP (exists): {relPath}"); return 0; }
         File.WriteAllText(target, TemplateRenderer.ReadAsset(assetName));
+        Console.WriteLine($"  WROTE: {relPath}");
+        return 1;
+    }
+
+    // Like WriteAsset, but renders a .sbn template against the model first (for assets that carry
+    // placeholders — e.g. the free-mode seed needs AppName / AdminEmail / AdminPasswordHash).
+    private static int WriteRendered(string appRoot, string relPath, string templateName, object model)
+    {
+        var target = Path.Combine(appRoot, relPath);
+        Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+        if (File.Exists(target)) { Console.WriteLine($"  SKIP (exists): {relPath}"); return 0; }
+        File.WriteAllText(target, TemplateRenderer.Render(templateName, model));
         Console.WriteLine($"  WROTE: {relPath}");
         return 1;
     }

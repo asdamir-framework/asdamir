@@ -28,7 +28,7 @@ dotnet tool install --global Asdamir.Tools
 
 | Command | Generates |
 |---|---|
-| `new app <Name>` | A full application (Server + Gateway) wired to the framework — including `Properties/launchSettings.json` on fixed dev ports (Gateway `7001` = the Server's `Gateway:BaseUrl`, Server `7010`) so `dotnet run` starts on a known port out of the box instead of the default `:5000`. |
+| `new app <Name>` | A full application (Server + Gateway) wired to the framework — including `Properties/launchSettings.json` on fixed dev ports (Gateway `7001` = the Server's `Gateway:BaseUrl`, Server `7010`) so `dotnet run` starts on a known port out of the box instead of the default `:5000`. **`--mode free\|commercial`** (default `commercial`) picks the identity model — see [free vs commercial mode](#asdamir-new-app--free-vs-commercial-mode). |
 | `new entity <Name>` | Entity + DTO + repository + service + controller + tests + a create migration + an **idempotent sample-seed migration**. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, **update round-trip**, **list**, and an **API auth-guard** (`GET` without a token → 401) — all DB-free (in-memory fake repo + `WebApplicationFactory`). The seed migration (since 1.1.1) writes 3 typed sample rows (guarded by `IF NOT EXISTS`, `TenantId='default'`) so the entity's grid is populated after `db apply` instead of empty. |
 | `new page <Name>` | A Blazor CRUD page (DataGrid + edit dialog + delete confirm) **plus** its localization seed (`localize_<plural>.sql`) and an idempotent, role-based **menu + permission seed** (`seed_menu_<plural>.sql`, AppId-scoped). `--icon` sets the nav icon. See [below](#asdamir-new-page-localization-menu-permission-seeds). |
 | `new feature <Name>` | **The one-command path for a complete CRUD feature** — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission & localization seeds, in one go. With `--apply` it also runs the entity migration, and with `--vault-connection` the AsdamirVault menu/permission seed. See [below](#asdamir-new-feature). |
@@ -44,6 +44,54 @@ Generated output uses the framework's templates (`src/Asdamir.Tools/Templates/*.
 > (`dotnet build … -t:InstallAndroidDependencies -f net10.0-android -p:AcceptAndroidSDKLicenses=true`),
 > then build a **single RID** — `dotnet build … -f net10.0-android -r android-arm64` (a plain multi-RID
 > build fails with `NETSDK1047`). Full recipe in [Mobile App → Build & run](mobile.md#build-run).
+
+### `asdamir new app` — free vs commercial mode
+
+`new app` takes **`--mode free|commercial`** (default `commercial`). It picks **where a generated app's
+identity, RBAC, menu, localization and config live** — the app's business layering is identical either way
+(a Server/UI tier that only ever calls its Gateway/API tier).
+
+| | `--mode commercial` (default) | `--mode free` |
+|---|---|---|
+| Management data (users, roles, permissions, menus, localization, config) | **Central**, in the AppManagement control plane, scoped by the app's `AppId` | **Local**, in the app's **own** database, single-tenant (the app *is* the tenant) |
+| Login / JWT | AppManagement issues the JWT; the Gateway validates it | The **Gateway issues + validates its own JWT** (Asdamir.Core `JwtService`) |
+| Gateway auth / menu / localization / client-settings | **Proxy** to AppManagement | **Local** — served straight from the app's own DB |
+| Login gate | Per-app role grant (`UserAppRoles`) | "user exists + is active" (single app — no cross-app matrix) |
+| Logging | DB structured log + the central cross-app console | File + console (`ILogger`) — no DB log sink |
+| Runs standalone? | **No** — needs AppManagement running | **Yes** — fully self-contained; **no control plane** |
+| Onboarding | `register_<app>.sql` against the control-plane DB | Emitted as ordinary migrations into the app's own DB — **no register step** |
+
+Commercial is the default and is unchanged; **free** is the self-contained option. In free mode `new app`
+emits an extra set of migrations (the management schema/procs + a seed for a starter admin, the Admin role
++ permissions, the Dashboard menu, config and localization) into the app's own `db/migrations`, so a single
+`db apply` sets the whole thing up. It does **not** emit `register_<app>.sql` (there is no control plane to
+register against), and its onboarding banner reflects the self-contained flow.
+
+**Free quick-start** (verified end-to-end, with AppManagement not running):
+
+```bash
+asdamir new app MyApp --mode free --yes
+cd MyApp
+
+# One-time secrets on the Gateway (NEVER in appsettings.json). The Gateway signs + validates its
+# own JWTs, so Jwt:Key is just a 64+ byte random value (not shared with anything).
+cd src/MyApp.Gateway
+dotnet user-secrets set "Jwt:Key" "<a 64+ byte random key>"
+dotnet user-secrets set "ConnectionStrings:Default" "Server=localhost,1433;Database=MyApp;User Id=<login>;Password=<pwd>;TrustServerCertificate=True"
+cd ../..
+
+dotnet build MyApp.sln
+# Creates the DB and applies EVERY migration (management schema/procs/seed + business) in one pass.
+# No password on the command line — the runner reads ConnectionStrings:Default from the secret above.
+asdamir db apply --create-database --migrations db/migrations
+
+dotnet run --project src/MyApp.Gateway    # then, in another shell:
+dotnet run --project src/MyApp.Server     # open the Server, sign in with the starter admin printed by `new app`
+```
+
+The starter admin's email + one-time password are printed once by `new app` — change the password after
+first sign-in. Add features exactly as in commercial mode with `asdamir new feature …` (see the free-mode
+note under it).
 
 ### `asdamir new feature`
 
@@ -82,6 +130,12 @@ hand. It locates the app from the nearest `.sln` and routes each part to the rig
 - The **menu/permission + localization seeds** go to **AsdamirVault** only when you ALSO pass
   `--vault-connection` (explicit — there is no connection guessing). Without it the seeds are still
   generated and the command prints how to apply them later.
+
+> **In a free-mode app** (one generated with `new app --mode free`), `new feature` detects it and emits the
+> menu/permission + localization seeds as ordinary migrations into the app's **own** `db/migrations`
+> (`V*__freemode_menu_<plural>.sql` + `V*__freemode_localize_<plural>.sql`) instead of AsdamirVault scripts.
+> They are applied by the app's normal `asdamir db apply` — **`--vault-connection` is not used** (there is no
+> control plane). `new page` behaves the same way in a free app.
 
 **Authorization:** the menu row is gated by the role-based `<plural>.view` permission, and the seed grants
 it to the **Admin** role (which also holds `admin.access`, so admins see every menu). Other roles/users are
@@ -168,6 +222,19 @@ Options: `--connection/-c` (full string, wins over the parts), `--server/-S`, `-
 `--create-database`. If an already-applied migration's file content later changes, the runner warns and
 **does not** re-run it — add a new migration instead.
 
+**Connection resolution (passwordless-friendly).** When you pass **no** connection details at all (no
+`--connection` / `--server` / `--database` / `--user` / `--password`), `db apply` falls back — in this order
+— to:
+
+1. the **Gateway project's user-secret** `ConnectionStrings:Default` (it walks up from `--migrations` to the
+   nearest `*.Gateway` project and reads its `<UserSecretsId>` store), then
+2. the **`ConnectionStrings__Default` environment variable**.
+
+It prints which source it used. This is what lets `asdamir db apply --create-database --migrations
+db/migrations` run with **no SQL password on the command line** once you've set the secret (see the free
+quick-start above — the same flow works in commercial mode too). Any explicit flag always takes precedence
+over the fallback.
+
 ## `rollback`
 
 The inverse of [`new feature`](#asdamir-new-feature) — removes a generated feature across **code, the app
@@ -205,6 +272,13 @@ Options: `<Name>`, `--output`/`-o` (app root), `--gateway-dir`/`--server-dir` (o
 - **`add field` migrations are NOT rolled back** (`*__add_<field>_to_<plural>.sql`) — they're listed as a
   warning to handle by hand.
 - It warns that if other code still references `<Name>`, that code may stop compiling.
+
+> **Free-mode apps:** `rollback` detects free mode and tears the feature down **symmetrically over the app
+> connection** (there is no control plane). It removes the code — **including** the
+> `V*__freemode_{menu,localize}_<plural>.sql` seed migrations — drops the app-DB table + its create/seed
+> journal rows, and, with a connection, also removes the free-mode **menu, permission, role grant,
+> localization keys** and the freemode seed-journal rows from the app's **own** database (single-tenant, in
+> FK order, one transaction). `--vault-connection` is not used in free mode (there is no AsdamirVault).
 
 ## `app register`
 

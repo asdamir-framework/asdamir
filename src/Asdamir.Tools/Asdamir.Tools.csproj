@@ -15,11 +15,15 @@
 
     <!-- NuGet metadata -->
     <PackageId>Asdamir.Tools</PackageId>
-    <!-- Tools-only patch (1.1.4): generated-template fixes — pin Microsoft.OpenApi 2.7.5 in the generated
-         Directory.Packages (closes NU1903/GHSA-v5pm so a scaffolded app builds under TreatWarningsAsErrors),
-         templater fail-fast on an unknown member / unsupported parenthesis, and the stale-TRX + skip-as-fail
-         fix in the generated run-tests.sh. Core/Data/Web version is set in Directory.Build.props. -->
-    <Version>1.1.4</Version>
+    <!-- Tools-only MINOR (1.2.0): a new self-contained FREE app mode. `asdamir new app` gains a mode
+         option whose "free" value scaffolds an app that runs standalone with NO control plane (its
+         identity/RBAC/menu/localization/config live in its own DB, the Gateway issues + validates its own
+         JWTs). Also: `db apply` resolves the connection from the Gateway user-secret / env when no flags are
+         given (passwordless), the onboarding banner is mode-branched, register_<app>.sql is commercial-only,
+         sample-seed rows are English, and `rollback` tears down free-mode seeds symmetrically.
+         Backward-compatible: the default is still "commercial", unchanged. Core/Data/Web version is set in
+         Directory.Build.props. -->
+    <Version>1.2.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

@@ -73,6 +73,11 @@ public static class RollbackCommand
         var gatewayDir = !string.IsNullOrWhiteSpace(gatewayOverride) ? gatewayOverride : FeatureCommand.FindProject(appRoot, isGateway: true);
         var serverDir = !string.IsNullOrWhiteSpace(serverOverride) ? serverOverride : FeatureCommand.FindProject(appRoot, isGateway: false);
 
+        // A free-mode app keeps its management data (menu/permission/localization) in its OWN database and
+        // seeds it via V*__freemode_{menu,localize}_<plural>.sql migrations (not AsdamirVault). Detected the
+        // same way `new feature` does — so rollback tears those down symmetrically, over the app connection.
+        var isFree = PageCommand.IsFreeModeApp(appRoot);
+
         var plural = NameHelper.Pluralize(name);
         var pluralLower = plural.ToLowerInvariant();
         var permName = $"{pluralLower}.view";
@@ -99,6 +104,13 @@ public static class RollbackCommand
         codeFiles.AddRange(GlobMigrations(gatewayDir, $"__create_{pluralLower}.sql"));
         codeFiles.AddRange(GlobMigrations(gatewayDir, $"__seed_{pluralLower}.sql"));
         codeFiles.AddRange(Glob(Path.Combine(appRoot, "tests"), $"{name}Tests.cs"));
+        // Free mode: the menu/permission + localization seeds are migrations in the app-root db/migrations.
+        var appMigrations = Path.Combine(appRoot, "db", "migrations");
+        if (isFree)
+        {
+            codeFiles.AddRange(Glob(appMigrations, $"*__freemode_menu_{pluralLower}.sql"));
+            codeFiles.AddRange(Glob(appMigrations, $"*__freemode_localize_{pluralLower}.sql"));
+        }
 
         var addFieldMigs = GlobMigrations(gatewayDir, $"_to_{pluralLower}.sql").ToList(); // *__add_<field>_to_<plural>.sql
 
@@ -106,6 +118,8 @@ public static class RollbackCommand
         var appConn = BuildAppConnection(connection, server, database, user, password);
         var (tableExists, journalRows) = appConn is null ? (false, 0) : await ProbeAppDbAsync(appConn, plural, pluralLower);
         var (permExists, menuCount, grantCount) = string.IsNullOrWhiteSpace(vaultConnection) ? (false, 0, 0) : await ProbeVaultAsync(vaultConnection, permName);
+        // Free mode: the management rows live in the app's OWN db, so they come off the app connection.
+        var free = (isFree && appConn is not null) ? await ProbeFreeSeedsAsync(appConn, name, plural, pluralLower) : (perm: 0, menu: 0, loc: 0, journal: 0);
 
         // 3) Confirmation — show EVERYTHING first.
         Console.WriteLine($"Will remove feature '{name}':");
@@ -117,11 +131,22 @@ public static class RollbackCommand
             : tableExists || journalRows > 0
                 ? $"  App DB: DROP TABLE dbo.{plural}{(tableExists ? "" : " (absent — skip)")} + {journalRows} journal row(s)"
                 : $"  App DB: nothing to remove (table absent, no journal rows)");
-        Console.WriteLine(string.IsNullOrWhiteSpace(vaultConnection)
-            ? "  AsdamirVault: SKIP — no --vault-connection (menu/permission not removed)"
-            : permExists
-                ? $"  AsdamirVault: permission '{permName}', {menuCount} menu(s), {grantCount} grant(s)"
-                : $"  AsdamirVault: nothing to remove (permission '{permName}' absent)");
+        if (isFree)
+        {
+            Console.WriteLine(appConn is null
+                ? "  Free-mode mgmt (app DB): SKIP — no --connection (menu/permission/localization not removed)"
+                : free.perm > 0 || free.menu > 0 || free.loc > 0 || free.journal > 0
+                    ? $"  Free-mode mgmt (app DB): permission '{permName}', {free.menu} menu(s), {free.loc} localization key(s), {free.journal} seed-journal row(s)"
+                    : "  Free-mode mgmt (app DB): nothing to remove");
+        }
+        else
+        {
+            Console.WriteLine(string.IsNullOrWhiteSpace(vaultConnection)
+                ? "  AsdamirVault: SKIP — no --vault-connection (menu/permission not removed)"
+                : permExists
+                    ? $"  AsdamirVault: permission '{permName}', {menuCount} menu(s), {grantCount} grant(s)"
+                    : $"  AsdamirVault: nothing to remove (permission '{permName}' absent)");
+        }
         if (addFieldMigs.Count > 0)
         {
             Console.WriteLine($"  ⚠️  add-field migrations found (NOT removed — handle manually):");
@@ -148,22 +173,38 @@ public static class RollbackCommand
 
         if (appConn is not null)
         {
-            try { await RemoveFromAppDbAsync(appConn, plural, pluralLower); Console.WriteLine($"App DB: dropped dbo.{plural} (if it existed) + cleaned journal."); }
+            try
+            {
+                await RemoveFromAppDbAsync(appConn, plural, pluralLower);
+                Console.WriteLine($"App DB: dropped dbo.{plural} (if it existed) + cleaned journal.");
+                // Free mode: also remove the management rows the free-mode seeds wrote into THIS db.
+                if (isFree)
+                {
+                    await RemoveFreeSeedsFromAppDbAsync(appConn, name, plural, pluralLower);
+                    Console.WriteLine("App DB (free-mode mgmt): removed menu/permission/grants + localization + seed-journal rows.");
+                }
+            }
             catch (SqlException ex) { Console.Error.WriteLine($"App DB cleanup failed (rolled back): {ex.Message}"); return 1; }
         }
         else
         {
-            Console.WriteLine("App DB: NOT cleaned (no --connection). Re-run with --connection/-S -d -U -P to DROP the table + clean the journal.");
+            Console.WriteLine(isFree
+                ? "App DB: NOT cleaned (no --connection). Re-run with --connection/-S -d -U -P to DROP the table + remove the free-mode menu/permission/localization + clean the journal."
+                : "App DB: NOT cleaned (no --connection). Re-run with --connection/-S -d -U -P to DROP the table + clean the journal.");
         }
 
-        if (!string.IsNullOrWhiteSpace(vaultConnection))
+        // AsdamirVault is a commercial-only concept — a free app has no control plane, so skip it entirely.
+        if (!isFree)
         {
-            try { var n = await RemoveFromVaultAsync(vaultConnection, appRoot, permName); Console.WriteLine($"AsdamirVault: removed menu/permission/grants ({n} row(s))."); }
-            catch (SqlException ex) { Console.Error.WriteLine($"AsdamirVault cleanup failed (rolled back): {ex.Message}"); return 1; }
-        }
-        else
-        {
-            Console.WriteLine("AsdamirVault: NOT cleaned (no --vault-connection). Re-run with --vault-connection to remove the menu/permission.");
+            if (!string.IsNullOrWhiteSpace(vaultConnection))
+            {
+                try { var n = await RemoveFromVaultAsync(vaultConnection, appRoot, permName); Console.WriteLine($"AsdamirVault: removed menu/permission/grants ({n} row(s))."); }
+                catch (SqlException ex) { Console.Error.WriteLine($"AsdamirVault cleanup failed (rolled back): {ex.Message}"); return 1; }
+            }
+            else
+            {
+                Console.WriteLine("AsdamirVault: NOT cleaned (no --vault-connection). Re-run with --vault-connection to remove the menu/permission.");
+            }
         }
 
         Console.WriteLine($"\n✓ Rolled back '{name}'.");
@@ -221,6 +262,64 @@ public static class RollbackCommand
         cmd.Parameters.AddWithValue("@t", plural);
         cmd.Parameters.AddWithValue("@p", pluralLower);
         await cmd.ExecuteNonQueryAsync();
+    }
+
+    // ── Free mode: the management rows live in the app's OWN db (single-tenant — no AppId) ──────────────
+    // Localization keys the free-mode page-localization seed writes: Page.<Name>.Title, Field.<Name>.*, and
+    // the nav-label key Menu.<Plural> (derived from the default route /<plural>). Matched by exact name.
+    private static async Task<(int perm, int menu, int loc, int journal)> ProbeFreeSeedsAsync(string conn, string name, string plural, string pluralLower)
+    {
+        try
+        {
+            await using var c = new SqlConnection(conn); // audit-lint:ignore AUD002
+            await c.OpenAsync();
+            await using var cmd = c.CreateCommand();
+            cmd.CommandText =
+                "IF OBJECT_ID('dbo.Permissions') IS NULL BEGIN SELECT 0,0,0,0; END ELSE BEGIN " +
+                "DECLARE @pid INT = (SELECT TOP 1 Id FROM dbo.Permissions WHERE Name=@perm); " +
+                "SELECT CASE WHEN @pid IS NULL THEN 0 ELSE 1 END, " +
+                "(SELECT COUNT(*) FROM dbo.Menus WHERE PermissionId=@pid), " +
+                "(SELECT COUNT(*) FROM dbo.LocalizationResource WHERE [Key]=@pageKey OR [Key] LIKE @fieldPrefix OR [Key]=@menuKey), " +
+                "(SELECT COUNT(*) FROM dbo.__SchemaMigrations WHERE Id LIKE '%__freemode_menu_'+@p+'.sql' OR Id LIKE '%__freemode_localize_'+@p+'.sql') END";
+            AddFreeParams(cmd, name, plural, pluralLower);
+            await using var r = await cmd.ExecuteReaderAsync();
+            await r.ReadAsync();
+            return (r.GetInt32(0), r.GetInt32(1), r.GetInt32(2), r.GetInt32(3));
+        }
+        catch (SqlException) { return (0, 0, 0, 0); } // freemode schema not applied on this DB — nothing to probe
+    }
+
+    /// <summary>Removes the free-mode menu + permission + grants + localization + seed-journal rows from the
+    /// app's OWN db (single-tenant), in FK order (UserMenuPermissions → RolePermissions → Menus →
+    /// Permissions), in one transaction. Mirror of the AsdamirVault teardown, minus the AppId scoping.</summary>
+    private static async Task RemoveFreeSeedsFromAppDbAsync(string conn, string name, string plural, string pluralLower)
+    {
+        await using var c = new SqlConnection(conn); // audit-lint:ignore AUD002
+        await c.OpenAsync();
+        await using var cmd = c.CreateCommand();
+        cmd.CommandText =
+            "SET QUOTED_IDENTIFIER ON; BEGIN TRAN; " +
+            "DECLARE @pid INT = (SELECT Id FROM dbo.Permissions WHERE Name=@perm); " +
+            "IF @pid IS NOT NULL BEGIN " +
+            "  DELETE FROM dbo.UserMenuPermissions WHERE MenuId IN (SELECT Id FROM dbo.Menus WHERE PermissionId=@pid); " +
+            "  DELETE FROM dbo.RolePermissions WHERE PermissionId=@pid; " +
+            "  DELETE FROM dbo.Menus WHERE PermissionId=@pid; " +
+            "  DELETE FROM dbo.Permissions WHERE Id=@pid; " +
+            "END " +
+            "DELETE FROM dbo.LocalizationResource WHERE [Key]=@pageKey OR [Key] LIKE @fieldPrefix OR [Key]=@menuKey; " +
+            "DELETE FROM dbo.__SchemaMigrations WHERE Id LIKE '%__freemode_menu_'+@p+'.sql' OR Id LIKE '%__freemode_localize_'+@p+'.sql'; " +
+            "COMMIT;";
+        AddFreeParams(cmd, name, plural, pluralLower);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    private static void AddFreeParams(SqlCommand cmd, string name, string plural, string pluralLower)
+    {
+        cmd.Parameters.AddWithValue("@perm", $"{pluralLower}.view");
+        cmd.Parameters.AddWithValue("@pageKey", $"Page.{name}.Title");
+        cmd.Parameters.AddWithValue("@fieldPrefix", $"Field.{name}.%");
+        cmd.Parameters.AddWithValue("@menuKey", $"Menu.{plural}");
+        cmd.Parameters.AddWithValue("@p", pluralLower);
     }
 
     private static async Task<(bool permExists, int menuCount, int grantCount)> ProbeVaultAsync(string vaultConn, string permName)

@@ -20,7 +20,7 @@
         <span class="ico">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>
         </span>
-        <span class="lbl">@m.Name</span>
+        <span class="lbl">@MenuLabel(m)</span>
     </NavLink>
 }
 
@@ -44,6 +44,26 @@
         {
             Logger.LogWarning(ex, "Could not load the central menu; showing Dashboard only");
         }
+    }
+
+    // Localize the menu label via a stable DB key derived from the Url ("/order-items" -> "Menu.OrderItems").
+    // The matching Menu.* keys are seeded (all cultures) by `asdamir new page` (localize_<entity>.sql); when a
+    // menu has no seeded key we fall back to the raw Name from dbo.Menus so nothing ever renders blank.
+    private string MenuLabel(MenuItem item)
+    {
+        var key = MenuKey(item.Url);
+        if (key is null) return item.Name;
+        var localized = L[key];
+        return localized.ResourceNotFound ? item.Name : localized.Value;
+    }
+
+    private static string? MenuKey(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        var parts = url.Trim('/').Split(new[] { '/', '-' }, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return null;
+        var slug = string.Concat(parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
+        return "Menu." + slug;
     }
 
     private sealed record MenuItem(int Id, string Name, string? Icon, string? Url, int? ParentId, int Order, bool IsActive, bool IsVisible);

@@ -4,9 +4,6 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-    <!-- Required to use `0.1.0-preview.*` floating versions for Framework.* below.
-         Without this, NU1011 fires at restore time. -->
-    <CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>
   </PropertyGroup>
 
   <ItemGroup Label="Microsoft.Extensions / ASP.NET Core (.NET 10)">
@@ -48,18 +45,18 @@
   </ItemGroup>
 
   <!--
-    Framework.* packages are this app's link to Asdamir modules. Pinned to a
-    single preview version here so an `add-field` / `new entity` upgrade later can
-    bump them as one set. Replace with floating versions or update on every release
-    once the framework hits 1.0.
+    Framework.* packages are this app's link to Asdamir modules. Pinned to a PUBLISHED
+    release on nuget.org (`dotnet add package Asdamir.Core` resolves it) so the app restores
+    on any machine and free-mode apps get JwtService (local JWT issuance). Bump this one set on
+    each framework upgrade (`add-field` / `new entity` never edit it).
   -->
   <ItemGroup Label="Asdamir (NuGet feed)">
     <!-- The framework ships FOUR packages; an app references Core/Data/Web (Tools is the CLI).
          Contracts/Validation/ErrorHandling/Security/Localization/Configuration are NAMESPACES
          inside Asdamir.Core, not separate packages. -->
-    <PackageVersion Include="Asdamir.Core" Version="0.1.0-preview.*" />
-    <PackageVersion Include="Asdamir.Data" Version="0.1.0-preview.*" />
-    <PackageVersion Include="Asdamir.Web" Version="0.1.0-preview.*" />
+    <PackageVersion Include="Asdamir.Core" Version="1.1.2" />
+    <PackageVersion Include="Asdamir.Data" Version="1.1.2" />
+    <PackageVersion Include="Asdamir.Web" Version="1.1.2" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

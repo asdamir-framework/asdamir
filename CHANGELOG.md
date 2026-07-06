@@ -5,7 +5,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; the CLI (`Asdamir.Tools`) versions independently. Current published state:
-**Core/Data/Web `1.1.2`**, **Tools `1.1.4`** (nuget.org). AppManagement (the commercial control plane)
+**Core/Data/Web `1.1.2`**, **Tools `1.2.0`** (nuget.org). AppManagement (the commercial control plane)
 is not packed to NuGet — it ships as a compiled release for commercial customers.
 
 ## [Unreleased]
@@ -26,6 +26,31 @@ is not packed to NuGet — it ships as a compiled release for commercial custome
   `LocalizationHttpClient`). No behaviour change.
 - **`Asdamir.Data`** — no change; republished at 1.1.2 to keep the Core/Data/Web trio version-aligned.
 - Still FluentUI **v4**-based — the v5 migration stays on its branch until GA.
+
+## [Tools 1.2.0] — 2026-07-06
+
+- **`Asdamir.Tools` 1.2.0 — a new self-contained FREE app mode** (MINOR; backward-compatible, the default
+  is still `commercial`). `asdamir new app <Name> --mode free|commercial` (default `commercial`) picks where
+  a generated app's identity/RBAC/menu/localization/config live:
+  - **free** = the app is self-contained with **no control plane**. The management tables + `AppId`-free,
+    single-tenant stored procs are emitted into the app's **own** database (schema + procs + a seed for the
+    starter admin, Admin role, permissions, Dashboard menu, config and localization), and the Gateway
+    **issues + validates its own JWTs** (Asdamir.Core `JwtService`) and serves auth/menu/localization/
+    client-settings locally. Login gate is "user exists + active"; logging is file + console.
+  - **commercial** (default) = unchanged: identity/menus/permissions/localization/config live centrally in
+    `AsdamirVault`, managed from AppManagement; the Gateway proxies to it.
+- **`db apply` passwordless connection fallback** — when no connection flags are given, it resolves
+  `ConnectionStrings:Default` from the Gateway user-secret (via the `*.Gateway` project's `UserSecretsId`),
+  then the `ConnectionStrings__Default` env var. So `asdamir db apply --create-database` works with no SQL
+  password on the command line. Explicit flags still take precedence.
+- **`new feature` / `new page`** in a free app emit the menu/permission + localization seeds as
+  `V*__freemode_{menu,localize}_<plural>.sql` migrations into the app's own `db/migrations` (no
+  `--vault-connection`). **`rollback`** in a free app tears those down symmetrically over the app
+  connection (menu/permission/grants + localization + seed-journal + the seed migration files).
+- **Scaffolding polish:** the onboarding banner is mode-branched (free wording; zero `AsdamirVault`/
+  `AppManagement` references), `register_<app>.sql` is emitted for commercial only, generated apps pin
+  `Asdamir.Core/Data/Web = 1.1.2` (published — was a `0.1.0-preview.*` float that broke restore), and the
+  sample-seed rows are English (`Sample <Field> N`). Core/Data/Web unchanged at 1.1.2.
 
 ## [Tools 1.1.4] — 2026-07-04
 

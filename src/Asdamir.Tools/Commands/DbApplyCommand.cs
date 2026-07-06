@@ -11,6 +11,7 @@
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.CommandLine;
 using Microsoft.Data.SqlClient;
 
@@ -97,6 +98,22 @@ public static class DbApplyCommand
         string connection, string server, string database, string user, string password,
         DirectoryInfo migrations, bool createDatabase)
     {
+        // Passwordless fallback: when NO connection details are on the command line, resolve
+        // ConnectionStrings:Default from the app's Gateway user-secret (the value `asdamir new app`
+        // tells you to set) or the ConnectionStrings__Default environment variable. This keeps the SQL
+        // password off the terminal — `asdamir db apply --create-database` just works after the secret
+        // is set. Explicit --connection / --server / --user / --password always take precedence.
+        if (string.IsNullOrWhiteSpace(connection) && string.IsNullOrWhiteSpace(database)
+            && string.IsNullOrWhiteSpace(user) && string.IsNullOrWhiteSpace(password))
+        {
+            var resolved = TryResolveConnectionFromApp(migrations, out var source);
+            if (!string.IsNullOrWhiteSpace(resolved))
+            {
+                connection = resolved;
+                Console.WriteLine($"Using ConnectionStrings:Default from {source} (no credentials on the command line).");
+            }
+        }
+
         SqlConnectionStringBuilder builder;
         try
         {
@@ -218,6 +235,72 @@ public static class DbApplyCommand
             Console.Error.WriteLine($"SQL error: {ex.Message}");
             return 1;
         }
+    }
+
+    /// <summary>
+    /// Resolves ConnectionStrings:Default without any credential on the command line: first from the app's
+    /// Gateway user-secret (located by walking up from the migrations dir to the *.Gateway project +
+    /// reading its &lt;UserSecretsId&gt;), then from the ConnectionStrings__Default environment variable.
+    /// Returns null when neither is set (the caller then reports the normal "provide --database" error).
+    /// </summary>
+    private static string? TryResolveConnectionFromApp(DirectoryInfo migrations, out string source)
+    {
+        source = "";
+        var gatewayCsproj = FindGatewayCsproj(migrations);
+        if (gatewayCsproj is not null)
+        {
+            var id = Regex.Match(File.ReadAllText(gatewayCsproj), @"<UserSecretsId>\s*([^<\s]+)\s*</UserSecretsId>").Groups[1].Value;
+            if (!string.IsNullOrWhiteSpace(id))
+            {
+                var conn = ReadUserSecretDefaultConnection(id);
+                if (!string.IsNullOrWhiteSpace(conn)) { source = $"the Gateway user-secret ({id})"; return conn; }
+            }
+        }
+
+        var env = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
+                  ?? Environment.GetEnvironmentVariable("ConnectionStrings:Default");
+        if (!string.IsNullOrWhiteSpace(env)) { source = "the ConnectionStrings__Default environment variable"; return env; }
+        return null;
+    }
+
+    /// <summary>Walks up from the migrations dir to find the nearest generated *.Gateway .csproj.</summary>
+    private static string? FindGatewayCsproj(DirectoryInfo migrations)
+    {
+        for (var dir = migrations; dir is not null; dir = dir.Parent)
+        {
+            // The Gateway dir itself (entity migrations live under it) …
+            var here = dir.GetFiles("*.Gateway.csproj").FirstOrDefault();
+            if (here is not null) return here.FullName;
+            // … or a sibling under this app root's src/ (management migrations live at <app>/db/migrations).
+            var srcDir = Path.Combine(dir.FullName, "src");
+            if (Directory.Exists(srcDir))
+            {
+                var underSrc = Directory.GetFiles(srcDir, "*.Gateway.csproj", SearchOption.AllDirectories).FirstOrDefault();
+                if (underSrc is not null) return underSrc;
+            }
+        }
+        return null;
+    }
+
+    /// <summary>Reads ConnectionStrings:Default from a project's dotnet user-secrets store (secrets.json).</summary>
+    private static string? ReadUserSecretDefaultConnection(string userSecretsId)
+    {
+        var root = OperatingSystem.IsWindows()
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Microsoft", "UserSecrets")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".microsoft", "usersecrets");
+        var file = Path.Combine(root, userSecretsId, "secrets.json");
+        if (!File.Exists(file)) return null;
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(file));
+            // `dotnet user-secrets set "ConnectionStrings:Default" …` stores the flat colon key; also accept the nested form.
+            if (doc.RootElement.TryGetProperty("ConnectionStrings:Default", out var flat)) return flat.GetString();
+            if (doc.RootElement.TryGetProperty("ConnectionStrings", out var cs)
+                && cs.ValueKind == JsonValueKind.Object
+                && cs.TryGetProperty("Default", out var nested)) return nested.GetString();
+        }
+        catch (JsonException) { /* malformed secrets.json — fall through to env/error */ }
+        return null;
     }
 
     private static async Task EnsureDatabaseAsync(SqlConnectionStringBuilder target, string dbName)

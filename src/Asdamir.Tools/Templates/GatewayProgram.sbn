@@ -75,9 +75,9 @@ builder.Services.AddOpenApi();
 // exceptions become ProblemDetails and are logged via Serilog. Registers IProblemDetailsMapper.
 builder.Services.AddGlobalExceptionHandling();
 
-// Identity is OWNED BY AppManagement (the control plane): users / roles / permissions live in
-// the AsdamirVault database and are administered there. This app does NOT issue or store
-// identities — it only VALIDATES the JWT that AppManagement issued. Same signing key material.
+// JWT validation: every request's bearer token is validated here against the shared signing key /
+// issuer / audience. In FREE mode this Gateway also ISSUES those tokens locally (registered below);
+// in the default (commercial) mode AppManagement issues them and this Gateway only validates.
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key is required (set via env var JWT__KEY).");
 var jwtIssuer = builder.Configuration["Jwt:Issuer"]
@@ -118,6 +118,15 @@ builder.Services.AddAuthorization(opts =>
         .Build();
 });
 
+{{ if IsFreeMode ~}}
+// FREE MODE — self-contained identity: this app owns its users/roles/permissions in its OWN database, so
+// the Gateway ISSUES the JWT locally (JwtService) instead of proxying to a central AppManagement. The
+// local auth/menu/localization/config controllers read the app's own DB (free-mode AppId-free procs).
+// JwtService reads Jwt:Key/Issuer/Audience + lifetimes from configuration; CryptographyService.VerifyPassword
+// re-derives PBKDF2 from the salt in the stored hash. (The free identity/menu/localization/config
+// repositories auto-register via the DI-by-convention scan below.)
+builder.Services.AddSingleton<Asdamir.Core.Contracts.IJwtService, Asdamir.Core.Services.JwtService>();
+{{ else ~}}
 // Central identity: the login UI is local but credentials are validated by AppManagement's
 // auth API (it owns users/roles/permissions in AsdamirVault). The Gateway's AuthController
 // proxies to it through this client; the JWT it returns validates here (shared Jwt:Key +
@@ -132,6 +141,7 @@ builder.Services.AddHttpClient("appmgmt", c => c.BaseAddress = new Uri(adminCons
             h.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
         return h;
     });
+{{ end ~}}
 
 // This app's OWN database holds only its business data (start: a single demo table; grow it with
 // `asdamir new entity`). It does NOT carry the management schema — users/roles/permissions/menus

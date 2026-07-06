@@ -24,6 +24,11 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'Page.{{ EntityName }}.Title', N'tr-TR', N'{{ EntityPlural }}'),
     (N'Page.{{ EntityName }}.Title', N'en-US', N'{{ EntityPlural }}'),
     (N'Page.{{ EntityName }}.Title', N'ru-RU', N'{{ EntityPlural }}'),
+    -- Nav label key: the generated NavMenu derives this same key from the page Url ("{{ Route }}" -> "{{ MenuKey }}"),
+    -- so the central menu entry (dbo.Menus) localizes per culture instead of showing the raw seeded Name.
+    (N'{{ MenuKey }}', N'tr-TR', N'{{ EntityPlural }}'),
+    (N'{{ MenuKey }}', N'en-US', N'{{ EntityPlural }}'),
+    (N'{{ MenuKey }}', N'ru-RU', N'{{ EntityPlural }}'),
 {{ for f in Fields ~}}
     (N'Field.{{ EntityName }}.{{ f.Name }}', N'tr-TR', N'{{ f.Name }}'),
     (N'Field.{{ EntityName }}.{{ f.Name }}', N'en-US', N'{{ f.Name }}'),

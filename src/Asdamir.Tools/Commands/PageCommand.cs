@@ -157,23 +157,43 @@ public static class PageCommand
         foreach (var (relPath, templateName) in outputs)
             Emit(templateName, Path.Combine(output.FullName, relPath), relPath);
 
-        // localization + menu/permission seeds (AppId-scoped, AsdamirVault). Land under
-        // <app-root>/db/admin-onboarding/ next to register_*.sql; fall back to the output dir if no app root.
-        var locDir = appRoot is not null ? Path.Combine(appRoot, "db", "admin-onboarding") : output.FullName;
-        var locTarget = Path.Combine(locDir, $"localize_{pluralLower}.sql");
-        var menuTarget = Path.Combine(locDir, $"seed_menu_{pluralLower}.sql");
-        Emit("PageLocalization", locTarget, Path.GetRelativePath(output.FullName, locTarget));
-        Emit("PageMenuSeed", menuTarget, Path.GetRelativePath(output.FullName, menuTarget));
+        // Menu/permission + localization seeds. Free mode (app has a free-mode management schema) → into
+        // THIS app's OWN db as journaled migrations (auto-applied by `db apply`, no AppId, no AsdamirVault);
+        // commercial → AppId-scoped AsdamirVault scripts under db/admin-onboarding/ (run manually).
+        var isFree = IsFreeModeApp(appRoot);
+        if (isFree)
+        {
+            var migDir = Path.Combine(appRoot!, "db", "migrations");
+            var stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+            var locTarget = Path.Combine(migDir, $"V{stamp}__freemode_localize_{pluralLower}.sql");
+            var menuTarget = Path.Combine(migDir, $"V{stamp}__freemode_menu_{pluralLower}.sql");
+            Emit("FreeModePageLocalization", locTarget, Path.GetRelativePath(output.FullName, locTarget));
+            Emit("FreeModePageMenuSeed", menuTarget, Path.GetRelativePath(output.FullName, menuTarget));
+        }
+        else
+        {
+            // Land under <app-root>/db/admin-onboarding/ next to register_*.sql; fall back to the output dir.
+            var locDir = appRoot is not null ? Path.Combine(appRoot, "db", "admin-onboarding") : output.FullName;
+            var locTarget = Path.Combine(locDir, $"localize_{pluralLower}.sql");
+            var menuTarget = Path.Combine(locDir, $"seed_menu_{pluralLower}.sql");
+            Emit("PageLocalization", locTarget, Path.GetRelativePath(output.FullName, locTarget));
+            Emit("PageMenuSeed", menuTarget, Path.GetRelativePath(output.FullName, menuTarget));
+        }
 
         Console.WriteLine();
         Console.WriteLine($"✓ Generated page '{name}' ({written} files{(skipped > 0 ? $", {skipped} skipped" : "")})");
         Console.WriteLine();
         OutputFormatter.PrintGroupedFiles(rows);
         Console.WriteLine();
-        Console.WriteLine($"  next: apply db/admin-onboarding/{{localize,seed_menu}}_{pluralLower}.sql to AsdamirVault (menu + permission + localization)");
-        Console.WriteLine($"        register the 'AdminApi' HttpClient in DI · ensure the '{model.Policy}' policy is configured");
-        if (string.IsNullOrEmpty(appCode))
-            Console.WriteLine("        NOTE: app Code unresolved (no .sln) — set @AppCode at the top of those SQL files before running them");
+        if (isFree)
+            Console.WriteLine($"  next: apply db/migrations/V*__freemode_{{localize,menu}}_{pluralLower}.sql to the app's own DB via `asdamir db apply` (menu + permission + localization)");
+        else
+        {
+            Console.WriteLine($"  next: apply db/admin-onboarding/{{localize,seed_menu}}_{pluralLower}.sql to AsdamirVault (menu + permission + localization)");
+            Console.WriteLine($"        register the 'AdminApi' HttpClient in DI · ensure the '{model.Policy}' policy is configured");
+            if (string.IsNullOrEmpty(appCode))
+                Console.WriteLine("        NOTE: app Code unresolved (no .sln) — set @AppCode at the top of those SQL files before running them");
+        }
         return 0;
     }
 
@@ -182,8 +202,8 @@ public static class PageCommand
     {
         "Dto" => "DTO",
         "Page" or "PageDialog" => "Page",
-        "PageLocalization" => "Localization",
-        "PageMenuSeed" => "Menu+Perms",
+        "PageLocalization" or "FreeModePageLocalization" => "Localization",
+        "PageMenuSeed" or "FreeModePageMenuSeed" => "Menu+Perms",
         _ => template,
     };
 
@@ -197,6 +217,19 @@ public static class PageCommand
         if (parts.Length == 0) return "Menu.Item";
         var slug = string.Concat(parts.Select(p => char.ToUpperInvariant(p[0]) + p[1..]));
         return "Menu." + slug;
+    }
+
+    /// <summary>
+    /// A free-mode app carries a <c>*__freemode_management_schema.sql</c> migration in its
+    /// <c>db/migrations</c> folder (emitted by <c>new app --mode free</c>). Its presence is the signal to
+    /// seed page menu/localization into the app's OWN DB rather than the central AsdamirVault.
+    /// </summary>
+    internal static bool IsFreeModeApp(string? appRoot)
+    {
+        if (appRoot is null) return false;
+        var migDir = Path.Combine(appRoot, "db", "migrations");
+        return Directory.Exists(migDir)
+            && Directory.GetFiles(migDir, "*__freemode_management_schema.sql").Length > 0;
     }
 
     /// <summary>

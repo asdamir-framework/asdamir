@@ -158,6 +158,13 @@ asdamir new mobile MyPortal       # MAUI Blazor Hybrid app
 asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
 ```
 
+**Free mode.** `asdamir new app <Name> --mode free` scaffolds a **self-contained** app with **no control
+plane**: its identity, RBAC, menus, localization and config live in the app's **own** database
+(single-tenant), the Gateway **issues and validates its own JWTs**, and logging goes to file + console — so
+the app runs standalone with AppManagement not involved. The default (`--mode commercial`) is unchanged: the
+control plane owns that data centrally in `AsdamirVault`, scoped per app. See the free quick-start in
+[docs/cli.md](docs/cli.md#asdamir-new-app--free-vs-commercial-mode).
+
 ### Configuration & secrets
 
 `appsettings.json` holds **non-secret defaults only**. Secrets come from `dotnet user-secrets` (dev) or environment variables (prod):
