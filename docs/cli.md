@@ -28,7 +28,7 @@ dotnet tool install --global Asdamir.Tools
 
 | Command | Generates |
 |---|---|
-| `new app <Name>` | A full application (Server + Gateway) wired to the framework — including `Properties/launchSettings.json` on fixed dev ports (Gateway `7001` = the Server's `Gateway:BaseUrl`, Server `7010`) so `dotnet run` starts on a known port out of the box instead of the default `:5000`. **`--mode free\|commercial`** (default `commercial`) picks the identity model — see [free vs commercial mode](#asdamir-new-app--free-vs-commercial-mode). |
+| `new app <Name>` | A full application (Server + Gateway) wired to the framework — including `Properties/launchSettings.json` on fixed dev ports (Gateway `7001` = the Server's `Gateway:BaseUrl`, Server `7010`) so `dotnet run` starts on a known port out of the box instead of the default `:5000`. **`--mode free\|commercial`** (default `commercial`) picks the identity model — see [free vs commercial mode](#asdamir-new-app-free-vs-commercial-mode). |
 | `new entity <Name>` | Entity + DTO + repository + service + controller + tests + a create migration + an **idempotent sample-seed migration**. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, **update round-trip**, **list**, and an **API auth-guard** (`GET` without a token → 401) — all DB-free (in-memory fake repo + `WebApplicationFactory`). The seed migration (since 1.1.1) writes 3 typed sample rows (guarded by `IF NOT EXISTS`, `TenantId='default'`) so the entity's grid is populated after `db apply` instead of empty. |
 | `new page <Name>` | A Blazor CRUD page (DataGrid + edit dialog + delete confirm) **plus** its localization seed (`localize_<plural>.sql`) and an idempotent, role-based **menu + permission seed** (`seed_menu_<plural>.sql`, AppId-scoped). `--icon` sets the nav icon. See [below](#asdamir-new-page-localization-menu-permission-seeds). |
 | `new feature <Name>` | **The one-command path for a complete CRUD feature** — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission & localization seeds, in one go. With `--apply` it also runs the entity migration, and with `--vault-connection` the AsdamirVault menu/permission seed. See [below](#asdamir-new-feature). |
@@ -45,7 +45,7 @@ Generated output uses the framework's templates (`src/Asdamir.Tools/Templates/*.
 > then build a **single RID** — `dotnet build … -f net10.0-android -r android-arm64` (a plain multi-RID
 > build fails with `NETSDK1047`). Full recipe in [Mobile App → Build & run](mobile.md#build-run).
 
-### `asdamir new app` — free vs commercial mode
+### `asdamir new app`: free vs commercial mode
 
 `new app` takes **`--mode free|commercial`** (default `commercial`). It picks **where a generated app's
 identity, RBAC, menu, localization and config live** — the app's business layering is identical either way

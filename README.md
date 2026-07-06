@@ -163,7 +163,7 @@ plane**: its identity, RBAC, menus, localization and config live in the app's **
 (single-tenant), the Gateway **issues and validates its own JWTs**, and logging goes to file + console — so
 the app runs standalone with AppManagement not involved. The default (`--mode commercial`) is unchanged: the
 control plane owns that data centrally in `AsdamirVault`, scoped per app. See the free quick-start in
-[docs/cli.md](docs/cli.md#asdamir-new-app--free-vs-commercial-mode).
+[docs/cli.md](docs/cli.md#asdamir-new-app-free-vs-commercial-mode).
 
 ### Configuration & secrets
 
