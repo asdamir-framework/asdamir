@@ -1263,7 +1263,7 @@
   <a href="#asdamir-new-app-free-vs-commercial-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        asdamir new app — free vs commercial mode
+        asdamir new app: free vs commercial mode
       
     </span>
   </a>
@@ -1648,7 +1648,7 @@
   <a href="#asdamir-new-app-free-vs-commercial-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        asdamir new app — free vs commercial mode
+        asdamir new app: free vs commercial mode
       
     </span>
   </a>
@@ -1849,7 +1849,7 @@
 <tbody>
 <tr>
 <td><code>new app &lt;Name&gt;</code></td>
-<td>A full application (Server + Gateway) wired to the framework — including <code>Properties/launchSettings.json</code> on fixed dev ports (Gateway <code>7001</code> = the Server's <code>Gateway:BaseUrl</code>, Server <code>7010</code>) so <code>dotnet run</code> starts on a known port out of the box instead of the default <code>:5000</code>. <strong><code>--mode free\|commercial</code></strong> (default <code>commercial</code>) picks the identity model — see <a href="#asdamir-new-app--free-vs-commercial-mode">free vs commercial mode</a>.</td>
+<td>A full application (Server + Gateway) wired to the framework — including <code>Properties/launchSettings.json</code> on fixed dev ports (Gateway <code>7001</code> = the Server's <code>Gateway:BaseUrl</code>, Server <code>7010</code>) so <code>dotnet run</code> starts on a known port out of the box instead of the default <code>:5000</code>. <strong><code>--mode free\|commercial</code></strong> (default <code>commercial</code>) picks the identity model — see <a href="#asdamir-new-app-free-vs-commercial-mode">free vs commercial mode</a>.</td>
 </tr>
 <tr>
 <td><code>new entity &lt;Name&gt;</code></td>
@@ -1887,7 +1887,7 @@
 then build a <strong>single RID</strong> — <code>dotnet build … -f net10.0-android -r android-arm64</code> (a plain multi-RID
 build fails with <code>NETSDK1047</code>). Full recipe in <a href="../mobile/#build-run">Mobile App → Build &amp; run</a>.</p>
 </blockquote>
-<h3 id="asdamir-new-app-free-vs-commercial-mode"><code>asdamir new app</code> — free vs commercial mode<a class="headerlink" href="#asdamir-new-app-free-vs-commercial-mode" title="Permanent link">&para;</a></h3>
+<h3 id="asdamir-new-app-free-vs-commercial-mode"><code>asdamir new app</code>: free vs commercial mode<a class="headerlink" href="#asdamir-new-app-free-vs-commercial-mode" title="Permanent link">&para;</a></h3>
 <p><code>new app</code> takes <strong><code>--mode free|commercial</code></strong> (default <code>commercial</code>). It picks <strong>where a generated app's
 identity, RBAC, menu, localization and config live</strong> — the app's business layering is identical either way
 (a Server/UI tier that only ever calls its Gateway/API tier).</p>
