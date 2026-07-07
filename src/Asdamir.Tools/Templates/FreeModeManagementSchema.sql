@@ -38,6 +38,10 @@ BEGIN
         [PhoneNumberVerified]    [bit] NOT NULL CONSTRAINT [DF_Users_PhoneNumberVerified] DEFAULT (0),
         [FailedLoginCount]       [int] NOT NULL CONSTRAINT [DF_Users_FailedLoginCount] DEFAULT (0),
         [LockedUntilUtc]         [datetime2](3) NULL,
+        -- First-login / admin-forced password change: when 1, the app redirects the user to the
+        -- change-password page after sign-in and blocks the normal flow until they set a new password
+        -- (the change-password endpoint clears it). The seeded starter admin ships with this = 1.
+        [ForcePasswordChange]    [bit] NOT NULL CONSTRAINT [DF_Users_ForcePasswordChange] DEFAULT (0),
         -- Single app → email is globally unique in this DB (was UNIQUE(AppId, Email) in AsdamirVault).
         CONSTRAINT [UQ_Users_Email] UNIQUE ([Email])
     );

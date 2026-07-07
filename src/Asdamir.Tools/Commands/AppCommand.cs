@@ -327,6 +327,11 @@ public static class AppCommand
             // that the commercial Gateway never served (a gap) — all reading the app's OWN DB.
             written += WriteRendered(appRoot, $"src/{gatewayProject}/Auth/FreeManagementRepository.cs", "FreeGatewayManagementRepository", model);
             written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/ClientSettingsController.cs", "FreeGatewayClientSettingsController", model);
+            // First-login / forced change-password page (self-contained auth). Reached via the login redirect
+            // when the user's ForcePasswordChange flag is set; posts to the Gateway's change-password endpoint.
+            // Commercial mode has no local change-password flow (identity is central), so this is free-only.
+            written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/ChangePassword.razor", "ServerChangePasswordPage", model);
+            written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/ChangePassword.razor.css", "ServerChangePasswordPageCss", model);
         }
         else
         {
@@ -361,6 +366,8 @@ public static class AppCommand
             Console.WriteLine($"     cd src/{gatewayProject}");
             Console.WriteLine($"     # the Gateway ISSUES + validates its own JWTs — use any 64+ byte CSPRNG-generated key");
             Console.WriteLine($"     dotnet user-secrets set \"Jwt:Key\" \"<a 64+ byte random key>\"");
+            Console.WriteLine($"     # at-rest encryption key (32+ chars) — REQUIRED (the Gateway fails closed without it, no demo default)");
+            Console.WriteLine($"     dotnet user-secrets set \"Security:EncryptionKey\" \"<a 32+ char random key>\"");
             if (connNeedsSecret)
             {
                 Console.WriteLine($"     # this app's OWN database (management + business tables) — cross-platform (SQL auth). On Windows you may use Trusted_Connection=True instead.");
@@ -401,8 +408,9 @@ public static class AppCommand
         Console.WriteLine($"     cd ../..");
         Console.WriteLine($"  3. dotnet build {name}.sln && dotnet test {name}.sln");
         Console.WriteLine($"  4. Create the app's own (business) database + demo table (migrations are journaled — re-runs apply only new ones):");
-        Console.WriteLine($"     asdamir db apply --server {dbServer} --database {database} --user <sql-login> --password <pwd> --create-database --migrations db/migrations");
-        Console.WriteLine($"     # On Windows you may drop --user/--password to use integrated auth; or pass a full --connection \"<connstr>\".");
+        Console.WriteLine($"     asdamir db apply --create-database --migrations db/migrations");
+        Console.WriteLine($"     # reads ConnectionStrings:Default from the Gateway user-secret you set in step 2 — no");
+        Console.WriteLine($"     # password on the command line. (You can still pass --connection / --server / --user / --password.)");
         Console.WriteLine($"  5. Register + seed the app in AppManagement (control plane): run");
         Console.WriteLine($"     db/admin-onboarding/register_{model.AppNameLower}.sql against the AsdamirVault DB —");
         Console.WriteLine($"     it registers the app and seeds its users / roles / permissions / menus / config /");

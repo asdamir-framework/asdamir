@@ -23,7 +23,7 @@
          sample-seed rows are English, and `rollback` tears down free-mode seeds symmetrically.
          Backward-compatible: the default is still "commercial", unchanged. Core/Data/Web version is set in
          Directory.Build.props. -->
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

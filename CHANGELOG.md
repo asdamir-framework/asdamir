@@ -5,7 +5,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; the CLI (`Asdamir.Tools`) versions independently. Current published state:
-**Core/Data/Web `1.1.2`**, **Tools `1.2.0`** (nuget.org). AppManagement (the commercial control plane)
+**Core/Data/Web `1.1.2`**, **Tools `1.2.1`** (nuget.org). AppManagement (the commercial control plane)
 is not packed to NuGet — it ships as a compiled release for commercial customers.
 
 ## [Unreleased]
@@ -26,6 +26,24 @@ is not packed to NuGet — it ships as a compiled release for commercial custome
   `LocalizationHttpClient`). No behaviour change.
 - **`Asdamir.Data`** — no change; republished at 1.1.2 to keep the Core/Data/Web trio version-aligned.
 - Still FluentUI **v4**-based — the v5 migration stays on its branch until GA.
+
+## [Tools 1.2.1] — 2026-07-07
+
+- **`Asdamir.Tools` 1.2.1 — free-mode auth hardening + first-login password change** (PATCH;
+  backward-compatible — only the generated **free-mode** output changes, a `commercial` app is unchanged).
+  - **Constant-time login (no user-enumeration):** a free app's login pays the same password-hash verify
+    cost on an unknown email as on a known one, so response timing no longer reveals whether an account
+    exists.
+  - **Seeded config now actually applies:** a free app synchronously loads its own `AppConfigurations` at
+    startup, so seeded `RateLimiting:*` / `Security:*` / OTP settings reach the rate-limiter and options
+    instead of silently falling back to code defaults.
+  - **Fail-closed at-rest key:** a free app now throws at startup if `Security:EncryptionKey` is missing
+    (like `Jwt:Key`) — no demo-key fallback; the quick-start banner adds the key step.
+  - **First-login forced password change:** a free app ships a `ForcePasswordChange` flag on the starter
+    admin; login reports it, the UI redirects to a new change-password page, and the endpoint verifies the
+    current password, sets the new one, clears the flag, and revokes existing sessions.
+  - **Cleaner quick-start:** `new app` no longer prints a plaintext database password — it uses the
+    passwordless `db apply` (which resolves the connection from the Gateway user-secret).
 
 ## [Tools 1.2.0] — 2026-07-06
 

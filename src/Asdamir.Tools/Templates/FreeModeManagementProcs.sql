@@ -104,6 +104,32 @@ BEGIN
 END
 GO
 
+-- First-login / forced password change: read the flag so login can redirect to the change-password page.
+CREATE OR ALTER PROCEDURE [dbo].[User_GetForcePasswordChange]
+    @userId INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SELECT ForcePasswordChange FROM dbo.Users WHERE Id = @userId;
+END
+GO
+
+-- Change the password AND clear the ForcePasswordChange flag in one statement (the change-password
+-- endpoint calls this after verifying the current password). PasswordHash is NVARCHAR(500) in the schema.
+CREATE OR ALTER PROCEDURE [dbo].[User_ChangePassword]
+    @userId  INT,
+    @newHash NVARCHAR(500)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    UPDATE dbo.Users
+       SET PasswordHash        = @newHash,
+           ForcePasswordChange = 0,
+           UpdatedAt           = SYSUTCDATETIME()
+     WHERE Id = @userId;
+END
+GO
+
 ------------------------------------------------------------------------------------------------------
 -- RBAC — the user's permissions (source of the JWT `perm` claims). In free mode these come from the
 -- local role chain (UserRoles -> RolePermissions -> Permissions), NOT the commercial UserAppRoles matrix.

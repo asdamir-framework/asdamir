@@ -146,6 +146,11 @@
         {
             HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, IsEssential = true, Expires = jwt.ValidTo,
         });
+{{ if IsFreeMode ~}}
+        // Free mode: a first-login / admin-forced password change redirects to the change-password page
+        // instead of the dashboard (the flag is cleared server-side once the new password is set).
+        if (body.MustChangePassword) { Nav.NavigateTo("/change-password", forceLoad: true); return; }
+{{ end ~}}
         Nav.NavigateTo("/", forceLoad: true);
     }
 
@@ -162,5 +167,5 @@
     }
 
     public sealed record TokenPair(string AccessToken, string RefreshToken, DateTime ExpiresAtUtc, DateTime RefreshExpiresAtUtc);
-    public sealed record LoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenPair? Tokens);
+    public sealed record LoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenPair? Tokens{{ if IsFreeMode }}, bool MustChangePassword = false{{ end }});
 }

@@ -37,9 +37,11 @@ SELECT @RoleId, p.Id FROM dbo.Permissions p
 
 -- 3) Starter admin user (PBKDF2 hash from the scaffolder). The free login gate is "user exists + active",
 --    so IsActive = 1 is what lets this account sign in (there is no per-app UserAppRoles grant in free).
+-- ForcePasswordChange = 1: the printed starter password is a bootstrap credential, so the app forces a
+-- change on first sign-in (the change-password endpoint clears the flag). See FreeModeManagementSchema.sql.
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = N'{{ AdminEmail }}')
-    INSERT INTO dbo.Users (Email, Name, PasswordHash, IsActive, IsTwoFactorEnabled)
-    VALUES (N'{{ AdminEmail }}', N'Administrator', N'{{ AdminPasswordHash }}', 1, 0);
+    INSERT INTO dbo.Users (Email, Name, PasswordHash, IsActive, IsTwoFactorEnabled, ForcePasswordChange)
+    VALUES (N'{{ AdminEmail }}', N'Administrator', N'{{ AdminPasswordHash }}', 1, 0, 1);
 DECLARE @UserId INT = (SELECT Id FROM dbo.Users WHERE Email = N'{{ AdminEmail }}');
 
 -- 4) Link the admin to the Admin role (no UserAppRoles matrix in free — one app, one tenant).
@@ -164,6 +166,39 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'App.Forgot.Back',              N'tr-TR', N'Girişe dön'),
     (N'App.Forgot.Back',              N'en-US', N'Back to sign in'),
     (N'App.Forgot.Back',              N'ru-RU', N'Вернуться ко входу'),
+    (N'App.ChangePw.Title',           N'tr-TR', N'Şifre değiştir'),
+    (N'App.ChangePw.Title',           N'en-US', N'Change password'),
+    (N'App.ChangePw.Title',           N'ru-RU', N'Смена пароля'),
+    (N'App.ChangePw.Subtitle',        N'tr-TR', N'Devam etmek için yeni bir şifre belirleyin'),
+    (N'App.ChangePw.Subtitle',        N'en-US', N'Set a new password to continue'),
+    (N'App.ChangePw.Subtitle',        N'ru-RU', N'Задайте новый пароль, чтобы продолжить'),
+    (N'App.ChangePw.ForcedHint',      N'tr-TR', N'İlk girişinizde geçici şifrenizi değiştirmeniz gerekir.'),
+    (N'App.ChangePw.ForcedHint',      N'en-US', N'You must change your temporary password on first sign-in.'),
+    (N'App.ChangePw.ForcedHint',      N'ru-RU', N'При первом входе необходимо сменить временный пароль.'),
+    (N'App.ChangePw.Current',         N'tr-TR', N'Mevcut şifre'),
+    (N'App.ChangePw.Current',         N'en-US', N'Current password'),
+    (N'App.ChangePw.Current',         N'ru-RU', N'Текущий пароль'),
+    (N'App.ChangePw.New',             N'tr-TR', N'Yeni şifre'),
+    (N'App.ChangePw.New',             N'en-US', N'New password'),
+    (N'App.ChangePw.New',             N'ru-RU', N'Новый пароль'),
+    (N'App.ChangePw.Confirm',         N'tr-TR', N'Yeni şifre (tekrar)'),
+    (N'App.ChangePw.Confirm',         N'en-US', N'Confirm new password'),
+    (N'App.ChangePw.Confirm',         N'ru-RU', N'Повторите новый пароль'),
+    (N'App.ChangePw.Submit',          N'tr-TR', N'Şifreyi değiştir'),
+    (N'App.ChangePw.Submit',          N'en-US', N'Change password'),
+    (N'App.ChangePw.Submit',          N'ru-RU', N'Сменить пароль'),
+    (N'App.ChangePw.Mismatch',        N'tr-TR', N'Yeni şifreler eşleşmiyor.'),
+    (N'App.ChangePw.Mismatch',        N'en-US', N'The new passwords do not match.'),
+    (N'App.ChangePw.Mismatch',        N'ru-RU', N'Новые пароли не совпадают.'),
+    (N'App.ChangePw.TooShort',        N'tr-TR', N'Yeni şifre en az 8 karakter olmalıdır.'),
+    (N'App.ChangePw.TooShort',        N'en-US', N'The new password must be at least 8 characters.'),
+    (N'App.ChangePw.TooShort',        N'ru-RU', N'Новый пароль должен содержать не менее 8 символов.'),
+    (N'App.ChangePw.WrongCurrent',    N'tr-TR', N'Mevcut şifre hatalı.'),
+    (N'App.ChangePw.WrongCurrent',    N'en-US', N'The current password is incorrect.'),
+    (N'App.ChangePw.WrongCurrent',    N'ru-RU', N'Текущий пароль неверен.'),
+    (N'App.ChangePw.Failed',          N'tr-TR', N'Şifre değiştirilemedi. Lütfen tekrar deneyin.'),
+    (N'App.ChangePw.Failed',          N'en-US', N'Could not change the password. Please try again.'),
+    (N'App.ChangePw.Failed',          N'ru-RU', N'Не удалось сменить пароль. Попробуйте снова.'),
     (N'App.Shell.Menu',               N'tr-TR', N'Menü'),
     (N'App.Shell.Menu',               N'en-US', N'Menu'),
     (N'App.Shell.Menu',               N'ru-RU', N'Меню'),

@@ -5,6 +5,7 @@
 // central AppManagement. The login gate is simply "the user exists and is active" (User_GetAuthByEmail
 // already filters IsActive = 1) — there is no cross-app UserAppRoles matrix in a single-app DB.
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
@@ -22,9 +23,12 @@ public sealed record LoginRequest([Required, EmailAddress] string Email, [Requir
 public sealed record TwoFactorVerifyRequest([Required] string TwoFactorToken, [Required] string Code);
 public sealed record ForgotPasswordRequest([Required, EmailAddress] string Email);
 public sealed record RefreshRequest([Required] string RefreshToken);
+public sealed record ChangePasswordRequest([Required] string CurrentPassword, [Required, MinLength(8)] string NewPassword);
 
 public sealed record AppProfileDto(int Id, string Email, string Name, string AppCode, IReadOnlyList<string> Permissions);
-public sealed record AppLoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenResponseDto? Tokens, AppProfileDto? User);
+// MustChangePassword: true when the signed-in user still carries the first-login/forced flag — the UI
+// redirects to the change-password page instead of the dashboard until they set a new password.
+public sealed record AppLoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenResponseDto? Tokens, AppProfileDto? User, bool MustChangePassword = false);
 
 /// <summary>
 /// Local auth for this free-mode app. Login verifies credentials against the app's own DB and mints a JWT
@@ -32,11 +36,19 @@ public sealed record AppLoginResponse(bool RequiresTwoFactor, string? TwoFactorT
 /// </summary>
 [ApiController]
 [Route("gateway/auth")]
-[AllowAnonymous]
 [EnableRateLimiting("auth")] // stricter per-IP cap on the credential endpoints (brute-force guard)
+// NOTE: NOT [AllowAnonymous] at the class level. The Gateway's FallbackPolicy requires an authenticated
+// user, so the credential endpoints below opt out individually with [AllowAnonymous]; change-password
+// deliberately does NOT — it must run under the authenticated caller (a class-level [AllowAnonymous]
+// would make change-password anonymous too, since AllowAnonymous always wins over [Authorize]).
 public sealed class AuthController : ControllerBase
 {
     private const string Opaque = "Invalid credentials";
+
+    // A fixed, valid PBKDF2 hash (210k iterations — matching the seeded admin) used ONLY to pay the same
+    // verify cost on the unknown-email path, so response timing can't be used to enumerate valid accounts.
+    // It corresponds to no real account; the verify result is discarded (always 401 there).
+    private const string DummyHash = "$pbkdf2-sha256$210000$obLD1OX2BxgpOktcbX6PkA==$+3AwpoTxALwgj5aTqaKJOwKxhfTYaoj8zplwhc8lWoY=";
 
     private readonly IFreeIdentityRepository _identity;
     private readonly IJwtService _jwt;
@@ -50,21 +62,30 @@ public sealed class AuthController : ControllerBase
         _jwt = jwt;
         _config = config;
         _logger = logger;
-        // VerifyPassword only re-derives PBKDF2 from the salt embedded in the stored hash — the key is not
-        // used for that path, but the ctor requires a 32+ char value (same as AppManagement).
-        _crypto = new CryptographyService(config["Security:EncryptionKey"] ?? "demo-encryption-key-must-be-32-chars-minimum-12");
+        // Fail-closed: require the real Security:EncryptionKey (set via user-secrets / env) — never fall back
+        // to a demo key. VerifyPassword itself re-derives PBKDF2 from the salt in the stored hash and doesn't
+        // use the key, but CryptographyService can also encrypt, so a real key must be in place.
+        _crypto = new CryptographyService(config["Security:EncryptionKey"]
+            ?? throw new InvalidOperationException("Security:EncryptionKey is required (set via user-secrets / env SECURITY__ENCRYPTIONKEY)."));
     }
 
     // This app's own code — stamped into the JWT (token_use=app, app_code) exactly like the central flow.
     private string AppCode => _config["App:Code"] ?? "{{ AppName }}";
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
         var user = await _identity.FindByEmailAsync(req.Email, ct);
-        if (user is null) return Unauthorized(new { error = Opaque });
+        if (user is null)
+        {
+            // Constant-time: pay the same PBKDF2 verify cost against a dummy hash so an unknown email takes
+            // as long as a known one — no user-enumeration via response timing. Result discarded; always 401.
+            _crypto.VerifyPassword(req.Password, DummyHash);
+            return Unauthorized(new { error = Opaque });
+        }
 
         var lockedUntil = await _identity.GetLockedUntilUtcAsync(user.Id, ct);
         if (lockedUntil is not null && lockedUntil > DateTime.UtcNow)
@@ -83,8 +104,13 @@ public sealed class AuthController : ControllerBase
         {
             // Start a challenge — the code delivery (SMS) is the app's to wire; the token round-trips to
             // gateway/auth/twofactor/verify. Kept minimal here so 2FA-off logins (the default) issue directly.
-            var token = Guid.NewGuid().ToString("N");
-            var code = Random.Shared.Next(100000, 999999).ToString();
+            // CSPRNG for both (matches AppManagement): a Guid reserves 6/16 bytes for version/variant and a
+            // shared non-cryptographic PRNG is predictable — either lets a racing attacker guess an in-flight
+            // challenge or code. RandomNumberGenerator gives full entropy.
+            Span<byte> tokenBytes = stackalloc byte[16];
+            RandomNumberGenerator.Fill(tokenBytes);
+            var token = Convert.ToBase64String(tokenBytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+            var code = RandomNumberGenerator.GetInt32(100000, 1000000).ToString(); // 6 digits, inclusive of 999999
             var ttl = _config.GetValue<int?>("Security.Otp.TtlMinutes") ?? 3;
             var attempts = _config.GetValue<int?>("Security.Otp.MaxAttempts") ?? 3;
             await _identity.CreateTwoFactorChallengeAsync(token, user.Id, code, attempts, DateTime.UtcNow.AddMinutes(ttl), ct);
@@ -96,6 +122,7 @@ public sealed class AuthController : ControllerBase
     }
 
     [HttpPost("twofactor/verify")]
+    [AllowAnonymous]
     public async Task<IActionResult> VerifyTwoFactor([FromBody] TwoFactorVerifyRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
@@ -115,6 +142,7 @@ public sealed class AuthController : ControllerBase
     // Rotate the (single-use) refresh token for a fresh access token — recovers from an expired access
     // token without a re-login. Reuse of an already-rotated token revokes the whole chain (theft guard).
     [HttpPost("refresh")]
+    [AllowAnonymous]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest req, CancellationToken ct)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
@@ -130,10 +158,38 @@ public sealed class AuthController : ControllerBase
     // Identity is local; answer generically so callers can't probe which emails exist. Wiring the actual
     // reset email is the app's to do (free mode ships no mail transport by default).
     [HttpPost("forgot-password")]
+    [AllowAnonymous]
     public IActionResult ForgotPassword([FromBody] ForgotPasswordRequest req)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         return Ok(new { message = "If an account exists for that email, reset instructions have been sent." });
+    }
+
+    // Change the signed-in user's password. NOT [AllowAnonymous] — the Gateway's FallbackPolicy requires an
+    // authenticated caller, so this runs only under the user's own bearer token (the first-login/forced flow
+    // redirects here). Verifies the current password with the SAME audited PBKDF2 primitive as login, writes
+    // the new hash + clears ForcePasswordChange, then revokes every refresh token (invalidates other sessions).
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req, CancellationToken ct)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        if (User.Identity?.IsAuthenticated != true) return Unauthorized(new { error = Opaque });
+        // JwtBearer maps the token's `sub` to NameIdentifier by default; accept either.
+        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        if (!int.TryParse(sub, out var userId)) return Unauthorized(new { error = Opaque });
+
+        var user = await _identity.FindByIdAsync(userId, ct);
+        if (user is null) return Unauthorized(new { error = Opaque });
+
+        if (!_crypto.VerifyPassword(req.CurrentPassword, user.PasswordHash))
+            return BadRequest(new { error = "current_password_incorrect" });
+
+        var newHash = _crypto.HashPassword(req.NewPassword);
+        await _identity.ChangePasswordAsync(userId, newHash, ct);
+        await _identity.RevokeAllRefreshTokensAsync(userId, ct);
+        _logger.LogInformation("Password changed for user {UserId}; ForcePasswordChange cleared", userId);
+        return Ok(new { message = "Password changed" });
     }
 
     private async Task<AppLoginResponse> IssueAsync(UserAuth user, CancellationToken ct)
@@ -149,8 +205,11 @@ public sealed class AuthController : ControllerBase
         // RefreshToken_Create proc + the validation path in gateway/auth/refresh.
         await _identity.CreateRefreshTokenAsync(user.Id, HashToken(tokens.RefreshToken), tokens.RefreshExpiresAtUtc, ct);
         _logger.LogInformation("Local login ok: user {UserId} -> app {AppCode}", user.Id, AppCode);
+
+        // First-login / forced flag → the UI redirects to the change-password page instead of the dashboard.
+        var mustChange = await _identity.GetForcePasswordChangeAsync(user.Id, ct);
         return new AppLoginResponse(false, null, tokens,
-            new AppProfileDto(user.Id, user.Email, user.Name, AppCode, perms));
+            new AppProfileDto(user.Id, user.Email, user.Name, AppCode, perms), mustChange);
     }
 
     internal static string HashToken(string token)

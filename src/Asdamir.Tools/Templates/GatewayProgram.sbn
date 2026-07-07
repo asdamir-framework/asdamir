@@ -9,6 +9,9 @@ using Asdamir.Core.MultiTenancy;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+{{ if IsFreeMode ~}}
+using System.Threading.RateLimiting;
+{{ end ~}}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,6 +51,33 @@ if (!string.IsNullOrWhiteSpace(otlpEndpoint))
 //                                up), so an orchestrator stops routing traffic but doesn't restart-loop.
 var healthChecks = builder.Services.AddHealthChecks();
 var dbConnString = builder.Configuration.GetConnectionString("Default");
+{{ if IsFreeMode ~}}
+// FREE MODE — the app's runtime/security settings (RateLimiting:*, Security:*, Security.Otp.*, Session:*,
+// Jwt lifetimes …) live in its OWN dbo.AppConfigurations (seeded by the free-mode migrations). Load them
+// into configuration SYNCHRONOUSLY at startup so they actually apply — otherwise every read silently falls
+// back to a hardcoded default. It must be synchronous + up front: the auth rate-limiter below binds its
+// limit once at startup, so a background/async config source (which loads AFTER startup) would be too late.
+// Best-effort: a DB hiccup here just leaves the coded defaults in place; it never blocks boot.
+if (!string.IsNullOrWhiteSpace(dbConnString))
+{
+    try
+    {
+        var seededConfig = new Dictionary<string, string?>();
+        using var cfgConn = new SqlConnection(dbConnString); // audit-lint:ignore AUD002 one-shot startup config load of the app's OWN settings, not tenant business data
+        cfgConn.Open();
+        using var cfgCmd = cfgConn.CreateCommand();
+        cfgCmd.CommandText = "SELECT [Key],[Value] FROM dbo.AppConfigurations WHERE IsActive = 1";
+        using var cfgReader = cfgCmd.ExecuteReader();
+        while (cfgReader.Read())
+            seededConfig[cfgReader.GetString(0)] = cfgReader.IsDBNull(1) ? null : cfgReader.GetString(1);
+        builder.Configuration.AddInMemoryCollection(seededConfig);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Free-mode: could not load dbo.AppConfigurations at startup, using coded defaults ({ex.Message}).");
+    }
+}
+{{ end ~}}
 if (!string.IsNullOrWhiteSpace(dbConnString))
 {
     healthChecks.AddAsyncCheck("database", async ct =>
@@ -125,7 +155,25 @@ builder.Services.AddAuthorization(opts =>
 // JwtService reads Jwt:Key/Issuer/Audience + lifetimes from configuration; CryptographyService.VerifyPassword
 // re-derives PBKDF2 from the salt in the stored hash. (The free identity/menu/localization/config
 // repositories auto-register via the DI-by-convention scan below.)
+// Fail-closed at startup: the local login constructs CryptographyService with Security:EncryptionKey — it
+// must be a real 32+ char secret (user-secrets / env), never a demo default. Fail here so a mis-provisioned
+// app never boots with a placeholder key rather than 500-ing on first login.
+if (string.IsNullOrWhiteSpace(builder.Configuration["Security:EncryptionKey"]))
+    throw new InvalidOperationException("Security:EncryptionKey is required in free mode (set via env SECURITY__ENCRYPTIONKEY).");
 builder.Services.AddSingleton<Asdamir.Core.Contracts.IJwtService, Asdamir.Core.Services.JwtService>();
+// Rate limiting for the credential endpoints ([EnableRateLimiting("auth")] on the free AuthController) —
+// a PER-IP fixed window so brute-force / credential-stuffing on gateway/auth/* is throttled. Defaults match
+// the seeded RateLimiting:Auth:* (10 requests / 60s); override via appsettings/env RateLimiting:Auth:*.
+// (Commercial mode proxies auth to AppManagement, which runs its own limiter — so this is free-mode only.)
+builder.Services.AddRateLimiter(rl =>
+{
+    rl.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    var permit = builder.Configuration.GetValue<int?>("RateLimiting:Auth:PermitLimit") ?? 10;
+    var window = builder.Configuration.GetValue<int?>("RateLimiting:Auth:WindowSeconds") ?? 60;
+    rl.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = permit, Window = TimeSpan.FromSeconds(window), QueueLimit = 0 }));
+});
 {{ else ~}}
 // Central identity: the login UI is local but credentials are validated by AppManagement's
 // auth API (it owns users/roles/permissions in AsdamirVault). The Gateway's AuthController
@@ -179,6 +227,11 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 // Early — wraps everything downstream so any unhandled exception is caught + logged.
 app.UseGlobalExceptionHandling();
+{{ if IsFreeMode ~}}
+// Before auth so a brute-force burst is rejected (429) BEFORE any credential/JWT work. Endpoint routing has
+// already run (MapControllers), so the [EnableRateLimiting("auth")] policy on the credential endpoints applies.
+app.UseRateLimiter();
+{{ end ~}}
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
