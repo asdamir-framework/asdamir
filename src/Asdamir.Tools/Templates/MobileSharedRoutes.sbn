@@ -6,7 +6,7 @@
     </Found>
     <NotFound>
         <LayoutView Layout="@typeof(Layout.MainLayout)">
-            <p style="padding: 24px;">Bu sayfa bulunamadı.</p>
+            <p class="page-notfound">Bu sayfa bulunamadı.</p>
         </LayoutView>
     </NotFound>
 </Router>

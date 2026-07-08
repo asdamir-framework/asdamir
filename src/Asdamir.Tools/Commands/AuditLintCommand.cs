@@ -57,6 +57,10 @@ public static class AuditLintCommand
         "tests", "test",
     };
 
+    // File globs scanned. .cs = the C# anti-pattern rules; .razor/.sbn = the markup rules
+    // (e.g. AUD013 inline-style gate). Per-rule AuditRule.FileExtensions keeps each rule on its own files.
+    private static readonly string[] ScannedGlobs = { "*.cs", "*.razor", "*.sbn" };
+
     public static Command Build()
     {
         var pathOpt = new Option<DirectoryInfo>(
@@ -146,8 +150,12 @@ public static class AuditLintCommand
                 if (!includeTests && TestDirNames.Contains(name)) continue;
                 stack.Push(sub);
             }
-            foreach (var file in Directory.EnumerateFiles(dir, "*.cs"))
-                yield return file;
+            // .cs for the C# anti-pattern rules; .razor/.sbn for the markup rules (inline-style gate).
+            // Each rule declares which extensions it applies to (see AuditRule.FileExtensions), so a
+            // C# rule never fires on markup and vice-versa.
+            foreach (var pattern in ScannedGlobs)
+                foreach (var file in Directory.EnumerateFiles(dir, pattern))
+                    yield return file;
         }
     }
 
@@ -172,6 +180,9 @@ public static class AuditLintCommand
                 return;
         }
 
+        // Each rule only applies to its declared file types (C# rules → .cs, markup rules → .razor/.sbn).
+        var ext = Path.GetExtension(path);
+
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines[i];
@@ -186,6 +197,7 @@ public static class AuditLintCommand
 
             foreach (var rule in rules)
             {
+                if (!rule.FileExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase)) continue;
                 if (suppressed.Contains(rule.Id)) continue;
                 var match = rule.Pattern.Match(matchLine);
                 if (!match.Success) continue;

@@ -5,7 +5,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; the CLI (`Asdamir.Tools`) versions independently. Current published state:
-**Core/Data/Web `1.2.0`**, **Tools `1.2.1`** (nuget.org). AppManagement (the commercial control plane)
+**Core/Data/Web `1.2.0`**, **Tools `1.2.2`** (nuget.org). AppManagement (the commercial control plane)
 is not packed to NuGet — it ships as a compiled release for commercial customers.
 
 ## [Unreleased]
@@ -15,6 +15,20 @@ is not packed to NuGet — it ships as a compiled release for commercial custome
 - **No CI/CD** — `.github/workflows/*` were removed (GitHub Actions billing). The process is plain
   `git pull` / `git push` to `main`; verify locally before every push (`dotnet build` 0 warnings ·
   `./run-tests.sh` · `audit lint`).
+
+## [Tools 1.2.2] — 2026-07-08
+
+### Added
+- **`audit lint` gains `AUD013` — the inline-style gate.** A raw inline `style="…"` attribute in a
+  `.razor`/`.sbn` file now fails the audit (use scoped `.razor.css` classes instead — the framework's CSS
+  isolation convention). `audit lint` now scans `.razor` + `.sbn` as well as `.cs`; each rule declares its
+  file types. **Exempt:** the CSS-variable pattern `style="--x:@value"` (the supported way to pass a
+  per-item dynamic value into scoped CSS) and a FluentUI `Style="…"` component parameter (capital `S`).
+
+### Changed
+- Framework auth components (`AccessDenied`, `ForgotPasswordDialog`, `ResetPasswordComponent`,
+  `SessionWarningDialog`) moved their inline styles to scoped `.razor.css` — no visual change. The unused
+  `Style` passthrough parameter on `AsdamirContentCard` was removed (use `AdditionalClass` + scoped CSS).
 
 ## [1.2.0] — 2026-07-08  ·  Core / Data / Web
 

@@ -181,3 +181,8 @@ html, body {
     font-size: 13px; }
 .offline-banner svg { flex: 0 0 auto; }
 .dash-stat-hint { font-size: 12px; color: var(--asd-ink-soft); }
+
+/* Pre-boot loading placeholder (index.html, before Blazor starts — app.css is linked so it applies)
+   and the router's not-found fallback. Class-based so no inline style attribute is needed. */
+.app-loading { padding: 24px; text-align: center; color: #444; }
+.page-notfound { padding: 24px; }

@@ -37,7 +37,14 @@ public sealed record AuditRule(
     Regex Pattern,
     string Title,
     string Rationale,
-    string Fix);
+    string Fix)
+{
+    /// <summary>
+    /// File extensions this rule scans. Defaults to C# only (<c>.cs</c>) — the original audit rules
+    /// target C# anti-patterns. Markup rules (e.g. the inline-style gate) override with <c>.razor</c>/<c>.sbn</c>.
+    /// </summary>
+    public string[] FileExtensions { get; init; } = new[] { ".cs" };
+}
 
 /// <summary>
 /// The canonical rule set. Every entry corresponds to a finding from the original
@@ -150,5 +157,17 @@ public static class AuditRuleSet
             Title: "Non-cryptographic `new Random()` — wrong primitive for security material.",
             Rationale: "`System.Random` is NOT cryptographically secure. If this is for an OTP, token, salt, or session id, it leaks predictable values.",
             Fix: "For security primitives, use `RandomNumberGenerator.GetBytes(...)` or `RandomNumberGenerator.GetInt32(...)`. For non-security uses (jitter, shuffle), prefer `Random.Shared` to avoid the same-seed-per-millisecond pitfall."),
+
+        new AuditRule(
+            Id: "AUD013",
+            Severity: AuditSeverity.Error,
+            // Flags a raw HTML inline `style="..."` attribute, but EXEMPTS `style="--x:..."` — passing a
+            // per-item dynamic value through a CSS custom property is the endorsed way to feed scoped CSS.
+            // Case-sensitive `style` so a FluentUI component's `Style="..."` parameter is NOT matched.
+            Pattern: R(@"\bstyle=""(?!--)"),
+            Title: "Inline `style=\"...\"` attribute — use scoped CSS, not inline styles.",
+            Rationale: "Inline style attributes bypass CSS isolation, are hard to theme/override, and defeat a strict Content-Security-Policy (a nonce cannot cover a style *attribute*). The house rule is co-located `.razor.css` (scoped) classes.",
+            Fix: "Move the declaration to a class in the co-located `<Component>.razor.css` (or a shared theme sheet) and use `class=\"...\"`. For a genuine per-item DYNAMIC value, pass it through a CSS custom property — `style=\"--x:@value\"` (this form is exempt). A justified exception (e.g. a pre-boot loading screen shown before the app CSS loads) may suppress with `audit-lint:ignore AUD013`.")
+        { FileExtensions = new[] { ".razor", ".sbn" } },
     };
 }

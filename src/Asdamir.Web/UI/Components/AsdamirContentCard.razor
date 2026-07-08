@@ -1,4 +1,4 @@
-<div class="content-card @AdditionalClass" style="@Style">
+<div class="content-card @AdditionalClass">
     @if (Header != null)
     {
         <div class="content-card-header">
@@ -21,5 +21,4 @@
     [Parameter] public RenderFragment? Header { get; set; }
     [Parameter] public RenderFragment? Footer { get; set; }
     [Parameter] public string? AdditionalClass { get; set; }
-    [Parameter] public string? Style { get; set; }
 }

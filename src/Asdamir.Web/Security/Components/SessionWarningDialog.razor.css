@@ -17,3 +17,16 @@
     font-weight: 700;
     font-size: 15px;
 }
+
+/* Icon + text classes (replaced inline styles — scoped to the content containers so the
+   per-paragraph margin wins over the `.session-*-content p` base above, matching the old inline). */
+.dialog-icon { font-size: 32px; }
+.dialog-icon--warning { color: var(--warning-color, #ff8c00); }
+.dialog-icon--error { color: var(--error-color, #d13438); }
+
+.session-warning-content .dialog-text,
+.session-timeout-content .dialog-text { margin: 8px 0; font-size: 14px; }
+.dialog-text--bold { font-weight: 600; }
+
+.session-warning-content .dialog-subtext,
+.session-timeout-content .dialog-subtext { margin: 8px 0; font-size: 13px; color: var(--neutral-foreground-hint); }

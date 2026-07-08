@@ -29,6 +29,11 @@ Expect `… files scanned, 0 findings at or above warning.`
   `new Microsoft.Data.SqlClient.SqlConnection(...)` also sidesteps the bare-pattern match.)
 - Sync-over-async (`.Result`/`.Wait()`), empty catch / swallowed exceptions, `[AllowAnonymous]` without a
   reason, secrets/PII in logs → fix them; these exist to catch real regressions.
+- **AUD013 — inline `style="…"` in `.razor`/`.sbn`** (the only markup rule; audit-lint also scans
+  `.razor`/`.sbn`, not just `.cs`): move the declaration to a co-located scoped `.razor.css` class. **Exempt:**
+  the CSS-variable pattern `style="--x:@value"` (per-item dynamic value into scoped CSS) and a FluentUI
+  `Style="…"` component parameter (capital `S`). Suppress only for a truly unavoidable case (e.g. a pre-boot
+  loading placeholder) with a reason.
 
 ## DON'T
 - **Don't bulk-suppress** to make the gate green — each suppression is reviewable and needs a reason.

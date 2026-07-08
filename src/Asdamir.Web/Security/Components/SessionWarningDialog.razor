@@ -14,12 +14,12 @@
 <FluentDialog @bind-Hidden="@hideWarning" Modal="true" Title="@GetLocalizedString("Session.Warning.Title")" Class="app-dialog-medium">
 
     <div class="session-warning-content">
-        <span style="font-size: 32px; color: var(--warning-color, #ff8c00);">⚠️</span>
+        <span class="dialog-icon dialog-icon--warning">⚠️</span>
         <div>
-            <p style="margin: 8px 0; font-size: 14px;">
+            <p class="dialog-text">
                 @GetLocalizedString("Session.Warning.Message") <strong>@timeRemaining</strong>
             </p>
-            <p style="margin: 8px 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+            <p class="dialog-subtext">
                 @GetLocalizedString("Session.Warning.Action")
             </p>
         </div>
@@ -35,12 +35,12 @@
 <FluentDialog @bind-Hidden="@hideTimeout" Modal="true" Title="@GetLocalizedString("Session.Timeout.Title")" Class="app-dialog-medium">
 
     <div class="session-timeout-content">
-        <span style="font-size: 32px; color: var(--error-color, #d13438);">🔒</span>
+        <span class="dialog-icon dialog-icon--error">🔒</span>
         <div>
-            <p style="margin: 8px 0; font-size: 14px; font-weight: 600;">
+            <p class="dialog-text dialog-text--bold">
                 @GetLocalizedString("Session.Timeout.Message")
             </p>
-            <p style="margin: 8px 0; font-size: 13px; color: var(--neutral-foreground-hint);">
+            <p class="dialog-subtext">
                 @GetLocalizedString("Session.Timeout.Reason")
             </p>
         </div>
