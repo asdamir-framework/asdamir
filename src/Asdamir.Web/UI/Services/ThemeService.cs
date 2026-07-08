@@ -41,8 +41,11 @@ public interface IThemeService
 /// </summary>
 public enum ThemeMode
 {
+    /// <summary>Light color scheme.</summary>
     Light,
+    /// <summary>Dark color scheme.</summary>
     Dark,
+    /// <summary>Follow the operating-system / browser color-scheme preference.</summary>
     System
 }
 
@@ -53,16 +56,20 @@ public sealed class ThemeService : IThemeService
 {
     private ThemeMode _currentTheme = ThemeMode.Light;
 
+    /// <inheritdoc/>
     public ThemeMode CurrentTheme => _currentTheme;
 
+    /// <inheritdoc/>
     public event EventHandler<ThemeMode>? ThemeChanged;
 
+    /// <inheritdoc/>
     public Task ToggleThemeAsync()
     {
         var newTheme = _currentTheme == ThemeMode.Dark ? ThemeMode.Light : ThemeMode.Dark;
         return SetThemeAsync(newTheme);
     }
 
+    /// <inheritdoc/>
     public Task SetThemeAsync(ThemeMode theme)
     {
         if (_currentTheme != theme)

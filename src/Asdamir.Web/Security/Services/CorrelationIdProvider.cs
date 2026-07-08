@@ -21,11 +21,15 @@ public sealed class CorrelationIdProvider
     private readonly ILocalStorageService _localStorage;
     private string? _cached;
 
+    /// <summary>Initializes the provider with the browser local-storage service used to persist the correlation id.</summary>
+    /// <param name="localStorage">Local storage used to read/write the stable per-browser correlation id.</param>
     public CorrelationIdProvider(ILocalStorageService localStorage)
     {
         _localStorage = localStorage;
     }
 
+    /// <summary>Returns the browser's stable correlation id, creating and persisting a new one on first use. Cached in memory; tolerant of local-storage being unavailable (e.g. during prerender).</summary>
+    /// <returns>The correlation id (a 32-char hex GUID) to attach to outgoing requests for tracing.</returns>
     public async Task<string> GetOrCreateAsync()
     {
         if (!string.IsNullOrWhiteSpace(_cached))

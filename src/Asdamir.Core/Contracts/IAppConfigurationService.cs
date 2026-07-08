@@ -10,8 +10,11 @@
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>Reads DB-backed application settings (the AppId-scoped <c>AppConfigurations</c> store).</summary>
 public interface IAppConfigurationService
 {
+    /// <summary>The value for a configuration key, or null if it is absent/inactive.</summary>
     Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default);
+    /// <summary>Every active configuration row.</summary>
     Task<List<Asdamir.Core.Models.AppConfiguration>> GetAllAsync(CancellationToken cancellationToken = default);
 }

@@ -30,11 +30,14 @@ public class InMemoryRateLimitService : IRateLimitService
     private readonly IMemoryCache _cache;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
+    /// <summary>Initializes the limiter with the memory cache that backs the per-key counters.</summary>
+    /// <param name="cache">Memory cache holding the fixed-window counters (entries expire after the window).</param>
     public InMemoryRateLimitService(IMemoryCache cache)
     {
         _cache = cache;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> TryAcquireAsync(string key, int maxRequests, TimeSpan window)
     {
         var cacheKey = $"rate_limit:{key}";

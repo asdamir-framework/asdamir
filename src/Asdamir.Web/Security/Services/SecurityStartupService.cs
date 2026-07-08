@@ -23,6 +23,10 @@ public class SecurityStartupService : IHostedService
     private readonly ILogger<SecurityStartupService> _logger;
     private readonly SecurityAnalysisOptions _options;
 
+    /// <summary>Initializes the hosted service with the root service provider, a logger, and the analysis options.</summary>
+    /// <param name="serviceProvider">Provider used to resolve the code analyzer in a startup scope.</param>
+    /// <param name="logger">Logger for the analysis summary and violation reporting.</param>
+    /// <param name="options">Controls whether analysis runs on startup and the minimum acceptable score.</param>
     public SecurityStartupService(
         IServiceProvider serviceProvider,
         ILogger<SecurityStartupService> logger,
@@ -33,6 +37,9 @@ public class SecurityStartupService : IHostedService
         _options = options;
     }
 
+    /// <summary>On application start, runs the security code analysis (when enabled), logs the score/violations, and warns on a below-threshold score or critical findings. Never throws — analysis failure is logged, not fatal.</summary>
+    /// <param name="cancellationToken">Token to observe for host shutdown during startup.</param>
+    /// <returns>A task that completes when analysis has run (or been skipped).</returns>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (!_options.RunOnStartup)
@@ -86,6 +93,9 @@ public class SecurityStartupService : IHostedService
         }
     }
 
+    /// <summary>No-op on shutdown; startup analysis has no teardown.</summary>
+    /// <param name="cancellationToken">Token to observe for host shutdown.</param>
+    /// <returns>A completed task.</returns>
     public Task StopAsync(CancellationToken cancellationToken)
     {
         return Task.CompletedTask;

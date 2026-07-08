@@ -43,6 +43,13 @@ public class AuthorizationAuditService : IAuthorizationAuditService
     private readonly ConcurrentQueue<AuthorizationAuditEvent> _auditEvents = new();
     private const int MaxInMemoryEvents = 10000;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthorizationAuditService"/> class.
+    /// </summary>
+    /// <param name="logger">Logger; authorization grants log at Debug and denials at Warning.</param>
+    /// <param name="auditService">Persistent audit sink; only denied attempts are written to the AuditLog table.</param>
+    /// <param name="clientInfoService">Optional accessor for the caller's IP address and user agent.</param>
+    /// <param name="tenantContext">Optional tenant context; its tenant id tags each audit entry, falling back to "default" when none is established.</param>
     public AuthorizationAuditService(
         ILogger<AuthorizationAuditService> logger,
         IAuditService auditService,
@@ -55,6 +62,7 @@ public class AuthorizationAuditService : IAuthorizationAuditService
         _tenantContext = tenantContext;
     }
 
+    /// <inheritdoc/>
     public async Task LogAuthorizationAttemptAsync(AuthorizationAuditEvent auditEvent)
     {
         _logger.LogDebug("[AuthorizationAuditService] LogAuthorizationAttemptAsync called - Route: {Route}, UserId: {UserId}, IsAuthorized: {IsAuthorized}", 
@@ -165,6 +173,7 @@ public class AuthorizationAuditService : IAuthorizationAuditService
         }
     }
 
+    /// <inheritdoc/>
     public Task<List<AuthorizationAuditEvent>> GetRecentFailuresAsync(string userId, int minutes = 15)
     {
         try
@@ -186,6 +195,7 @@ public class AuthorizationAuditService : IAuthorizationAuditService
         }
     }
 
+    /// <inheritdoc/>
     public Task<int> GetFailureCountAsync(string userId, int minutes = 15)
     {
         try

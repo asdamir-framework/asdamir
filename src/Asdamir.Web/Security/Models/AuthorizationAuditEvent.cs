@@ -15,17 +15,29 @@ namespace Asdamir.Web.Security.Models;
 /// </summary>
 public class AuthorizationAuditEvent
 {
+    /// <summary>Gets or sets the identifier of the user whose access attempt is being audited.</summary>
     public string UserId { get; set; } = string.Empty;
+    /// <summary>Gets or sets the email address of the user whose access attempt is being audited.</summary>
     public string UserEmail { get; set; } = string.Empty;
+    /// <summary>Gets or sets the route (path or URL) the user attempted to access.</summary>
     public string Route { get; set; } = string.Empty;
+    /// <summary>Gets or sets the single permission required for the route, when the decision was permission-based.</summary>
     public string? RequiredPermission { get; set; }
+    /// <summary>Gets or sets the single role required for the route, when the decision was role-based.</summary>
     public string? RequiredRole { get; set; }
+    /// <summary>Gets or sets the set of permissions required for the route, when multiple are involved.</summary>
     public string[]? RequiredPermissions { get; set; }
+    /// <summary>Gets or sets the set of roles required for the route, when multiple are involved.</summary>
     public string[]? RequiredRoles { get; set; }
+    /// <summary>Gets or sets a value indicating whether access was granted (<c>true</c>) or denied (<c>false</c>).</summary>
     public bool IsAuthorized { get; set; }
+    /// <summary>Gets or sets the reason access was denied; <c>null</c> when access was granted.</summary>
     public string? DenialReason { get; set; }
+    /// <summary>Gets or sets the UTC time the authorization attempt occurred. Defaults to the current UTC time.</summary>
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+    /// <summary>Gets or sets the IP address the request originated from, when known.</summary>
     public string? IpAddress { get; set; }
+    /// <summary>Gets or sets the user agent of the client that made the request, when known.</summary>
     public string? UserAgent { get; set; }
 }
 
@@ -34,8 +46,12 @@ public class AuthorizationAuditEvent
 /// </summary>
 public class AuthorizationResult
 {
+    /// <summary>Gets or sets a value indicating whether the authorization check passed.</summary>
     public bool IsAuthorized { get; set; }
+    /// <summary>Gets or sets a human-readable reason the check failed; <c>null</c> when authorized.</summary>
     public string? DenialReason { get; set; }
+    /// <summary>Gets or sets the permissions the user was missing that caused the denial.</summary>
     public List<string> MissingPermissions { get; set; } = new();
+    /// <summary>Gets or sets the roles the user was missing that caused the denial.</summary>
     public List<string> MissingRoles { get; set; } = new();
 }

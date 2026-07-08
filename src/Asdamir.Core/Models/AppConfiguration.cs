@@ -10,17 +10,43 @@
 
 namespace Asdamir.Core.Models;
 
+/// <summary>
+/// A DB-backed configuration row in AsdamirVault (AppId-scoped) that Core's database configuration
+/// source loads into <c>IConfiguration</c> at startup, letting settings be changed without a redeploy.
+/// Only <see cref="IsActive"/> rows are loaded.
+/// </summary>
 public class AppConfiguration
 {
+    /// <summary>Primary key of the configuration row.</summary>
     public int Id { get; set; }
+
+    /// <summary>Configuration key using the colon-delimited hierarchy expected by <c>IConfiguration</c> (e.g. <c>Session:IdleSeconds</c>).</summary>
     public string Key { get; set; } = string.Empty;
+
+    /// <summary>The raw string value; if <see cref="IsEncrypted"/> it is ciphertext that must be decrypted before use.</summary>
     public string Value { get; set; } = string.Empty;
+
+    /// <summary>Only active rows are loaded into <c>IConfiguration</c>; false hides the setting without deleting the row.</summary>
     public bool IsActive { get; set; }
+
+    /// <summary>When true <see cref="Value"/> is stored encrypted at rest and is decrypted on load.</summary>
     public bool IsEncrypted { get; set; }
+
+    /// <summary>Optional grouping label used to organize settings in the admin UI; not part of the config key.</summary>
     public string? Category { get; set; }
+
+    /// <summary>Human-readable note explaining what the setting controls; for operators, not consumed at runtime.</summary>
     public string? Description { get; set; }
+
+    /// <summary>UTC timestamp when the row was first created.</summary>
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>UTC timestamp of the last change; used to detect edits on refresh.</summary>
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>Identifier of the operator who created the row, for audit purposes.</summary>
     public string? CreatedBy { get; set; }
+
+    /// <summary>Identifier of the operator who last modified the row, for audit purposes.</summary>
     public string? UpdatedBy { get; set; }
 }

@@ -10,8 +10,11 @@
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>Sends transactional emails (e.g. password reset). Returns whether the send succeeded.</summary>
 public interface IEmailService
 {
+    /// <summary>Sends the password-reset email (token embedded in <paramref name="resetUrl"/>); true if sent.</summary>
     Task<bool> SendPasswordResetEmailAsync(string toEmail, string resetToken, string resetUrl);
+    /// <summary>Sends an HTML email; true if sent.</summary>
     Task<bool> SendEmailAsync(string toEmail, string subject, string htmlBody);
 }

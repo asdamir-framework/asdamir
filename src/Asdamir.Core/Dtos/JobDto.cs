@@ -10,15 +10,28 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>
+/// Describes a single Hangfire background job for display/monitoring: its identity, current state,
+/// lifecycle timestamps, and — on failure — the captured error.
+/// </summary>
 public class JobDto
 {
+    /// <summary>Hangfire job identifier.</summary>
     public string Id { get; set; } = "";
+    /// <summary>Display name of the job (typically the invoked method).</summary>
     public string Name { get; set; } = "";
+    /// <summary>Current Hangfire state ("Enqueued", "Processing", "Succeeded", "Failed", …).</summary>
     public string State { get; set; } = "";
+    /// <summary>UTC time the job was created/enqueued.</summary>
     public DateTime CreatedAt { get; set; }
+    /// <summary>UTC time processing began; null while still enqueued/scheduled.</summary>
     public DateTime? StartedAt { get; set; }
+    /// <summary>UTC time the job finished (succeeded or failed); null while still running.</summary>
     public DateTime? CompletedAt { get; set; }
+    /// <summary>Failure message when the job errored; null on success.</summary>
     public string? ErrorMessage { get; set; }
+    /// <summary>Name of the Hangfire queue the job was dispatched to.</summary>
     public string Queue { get; set; } = "";
+    /// <summary>Serialized invocation arguments passed to the job method.</summary>
     public string? Arguments { get; set; }
 }

@@ -20,11 +20,22 @@ public class TokenPropagationMiddleware
 {
     private readonly RequestDelegate _next;
 
+    /// <summary>
+    /// Initializes the middleware with the next component in the request pipeline.
+    /// </summary>
+    /// <param name="next">The next request delegate to invoke.</param>
     public TokenPropagationMiddleware(RequestDelegate next)
     {
         _next = next;
     }
 
+    /// <summary>
+    /// Copies the current access token into <see cref="HttpContext.Items"/> (key <c>"AccessToken"</c>)
+    /// so downstream <see cref="System.Net.Http.DelegatingHandler"/>s can attach it, then invokes the next middleware.
+    /// </summary>
+    /// <param name="context">The current HTTP context.</param>
+    /// <param name="authState">The per-request auth state that exposes the access token.</param>
+    /// <returns>A task that completes when the rest of the pipeline has run.</returns>
     public async Task InvokeAsync(HttpContext context, AuthState authState)
     {
         // Store token in HttpContext.Items for access by DelegatingHandlers

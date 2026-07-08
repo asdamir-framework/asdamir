@@ -10,9 +10,17 @@
 
 namespace Asdamir.Core.Http;
 
+/// <summary>
+/// Well-known custom HTTP header names exchanged between the framework's tiers. Reference these
+/// constants when reading or writing the headers so the wire contract stays consistent across the
+/// UI, Gateway, and API.
+/// </summary>
 public static class HeaderNames
 {
+    /// <summary>HTTP header carrying the per-request correlation/trace id, propagated across tiers to stitch logs together.</summary>
     public const string CorrelationId = "X-Correlation-Id";
+
+    /// <summary>HTTP header selecting the target database dialect for the request (values: <c>SqlServer</c> | <c>Oracle</c>).</summary>
     public const string DbProvider = "X-Db-Provider"; // values: SqlServer | Oracle
 }
 

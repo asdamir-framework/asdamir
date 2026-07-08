@@ -13,25 +13,53 @@ using System.Text.Json;
 
 namespace Asdamir.Core.Models;
 
+/// <summary>
+/// Input DTO used to insert a new <see cref="AppLog"/> row into the operator-only <c>dbo.AppLog</c> DB sink.
+/// Carries the same failure detail as the persisted row minus the generated key; the static factories build a
+/// pre-shaped request per severity. AppId-scoped within the central AsdamirVault.
+/// </summary>
 public class AppLogCreateRequest
 {
+    /// <summary>Severity to record (e.g. <c>Information</c>, <c>Warning</c>, <c>Error</c>); the factories set this per method.</summary>
     public string Level { get; set; } = string.Empty;
+    /// <summary>Human-readable operator message to persist.</summary>
     public string Message { get; set; } = string.Empty;
+    /// <summary>Structured contextual data serialized as JSON; null when no properties were supplied.</summary>
     public string? Properties { get; set; }
+    /// <summary>Component/layer that emitted the entry (e.g. controller, job, tier); null when unspecified.</summary>
     public string? Source { get; set; }
+    /// <summary>UTC timestamp for the entry; defaults to the moment the request is constructed.</summary>
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
-    
+
     // Gerçek exception bilgileri
+    /// <summary>Fully-qualified CLR type name of the captured exception; null for non-exception entries.</summary>
     public string? RealExceptionType { get; set; }
+    /// <summary>The captured exception's own message (operator detail, not the localized user-facing text); null when no exception.</summary>
     public string? RealExceptionMessage { get; set; }
+    /// <summary>Full stack trace of the captured exception; null when no exception was recorded.</summary>
     public string? RealExceptionStackTrace { get; set; }
+    /// <summary>Flattened "type: message" of the exception's inner exception, if any; null otherwise.</summary>
     public string? RealExceptionInnerException { get; set; }
+    /// <summary>The exception's <c>Data</c> dictionary serialized as JSON; null when the exception carried no data entries.</summary>
     public string? RealExceptionData { get; set; }
-    
+
     // ErrorTranslations tablosuyla ilişki
+    /// <summary>Stable error key linking the row to the localized user-facing message; null for non-error entries.</summary>
     public string? ErrorKey { get; set; }
+    /// <summary>Culture in effect for the request (e.g. <c>tr-TR</c>) used to resolve the user-facing translation; null when unknown.</summary>
     public string? UserLanguage { get; set; }
 
+    /// <summary>
+    /// Builds an <c>Error</c>-level request, extracting the exception's type, message, stack trace, inner exception and
+    /// <c>Data</c> into the dedicated real-exception fields and serializing <paramref name="properties"/> to JSON.
+    /// </summary>
+    /// <param name="message">Operator message describing the failure.</param>
+    /// <param name="exception">Exception to capture into the real-exception fields; when null those fields stay unset.</param>
+    /// <param name="source">Component/layer that emitted the entry.</param>
+    /// <param name="properties">Structured context serialized to JSON into <see cref="Properties"/>.</param>
+    /// <param name="errorKey">Stable error key linking to the localized user-facing message.</param>
+    /// <param name="userLanguage">Request culture used to resolve the user-facing translation.</param>
+    /// <returns>A populated <see cref="AppLogCreateRequest"/> ready to persist.</returns>
     public static AppLogCreateRequest CreateError(string message, Exception? exception = null, string? source = null, Dictionary<string, object>? properties = null, string? errorKey = null, string? userLanguage = null)
     {
         var request = new AppLogCreateRequest
@@ -76,6 +104,11 @@ public class AppLogCreateRequest
         return request;
     }
 
+    /// <summary>Builds a <c>Warning</c>-level request with the given message/source, serializing <paramref name="properties"/> to JSON when supplied.</summary>
+    /// <param name="message">Operator message describing the warning.</param>
+    /// <param name="source">Component/layer that emitted the entry.</param>
+    /// <param name="properties">Structured context serialized to JSON into <see cref="Properties"/>.</param>
+    /// <returns>A populated <see cref="AppLogCreateRequest"/> ready to persist.</returns>
     public static AppLogCreateRequest CreateWarning(string message, string? source = null, Dictionary<string, object>? properties = null)
     {
         var request = new AppLogCreateRequest
@@ -94,6 +127,11 @@ public class AppLogCreateRequest
         return request;
     }
 
+    /// <summary>Builds an <c>Information</c>-level request with the given message/source, serializing <paramref name="properties"/> to JSON when supplied.</summary>
+    /// <param name="message">Operator message to record.</param>
+    /// <param name="source">Component/layer that emitted the entry.</param>
+    /// <param name="properties">Structured context serialized to JSON into <see cref="Properties"/>.</param>
+    /// <returns>A populated <see cref="AppLogCreateRequest"/> ready to persist.</returns>
     public static AppLogCreateRequest CreateInformation(string message, string? source = null, Dictionary<string, object>? properties = null)
     {
         var request = new AppLogCreateRequest

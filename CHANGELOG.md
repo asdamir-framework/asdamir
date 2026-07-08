@@ -5,7 +5,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; the CLI (`Asdamir.Tools`) versions independently. Current published state:
-**Core/Data/Web `1.1.2`**, **Tools `1.2.1`** (nuget.org). AppManagement (the commercial control plane)
+**Core/Data/Web `1.2.0`**, **Tools `1.2.1`** (nuget.org). AppManagement (the commercial control plane)
 is not packed to NuGet — it ships as a compiled release for commercial customers.
 
 ## [Unreleased]
@@ -15,6 +15,21 @@ is not packed to NuGet — it ships as a compiled release for commercial custome
 - **No CI/CD** — `.github/workflows/*` were removed (GitHub Actions billing). The process is plain
   `git pull` / `git push` to `main`; verify locally before every push (`dotnet build` 0 warnings ·
   `./run-tests.sh` · `audit lint`).
+
+## [1.2.0] — 2026-07-08  ·  Core / Data / Web
+
+### Added
+- **`IPaymentProvider` + `PaymentProviderOptions` (`Asdamir.Core`)** — a new open-core abstraction for
+  payment rails: `CreateCustomer` / `CreateCheckoutSession` / `CreateSubscription` / `CancelSubscription`
+  / `VerifyWebhook` / `Refund`, all returning `Result<T>` (no exceptions on expected failure), with
+  bind-time options. No SDK dependency — implement it to plug in your own rail. (This additive public API
+  is the minor-version driver, `1.1.2` → `1.2.0`.)
+
+### Changed
+- **Public XML-doc gate is ON for all of open core (`Asdamir.Core` + `Asdamir.Data` + `Asdamir.Web`).**
+  Every public member now carries an XML-doc comment; `GenerateDocumentationFile=true` with CS1591 no
+  longer suppressed, so a new undocumented public member fails the build. Full IntelliSense coverage for
+  consumers. Docs-only — no behaviour change.
 
 ## [1.1.2] — 2026-07-04  ·  Core / Data / Web
 

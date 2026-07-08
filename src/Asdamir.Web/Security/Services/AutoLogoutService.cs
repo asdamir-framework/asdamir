@@ -68,11 +68,21 @@ public class AutoLogoutService : IAsyncDisposable
     // expected to call SetDispatcher(...) after construction.
     private Dispatcher? _dispatcher;
 
+    /// <summary>Registers the hosting circuit's <see cref="Dispatcher"/> so timer callbacks are marshalled onto the Blazor synchronization context; must be called by the consuming component after construction.</summary>
+    /// <param name="dispatcher">The circuit dispatcher to marshal activity checks through.</param>
     public void SetDispatcher(Dispatcher dispatcher) => _dispatcher = dispatcher;
 
+    /// <summary>Raised when the warning threshold is crossed; the argument is the remaining time until auto-logout.</summary>
     public event EventHandler<TimeSpan>? WarningTimeReached;
+    /// <summary>Raised when inactivity reaches the logout threshold and the session is being cleared.</summary>
     public event EventHandler? LogoutTimeReached;
 
+    /// <summary>Initializes the auto-logout service with auth state, JS interop, logging, options, and navigation.</summary>
+    /// <param name="authState">Current authentication state; monitoring stops when unauthenticated.</param>
+    /// <param name="jsRuntime">JS runtime used to register/unregister browser activity listeners.</param>
+    /// <param name="logger">Logger for lifecycle and logout diagnostics.</param>
+    /// <param name="options">Warning/logout thresholds and check interval.</param>
+    /// <param name="navigation">Navigation manager used to redirect to the login page on logout.</param>
     public AutoLogoutService(
         AuthState authState,
         IJSRuntime jsRuntime,
@@ -263,6 +273,8 @@ public class AutoLogoutService : IAsyncDisposable
         }
     }
 
+    /// <summary>Stops activity monitoring and releases the JS object reference and timer.</summary>
+    /// <returns>A task that completes when teardown finishes.</returns>
     public async ValueTask DisposeAsync()
     {
         if (_disposed)

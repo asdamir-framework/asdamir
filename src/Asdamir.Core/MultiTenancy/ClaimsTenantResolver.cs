@@ -30,12 +30,19 @@ public sealed class ClaimsTenantResolver : ITenantResolver
     private readonly string _claimType;
     private readonly ITenantResolver? _fallback;
 
+    /// <summary>
+    /// Creates the resolver, optionally overriding which JWT claim carries the tenant id and supplying a
+    /// fallback resolver used only for unauthenticated requests.
+    /// </summary>
+    /// <param name="claimType">Name of the claim holding the tenant id; blank falls back to <c>tid</c>.</param>
+    /// <param name="fallbackForAnonymous">Resolver consulted when the request has no authenticated user (e.g. login); when null, the tenant defaults to <c>default</c>.</param>
     public ClaimsTenantResolver(string claimType = DefaultClaimType, ITenantResolver? fallbackForAnonymous = null)
     {
         _claimType = string.IsNullOrWhiteSpace(claimType) ? DefaultClaimType : claimType;
         _fallback = fallbackForAnonymous;
     }
 
+    /// <inheritdoc/>
     public Task<TenantContext> ResolveAsync(HttpContext ctx, CancellationToken ct = default)
     {
         var user = ctx.User;

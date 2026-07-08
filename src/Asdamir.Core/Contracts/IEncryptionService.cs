@@ -10,10 +10,17 @@
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>
+/// At-rest encryption for secrets (AES-256-GCM, versioned <c>v2:</c> ciphertext). Fail-closed: the
+/// implementation throws at construction if the encryption key is missing/too short.
+/// </summary>
 public interface IEncryptionService
 {
+    /// <summary>Encrypts plaintext to a self-describing (versioned) ciphertext string.</summary>
     string Encrypt(string plainText);
+    /// <summary>Decrypts a ciphertext produced by <see cref="Encrypt"/>; throws a generic error on tamper/wrong key.</summary>
     string Decrypt(string cipherText);
+    /// <summary>True if the text looks like an Asdamir ciphertext (carries the version prefix).</summary>
     bool IsEncrypted(string text);
 }
 

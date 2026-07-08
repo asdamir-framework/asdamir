@@ -31,19 +31,36 @@ public sealed class AuthState
     private bool _isInitialized = false;
 
     // Authentication state
+    /// <summary>Gets a value indicating whether a non-empty access token is currently held (the user is signed in).</summary>
     public bool IsAuthenticated => !string.IsNullOrWhiteSpace(AccessToken);
+    /// <summary>Gets a value indicating whether the initial load from session storage has completed (successfully or not).</summary>
     public bool IsInitialized => _isInitialized;
+    /// <summary>Gets the current JWT access token, or <c>null</c> when unauthenticated.</summary>
     public string? AccessToken { get; private set; }
+    /// <summary>Gets the current refresh token used to obtain a new access token, or <c>null</c> when unauthenticated.</summary>
     public string? RefreshToken { get; private set; }
+    /// <summary>Gets the UTC expiry instant of the current access token, or <c>null</c> when unknown/unauthenticated.</summary>
     public DateTime? ExpiresAtUtc { get; private set; }
+    /// <summary>Gets the signed-in user's display name (from the token or loaded profile).</summary>
     public string DisplayName { get; private set; } = string.Empty;
+    /// <summary>Gets the signed-in user's email address (from the token or loaded profile).</summary>
     public string Email { get; private set; } = string.Empty;
+    /// <summary>Gets the signed-in user's identifier (the token <c>sub</c> claim, or profile user id).</summary>
     public string UserId { get; private set; } = string.Empty;
+    /// <summary>Gets the case-insensitive set of permission codes granted to the current user, used for client-side authorization checks.</summary>
     public HashSet<string> Permissions { get; private set; } = new(StringComparer.OrdinalIgnoreCase);
 
     // State change notification
+    /// <summary>Raised whenever the authentication state changes (login, logout, token refresh, or profile load).</summary>
     public event Action? Changed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthState"/> class.
+    /// </summary>
+    /// <param name="sessionStorage">Browser session storage used to persist tokens and profile across reloads within a session.</param>
+    /// <param name="httpContextAccessor">Accessor used to resolve the current circuit id and validate the session IP.</param>
+    /// <param name="logger">Optional logger for diagnostics.</param>
+    /// <param name="authCache">Optional authorization cache, invalidated for the user on logout.</param>
     public AuthState(ISessionStorageService sessionStorage, IHttpContextAccessor httpContextAccessor, ILogger<AuthState>? logger = null, IAuthorizationCache? authCache = null)
     {
         _sessionStorage = sessionStorage;
@@ -56,6 +73,7 @@ public sealed class AuthState
     /// Waits for authentication to complete initialization.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for timeout control.</param>
+    /// <returns>A task that completes once initialization has signalled readiness.</returns>
     public Task WaitForAuthenticationAsync(CancellationToken cancellationToken = default)
     {
         return _authenticationReadyTcs.Task.WaitAsync(cancellationToken);
@@ -64,6 +82,7 @@ public sealed class AuthState
     /// <summary>
     /// Initialize authentication state from session storage
     /// </summary>
+    /// <returns>A task that completes when tokens and profile have been restored and readiness signalled.</returns>
     public async Task InitializeAsync()
     {
         try
@@ -167,6 +186,8 @@ public sealed class AuthState
     /// <summary>
     /// Set authentication tokens after login
     /// </summary>
+    /// <param name="tokens">The token bundle (access/refresh/expiry) returned by the login endpoint.</param>
+    /// <returns>A task that completes once tokens are stored in memory, the circuit token store, and session storage.</returns>
     public async Task SetTokensAsync(TokenResponseDto tokens)
     {
         ArgumentNullException.ThrowIfNull(tokens);
@@ -259,6 +280,8 @@ public sealed class AuthState
     /// <summary>
     /// Load and cache user profile from API
     /// </summary>
+    /// <param name="httpClient">The gateway HTTP client used to call <c>gateway/auth/me</c>; the auth handler attaches the bearer token.</param>
+    /// <returns>A task that completes when the profile (name, email, permissions) has been refreshed, or skipped on failure/timeout.</returns>
     public async Task LoadProfileAsync(HttpClient httpClient)
     {
         if (!IsAuthenticated) 
@@ -335,11 +358,16 @@ public sealed class AuthState
     /// <summary>
     /// Alias for LoadProfileAsync for backward compatibility
     /// </summary>
+    /// <param name="httpClient">The gateway HTTP client used to reload the profile.</param>
+    /// <returns>A task that completes when the profile has been refreshed.</returns>
     public Task RefreshProfileAsync(HttpClient httpClient) => LoadProfileAsync(httpClient);
 
     /// <summary>
     /// Try to refresh access token using refresh token
     /// </summary>
+    /// <param name="httpClient">The gateway HTTP client used to call <c>gateway/auth/refresh</c>.</param>
+    /// <param name="cancellationToken">Token to cancel the refresh request.</param>
+    /// <returns><c>true</c> if a new token was obtained and applied; <c>false</c> if there was no refresh token or the refresh failed (state is cleared on failure).</returns>
     public async Task<bool> TryRefreshAsync(HttpClient httpClient, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(RefreshToken))
@@ -396,6 +424,7 @@ public sealed class AuthState
     /// <summary>
     /// Clear expired sessions (static method for background service)
     /// </summary>
+    /// <returns>A completed task; a no-op for single-user Blazor Server, provided as an extension point for multi-user scenarios.</returns>
     public static Task ClearExpiredSessions()
     {
         // This would be implemented for multi-user scenarios
@@ -406,6 +435,7 @@ public sealed class AuthState
     /// <summary>
     /// Clear all authentication state (logout)
     /// </summary>
+    /// <returns>A task that completes once tokens, profile, circuit token store, and the user's authorization cache have been cleared.</returns>
     public async Task ClearAsync()
     {
         var userId = !string.IsNullOrEmpty(UserId) ? UserId : Email; // Capture before clearing
@@ -477,6 +507,8 @@ public sealed class AuthState
     /// <summary>
     /// Check if user has specific permission
     /// </summary>
+    /// <param name="permission">The permission code to test (case-insensitive).</param>
+    /// <returns><c>true</c> if the current user holds the permission; otherwise <c>false</c>.</returns>
     public bool HasPermission(string permission) =>
         !string.IsNullOrWhiteSpace(permission) && Permissions.Contains(permission);
 
@@ -484,6 +516,7 @@ public sealed class AuthState
     /// Get current access token (sync version - does not access session storage)
     /// CRITICAL: Checks TokenStore FIRST to prevent stale cache issues after logout
     /// </summary>
+    /// <returns>The current access token from the circuit token store (preferred) or the in-memory cache, or <c>null</c> if none is available.</returns>
     public string? GetAccessToken()
     {
         // Audit fix: v1 logged the first 20 chars of the JWT as a "preview". A JWT's
@@ -540,6 +573,7 @@ public sealed class AuthState
     /// <summary>
     /// Get current access token (async version - loads from session if not in memory)
     /// </summary>
+    /// <returns>The in-memory access token, or one rehydrated from session storage, or <c>null</c> if none is available.</returns>
     public async Task<string?> GetAccessTokenAsync()
     {
         // If token is already in memory, return it
@@ -575,6 +609,11 @@ public sealed class AuthState
         return null;
     }
 
+    /// <summary>
+    /// Applies the token bundle to the in-memory state only (access/refresh/expiry) and populates user claims from the access token,
+    /// without touching session storage or the circuit token store.
+    /// </summary>
+    /// <param name="tokens">The token bundle to load into memory.</param>
     public void SetTokensInMemory(TokenResponseDto tokens)
     {
         AccessToken = tokens.AccessToken;
@@ -585,6 +624,11 @@ public sealed class AuthState
 
     private void NotifyStateChanged() => Changed?.Invoke();
 
+    /// <summary>
+    /// Resolves the current Blazor circuit identifier used to key the shared token store, preferring the real circuit id
+    /// (<c>HttpContext.Items["CircuitId"]</c> or the async-local circuit context) and falling back to connection/trace/instance ids.
+    /// </summary>
+    /// <returns>The resolved circuit identifier; never <c>null</c> in practice as it falls back to a per-instance id.</returns>
     public string? GetCircuitId()
     {
         // Return cached circuit ID if available.

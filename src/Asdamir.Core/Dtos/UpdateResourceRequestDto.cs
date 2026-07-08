@@ -10,10 +10,15 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>Request to update an existing localized string in the LocalizationResource table for one culture.</summary>
 public class UpdateResourceRequestDto
 {
+    /// <summary>Stable resource key identifying the row to update (same across cultures).</summary>
     public string Key { get; set; } = "";
+    /// <summary>Culture code (tr-TR / en-US / ru-RU) whose value is being changed.</summary>
     public string Culture { get; set; } = "";
+    /// <summary>New localized text to store for the key in this culture.</summary>
     public string Value { get; set; } = "";
+    /// <summary>Resource bucket: UI, VALIDATION, or ERROR.</summary>
     public string Category { get; set; } = "";
 }

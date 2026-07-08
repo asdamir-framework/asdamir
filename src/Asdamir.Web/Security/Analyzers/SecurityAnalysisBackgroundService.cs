@@ -22,6 +22,12 @@ public class SecurityAnalysisBackgroundService : BackgroundService
     private readonly ILogger<SecurityAnalysisBackgroundService> _logger;
     private readonly SecurityAnalysisOptions _options;
 
+    /// <summary>
+    /// Creates the background service.
+    /// </summary>
+    /// <param name="serviceProvider">Root provider from which a scope is created per run to resolve the <see cref="SecurityCodeAnalyzer"/>.</param>
+    /// <param name="logger">Sink for progress, generated report paths, and critical-violation alerts.</param>
+    /// <param name="options">Schedule and behavior settings (enablement, interval, reporting, notifications).</param>
     public SecurityAnalysisBackgroundService(
         IServiceProvider serviceProvider,
         ILogger<SecurityAnalysisBackgroundService> logger,
@@ -32,6 +38,14 @@ public class SecurityAnalysisBackgroundService : BackgroundService
         _options = options;
     }
 
+    /// <summary>
+    /// Runs the analysis loop until cancellation. When periodic analysis is disabled the loop
+    /// returns immediately. Otherwise it scans on each <c>AnalysisInterval</c>, raises a critical
+    /// alert (and optional notification) when critical violations are found, and optionally writes
+    /// a JSON report. A scan failure is logged and backs off to a 5-minute retry rather than
+    /// crashing the host; cancellation exits the loop cleanly without logging an error.
+    /// </summary>
+    /// <param name="stoppingToken">Signals host shutdown; ends the loop and any in-flight delay.</param>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!_options.EnablePeriodicAnalysis)

@@ -35,18 +35,22 @@ public class EmailService : IEmailService
     private readonly EmailOptions _opt;
     private readonly ILogger<EmailService> _logger;
 
+    /// <summary>Creates the SMTP-backed email service from <c>EmailOptions</c> + logger.</summary>
     public EmailService(IOptions<EmailOptions> options, ILogger<EmailService> logger)
     {
         _opt = options.Value;
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
         => SendInternalAsync(to, subject, htmlBody, isHtml: true, cancellationToken);
 
+    /// <inheritdoc/>
     public Task SendTextAsync(string to, string subject, string textBody, CancellationToken cancellationToken = default)
         => SendInternalAsync(to, subject, textBody, isHtml: false, cancellationToken);
 
+    /// <inheritdoc/>
     public async Task SendBulkAsync(IEnumerable<string> to, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
         var recipients = to.ToList();
@@ -145,6 +149,7 @@ public class EmailService : IEmailService
 /// </summary>
 public sealed class EmailOptionsValidator : IValidateOptions<EmailOptions>
 {
+    /// <inheritdoc/>
     public ValidateOptionsResult Validate(string? name, EmailOptions options)
     {
         var failures = new List<string>();

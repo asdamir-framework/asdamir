@@ -28,11 +28,14 @@ public sealed class CorrelationIdForwardingHandler : DelegatingHandler
 {
     private readonly ICorrelationIdAccessor _accessor;
 
+    /// <summary>Creates the handler with the accessor used to read the current request's correlation id.</summary>
+    /// <param name="accessor">Provides the correlation id of the in-flight request, if one is set.</param>
     public CorrelationIdForwardingHandler(ICorrelationIdAccessor accessor)
     {
         _accessor = accessor;
     }
 
+    /// <inheritdoc/>
     protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var id = _accessor.CurrentId;

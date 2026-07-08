@@ -12,17 +12,29 @@ using Microsoft.Extensions.Logging;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>
+/// Default <c>IErrorTranslationService</c> — resolves a stable error key to a localized user-facing
+/// message (the user channel of the two-channel error model). Looks the key up per language via
+/// <c>IErrorTranslationRepository</c> (backed by <c>LocalizationResource</c>), substitutes
+/// <c>{name}</c> placeholders, then degrades gracefully: requested language → English → a built-in
+/// generic fallback chosen by exception type / key heuristics. Never throws — a repository failure
+/// is logged and a generic message is returned so the user always sees text, never a raw key.
+/// </summary>
 public class ErrorTranslationService : IErrorTranslationService
 {
     private readonly IErrorTranslationRepository _repository;
     private readonly ILogger<ErrorTranslationService> _logger;
 
+    /// <summary>Creates the service over the translation repository and the logger used for lookup failures.</summary>
+    /// <param name="repository">Repository that reads localized error strings (from <c>LocalizationResource</c>).</param>
+    /// <param name="logger">Logger for translation-lookup failures (which trigger the generic fallback).</param>
     public ErrorTranslationService(IErrorTranslationRepository repository, ILogger<ErrorTranslationService> logger)
     {
         _repository = repository;
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<string> GetTranslatedMessageAsync(string errorKey, string language, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
     {
         try
@@ -67,6 +79,7 @@ public class ErrorTranslationService : IErrorTranslationService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Dictionary<string, string>> GetTranslatedMessagesAsync(string errorKey, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
     {
         try
@@ -103,6 +116,7 @@ public class ErrorTranslationService : IErrorTranslationService
         }
     }
 
+    /// <inheritdoc/>
     public Task<string> GetFallbackMessageAsync(string errorKey, string language, Exception? exception = null, CancellationToken cancellationToken = default)
     {
         // Generic fallback mesajları

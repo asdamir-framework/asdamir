@@ -8,8 +8,11 @@
 // version. It is distributed WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
 
+/// <summary>Payload for bulk-importing localized strings for a single culture into the LocalizationResource table.</summary>
 public sealed class LocalizationImportDto
 {
+    /// <summary>Culture code (tr-TR / en-US / ru-RU) all imported items apply to; null defers to each item.</summary>
     public string? Culture { get; set; }
+    /// <summary>Resource key/value entries to upsert in this import batch.</summary>
     public List<ResourceDto> Items { get; set; } = new();
 }

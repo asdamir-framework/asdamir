@@ -13,8 +13,16 @@ using FluentValidation;
 
 namespace Asdamir.Core.Validation;
 
+/// <summary>
+/// FluentValidation rules for the login request — requires a well-formed email and a
+/// non-empty password of at least six characters. Shape checks only; the authentication
+/// decision lives elsewhere.
+/// </summary>
 public class LoginRequestValidator : AbstractValidator<LoginRequestDto>
 {
+    /// <summary>
+    /// Registers the email and password rules for <see cref="LoginRequestDto"/>.
+    /// </summary>
     public LoginRequestValidator()
     {
         RuleFor(x => x.Email).NotEmpty().EmailAddress();

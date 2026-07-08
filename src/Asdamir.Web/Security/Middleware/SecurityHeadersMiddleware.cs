@@ -16,12 +16,22 @@ using System.Security.Cryptography;
 namespace Asdamir.Web.Security.Middleware;
 
 
+/// <summary>
+/// Emits the configured HTTP security headers on every response — HSTS, X-Content-Type-Options,
+/// X-Frame-Options, Referrer-Policy, Permissions-Policy and (when enabled) Content-Security-Policy.
+/// The CSP's <c>{nonce}</c> placeholder is substituted per request from the CSP nonce provider, with a
+/// CSPRNG fallback when no nonce was set. Driven by the bound <see cref="SecurityHeadersOptions"/>.
+/// </summary>
 public sealed class SecurityHeadersMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly SecurityHeadersOptions _options;
     private readonly ICspNonceProvider _nonceProvider;
 
+    /// <summary>Creates the middleware with the next delegate, the bound header options, and the per-request CSP nonce provider.</summary>
+    /// <param name="next">The next delegate in the request pipeline.</param>
+    /// <param name="options">The bound security-header options.</param>
+    /// <param name="nonceProvider">Supplies the per-request CSP nonce for <c>{nonce}</c> substitution.</param>
     public SecurityHeadersMiddleware(RequestDelegate next, IOptions<SecurityHeadersOptions> options, ICspNonceProvider nonceProvider)
     {
         _next = next;
@@ -29,6 +39,9 @@ public sealed class SecurityHeadersMiddleware
         _nonceProvider = nonceProvider;
     }
 
+    /// <summary>Writes the enabled security headers onto the response, then invokes the rest of the pipeline.</summary>
+    /// <param name="context">The current HTTP context.</param>
+    /// <returns>A task that completes when the downstream pipeline completes.</returns>
     public async Task Invoke(HttpContext context)
     {
         var headers = context.Response.Headers;

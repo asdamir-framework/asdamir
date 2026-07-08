@@ -25,12 +25,18 @@ public sealed class LocalizationApiClient : ILocalizationApiClient
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>
+    /// Initializes the client with the HTTP transport and logger.
+    /// </summary>
+    /// <param name="httpClient">The configured HttpClient pointed at the localization API.</param>
+    /// <param name="logger">Logger for fetch/parse diagnostics.</param>
     public LocalizationApiClient(HttpClient httpClient, ILogger<LocalizationApiClient> logger)
     {
         _httpClient = httpClient;
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<long> GetVersionAsync(CancellationToken cancellationToken = default)
     {
         try
@@ -56,6 +62,7 @@ public sealed class LocalizationApiClient : ILocalizationApiClient
         }
     }
 
+    /// <inheritdoc/>
     public async Task<Dictionary<string, string>> GetAllAsync(
         string culture, 
         Guid? tenantId = null, 

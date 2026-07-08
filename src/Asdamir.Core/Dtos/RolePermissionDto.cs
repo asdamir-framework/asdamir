@@ -10,23 +10,38 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>An RBAC role and the set of permissions it grants, used by role-management screens.</summary>
 public class RoleDto
 {
+    /// <summary>Identifier of the role.</summary>
     public int Id { get; set; }
+    /// <summary>Role name (unique per app), e.g. "Admin".</summary>
     public string Name { get; set; } = "";
+    /// <summary>Human-readable purpose of the role.</summary>
     public string Description { get; set; } = "";
+    /// <summary>Whether the role is currently assignable; inactive roles are hidden/disabled.</summary>
     public bool IsActive { get; set; } = true;
+    /// <summary>UTC timestamp when the role was created.</summary>
     public DateTime CreatedAt { get; set; }
+    /// <summary>Number of users currently assigned this role (for management display).</summary>
     public int UserCount { get; set; }
+    /// <summary>Permissions carried by this role; each entry's <see cref="PermissionDto.IsGranted"/> reflects whether the role holds it.</summary>
     public List<PermissionDto> Permissions { get; set; } = new();
 }
 
+/// <summary>A single permission and, in a role-editing context, whether the current role grants it.</summary>
 public class PermissionDto
 {
+    /// <summary>Identifier of the permission.</summary>
     public int Id { get; set; }
+    /// <summary>Permission key/string checked at authorization time, e.g. "orders.view".</summary>
     public string Name { get; set; } = "";
+    /// <summary>Human-readable description of what the permission allows.</summary>
     public string Description { get; set; } = "";
+    /// <summary>Grouping used to organize permissions in the UI, e.g. "Orders".</summary>
     public string Category { get; set; } = "";
+    /// <summary>True when the role being edited currently grants this permission.</summary>
     public bool IsGranted { get; set; }
+    /// <summary>True for built-in system permissions that must not be deleted/renamed.</summary>
     public bool IsSystemPermission { get; set; }
 }

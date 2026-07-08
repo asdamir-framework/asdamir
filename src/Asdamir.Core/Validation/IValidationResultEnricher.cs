@@ -18,5 +18,11 @@ namespace Asdamir.Core.Validation;
 /// </summary>
 public interface IValidationResultEnricher
 {
+    /// <summary>
+    /// Post-processes a validation result — e.g. logs the failures or attaches error codes /
+    /// localized-message keys — after the validator has run.
+    /// </summary>
+    /// <typeparam name="T">The validated model type, used for context in the enrichment.</typeparam>
+    /// <param name="result">The result to enrich; typically only acted on when invalid.</param>
     void Enrich<T>(ValidationResult result);
 }

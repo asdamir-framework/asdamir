@@ -41,9 +41,10 @@ public static class ServiceCollectionExtensions
         // Configure options
         services.Configure(configure);
 
-        // Register core services
+        // Register core services (job scheduling + execution). The framework does not ship a job
+        // MONITOR — the non-functional stub monitor/dashboard was removed; a host wires its own
+        // monitoring (AppManagement uses its real HangfireMonitor over Hangfire's Monitoring API).
         services.AddScoped<IJobScheduler, HangfireJobScheduler>();
-        services.AddScoped<IJobMonitor, HangfireJobMonitor>();
         services.AddScoped<JobExecutor>();
 
         // Register job context as scoped

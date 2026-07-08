@@ -17,6 +17,16 @@ namespace Asdamir.Core.Validation;
 /// </summary>
 public static class ContactValidationExtensions
 {
+    /// <summary>
+    /// Adds an email rule that runs <c>ValidationUtils.TryValidateEmail</c> — RFC syntax plus the
+    /// domain allow/block and role-address policy — reporting the stable validation key on failure.
+    /// </summary>
+    /// <typeparam name="T">The model being validated.</typeparam>
+    /// <param name="ruleBuilder">The rule builder for the email property.</param>
+    /// <param name="allowedDomains">When set, only these domains pass; null/empty allows any.</param>
+    /// <param name="blockedDomains">Domains that are always rejected.</param>
+    /// <param name="blockRoleAddresses">When true, generic role addresses (admin@, info@, …) are rejected.</param>
+    /// <returns>The rule-builder options so further conditions can be chained.</returns>
     public static IRuleBuilderOptionsConditions<T, string?> ValidEmail<T>(
         this IRuleBuilder<T, string?> ruleBuilder,
         string[]? allowedDomains = null,
@@ -37,6 +47,16 @@ public static class ContactValidationExtensions
         });
     }
 
+    /// <summary>
+    /// Adds a phone rule that runs <c>ValidationUtils.TryValidatePhone</c> (libphonenumber),
+    /// reporting the stable validation key on failure. Defaults to the TR region.
+    /// </summary>
+    /// <typeparam name="T">The model being validated.</typeparam>
+    /// <param name="ruleBuilder">The rule builder for the phone property.</param>
+    /// <param name="countryCode">Default region (ISO code) used to parse national-format numbers.</param>
+    /// <param name="allowInternational">Whether + -prefixed international numbers are accepted.</param>
+    /// <param name="requireMobile">When true, the number must be a mobile type.</param>
+    /// <returns>The rule-builder options so further conditions can be chained.</returns>
     public static IRuleBuilderOptionsConditions<T, string?> ValidPhone<T>(
         this IRuleBuilder<T, string?> ruleBuilder,
         string? countryCode = "TR",

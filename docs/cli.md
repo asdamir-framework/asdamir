@@ -89,9 +89,24 @@ dotnet run --project src/MyApp.Gateway    # then, in another shell:
 dotnet run --project src/MyApp.Server     # open the Server, sign in with the starter admin printed by `new app`
 ```
 
-The starter admin's email + one-time password are printed once by `new app` — change the password after
-first sign-in. Add features exactly as in commercial mode with `asdamir new feature …` (see the free-mode
-note under it).
+The starter admin's email + one-time password are printed once by `new app`. That password is a **bootstrap
+credential**, so the app **forces a change on first sign-in**: the starter admin ships with a
+`ForcePasswordChange` flag, and login redirects to a **change-password** page instead of the dashboard until
+a new password is set.
+
+**First sign-in — forced password change (free mode).**
+
+1. Sign in with the starter admin's email + one-time password.
+2. The app detects the flag and sends you to `/change-password` (not the dashboard).
+3. Enter the current password + a new one. The change-password endpoint verifies the current password,
+   stores the new one, **clears `ForcePasswordChange`, and revokes all existing sessions** (so any other
+   session is signed out).
+4. You're returned to the sign-in page; sign in again with the **new** password — the flag is now clear, so
+   you land on the dashboard. Subsequent logins are normal (no redirect).
+
+(This is a free-mode flow — the starter admin lives in the app's own DB. Commercial-mode identity is managed
+in the control plane and is unaffected.) Add features exactly as in commercial mode with `asdamir new
+feature …` (see the free-mode note under it).
 
 ### `asdamir new feature`
 
@@ -209,7 +224,11 @@ transaction); a migration is journaled only after all its batches succeed, so a 
 retried on the next run.
 
 ```bash
-# Cross-platform (SQL auth):
+# Preferred — no SQL password on the command line: set the Gateway user-secret once, then apply.
+# db apply resolves ConnectionStrings:Default from the Gateway user-secret (see "Connection resolution" below).
+asdamir db apply --create-database --migrations db/migrations
+
+# Or pass connection details explicitly (SQL auth):
 asdamir db apply --server localhost --database MyAppDb \
   --user <login> --password <pwd> --create-database --migrations db/migrations
 

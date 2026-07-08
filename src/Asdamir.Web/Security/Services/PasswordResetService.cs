@@ -13,17 +13,26 @@ using System.Net.Http.Json;
 
 namespace Asdamir.Web.Security.Services;
 
+/// <summary>
+/// Default <see cref="IPasswordResetService"/> that relays the forgot/reset-password flow to the Gateway
+/// over the unauthenticated "GatewayNoAuth" HttpClient. Passes the current culture so the reset email is
+/// localized, and never surfaces raw errors — failures return a generic message and are logged server-side.
+/// </summary>
 public class PasswordResetService : IPasswordResetService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<PasswordResetService> _logger;
 
+    /// <summary>Initializes the service with the HttpClient factory (for the "GatewayNoAuth" client) and a logger.</summary>
+    /// <param name="httpClientFactory">Factory used to create the unauthenticated Gateway client.</param>
+    /// <param name="logger">Logger for reset-flow diagnostics.</param>
     public PasswordResetService(IHttpClientFactory httpClientFactory, ILogger<PasswordResetService> logger)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message)> RequestPasswordResetAsync(string email)
     {
         try
@@ -52,6 +61,7 @@ public class PasswordResetService : IPasswordResetService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<(bool IsValid, string? Email)> ValidateResetTokenAsync(string token)
     {
         try
@@ -76,6 +86,7 @@ public class PasswordResetService : IPasswordResetService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<(bool Success, string Message)> ResetPasswordAsync(string token, string newPassword)
     {
         try

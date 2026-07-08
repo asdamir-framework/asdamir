@@ -24,7 +24,7 @@ namespace Asdamir.Core.Contracts;
 ///    <see cref="EnsureWarmedAsync"/> (called from <c>Program.cs</c> after Build()).
 ///  - The cache dictionary was mutated in-place by <c>Reload()</c> while readers
 ///    were iterating it. We now build a fresh dictionary off-thread and swap it
-///    via <see cref="Volatile.Write"/> so readers always see a consistent snapshot.
+///    via <c>Volatile.Write</c> so readers always see a consistent snapshot.
 ///  - Swallowed decryption errors were silent. They now log via the repository's
 ///    own logger path (the repository is the boundary; this service stays simple).
 /// </summary>
@@ -39,6 +39,12 @@ public class AppConfigurationService : IAppConfigurationService
     private IReadOnlyDictionary<string, string> _configCache = Empty;
     private readonly SemaphoreSlim _reloadGate = new(1, 1);
 
+    /// <summary>
+    /// Creates the service over the backing configuration repository. When an
+    /// <see cref="IEncryptionService"/> is supplied, values flagged <c>IsEncrypted</c> are decrypted on read.
+    /// </summary>
+    /// <param name="repository">Source of the persisted configuration rows.</param>
+    /// <param name="encryptionService">Optional decryptor for encrypted values; when null, encrypted values are returned as-is.</param>
     public AppConfigurationService(
         IAppConfigurationRepository repository,
         IEncryptionService? encryptionService = null)
@@ -47,6 +53,7 @@ public class AppConfigurationService : IAppConfigurationService
         _encryptionService = encryptionService;
     }
 
+    /// <inheritdoc/>
     public async Task<List<AppConfiguration>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var configs = await _repository.GetAllAsync(cancellationToken).ConfigureAwait(false);
@@ -70,6 +77,7 @@ public class AppConfigurationService : IAppConfigurationService
         return configs;
     }
 
+    /// <inheritdoc/>
     public async Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default)
     {
         var config = await _repository.GetByKeyAsync(key, cancellationToken).ConfigureAwait(false);

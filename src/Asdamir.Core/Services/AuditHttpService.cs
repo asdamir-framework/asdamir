@@ -16,20 +16,26 @@ using System.Net.Http.Json;
 namespace Asdamir.Core.Services;
 
 /// <summary>
-/// HttpClient-based audit service implementation.
-/// Sends audit entries to Gateway endpoint.
+/// HTTP-backed <c>IAuditService</c> — records audit entries by POSTing them to the API's
+/// <c>gateway/audit/log</c> endpoint (the UI/client tier calls the API, never the DB directly).
+/// Failure-tolerant by design: any transport or non-success response is logged and swallowed so an
+/// audit outage never breaks the application flow it is observing.
 /// </summary>
 public sealed class AuditHttpService : IAuditService
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<AuditHttpService> _logger;
 
+    /// <summary>Creates the service over the (Gateway-targeted) <c>HttpClient</c> and logger.</summary>
+    /// <param name="httpClient">Client whose base address targets the API/Gateway that receives audit entries.</param>
+    /// <param name="logger">Logger for the diagnostic trace and for swallowed send failures.</param>
     public AuditHttpService(HttpClient httpClient, ILogger<AuditHttpService> logger)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
+    /// <inheritdoc/>
     public async Task LogAsync(AuditEntry entry, CancellationToken ct = default)
     {
         try

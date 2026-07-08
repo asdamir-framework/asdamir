@@ -21,6 +21,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Asdamir.Web.Security.Middleware;
 using Microsoft.Extensions.Options;
 
+/// <summary>
+/// DI + pipeline wiring for the Asdamir.Web security stack — Data Protection key persistence, the security
+/// header/rate-limit/CSP-nonce/no-cache middleware, and the authentication/authorization services.
+/// </summary>
 public static class SecurityServiceCollectionExtensions
 {
     /// <summary>
@@ -50,6 +54,14 @@ public static class SecurityServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers the core security services: Data Protection, memory cache, the CSP nonce provider, the
+    /// data-protection service, the in-memory rate-limit service, ASP.NET Core authorization, and the
+    /// <see cref="SecurityHeadersOptions"/> (+ its validator). Call once at composition root.
+    /// </summary>
+    /// <param name="services">The service collection.</param>
+    /// <param name="configureHeaders">Optional configuration of the security headers; omit to use the hardened defaults.</param>
+    /// <returns>The same <see cref="IServiceCollection"/> for chaining.</returns>
     public static IServiceCollection AddFrameworkSecurity(this IServiceCollection services, Action<SecurityHeadersOptions>? configureHeaders = null)
     {
         services.AddDataProtection();
@@ -141,16 +153,25 @@ public static class SecurityServiceCollectionExtensions
     }
 
 
+    /// <summary>Adds the middleware that emits the configured HTTP security headers (HSTS, X-Frame-Options, CSP, …) on every response.</summary>
+    /// <param name="app">The application builder.</param>
+    /// <returns>The same <see cref="IApplicationBuilder"/> for chaining.</returns>
     public static IApplicationBuilder UseSecurityHeaders(this IApplicationBuilder app)
     {
         return app.UseMiddleware<SecurityHeadersMiddleware>();
     }
 
+    /// <summary>Adds the middleware that enforces per-endpoint rate limits declared via <c>RateLimitAttribute</c> (returns 429 when exceeded).</summary>
+    /// <param name="app">The application builder.</param>
+    /// <returns>The same <see cref="IApplicationBuilder"/> for chaining.</returns>
     public static IApplicationBuilder UseRateLimiting(this IApplicationBuilder app)
     {
         return app.UseMiddleware<RateLimitingMiddleware>();
     }
 
+    /// <summary>Adds the middleware that generates the per-request CSP nonce consumed by the security-headers CSP and inline scripts.</summary>
+    /// <param name="app">The application builder.</param>
+    /// <returns>The same <see cref="IApplicationBuilder"/> for chaining.</returns>
     public static IApplicationBuilder UseCspNonce(this IApplicationBuilder app)
     {
         return app.UseMiddleware<CspNonceMiddleware>();

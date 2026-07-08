@@ -43,13 +43,35 @@ public static class ValidationUtils
         @"^(?:\+90|0)?5\d{9}$",
         RegexOptions.Compiled);
 
+    /// <summary>
+    /// Policy inputs for email validation: domain allow/block lists and whether to reject
+    /// generic role addresses (admin@, info@, …).
+    /// </summary>
+    /// <param name="AllowedDomains">When non-empty, only these domains pass; empty means any domain.</param>
+    /// <param name="BlockedDomains">Domains that are always rejected.</param>
+    /// <param name="BlockRoleAddresses">When true, generic role local-parts (admin, info, sales, …) are rejected.</param>
     public record EmailOptions(string[] AllowedDomains, string[] BlockedDomains, bool BlockRoleAddresses);
 
+    /// <summary>
+    /// Policy inputs for phone validation: the default region and whether international / mobile
+    /// constraints apply.
+    /// </summary>
+    /// <param name="CountryCode">Default region (ISO code, e.g. "TR"); "ZZ" means unknown, so only + -prefixed numbers parse.</param>
+    /// <param name="AllowInternational">Whether + -prefixed international numbers are accepted (used by the legacy path).</param>
+    /// <param name="RequireMobile">When true, the number must be a mobile (or fixed-line-or-mobile) type.</param>
     public record PhoneOptions(
-        string? CountryCode = "ZZ", 
-        bool AllowInternational = true, 
+        string? CountryCode = "ZZ",
+        bool AllowInternational = true,
         bool RequireMobile = false);
 
+    /// <summary>
+    /// Validates an email against RFC syntax plus the domain allow/block and role-address policy.
+    /// An empty value passes (deferred to a separate required check).
+    /// </summary>
+    /// <param name="email">Candidate email; null/empty is treated as valid here.</param>
+    /// <param name="options">Domain and role-address policy to enforce.</param>
+    /// <param name="error">Set to a stable validation key (e.g. <c>validation.email.domain.blocked</c>) on failure; null on success.</param>
+    /// <returns>True when the email is well-formed and satisfies the policy; false otherwise.</returns>
     public static bool TryValidateEmail(string? email, EmailOptions options, out string? error)
     {
         error = null;
@@ -117,8 +139,13 @@ public static class ValidationUtils
     }
 
     /// <summary>
-    /// Validates phone number using Google's libphonenumber for comprehensive international support
+    /// Validates a phone number using Google's libphonenumber for comprehensive international support.
+    /// An empty value passes (deferred to a separate required check).
     /// </summary>
+    /// <param name="phone">Candidate phone number; null/empty is treated as valid here.</param>
+    /// <param name="options">Region and mobile-required policy to enforce.</param>
+    /// <param name="error">Set to a stable validation key (e.g. <c>validation.phone.mustBeMobile</c>) on failure; null on success.</param>
+    /// <returns>True when the number is a valid dialable number satisfying the policy; false otherwise.</returns>
     public static bool TryValidatePhone(string? phone, PhoneOptions options, out string? error)
     {
         error = null;
@@ -176,8 +203,13 @@ public static class ValidationUtils
     }
 
     /// <summary>
-    /// Legacy regex-based validation for backward compatibility
+    /// Legacy regex-based phone validation (E.164 / TR / US fallbacks) kept for backward compatibility.
+    /// Prefer <c>TryValidatePhone</c>, which uses libphonenumber.
     /// </summary>
+    /// <param name="phone">Candidate phone number; null/empty is treated as valid here.</param>
+    /// <param name="options">Region, international-allowed, and mobile-required policy to enforce.</param>
+    /// <param name="error">Set to a stable validation key on failure; null on success.</param>
+    /// <returns>True when the number matches the region-specific regex under the policy; false otherwise.</returns>
     [Obsolete("Use TryValidatePhone with libphonenumber instead")]
     public static bool TryValidatePhoneLegacy(string? phone, PhoneOptions options, out string? error)
     {

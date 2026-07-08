@@ -15,16 +15,37 @@ namespace Shared.Models;
 /// </summary>
 public class TwoFactorCode
 {
+    /// <summary>Primary key of the OTP row.</summary>
     public int Id { get; set; }
+
+    /// <summary>Owning user; the code is only valid for this user's pending login challenge.</summary>
     public int UserId { get; set; }
+
+    /// <summary>The one-time OTP value sent to the user; single-use and short-lived (see <see cref="ExpiresAtUtc"/>).</summary>
     public string Code { get; set; } = string.Empty;
+
+    /// <summary>Phone number the code was delivered to, recorded so delivery can be audited.</summary>
     public string PhoneNumber { get; set; } = string.Empty;
+
+    /// <summary>UTC time the code was generated; the cooldown between resends is measured from here.</summary>
     public DateTime CreatedAtUtc { get; set; }
+
+    /// <summary>UTC time after which the code is rejected as expired.</summary>
     public DateTime ExpiresAtUtc { get; set; }
+
+    /// <summary>True once the code has been redeemed; a used code can never be accepted again.</summary>
     public bool IsUsed { get; set; }
+
+    /// <summary>UTC time the code was redeemed; null while still unused.</summary>
     public DateTime? UsedAtUtc { get; set; }
+
+    /// <summary>Number of verification attempts; used to lock out brute-force guessing after a threshold.</summary>
     public int AttemptCount { get; set; }
+
+    /// <summary>Client IP recorded at issuance for abuse detection and audit.</summary>
     public string? IpAddress { get; set; }
+
+    /// <summary>Client user-agent recorded at issuance for abuse detection and audit.</summary>
     public string? UserAgent { get; set; }
 
     /// <summary>

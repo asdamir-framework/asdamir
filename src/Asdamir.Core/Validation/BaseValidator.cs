@@ -18,6 +18,9 @@ namespace Asdamir.Core.Validation;
 /// </summary>
 public abstract class BaseValidator<T> : AbstractValidator<T>
 {
+    /// <summary>
+    /// Invokes <see cref="ConfigureRules"/> so derived validators declare their rules in one place.
+    /// </summary>
     protected BaseValidator()
     {
         ConfigureRules();
@@ -35,8 +38,12 @@ public abstract class BaseValidator<T> : AbstractValidator<T>
 public abstract class ContextualValidator<T> : BaseValidator<T>
 {
     /// <summary>
-    /// Validates with additional context
+    /// Validates with additional context. The base implementation ignores the context and runs the
+    /// standard rules; override to consult the context.
     /// </summary>
+    /// <param name="instance">The object to validate.</param>
+    /// <param name="context">Ambient key/value context for context-dependent rules.</param>
+    /// <returns>The validation result.</returns>
     public virtual ValidationResult ValidateWithContext(T instance, IDictionary<string, object> context)
     {
         return Validate(instance);
@@ -48,6 +55,9 @@ public abstract class ContextualValidator<T> : BaseValidator<T>
 /// </summary>
 public abstract class Validator<T> : AbstractValidator<T>, IValidator<T>
 {
+    /// <summary>
+    /// Invokes <see cref="ConfigureRules"/> so derived validators declare their rules in one place.
+    /// </summary>
     protected Validator()
     {
         ConfigureRules();
@@ -59,8 +69,13 @@ public abstract class Validator<T> : AbstractValidator<T>, IValidator<T>
     protected abstract void ConfigureRules();
 
     /// <summary>
-    /// Validates with enterprise context
+    /// Runs the full pipeline: applies context-specific rules, performs standard validation, then
+    /// applies post-validation business rules — returning the merged result.
     /// </summary>
+    /// <param name="instance">The object to validate.</param>
+    /// <param name="context">The validation context consulted by the contextual and business-rule steps.</param>
+    /// <param name="cancellationToken">Token to cancel the async validation.</param>
+    /// <returns>The validation result after all pipeline stages.</returns>
     public virtual async Task<ValidationResult> ValidateAsync(T instance, IValidationContext context, CancellationToken cancellationToken = default)
     {
         // Apply context-specific rules
@@ -76,8 +91,9 @@ public abstract class Validator<T> : AbstractValidator<T>, IValidator<T>
     }
 
     /// <summary>
-    /// Apply rules based on validation context.
+    /// Apply rules based on validation context. No-op by default; override to add context-driven checks.
     /// </summary>
+    /// <param name="context">The validation context to consult when deciding which rules apply.</param>
     /// <remarks>
     /// ⚠️ AUDIT WARNING: implementations of this method MUST NOT call <c>RuleFor(...)</c> on
     /// the validator instance — FluentValidation accumulates rules on the
@@ -98,8 +114,14 @@ public abstract class Validator<T> : AbstractValidator<T>, IValidator<T>
     }
 
     /// <summary>
-    /// Apply complex business rules after standard validation
+    /// Apply complex business rules after standard validation. No-op by default; override to add
+    /// failures to <paramref name="result"/> based on cross-field or external checks.
     /// </summary>
+    /// <param name="instance">The validated object.</param>
+    /// <param name="context">The validation context.</param>
+    /// <param name="result">The result so far; add failures here.</param>
+    /// <param name="cancellationToken">Token to cancel the async work.</param>
+    /// <returns>A task that completes when the business rules have run.</returns>
     protected virtual Task ApplyBusinessRulesAsync(T instance, IValidationContext context, ValidationResult result, CancellationToken cancellationToken)
     {
         // Override in derived classes for complex business validation
@@ -107,8 +129,10 @@ public abstract class Validator<T> : AbstractValidator<T>, IValidator<T>
     }
 
     /// <summary>
-    /// Helper method to add conditional rules based on operation
+    /// Helper to group rules that apply only to a named operation (e.g. "create" vs "update").
     /// </summary>
+    /// <param name="operation">The operation name the rules are scoped to.</param>
+    /// <param name="action">The rule-registration callback to run for that operation.</param>
     protected void WhenOperation(string operation, Action action)
     {
         // This would be checked during validation

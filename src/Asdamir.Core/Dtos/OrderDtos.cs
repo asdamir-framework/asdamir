@@ -10,5 +10,13 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>Read model for a customer order in the demo order-management sample.</summary>
+/// <param name="Id">Order identifier (primary key).</param>
+/// <param name="CustomerName">Name of the customer who placed the order.</param>
+/// <param name="Amount">Order total in the app's currency.</param>
+/// <param name="Status">Workflow state of the order (e.g. Pending, Shipped, Cancelled).</param>
 public record OrderDto(int Id, string CustomerName, decimal Amount, string Status);
+
+/// <summary>Query filter for listing/searching demo orders.</summary>
+/// <param name="Query">Free-text search term (e.g. customer name); null returns all orders.</param>
 public record OrderFilter(string? Query);

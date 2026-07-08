@@ -10,10 +10,18 @@
 
 namespace Asdamir.Web.UI
 {
-    public enum SelectionMode 
-    { 
-        None, 
-        Single, 
-        Multiple 
+    /// <summary>
+    /// Row-selection behaviour for a grid/list component.
+    /// </summary>
+    public enum SelectionMode
+    {
+        /// <summary>Selection is disabled; rows cannot be selected.</summary>
+        None,
+
+        /// <summary>At most one row may be selected at a time.</summary>
+        Single,
+
+        /// <summary>Any number of rows may be selected simultaneously.</summary>
+        Multiple
     }
 }

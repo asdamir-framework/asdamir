@@ -13,11 +13,16 @@ using Microsoft.Extensions.Configuration;
 
 namespace Asdamir.Data.Configuration;
 
+/// <summary>
+/// <see cref="IFeatureManager"/> over <see cref="IConfiguration"/>: resolves a tenant-scoped key
+/// (<c>Tenants:{id}:Features:{name}</c>) first, falling back to the global key.
+/// </summary>
 public sealed class FeatureManager : IFeatureManager
 {
     private readonly IConfiguration _cfg;
     private readonly ITenantContext _tenant;
 
+    /// <summary>Creates the feature manager over the app configuration and the ambient tenant context.</summary>
     public FeatureManager(IConfiguration cfg, ITenantContext tenant)
     {
         _cfg = cfg; _tenant = tenant;
@@ -26,6 +31,7 @@ public sealed class FeatureManager : IFeatureManager
     private string BuildKey(string baseKey, string? tenantId)
         => tenantId is null ? baseKey : $"Tenants:{tenantId}:{baseKey}";
 
+    /// <inheritdoc/>
     public Task<bool> IsEnabledAsync(string featureName, string? tenantId = null, CancellationToken ct = default)
     {
         var tid = tenantId ?? _tenant.TenantId ?? "default";
@@ -35,6 +41,7 @@ public sealed class FeatureManager : IFeatureManager
         return Task.FromResult(bool.TryParse(val, out var b) && b);
     }
 
+    /// <inheritdoc/>
     public Task<T?> GetConfigurationAsync<T>(string key, string? tenantId = null, CancellationToken ct = default)
     {
         var tid = tenantId ?? _tenant.TenantId ?? "default";

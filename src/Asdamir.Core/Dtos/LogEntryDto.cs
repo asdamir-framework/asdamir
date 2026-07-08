@@ -10,12 +10,19 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>A generic log row (any level) surfaced from the Serilog DB sink for the monitoring/log-viewer feed.</summary>
 public class LogEntryDto
 {
+    /// <summary>UTC time the entry was written.</summary>
     public DateTime CreatedAtUtc { get; set; }
+    /// <summary>Severity level of the entry (e.g. "Information", "Warning", "Error").</summary>
     public string Level { get; set; } = string.Empty;
+    /// <summary>Rendered log message text.</summary>
     public string Message { get; set; } = string.Empty;
+    /// <summary>Originating app/component tag; null if not set.</summary>
     public string? Source { get; set; }
+    /// <summary>Formatted exception detail attached to the entry; null when none.</summary>
     public string? Exception { get; set; }
+    /// <summary>Structured Serilog properties captured with the entry (e.g. ErrorKey, CaughtBy, AppId); null if none.</summary>
     public Dictionary<string, object>? Properties { get; set; }
 }

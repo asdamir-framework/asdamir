@@ -14,17 +14,28 @@ namespace Asdamir.Web.Security.Middleware;
 using Asdamir.Web.Security.Attributes;
 using Microsoft.AspNetCore.Http;
 
+/// <summary>
+/// Enforces per-endpoint rate limits declared via <see cref="RateLimitAttribute"/>. Builds a key from the
+/// client IP, user identity and request path, and returns <c>429 Too Many Requests</c> when the endpoint's
+/// limit for the rolling window is exceeded; endpoints without the attribute pass through untouched.
+/// </summary>
 public sealed class RateLimitingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IRateLimitService _service;
 
+    /// <summary>Creates the middleware with the next delegate and the rate-limit counting service.</summary>
+    /// <param name="next">The next delegate in the request pipeline.</param>
+    /// <param name="service">The service that tracks and enforces request counts per key.</param>
     public RateLimitingMiddleware(RequestDelegate next, IRateLimitService service)
     {
         _next = next;
         _service = service;
     }
 
+    /// <summary>Checks the endpoint's <see cref="RateLimitAttribute"/> budget; short-circuits with 429 if exceeded, otherwise invokes the pipeline.</summary>
+    /// <param name="context">The current HTTP context.</param>
+    /// <returns>A task that completes when the request is served or rejected.</returns>
     public async Task Invoke(HttpContext context)
     {
         var endpoint = context.GetEndpoint();

@@ -23,6 +23,10 @@ public class GlobalSearchService : IGlobalSearchService
     private readonly HttpClient _httpClient;
     private readonly NavigationManager _navigationManager;
 
+    /// <summary>Creates the service.</summary>
+    /// <param name="logger">Logger for search activity and failures.</param>
+    /// <param name="httpClientFactory">Factory for the <see cref="HttpClient"/> used to call the search API.</param>
+    /// <param name="navigationManager">Provides the base URI used to build absolute API URLs.</param>
     public GlobalSearchService(
         ILogger<GlobalSearchService> logger,
         IHttpClientFactory httpClientFactory,
@@ -33,14 +37,16 @@ public class GlobalSearchService : IGlobalSearchService
         _navigationManager = navigationManager;
     }
 
+    /// <inheritdoc/>
     public async Task<List<GlobalSearchResult>> SearchAsync(string query, CancellationToken cancellationToken = default)
     {
         return await SearchAsync(query, new GlobalSearchFilters(), cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<List<GlobalSearchResult>> SearchAsync(
-        string query, 
-        GlobalSearchFilters filters, 
+        string query,
+        GlobalSearchFilters filters,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
@@ -93,9 +99,10 @@ public class GlobalSearchService : IGlobalSearchService
         }
     }
 
+    /// <inheritdoc/>
     public Task<List<string>> GetSuggestionsAsync(
-        string query, 
-        int limit = 10, 
+        string query,
+        int limit = 10,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(query) || query.Length < 2)

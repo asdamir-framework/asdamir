@@ -12,17 +12,26 @@ using Asdamir.Core.Dtos;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>Role store: the role catalog and each role's permission grants (RBAC).</summary>
 public interface IRoleRepository
 {
+    /// <summary>All roles in the current scope.</summary>
     Task<List<RoleDto>> GetAllAsync();
+    /// <summary>Finds a role by id, or null if not found.</summary>
     Task<RoleDto?> GetByIdAsync(int id);
+    /// <summary>The permissions granted to a role.</summary>
     Task<List<PermissionDto>> GetRolePermissionsAsync(int roleId);
+    /// <summary>Replaces a role's permission grants with the given permission ids.</summary>
     Task UpdateRolePermissionsAsync(int roleId, List<int> permissionIds);
 }
 
+/// <summary>Permission catalog store (read-only): the permissions RBAC roles can grant.</summary>
 public interface IPermissionRepository
 {
+    /// <summary>All permissions in the catalog.</summary>
     Task<List<PermissionDto>> GetAllAsync();
+    /// <summary>Finds a permission by id, or null if not found.</summary>
     Task<PermissionDto?> GetByIdAsync(int id);
+    /// <summary>Permissions filtered to a category (grouping in the UI).</summary>
     Task<List<PermissionDto>> GetByCategoryAsync(string category);
 }

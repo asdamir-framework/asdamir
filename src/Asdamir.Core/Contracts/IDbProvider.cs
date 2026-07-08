@@ -15,8 +15,11 @@ namespace Asdamir.Core.Contracts;
 /// </summary>
 public enum DbProviderType
 {
+    /// <summary>Microsoft SQL Server (the default provider).</summary>
     SqlServer,
+    /// <summary>Oracle Database.</summary>
     Oracle,
+    /// <summary>PostgreSQL.</summary>
     PostgreSQL
 }
 

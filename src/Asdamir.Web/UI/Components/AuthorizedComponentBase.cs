@@ -19,8 +19,13 @@ namespace Asdamir.Web.UI.Components;
 /// </summary>
 public abstract class AuthorizedComponentBase : ComponentBase, IDisposable
 {
+    /// <summary>Injected authentication state used to wait for and inspect the current session.</summary>
     [Inject] protected AuthState AuthState { get; set; } = default!;
+
+    /// <summary>Injected logger for authentication-readiness diagnostics.</summary>
     [Inject] protected ILogger<AuthorizedComponentBase> Logger { get; set; } = default!;
+
+    /// <summary>Injected navigation manager used to redirect to the login page when authentication is not ready.</summary>
     [Inject] protected NavigationManager Navigation { get; set; } = default!;
 
     private bool _disposed;
@@ -96,6 +101,7 @@ public abstract class AuthorizedComponentBase : ComponentBase, IDisposable
         }
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         _disposed = true;

@@ -13,17 +13,29 @@ using System.Net.Http.Json;
 
 namespace Asdamir.Web.UI.Services
 {
+    /// <summary>
+    /// Concrete <see cref="IDataService"/> — a typed <see cref="HttpClient"/> wrapper the Blazor UI uses to
+    /// read management/monitoring data from the API over HTTP (the UI never touches the database directly).
+    /// Every call is resilient by design: a failed request is logged and returns an empty collection or a
+    /// default instance rather than throwing, so a transient API error degrades a page instead of breaking it.
+    /// </summary>
     public class DataService : IDataService
     {
         private readonly HttpClient _httpClient;
         private readonly ILogger<DataService> _logger;
 
+        /// <summary>
+        /// Creates the service over the supplied API-bound <see cref="HttpClient"/>.
+        /// </summary>
+        /// <param name="httpClient">The client whose base address targets the app's API/Gateway.</param>
+        /// <param name="logger">Logger used to record failed requests before falling back to an empty result.</param>
         public DataService(HttpClient httpClient, ILogger<DataService> logger)
         {
             _httpClient = httpClient;
             _logger = logger;
         }
 
+        /// <inheritdoc/>
         public async Task<List<JobDto>> GetJobsAsync()
         {
             try
@@ -38,6 +50,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<JobStatistics> GetJobStatisticsAsync()
         {
             try
@@ -52,6 +65,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<List<RecurringJobDto>> GetRecurringJobsAsync()
         {
             try
@@ -66,6 +80,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<List<ResourceDto>> GetResourcesAsync(string? culture = null)
         {
             try
@@ -81,6 +96,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<List<UserDto>> GetUsersAsync()
         {
             try
@@ -95,6 +111,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<List<MenuDto>> GetMenuItemsAsync()
         {
             try
@@ -109,6 +126,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<List<OutboxDto>> GetOutboxItemsAsync()
         {
             try
@@ -123,6 +141,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<ErrorDashboardOverviewResponse> GetErrorStatisticsAsync()
         {
             try
@@ -137,6 +156,7 @@ namespace Asdamir.Web.UI.Services
             }
         }
 
+        /// <inheritdoc/>
         public async Task<List<ErrorLogDto>> GetErrorLogsAsync(ErrorQueryRequest request)
         {
             try

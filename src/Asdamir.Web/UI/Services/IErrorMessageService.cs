@@ -13,20 +13,38 @@ using System.Text.Json;
 
 namespace Asdamir.Web.UI.Services;
 
+/// <summary>
+/// Maps a failed HTTP response to a short, user-facing message (the "user channel" of the
+/// two-channel error model): it prefers the localized <c>ProblemDetails.Title</c> from the
+/// response body and otherwise falls back to a message chosen from the status code.
+/// </summary>
 public interface IErrorMessageService
 {
+    /// <summary>
+    /// Produces a friendly, display-ready message for a failed response.
+    /// </summary>
+    /// <param name="response">The non-success HTTP response (its status code is the fallback source).</param>
+    /// <param name="rawBody">The raw response body, parsed for a <c>ProblemDetails</c> title when present.</param>
+    /// <returns>A user-facing message; never the raw status code.</returns>
     string GetFriendlyMessage(HttpResponseMessage response, string? rawBody);
 }
 
+/// <summary>
+/// Default <see cref="IErrorMessageService"/>: parses <c>ProblemDetails</c> from the body and,
+/// failing that, maps the HTTP status code to a localized message.
+/// </summary>
 public sealed class ErrorMessageService : IErrorMessageService
 {
     private readonly ILogger<ErrorMessageService> _logger;
 
+    /// <summary>Creates the service.</summary>
+    /// <param name="logger">Logger used to record body-parse fallbacks (at debug level).</param>
     public ErrorMessageService(ILogger<ErrorMessageService> logger)
     {
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public string GetFriendlyMessage(HttpResponseMessage response, string? rawBody)
     {
         try

@@ -10,8 +10,14 @@
 
 namespace Asdamir.Web.Security.Services;
 
+/// <summary>
+/// Exposes the per-request Content-Security-Policy nonce so views can stamp it on inline
+/// <c>&lt;script&gt;</c>/<c>&lt;style&gt;</c> tags, matching the nonce the CSP header advertises for that request.
+/// </summary>
 public interface ICspNonceProvider
 {
+    /// <summary>Gets the CSP nonce generated for the current request, or <c>null</c> if none is set (e.g. outside a request).</summary>
+    /// <returns>The per-request nonce, or <c>null</c>.</returns>
     string? GetNonce();
 }
 

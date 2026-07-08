@@ -33,11 +33,19 @@ public class NoCacheMiddleware
 {
     private readonly RequestDelegate _next;
 
+    /// <summary>Creates the middleware with the next delegate in the pipeline.</summary>
+    /// <param name="next">The next delegate in the request pipeline.</param>
     public NoCacheMiddleware(RequestDelegate next)
     {
         _next = next;
     }
 
+    /// <summary>
+    /// Sets no-store cache headers on authenticated HTML responses (skipping static assets and API/framework
+    /// paths), and additionally emits <c>Clear-Site-Data</c> on the logout endpoint to wipe client state.
+    /// </summary>
+    /// <param name="context">The current HTTP context.</param>
+    /// <returns>A task that completes when the downstream pipeline completes.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
         var path = context.Request.Path;

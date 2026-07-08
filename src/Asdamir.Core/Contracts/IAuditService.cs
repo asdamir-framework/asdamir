@@ -17,6 +17,7 @@ namespace Asdamir.Core.Contracts;
 /// </summary>
 public interface IAuditService
 {
+    /// <summary>Persists a single audit entry (the caller supplies the fully-built <paramref name="entry"/>).</summary>
     Task LogAsync(AuditEntry entry, CancellationToken ct = default);
 }
 

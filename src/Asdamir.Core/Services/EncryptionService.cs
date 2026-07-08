@@ -49,6 +49,13 @@ public class EncryptionService : IEncryptionService
 
     private readonly byte[] _key;
 
+    /// <summary>
+    /// Derives the 256-bit AES-GCM key at construction via PBKDF2-SHA256 (200k iterations) from
+    /// <c>Security:EncryptionKey</c>, salted by <c>Security:EncryptionSalt</c> when set (else a
+    /// deterministic salt derived from the passphrase). The key lives in memory only; never log it.
+    /// </summary>
+    /// <param name="configuration">Application configuration supplying the <c>Security:*</c> section.</param>
+    /// <exception cref="InvalidOperationException"><c>Security:EncryptionKey</c> is missing or shorter than 32 characters.</exception>
     public EncryptionService(IConfiguration configuration)
     {
         var encryptionKey = configuration["Security:EncryptionKey"]
@@ -82,6 +89,7 @@ public class EncryptionService : IEncryptionService
             outputLength: 32); // 256-bit key
     }
 
+    /// <inheritdoc/>
     public string Encrypt(string plainText)
     {
         if (string.IsNullOrEmpty(plainText))
@@ -103,6 +111,7 @@ public class EncryptionService : IEncryptionService
         return V2Prefix + Convert.ToBase64String(output);
     }
 
+    /// <inheritdoc/>
     public string Decrypt(string cipherText)
     {
         if (string.IsNullOrEmpty(cipherText))
@@ -173,6 +182,7 @@ public class EncryptionService : IEncryptionService
         return Encoding.UTF8.GetString(plainBytes);
     }
 
+    /// <inheritdoc/>
     public bool IsEncrypted(string text)
     {
         if (string.IsNullOrEmpty(text))

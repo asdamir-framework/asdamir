@@ -30,6 +30,11 @@ public class SecurityAnalysisController : ControllerBase
     private readonly SecurityCodeAnalyzer _analyzer;
     private readonly ILogger<SecurityAnalysisController> _logger;
 
+    /// <summary>
+    /// Creates the controller.
+    /// </summary>
+    /// <param name="analyzer">The analyzer invoked to (re)scan the process on each request.</param>
+    /// <param name="logger">Sink for request and failure logging.</param>
     public SecurityAnalysisController(SecurityCodeAnalyzer analyzer, ILogger<SecurityAnalysisController> logger)
     {
         _analyzer = analyzer;
@@ -37,8 +42,10 @@ public class SecurityAnalysisController : ControllerBase
     }
 
     /// <summary>
-    /// Run comprehensive security analysis
+    /// Runs a full security scan and returns the complete result, including the score, per-severity
+    /// summary, and every individual violation. Requires the admin-scoped authorization policy.
     /// </summary>
+    /// <returns><c>200 OK</c> with the full analysis payload, or <c>500</c> with a generic error message on failure (details are logged, not returned).</returns>
     [HttpPost("analyze")]
     public async Task<IActionResult> RunAnalysis()
     {
@@ -80,8 +87,10 @@ public class SecurityAnalysisController : ControllerBase
     }
 
     /// <summary>
-    /// Get security analysis summary
+    /// Runs a scan and returns only the headline figures — score, total and critical/high counts,
+    /// and a qualitative security level — without the individual violations.
     /// </summary>
+    /// <returns><c>200 OK</c> with the summary, or <c>500</c> with a generic error message on failure.</returns>
     [HttpGet("summary")]
     public async Task<IActionResult> GetSummary()
     {
@@ -107,8 +116,11 @@ public class SecurityAnalysisController : ControllerBase
     }
 
     /// <summary>
-    /// Get security violations by category
+    /// Runs a scan and returns only the violations belonging to the requested category
+    /// (case-insensitive match), along with a count.
     /// </summary>
+    /// <param name="category">The violation category to filter on (e.g. Authentication, Authorization, Configuration).</param>
+    /// <returns><c>200 OK</c> with the matching violations, or <c>500</c> with a generic error message on failure.</returns>
     [HttpGet("violations/{category}")]
     public async Task<IActionResult> GetViolationsByCategory(string category)
     {
@@ -142,8 +154,10 @@ public class SecurityAnalysisController : ControllerBase
     }
 
     /// <summary>
-    /// Get available violation categories
+    /// Runs a scan and returns the distinct violation categories present, each with its total plus
+    /// critical/high counts, ordered so the most severe categories come first.
     /// </summary>
+    /// <returns><c>200 OK</c> with the category breakdown, or <c>500</c> with a generic error message on failure.</returns>
     [HttpGet("categories")]
     public async Task<IActionResult> GetCategories()
     {

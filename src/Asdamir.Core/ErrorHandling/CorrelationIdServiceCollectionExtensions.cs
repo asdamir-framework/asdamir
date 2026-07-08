@@ -13,6 +13,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Asdamir.Core.ErrorHandling.Http;
 
+/// <summary>
+/// DI helpers that wire up correlation-id propagation — the scoped accessor/mutator plus the
+/// outbound forwarding handler — so requests stay traceable across service boundaries.
+/// </summary>
 public static class CorrelationIdServiceCollectionExtensions
 {
     /// <summary>
@@ -29,6 +33,8 @@ public static class CorrelationIdServiceCollectionExtensions
     /// (e.g. both <c>AddFrameworkSecurity</c> and an app's own setup) doesn't
     /// install two handler instances on every outbound HttpClient pipeline.
     /// </summary>
+    /// <param name="services">The service collection to register into.</param>
+    /// <returns>The same collection for chaining.</returns>
     public static IServiceCollection AddCorrelationIdAccessor(this IServiceCollection services)
     {
         services.TryAddScoped<ScopedCorrelationIdAccessor>();

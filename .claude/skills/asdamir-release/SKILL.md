@@ -5,11 +5,10 @@ description: Use when packaging/publishing the Asdamir NuGet packages or the CLI
 
 # Asdamir release / publish (manual — CI is off)
 
-Deep reference: `docs/RELEASE.md` (versioning, CHANGELOG, tagging), `docs/cli.md` → tool install, memory
-`2026-06-15-cli-tool-release-distribution` + `2026-06-15-publish-nuget-fix-and-sql-otel`.
+Deep reference: `CHANGELOG.md` (versioning + tagging conventions), `docs/cli.md` → tool install.
 
 **CI/GitHub Actions is disabled (cost)** — the old `pack` / `publish-nuget` jobs don't run. Pack and push
-yourself. (When CI is re-enabled, the tagging sequence in `docs/RELEASE.md` drives it automatically.)
+yourself. (When CI is re-enabled, the tagging sequence drives it automatically.)
 
 ## Pack
 ```bash
@@ -36,7 +35,7 @@ Produces `Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`, `Asdamir.Tools` `.nupkg`
 
 ## Version & changelog
 SemVer; pre-1.0 minors may break. Update `CHANGELOG.md` (`[Unreleased]` → `[0.X.0] - <date>`),
-then tag `v0.X.0`. Full checklist + rollback in `docs/RELEASE.md`.
+then tag `v0.X.0`.
 
 ## DON'T
 - **Don't push `Asdamir.Tools` to GitHub Packages** — it stalls. Use nuget.org or a Release asset.

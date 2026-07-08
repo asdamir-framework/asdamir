@@ -28,6 +28,12 @@ public class AuthorizationTokenService : IAuthorizationTokenService
     // right granularity — it still prevents concurrent refresh requests from the same circuit.
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthorizationTokenService"/> class.
+    /// </summary>
+    /// <param name="authState">The per-circuit authentication state holding the current tokens.</param>
+    /// <param name="httpClientFactory">Factory for the unauthenticated gateway client used to call the refresh endpoint.</param>
+    /// <param name="logger">Logger for token lifecycle diagnostics.</param>
     public AuthorizationTokenService(
         AuthState authState,
         IHttpClientFactory httpClientFactory,
@@ -38,6 +44,7 @@ public class AuthorizationTokenService : IAuthorizationTokenService
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task<bool> IsTokenExpiredOrExpiringAsync(int expirationThresholdMinutes = 5)
     {
         try
@@ -67,6 +74,7 @@ public class AuthorizationTokenService : IAuthorizationTokenService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<bool> TryRefreshTokenAsync()
     {
         // Prevent multiple simultaneous refresh attempts
@@ -132,6 +140,7 @@ public class AuthorizationTokenService : IAuthorizationTokenService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<DateTime?> GetTokenExpirationAsync()
     {
         try
@@ -159,6 +168,7 @@ public class AuthorizationTokenService : IAuthorizationTokenService
         }
     }
 
+    /// <inheritdoc/>
     public async Task<bool> IsStructurallyValidAsync()
     {
         // Client-side sanity check only — see interface XML doc.

@@ -35,7 +35,10 @@ public class RouteAuthorizationMiddleware : ComponentBase, IDisposable
     [Inject] private AuthState AuthState { get; set; } = default!;
     [Inject] private ClientInfoService? ClientInfoService { get; set; }
 
+    /// <summary>The protected content rendered only after the route passes the authorization check.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The routed component's type, inspected for <c>AllowAnonymous</c> / <c>AuthorizePage</c> metadata to decide required permissions/roles.</summary>
     [Parameter] public Type? RouteComponentType { get; set; }
 
     private bool _isChecking = true; // Start as checking to avoid flash
@@ -47,12 +50,14 @@ public class RouteAuthorizationMiddleware : ComponentBase, IDisposable
     private DateTime _lastAuditTime = DateTime.MinValue;
     private Guid _currentCheckId = Guid.Empty;
 
+    /// <inheritdoc/>
     protected override void OnInitialized()
     {
         // Register for location changes to perform checks on navigation
         Navigation.LocationChanged += OnLocationChanged;
     }
 
+    /// <inheritdoc/>
     protected override async Task OnParametersSetAsync()
     {
         // Check authorization when parameters are set (including route changes)
@@ -563,6 +568,7 @@ public class RouteAuthorizationMiddleware : ComponentBase, IDisposable
         }
     }
 
+    /// <inheritdoc/>
     protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
     {
         // Show content only if authorized
@@ -579,6 +585,7 @@ public class RouteAuthorizationMiddleware : ComponentBase, IDisposable
         // If not authorized and not checking, do nothing (redirect already happened)
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;

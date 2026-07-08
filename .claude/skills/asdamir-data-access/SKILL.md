@@ -6,8 +6,7 @@ description: Use when writing data-access code (Dapper repositories/stores, DB c
 # Asdamir data access (Dapper) + tenancy scoping
 
 Deep reference: `docs/fundamentals/data-access.md`, `docs/fundamentals/multi-tenancy.md`,
-`docs/design/multi-company-management.md`, memory `2026-06-15-ui-health-probes-and-flaky-test`
-(InMemory isolation), `CLAUDE.md` → Layered + CENTRAL rules + Persistence switch.
+`CLAUDE.md` → Layered + CENTRAL rules + Persistence switch.
 
 ## Open connections via the factory — never `new SqlConnection`
 There is **ONE canonical interface — `Asdamir.Core.Contracts.IDbConnectionFactory`** (the former duplicate

@@ -54,15 +54,27 @@ public class AuthorizePageAttribute : Attribute
     /// </summary>
     public string AccessDeniedPath { get; set; } = "/access-denied";
 
+    /// <summary>
+    /// Initializes the attribute with no specific requirement (authentication only).
+    /// </summary>
     public AuthorizePageAttribute()
     {
     }
 
+    /// <summary>
+    /// Initializes the attribute requiring a single permission.
+    /// </summary>
+    /// <param name="requiredPermission">The permission the user must hold to access the page.</param>
     public AuthorizePageAttribute(string requiredPermission)
     {
         RequiredPermission = requiredPermission;
     }
 
+    /// <summary>
+    /// Initializes the attribute requiring a set of permissions.
+    /// </summary>
+    /// <param name="requiredPermissions">The permissions to evaluate.</param>
+    /// <param name="requireAll"><c>true</c> to require all permissions (AND); <c>false</c> to require any (OR).</param>
     public AuthorizePageAttribute(string[] requiredPermissions, bool requireAll = true)
     {
         RequiredPermissions = requiredPermissions;

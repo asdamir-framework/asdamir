@@ -35,6 +35,12 @@ public class BearerHandler : DelegatingHandler
     private readonly CorrelationIdProvider _correlation;
     private readonly ILogger<BearerHandler> _logger;
 
+    /// <summary>
+    /// Initializes the handler with the accessors needed to resolve the token and correlation id.
+    /// </summary>
+    /// <param name="httpContextAccessor">Accessor used to resolve the circuit id and stored access token.</param>
+    /// <param name="correlation">Provider that supplies (or creates) the correlation id header.</param>
+    /// <param name="logger">Logger for token, correlation and refresh diagnostics.</param>
     public BearerHandler(
         IHttpContextAccessor httpContextAccessor,
         CorrelationIdProvider correlation,
@@ -45,6 +51,7 @@ public class BearerHandler : DelegatingHandler
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var httpContext = _httpContextAccessor.HttpContext;

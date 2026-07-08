@@ -10,9 +10,24 @@
 
 namespace Asdamir.Web.Security.Services;
 
+/// <summary>
+/// Drives the forgot/reset-password flow from the UI tier by calling the Gateway. Reset tokens are
+/// single-use and time-limited: a token is issued on request, validated before the form is shown, and
+/// consumed when the new password is set.
+/// </summary>
 public interface IPasswordResetService
 {
+    /// <summary>Requests a password-reset email for the given address (does not reveal whether the account exists).</summary>
+    /// <param name="email">The account email to send the reset link to.</param>
+    /// <returns>Success flag and a user-facing message describing the outcome.</returns>
     Task<(bool Success, string Message)> RequestPasswordResetAsync(string email);
+    /// <summary>Checks whether a reset token is still valid (unused and unexpired) before presenting the reset form.</summary>
+    /// <param name="token">The reset token from the emailed link.</param>
+    /// <returns>Validity flag and, when valid, the associated account email.</returns>
     Task<(bool IsValid, string? Email)> ValidateResetTokenAsync(string token);
+    /// <summary>Consumes a valid reset token to set a new password; the token cannot be reused afterwards.</summary>
+    /// <param name="token">The single-use reset token.</param>
+    /// <param name="newPassword">The new password to apply.</param>
+    /// <returns>Success flag and a user-facing message describing the outcome.</returns>
     Task<(bool Success, string Message)> ResetPasswordAsync(string token, string newPassword);
 }

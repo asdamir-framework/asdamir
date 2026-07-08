@@ -10,14 +10,26 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>
+/// Aggregate counters for the Hangfire dashboard: how many background jobs currently sit in each
+/// state, for at-a-glance queue health.
+/// </summary>
 public class JobStatistics
 {
+    /// <summary>Jobs queued and waiting for a worker to pick them up.</summary>
     public int Enqueued { get; set; }
+    /// <summary>Jobs that ended in failure after exhausting retries.</summary>
     public int Failed { get; set; }
+    /// <summary>Jobs currently being executed by a worker.</summary>
     public int Processing { get; set; }
+    /// <summary>Jobs that completed successfully.</summary>
     public int Succeeded { get; set; }
+    /// <summary>Jobs scheduled to run at a future time.</summary>
     public int Scheduled { get; set; }
+    /// <summary>Jobs that have been deleted/discarded.</summary>
     public int Deleted { get; set; }
+    /// <summary>Jobs awaiting a parent/continuation to finish before they run.</summary>
     public int Awaiting { get; set; }
+    /// <summary>Jobs failed once and queued for an automatic retry.</summary>
     public int Retry { get; set; }
 }

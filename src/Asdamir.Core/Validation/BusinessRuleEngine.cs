@@ -20,19 +20,34 @@ namespace Asdamir.Core.Validation;
 /// </summary>
 public abstract class BusinessRuleBase<T> : IBusinessRule
 {
+    /// <summary>Stable, unique identifier of the rule; the engine dedups and looks rules up by this value, so it must be constant per rule type.</summary>
     public abstract string Name { get; }
+    /// <summary>Human-readable explanation of what the rule enforces (diagnostics / composite-rule descriptions).</summary>
     public abstract string Description { get; }
+    /// <summary>When <c>true</c>, a failure of this rule short-circuits the remaining rules in an evaluation pass. Defaults to non-critical.</summary>
     public virtual bool IsCritical => false;
+    /// <summary>Ordering weight; the engine evaluates applicable rules ascending by priority (lower runs first). Defaults to 0.</summary>
     public virtual int Priority => 0;
 
+    /// <summary>Type-parameter overload of <c>AppliesTo(Type)</c> — reports whether this rule targets <typeparamref name="TEntity"/>.</summary>
+    /// <typeparam name="TEntity">Candidate entity type.</typeparam>
+    /// <returns><c>true</c> if the rule applies to <typeparamref name="TEntity"/>.</returns>
     public bool AppliesTo<TEntity>() => AppliesTo(typeof(TEntity));
 
+    /// <summary>Determines whether the rule applies to the given entity type — matches <typeparamref name="T"/> exactly or any subclass of it.</summary>
+    /// <param name="entityType">The runtime entity type being evaluated.</param>
+    /// <returns><c>true</c> if <paramref name="entityType"/> is <typeparamref name="T"/> or derives from it.</returns>
     public bool AppliesTo(Type entityType)
     {
         if (entityType == typeof(T)) return true;
         return entityType.IsSubclassOf(typeof(T));
     }
 
+    /// <summary>Non-generic entry point: casts the untyped entity to <typeparamref name="T"/> and delegates to <see cref="EvaluateTypedAsync"/>; a type mismatch yields a failure result rather than an exception.</summary>
+    /// <param name="entity">The subject to evaluate (must be assignable to <typeparamref name="T"/>).</param>
+    /// <param name="context">Ambient data available to the rule during evaluation.</param>
+    /// <param name="cancellationToken">Cancels the evaluation.</param>
+    /// <returns>The typed rule's outcome, or a failure when <paramref name="entity"/> is not a <typeparamref name="T"/>.</returns>
     public async Task<BusinessRuleResult> EvaluateAsync(object entity, IValidationContext context, CancellationToken cancellationToken = default)
     {
         if (entity is T typedEntity)
@@ -43,6 +58,11 @@ public abstract class BusinessRuleBase<T> : IBusinessRule
         return BusinessRuleResult.Failure($"Entity type {entity.GetType().Name} is not compatible with rule {Name}");
     }
 
+    /// <summary>The strongly-typed rule body that derived rules implement; invoked only after the entity has been verified to be a <typeparamref name="T"/>.</summary>
+    /// <param name="entity">The already type-checked subject.</param>
+    /// <param name="context">Ambient data available to the rule during evaluation.</param>
+    /// <param name="cancellationToken">Cancels the evaluation.</param>
+    /// <returns>The rule's success/failure outcome.</returns>
     protected abstract Task<BusinessRuleResult> EvaluateTypedAsync(T entity, IValidationContext context, CancellationToken cancellationToken);
 }
 
@@ -54,7 +74,7 @@ public abstract class BusinessRuleBase<T> : IBusinessRule
 ///    every consumer. <c>RegisterRule</c> mutated it without synchronization while
 ///    <c>EvaluateAsync</c> iterated → InvalidOperationException ("Collection was
 ///    modified") under load. Now an <c>ImmutableArray&lt;IBusinessRule&gt;</c> swapped
-///    atomically via <see cref="Interlocked.Exchange"/>.
+///    atomically via <c>Interlocked.Exchange</c>.
 ///  - <c>RegisterRule</c> had no dedup — registering the same rule twice executed
 ///    it twice. Dedup is now by <c>rule.Name</c>.
 ///  - Catch-all in <c>EvaluateAsync</c> overwrote prior results with the LATEST
@@ -66,6 +86,9 @@ public class BusinessRuleEngine : IBusinessRuleEngine
     private readonly IServiceProvider _serviceProvider;
     private System.Collections.Immutable.ImmutableArray<IBusinessRule> _businessRules;
 
+    /// <summary>Creates the engine and seeds it with the DI-registered rules, deduping by <see cref="IBusinessRule.Name"/> so a rule registered under two interfaces runs only once.</summary>
+    /// <param name="serviceProvider">Root provider used to resolve additional rules on demand.</param>
+    /// <param name="businessRules">The rules discovered via DI; duplicates by name are collapsed to the first occurrence.</param>
     public BusinessRuleEngine(IServiceProvider serviceProvider, IEnumerable<IBusinessRule> businessRules)
     {
         _serviceProvider = serviceProvider;
@@ -77,6 +100,9 @@ public class BusinessRuleEngine : IBusinessRuleEngine
             .ToImmutableArray();
     }
 
+    /// <summary>Adds a rule at runtime (idempotent — skipped if a rule with the same <see cref="IBusinessRule.Name"/> is already present); the immutable rule array is swapped via a lock-free CAS so concurrent evaluations are never disturbed.</summary>
+    /// <typeparam name="T">Present for API symmetry; the rule's own <c>AppliesTo</c> governs which entities it targets.</typeparam>
+    /// <param name="rule">The rule to add.</param>
     public void RegisterRule<T>(IBusinessRule rule) where T : class
     {
         // Audit fix v2: ImmutableArray<T> is a struct, so System.Threading.Interlocked.CompareExchange<T>
@@ -92,11 +118,20 @@ public class BusinessRuleEngine : IBusinessRuleEngine
         }, rule);
     }
 
+    /// <summary>Returns the currently registered rules that apply to <typeparamref name="T"/>, in registration order (unordered by priority).</summary>
+    /// <typeparam name="T">Entity type to filter rules by.</typeparam>
+    /// <returns>Lazily filtered sequence of applicable rules.</returns>
     public IEnumerable<IBusinessRule> GetRulesFor<T>() where T : class
     {
         return _businessRules.Where(rule => rule.AppliesTo<T>());
     }
 
+    /// <summary>Runs every applicable rule against the entity in ascending priority order and merges all outcomes into one aggregate result; a failing critical rule stops the pass early. Iterates an immutable snapshot, so concurrent registration is safe.</summary>
+    /// <typeparam name="T">Type of the entity being validated.</typeparam>
+    /// <param name="entity">The subject to evaluate.</param>
+    /// <param name="context">Ambient data available to the rules.</param>
+    /// <param name="cancellationToken">Cancels the evaluation.</param>
+    /// <returns>A combined result; failures (including those raised as exceptions) from all evaluated rules are merged, not overwritten.</returns>
     public async Task<BusinessRuleResult> EvaluateAsync<T>(T entity, IValidationContext context, CancellationToken cancellationToken = default) where T : class
     {
         var result = BusinessRuleResult.Success();
@@ -130,6 +165,13 @@ public class BusinessRuleEngine : IBusinessRuleEngine
         return result;
     }
 
+    /// <summary>Evaluates a single named rule against the entity; returns a failure result (never throws) when the rule is unknown, does not apply to <typeparamref name="T"/>, or itself throws.</summary>
+    /// <typeparam name="T">Type of the entity being validated.</typeparam>
+    /// <param name="ruleName">The <see cref="IBusinessRule.Name"/> of the rule to run.</param>
+    /// <param name="entity">The subject to evaluate.</param>
+    /// <param name="context">Ambient data available to the rule.</param>
+    /// <param name="cancellationToken">Cancels the evaluation.</param>
+    /// <returns>The rule's outcome, or a failure describing why it could not run.</returns>
     public async Task<BusinessRuleResult> EvaluateRuleAsync<T>(string ruleName, T entity, IValidationContext context, CancellationToken cancellationToken = default) where T : class
     {
         var rule = _businessRules.FirstOrDefault(r => r.Name == ruleName);
@@ -162,12 +204,20 @@ public class BusinessRuleFactory : IBusinessRuleFactory
     private readonly IServiceProvider _serviceProvider;
     private readonly IEnumerable<IBusinessRule> _registeredRules;
 
+    /// <summary>Creates the factory over the DI-registered rule set, keeping the provider for on-demand resolution of rules not in that set.</summary>
+    /// <param name="serviceProvider">Provider used to resolve rules that are registered but not pre-materialized.</param>
+    /// <param name="registeredRules">The eagerly materialized rules to search first.</param>
     public BusinessRuleFactory(IServiceProvider serviceProvider, IEnumerable<IBusinessRule> registeredRules)
     {
         _serviceProvider = serviceProvider;
         _registeredRules = registeredRules;
     }
 
+    /// <summary>Resolves a rule by name that applies to <typeparamref name="T"/>, checking the pre-materialized set first, then falling back to a fresh DI lookup.</summary>
+    /// <typeparam name="T">Entity type the rule must apply to.</typeparam>
+    /// <param name="ruleName">The <see cref="IBusinessRule.Name"/> to find.</param>
+    /// <returns>The matching rule instance.</returns>
+    /// <exception cref="ArgumentException">No registered rule with that name applies to <typeparamref name="T"/>.</exception>
     public IBusinessRule CreateRule<T>(string ruleName) where T : class
     {
         var fromRegistry = _registeredRules.FirstOrDefault(r => r.Name == ruleName && r.AppliesTo(typeof(T)));
@@ -181,6 +231,12 @@ public class BusinessRuleFactory : IBusinessRuleFactory
         throw new ArgumentException($"Unknown or incompatible business rule: {ruleName}");
     }
 
+    /// <summary>Builds a <see cref="CompositeBusinessRule"/> that bundles the named child rules under a single name/description; child rules are resolved via <c>CreateRule</c>.</summary>
+    /// <param name="name">Name for the composite rule.</param>
+    /// <param name="description">Description for the composite rule.</param>
+    /// <param name="ruleNames">Names of the child rules to include; at least one is required.</param>
+    /// <returns>A composite rule that evaluates all resolved children.</returns>
+    /// <exception cref="ArgumentException">No rule names were supplied, or a named child rule could not be resolved.</exception>
     public IBusinessRule CreateCompositeRule(string name, string description, params string[] ruleNames)
     {
         var rules = ruleNames.Select(rn => CreateRule<object>(rn)).ToArray();
@@ -199,11 +255,21 @@ public class CompositeBusinessRule : IBusinessRule
 {
     private readonly IBusinessRule[] _rules;
 
+    /// <summary>Name of the composite as a whole.</summary>
     public string Name { get; }
+    /// <summary>Human-readable description of what the bundled rules collectively enforce.</summary>
     public string Description { get; }
+    /// <summary>When <c>true</c>, a failure of the composite short-circuits an outer evaluation pass (does not affect iteration of its own children).</summary>
     public bool IsCritical { get; }
+    /// <summary>Ordering weight of the composite within an engine's evaluation pass (lower runs first).</summary>
     public int Priority { get; }
 
+    /// <summary>Creates a composite rule that fans an evaluation out to the supplied child rules.</summary>
+    /// <param name="name">Name of the composite.</param>
+    /// <param name="description">Description of the composite.</param>
+    /// <param name="rules">The child rules to evaluate.</param>
+    /// <param name="isCritical">Whether a failure of this composite should short-circuit an outer pass.</param>
+    /// <param name="priority">Ordering weight of the composite.</param>
     public CompositeBusinessRule(string name, string description, IBusinessRule[] rules, bool isCritical = false, int priority = 0)
     {
         Name = name;
@@ -213,13 +279,24 @@ public class CompositeBusinessRule : IBusinessRule
         Priority = priority;
     }
 
+    /// <summary>Type-parameter overload of <c>AppliesTo(Type)</c> — the composite applies if any child rule applies to <typeparamref name="T"/>.</summary>
+    /// <typeparam name="T">Candidate entity type.</typeparam>
+    /// <returns><c>true</c> if at least one child rule applies to <typeparamref name="T"/>.</returns>
     public bool AppliesTo<T>() => AppliesTo(typeof(T));
 
+    /// <summary>The composite applies to a type when any of its child rules applies to that type.</summary>
+    /// <param name="entityType">The runtime entity type being evaluated.</param>
+    /// <returns><c>true</c> if at least one child rule applies to <paramref name="entityType"/>.</returns>
     public bool AppliesTo(Type entityType)
     {
         return _rules.Any(rule => rule.AppliesTo(entityType));
     }
 
+    /// <summary>Evaluates each applicable child rule against the entity and merges their outcomes; a failing critical child stops the remaining children.</summary>
+    /// <param name="entity">The subject to evaluate.</param>
+    /// <param name="context">Ambient data available to the child rules.</param>
+    /// <param name="cancellationToken">Cancels the evaluation.</param>
+    /// <returns>The merged outcome of all evaluated child rules.</returns>
     public async Task<BusinessRuleResult> EvaluateAsync(object entity, IValidationContext context, CancellationToken cancellationToken = default)
     {
         var result = new BusinessRuleResult();
@@ -241,12 +318,17 @@ public class CompositeBusinessRule : IBusinessRule
 }
 
 // Example business rule implementations
+/// <summary>Sample critical rule sketching a customer credit-limit check; ships as a stub returning success — replace the body with real domain logic.</summary>
 public class CreditLimitRule : BusinessRuleBase<object>
 {
+    /// <inheritdoc/>
     public override string Name => "CreditLimitRule";
+    /// <inheritdoc/>
     public override string Description => "Validates that order does not exceed customer credit limit";
+    /// <inheritdoc/>
     public override bool IsCritical => true;
 
+    /// <inheritdoc/>
     protected override async Task<BusinessRuleResult> EvaluateTypedAsync(object entity, IValidationContext context, CancellationToken cancellationToken)
     {
         // Example implementation - replace with actual business logic
@@ -255,11 +337,15 @@ public class CreditLimitRule : BusinessRuleBase<object>
     }
 }
 
+/// <summary>Sample rule sketching an inventory-availability check; ships as a stub returning success — replace the body with real domain logic.</summary>
 public class InventoryAvailabilityRule : BusinessRuleBase<object>
 {
+    /// <inheritdoc/>
     public override string Name => "InventoryAvailabilityRule";
+    /// <inheritdoc/>
     public override string Description => "Validates that requested items are available in inventory";
 
+    /// <inheritdoc/>
     protected override async Task<BusinessRuleResult> EvaluateTypedAsync(object entity, IValidationContext context, CancellationToken cancellationToken)
     {
         // Example implementation - replace with actual business logic
@@ -268,11 +354,15 @@ public class InventoryAvailabilityRule : BusinessRuleBase<object>
     }
 }
 
+/// <summary>Sample rule enforcing that an operation runs during 9 AM–5 PM local server time; a working example (not a stub) of a non-critical rule.</summary>
 public class BusinessHoursRule : BusinessRuleBase<object>
 {
+    /// <inheritdoc/>
     public override string Name => "BusinessHoursRule";
+    /// <inheritdoc/>
     public override string Description => "Validates that operations are performed during business hours";
 
+    /// <inheritdoc/>
     protected override Task<BusinessRuleResult> EvaluateTypedAsync(object entity, IValidationContext context, CancellationToken cancellationToken)
     {
         var currentHour = DateTime.Now.Hour;

@@ -18,12 +18,15 @@ namespace Asdamir.Data.Outbox;
 /// </summary>
 public sealed class SmsDispatcher : IOutboxDispatcher
 {
+    /// <inheritdoc/>
     public byte MessageType => 1; // SMS
 
     private readonly ILogger<SmsDispatcher> _logger;
 
+    /// <summary>Creates the logs-only SMS dispatcher (the stub provider).</summary>
     public SmsDispatcher(ILogger<SmsDispatcher> logger) => _logger = logger;
 
+    /// <inheritdoc/>
     public Task DispatchAsync(ClaimedOutboxMessage message, CancellationToken ct)
     {
         _logger.LogInformation("SmsDispatcher (stub) would send to {Phone}: {Body}", message.Destination, message.Body);

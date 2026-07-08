@@ -13,15 +13,26 @@ using System.Text.Json;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>
+/// Default <c>IAppLogService</c> — persists structured log rows to the <c>dbo.AppLog</c> DB sink
+/// (AppId-scoped) via <c>IAppLogRepository</c>. This is the operator channel of the two-channel
+/// error model: full technical detail (level, source, serialized properties, exception dump) goes
+/// here for operators, never to end-users. Convenience level methods (<c>LogErrorAsync</c>,
+/// <c>LogWarningAsync</c>, …) funnel through the core <c>LogAsync</c>; exception details are
+/// captured as a nested property object.
+/// </summary>
 public class AppLogService : IAppLogService
 {
     private readonly IAppLogRepository _repository;
 
+    /// <summary>Creates the service over the <c>dbo.AppLog</c>-backed repository that persists each entry.</summary>
+    /// <param name="repository">Repository that writes log rows to the <c>dbo.AppLog</c> sink.</param>
     public AppLogService(IAppLogRepository repository)
     {
         _repository = repository;
     }
 
+    /// <inheritdoc/>
     public async Task LogAsync(string level, string message, string? source = null, Dictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
         var request = new AppLogCreateRequest
@@ -35,10 +46,11 @@ public class AppLogService : IAppLogService
         await _repository.CreateAsync(request);
     }
 
+    /// <inheritdoc/>
     public async Task LogErrorAsync(string message, Exception? exception = null, string? source = null, Dictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
         var errorProperties = new Dictionary<string, object>();
-        
+
         if (exception != null)
         {
             errorProperties["Exception"] = new
@@ -61,16 +73,19 @@ public class AppLogService : IAppLogService
         await LogAsync("Error", message, source, errorProperties, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task LogWarningAsync(string message, string? source = null, Dictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
         await LogAsync("Warning", message, source, properties, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task LogInformationAsync(string message, string? source = null, Dictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
         await LogAsync("Information", message, source, properties, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task LogCriticalAsync(string message, Exception? exception = null, string? source = null, Dictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
         var errorProperties = new Dictionary<string, object>();
@@ -97,11 +112,13 @@ public class AppLogService : IAppLogService
         await LogAsync("Critical", message, source, errorProperties, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task LogDebugAsync(string message, string? source = null, Dictionary<string, object>? properties = null, CancellationToken cancellationToken = default)
     {
         await LogAsync("Debug", message, source, properties, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task LogErrorWithDetailsAsync(string message, Exception? exception = null, string? source = null, Dictionary<string, object>? properties = null, string? errorKey = null, string? userLanguage = null, CancellationToken cancellationToken = default)
     {
         var request = AppLogCreateRequest.CreateError(message, exception, source, properties, errorKey, userLanguage);

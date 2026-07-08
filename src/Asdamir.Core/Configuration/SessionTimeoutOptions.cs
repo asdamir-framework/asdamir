@@ -20,6 +20,7 @@ namespace Asdamir.Core.Configuration;
 /// </summary>
 public sealed class SessionTimeoutOptions
 {
+    /// <summary>Configuration section name these options bind from (<c>Session</c>).</summary>
     public const string Section = "Session";
 
     /// <summary>Inactivity window (seconds) before the timeout warning appears. Default 5 min.</summary>

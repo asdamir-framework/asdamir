@@ -27,6 +27,11 @@ public class SecurityCodeAnalyzer
     private readonly IServiceProvider _serviceProvider;
     private readonly List<SecurityViolation> _violations = new();
 
+    /// <summary>
+    /// Creates the analyzer.
+    /// </summary>
+    /// <param name="logger">Sink for analysis progress and for surfacing detected violations.</param>
+    /// <param name="serviceProvider">Runtime service provider inspected to determine which security services, configuration, and middleware are actually registered.</param>
     public SecurityCodeAnalyzer(ILogger<SecurityCodeAnalyzer> logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
@@ -34,8 +39,13 @@ public class SecurityCodeAnalyzer
     }
 
     /// <summary>
-    /// Perform comprehensive security analysis
+    /// Runs the full battery of checks (authentication, controller/component authorization,
+    /// configuration, dependency injection, and middleware) against the running process and
+    /// returns a fresh, aggregated result. Each call clears prior findings, so the result
+    /// reflects only this run. Never throws for a failed individual check — per-area errors are
+    /// logged as warnings and the scan continues.
     /// </summary>
+    /// <returns>The aggregated findings, severity counts, elapsed time, and computed security score.</returns>
     public async Task<SecurityAnalysisResult> AnalyzeAsync()
     {
         _violations.Clear();
@@ -448,32 +458,76 @@ public class SecurityCodeAnalyzer
     }
 }
 
+/// <summary>
+/// Aggregated outcome of a single <c>AnalyzeAsync</c> run: the full list of findings, per-severity
+/// counts, how long the scan took, and the derived security score.
+/// </summary>
 public class SecurityAnalysisResult
 {
+    /// <summary>Total number of violations detected across every category.</summary>
     public int TotalViolations { get; set; }
+
+    /// <summary>Count of <see cref="SecuritySeverity.Critical"/> violations — exploitable weaknesses that demand immediate action (e.g. weak DB password, missing authentication).</summary>
     public int CriticalViolations { get; set; }
+
+    /// <summary>Count of <see cref="SecuritySeverity.High"/> violations — serious gaps such as an unauthorized controller or a missing rate limit on an auth endpoint.</summary>
     public int HighViolations { get; set; }
+
+    /// <summary>Count of <see cref="SecuritySeverity.Medium"/> violations — hardening gaps worth fixing but not immediately exploitable.</summary>
     public int MediumViolations { get; set; }
+
+    /// <summary>Count of <see cref="SecuritySeverity.Low"/> violations — advisory findings and best-practice reminders.</summary>
     public int LowViolations { get; set; }
+
+    /// <summary>The individual findings, each with its code, title, description, severity, and category.</summary>
     public List<SecurityViolation> Violations { get; set; } = new();
+
+    /// <summary>Wall-clock time the analysis took to complete.</summary>
     public TimeSpan AnalysisTime { get; set; }
+
+    /// <summary>Overall score from 0 (worst) to 100 (clean), reduced per finding weighted by severity.</summary>
     public int SecurityScore { get; set; }
 }
 
+/// <summary>
+/// A single security finding produced by the analyzer, describing one detected weakness.
+/// </summary>
 public class SecurityViolation
 {
+    /// <summary>Stable machine-readable identifier for the rule that fired (e.g. <c>AUTH001</c>, <c>CTRL003</c>, <c>CFG001</c>).</summary>
     public string Code { get; set; } = "";
+
+    /// <summary>Short human-readable headline for the finding.</summary>
     public string Title { get; set; } = "";
+
+    /// <summary>Detailed explanation of the weakness and the recommended remediation.</summary>
     public string Description { get; set; } = "";
+
+    /// <summary>How serious the finding is; drives alerting and the score deduction.</summary>
     public SecuritySeverity Severity { get; set; }
+
+    /// <summary>The area the finding belongs to (e.g. Authentication, Authorization, Configuration, Rate Limiting).</summary>
     public string Category { get; set; } = "";
+
+    /// <summary>UTC timestamp at which the finding was detected during the scan.</summary>
     public DateTime DetectedAt { get; set; }
 }
 
+/// <summary>
+/// Severity ranking of a <see cref="SecurityViolation"/>, ordered from least to most serious.
+/// The numeric values are ascending so a higher value means a more severe finding.
+/// </summary>
 public enum SecuritySeverity
 {
+    /// <summary>Advisory / best-practice finding; minimal risk. Deducts the least from the score.</summary>
     Low = 1,
+
+    /// <summary>Hardening gap worth fixing but not immediately exploitable.</summary>
     Medium = 2,
+
+    /// <summary>Serious weakness that could enable unauthorized access or abuse.</summary>
     High = 3,
+
+    /// <summary>Exploitable weakness requiring immediate remediation; triggers critical alerting.</summary>
     Critical = 4
 }

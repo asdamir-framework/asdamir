@@ -16,6 +16,14 @@ namespace Asdamir.Web.UI.Services;
 /// </summary>
 public interface IComponentLocalizer
 {
+    /// <summary>Resolves the localized string for the given resource key.</summary>
+    /// <param name="key">The localization resource key.</param>
+    /// <returns>The localized value, or the key itself when no translation exists.</returns>
     string this[string key] { get; }
+
+    /// <summary>Resolves the localized string for the given key and formats it with the supplied arguments.</summary>
+    /// <param name="key">The localization resource key (a composite/format string).</param>
+    /// <param name="arguments">Values substituted into the format placeholders.</param>
+    /// <returns>The formatted localized value, or the key itself when no translation exists.</returns>
     string this[string key, params object[] arguments] { get; }
 }

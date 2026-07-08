@@ -40,6 +40,13 @@ public class GlobalExceptionMiddleware
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
     private readonly IProblemDetailsMapper _mapper;
 
+    /// <summary>
+    /// Captures the pipeline continuation and resolves the <see cref="IProblemDetailsMapper"/> up front,
+    /// so a missing or misconfigured mapper fails fast at startup rather than while handling a live error.
+    /// </summary>
+    /// <param name="next">The next middleware in the request pipeline.</param>
+    /// <param name="logger">Sink for the full, operator-facing error record (flows to Console + File + DB).</param>
+    /// <param name="mapper">Maps an exception to its status code, stable error code, and base ProblemDetails.</param>
     public GlobalExceptionMiddleware(
         RequestDelegate next,
         ILogger<GlobalExceptionMiddleware> logger,
@@ -50,6 +57,13 @@ public class GlobalExceptionMiddleware
         _mapper = mapper;
     }
 
+    /// <summary>
+    /// Runs the rest of the pipeline and, on any unhandled exception, logs the full error for operators
+    /// and writes a localized <c>application/problem+json</c> response to the caller instead of letting
+    /// the exception escape as a bare 500.
+    /// </summary>
+    /// <param name="context">The current request context; its aborted token and culture drive handling.</param>
+    /// <returns>A task that completes once the request — or its error response — has been written.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
         try

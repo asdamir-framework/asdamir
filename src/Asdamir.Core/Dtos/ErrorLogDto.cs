@@ -10,16 +10,27 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>Full detail of a single logged error (dbo.AppLog row) shown in the drill-down/export view for operators.</summary>
 public class ErrorLogDto
 {
+    /// <summary>Primary key of the AppLog row.</summary>
     public int Id { get; set; }
+    /// <summary>Severity level of the entry (e.g. "Error", "Warning").</summary>
     public string Level { get; set; } = "";
+    /// <summary>Operator-facing error text (the full logged message, not the end-user's localized one).</summary>
     public string Message { get; set; } = "";
+    /// <summary>Originating app/component that raised the error.</summary>
     public string Source { get; set; } = "";
+    /// <summary>UTC time the error was logged.</summary>
     public DateTime Timestamp { get; set; }
+    /// <summary>Whether an operator has marked this error resolved.</summary>
     public bool IsResolved { get; set; }
+    /// <summary>Id of the operator/user in whose context the error occurred; null if none.</summary>
     public int? UserId { get; set; }
+    /// <summary>Correlation id tying this entry to a request/trace; null if not captured.</summary>
     public string? CorrelationId { get; set; }
+    /// <summary>Full exception stack trace; null when the entry carries no exception.</summary>
     public string? StackTrace { get; set; }
+    /// <summary>Structured Serilog properties captured with the entry (e.g. ErrorKey, CaughtBy, AppId).</summary>
     public Dictionary<string, object> Properties { get; set; } = new();
 }

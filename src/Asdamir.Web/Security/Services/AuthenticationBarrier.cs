@@ -28,17 +28,24 @@ public class AuthenticationBarrier
     private TaskCompletionSource<bool> _tcs;
     private volatile bool _isReady;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthenticationBarrier"/> class in the not-ready state.
+    /// </summary>
+    /// <param name="logger">Optional logger for barrier lifecycle diagnostics.</param>
     public AuthenticationBarrier(ILogger<AuthenticationBarrier>? logger = null)
     {
         _logger = logger;
         _tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
+    /// <summary>Gets a value indicating whether the barrier has been released (authentication is ready).</summary>
     public bool IsReady => _isReady;
 
     /// <summary>
     /// Waits until <see cref="SetReady"/> is called. Returns immediately if already ready.
     /// </summary>
+    /// <param name="cancellationToken">Token that cancels the wait; a <see cref="Reset"/> also cancels in-flight waiters.</param>
+    /// <returns>A task that completes when the barrier is released, or is cancelled.</returns>
     public async Task WaitForReadyAsync(CancellationToken cancellationToken = default)
     {
         if (_isReady)

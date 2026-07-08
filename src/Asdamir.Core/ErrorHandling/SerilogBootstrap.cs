@@ -42,6 +42,11 @@ public static class SerilogBootstrap
     private const string DefaultConsoleTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}";
     private const string DefaultFileTemplate = "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}";
 
+    /// <summary>
+    /// Installs the global <see cref="Log.Logger"/> with Console + File sinks at Information level and the
+    /// secret-redaction enricher — the baseline pipeline when neither dev nor prod tuning is wanted.
+    /// </summary>
+    /// <param name="customize">Optional hook to extend the configuration (e.g. add a sink) before it is built.</param>
     public static void UseDefault(Action<LoggerConfiguration>? customize = null)
     {
         var config = BuildBaseConfig(LogEventLevel.Information);
@@ -50,6 +55,11 @@ public static class SerilogBootstrap
         Log.Logger = config.CreateLogger();
     }
 
+    /// <summary>
+    /// Installs the global logger tuned for development: Debug-level verbosity and a <c>dev-</c> file prefix,
+    /// built once so log lines are not duplicated (the v1 double-sink bug).
+    /// </summary>
+    /// <param name="customize">Optional hook to extend the configuration before it is built.</param>
     public static void UseDevelopment(Action<LoggerConfiguration>? customize = null)
     {
         var config = BuildBaseConfig(LogEventLevel.Debug);
@@ -58,6 +68,11 @@ public static class SerilogBootstrap
         Log.Logger = config.CreateLogger();
     }
 
+    /// <summary>
+    /// Installs the global logger tuned for production: Information level (so login/audit/business events
+    /// survive, unlike the v1 Warning floor) with a <c>prod-</c> file prefix and framework noise filtered out.
+    /// </summary>
+    /// <param name="customize">Optional hook to extend the configuration before it is built.</param>
     public static void UseProduction(Action<LoggerConfiguration>? customize = null)
     {
         var config = BuildBaseConfig(LogEventLevel.Information);
@@ -66,6 +81,12 @@ public static class SerilogBootstrap
         Log.Logger = config.CreateLogger();
     }
 
+    /// <summary>
+    /// Installs the global logger with Console + File sinks and, when <c>LOG_DB_CONNECTION</c> is set and
+    /// <c>LOG_TARGET</c> is <c>database</c>/<c>all</c>, adds the batched MSSQL <c>dbo.AppLog</c> sink — the
+    /// third operator sink that persists Information+ events with Source/ErrorKey/UserLanguage columns.
+    /// </summary>
+    /// <param name="customize">Optional hook to extend the configuration before it is built.</param>
     public static void UseWithDatabase(Action<LoggerConfiguration>? customize = null)
     {
         var config = BuildBaseConfig(LogEventLevel.Information);
@@ -134,6 +155,12 @@ public static class SerilogBootstrap
         }
     }
 
+    /// <summary>
+    /// Builds the MSSQL sink column layout for <c>dbo.AppLog</c>: drops the unused MessageTemplate/LogEvent/
+    /// Exception columns, maps the timestamp to <c>CreatedAtUtc</c> (stored as-is, level as text), and adds the
+    /// framework's <c>Source</c>, <c>ErrorKey</c>, and <c>UserLanguage</c> columns.
+    /// </summary>
+    /// <returns>Column options matching the AppLog schema, reusable by consumers wiring their own MSSQL sink.</returns>
     public static ColumnOptions GetColumnOptions()
     {
         var columnOptions = new ColumnOptions();
@@ -178,6 +205,12 @@ public sealed class SecretRedactionEnricher : ILogEventEnricher
         new(@"(?i)(password|passwd|token|refreshtoken|accesstoken|secret|apikey|api_key|authorization|clientsecret)",
             RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    /// <summary>
+    /// Replaces the value of every property whose name matches a secret pattern with <c>***REDACTED***</c>,
+    /// snapshotting the keys first so the event's property collection isn't mutated mid-enumeration.
+    /// </summary>
+    /// <param name="logEvent">The event being enriched; matching properties are overwritten in place.</param>
+    /// <param name="propertyFactory">Factory used to create the redacted replacement properties.</param>
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
         // Snapshot keys to avoid mutating during enumeration.

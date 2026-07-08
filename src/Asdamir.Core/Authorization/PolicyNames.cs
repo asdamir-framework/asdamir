@@ -10,11 +10,23 @@
 
 namespace Asdamir.Core.Authorization;
 
+/// <summary>
+/// Well-known ASP.NET Core authorization <b>policy</b> names for the Products slice. Reference these
+/// constants from <c>[Authorize(Policy = ...)]</c> and policy registration so endpoint guards and the
+/// policy definitions never drift on a hand-typed string.
+/// </summary>
 public static class PolicyNames
 {
+    /// <summary>Policy that authorizes viewing/listing products (read-only access to the Products screens).</summary>
     public const string ProductsRead = "Products.Read";
+
+    /// <summary>Policy that authorizes creating a new product.</summary>
     public const string ProductsCreate = "Products.Create";
+
+    /// <summary>Policy that authorizes editing an existing product.</summary>
     public const string ProductsUpdate = "Products.Update";
+
+    /// <summary>Policy that authorizes deleting a product.</summary>
     public const string ProductsDelete = "Products.Delete";
 }
 

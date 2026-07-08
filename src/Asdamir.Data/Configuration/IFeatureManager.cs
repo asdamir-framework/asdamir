@@ -10,8 +10,22 @@
 
 namespace Asdamir.Data.Configuration;
 
+/// <summary>
+/// Reads feature flags and typed feature configuration, applying an optional per-tenant override on top
+/// of the global value. Backed by the DB-loaded configuration (<c>AppConfigurations</c>).
+/// </summary>
 public interface IFeatureManager
 {
+    /// <summary>True when the feature is enabled — the tenant-scoped value if present, else the global one.</summary>
+    /// <param name="featureName">The feature flag name.</param>
+    /// <param name="tenantId">Optional tenant to resolve a per-tenant override; null uses the ambient tenant/global.</param>
+    /// <param name="ct">Cancellation token.</param>
     Task<bool> IsEnabledAsync(string featureName, string? tenantId = null, CancellationToken ct = default);
+
+    /// <summary>Binds a typed feature configuration value (tenant override, else global); default when absent.</summary>
+    /// <typeparam name="T">The value type to bind to.</typeparam>
+    /// <param name="key">The configuration key.</param>
+    /// <param name="tenantId">Optional tenant to resolve a per-tenant override; null uses the ambient tenant/global.</param>
+    /// <param name="ct">Cancellation token.</param>
     Task<T?> GetConfigurationAsync<T>(string key, string? tenantId = null, CancellationToken ct = default);
 }

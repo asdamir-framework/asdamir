@@ -22,6 +22,11 @@ public sealed class AppAuthStateProvider : AuthenticationStateProvider, IDisposa
     private readonly AuthState _auth;
     private readonly ILogger<AppAuthStateProvider>? _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AppAuthStateProvider"/> class and subscribes to <see cref="AuthState"/> changes.
+    /// </summary>
+    /// <param name="auth">The per-circuit authentication state that backs the produced <see cref="ClaimsPrincipal"/>.</param>
+    /// <param name="logger">Optional logger for authentication-state diagnostics.</param>
     public AppAuthStateProvider(AuthState auth, ILogger<AppAuthStateProvider>? logger = null)
     {
         _auth = auth;
@@ -29,6 +34,7 @@ public sealed class AppAuthStateProvider : AuthenticationStateProvider, IDisposa
         _auth.Changed += OnAuthChanged;
     }
 
+    /// <inheritdoc/>
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         ClaimsPrincipal principal;
@@ -129,5 +135,6 @@ public sealed class AppAuthStateProvider : AuthenticationStateProvider, IDisposa
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 
+    /// <inheritdoc/>
     public void Dispose() => _auth.Changed -= OnAuthChanged;
 }

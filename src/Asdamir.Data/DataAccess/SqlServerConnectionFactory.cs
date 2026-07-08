@@ -24,12 +24,15 @@ public sealed class SqlServerConnectionFactory : IDbConnectionFactory
 {
     private readonly string _connectionString;
 
+    /// <summary>Creates the factory bound to a SQL Server connection string.</summary>
     public SqlServerConnectionFactory(string connectionString)
         => _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
 
+    /// <inheritdoc/>
     public IDbConnection Create()
         => new SqlConnection(_connectionString); // audit-lint:ignore AUD002 the factory is the one legitimate place to allocate a connection
 
+    /// <inheritdoc/>
     public IDbConnection Create(DbProviderType provider) => provider switch
     {
         DbProviderType.SqlServer => Create(),
@@ -37,12 +40,14 @@ public sealed class SqlServerConnectionFactory : IDbConnectionFactory
             $"{provider} is not implemented; SqlServerConnectionFactory supports SQL Server only."),
     };
 
+    /// <inheritdoc/>
     public IDbConnection Create(string providerName)
         => string.IsNullOrEmpty(providerName) || string.Equals(providerName, "SqlServer", StringComparison.OrdinalIgnoreCase)
             ? Create()
             : throw new NotSupportedException(
                 $"Provider '{providerName}' is not implemented; SqlServerConnectionFactory supports SQL Server only.");
 
+    /// <inheritdoc/>
     public async Task<IDbConnection> CreateAsync(CancellationToken ct = default)
     {
         var conn = new SqlConnection(_connectionString); // audit-lint:ignore AUD002 the factory allocates and returns an OPEN connection

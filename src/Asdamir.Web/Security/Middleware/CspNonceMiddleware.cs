@@ -25,16 +25,22 @@ namespace Asdamir.Web.Security.Middleware;
 /// </summary>
 public sealed class CspNonceMiddleware
 {
+    /// <summary>The <see cref="HttpContext.Items"/> key under which the generated per-request nonce is stored.</summary>
     public const string NonceItemsKey = "CspNonce";
     private const int NonceByteLength = 16; // 128 bits — exceeds W3C recommendation of 128 bits min.
 
     private readonly RequestDelegate _next;
 
+    /// <summary>Creates the middleware with the next delegate in the pipeline.</summary>
+    /// <param name="next">The next delegate in the request pipeline.</param>
     public CspNonceMiddleware(RequestDelegate next)
     {
         _next = next;
     }
 
+    /// <summary>Generates a 128-bit CSPRNG nonce, stores it in <c>HttpContext.Items[<see cref="NonceItemsKey"/>]</c>, then invokes the pipeline.</summary>
+    /// <param name="context">The current HTTP context.</param>
+    /// <returns>A task that completes when the downstream pipeline completes.</returns>
     public async Task Invoke(HttpContext context)
     {
         Span<byte> buffer = stackalloc byte[NonceByteLength];

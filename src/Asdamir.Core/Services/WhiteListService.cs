@@ -18,7 +18,12 @@ using System.Net.Http.Json;
 namespace Asdamir.Core.Services;
 
 /// <summary>
-/// Service for managing SMS WhiteList operations via SMS Gateway API
+/// HTTP-backed <c>IWhiteListService</c> — manages SMS whitelist entries by calling the configured
+/// SMS Gateway endpoints (add / deactivate), attaching the optional <c>x-api-key</c> static key.
+/// Async-only: the former synchronous overloads were removed because blocking on
+/// <c>HttpClient.SendAsync</c> caused thread-pool starvation. Calls are bounded by a single timeout
+/// source (the injected client's finite timeout, else a per-call default) and never throw — failures
+/// are logged and surfaced as a failed/false result.
 /// </summary>
 public sealed class WhiteListService : IWhiteListService
 {
@@ -29,6 +34,14 @@ public sealed class WhiteListService : IWhiteListService
     private readonly string _deactivateWhiteListUrl;
     private readonly string _staticKey;
 
+    /// <summary>
+    /// Creates the service and resolves the gateway URLs + static key from configuration,
+    /// throwing at construction if the required <c>Sms:SmsGatewayUrlAddWhiteList</c> /
+    /// <c>Sms:SmsGatewayUrlDeactivateWhiteList</c> settings are missing (fail-fast).
+    /// </summary>
+    /// <param name="httpClient">Client used to call the SMS Gateway whitelist endpoints.</param>
+    /// <param name="configuration">Configuration providing the gateway URLs and the optional <c>Sms:SmsStaticKey</c>.</param>
+    /// <param name="logger">Logger for request tracing and failures.</param>
     public WhiteListService(
         HttpClient httpClient,
         IConfiguration configuration,
@@ -52,9 +65,7 @@ public sealed class WhiteListService : IWhiteListService
     // injected client doesn't already have a finite timeout — single source of truth.
     private static readonly TimeSpan DefaultPerCallTimeout = TimeSpan.FromSeconds(30);
 
-    /// <summary>
-    /// Adds a phone number to the SMS WhiteList asynchronously.
-    /// </summary>
+    /// <inheritdoc/>
     public async Task<InsertWhiteListResponse> InsertWhiteListAsync(SendInsertWhiteListRequest request, CancellationToken cancellationToken = default)
     {
         try
@@ -133,9 +144,7 @@ public sealed class WhiteListService : IWhiteListService
         }
     }
 
-    /// <summary>
-    /// Deactivates a phone number from the SMS WhiteList asynchronously.
-    /// </summary>
+    /// <inheritdoc/>
     public async Task<bool> DeactivateWhiteListAsync(DeactivateWhiteListRequest request, CancellationToken cancellationToken = default)
     {
         try

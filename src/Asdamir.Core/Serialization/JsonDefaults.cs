@@ -26,6 +26,11 @@ public static class JsonDefaults
 {
     private static readonly Lazy<JsonSerializerOptions> _web = new(BuildWeb, isThreadSafe: true);
 
+    /// <summary>
+    /// The shared, read-only web serialization contract: camelCase property names, enums as strings,
+    /// null-omission when writing, and UTC-normalized <see cref="DateTime"/> values. Built once and frozen
+    /// so it can be safely reused across the process without any consumer mutating the contract.
+    /// </summary>
     public static JsonSerializerOptions Web => _web.Value;
 
     private static JsonSerializerOptions BuildWeb()
@@ -42,11 +47,18 @@ public static class JsonDefaults
     }
 }
 
+/// <summary>
+/// A <see cref="DateTime"/> JSON converter that guarantees UTC on both sides of the wire: incoming
+/// values are tagged as <see cref="DateTimeKind.Utc"/> (never re-interpreted as local time) and outgoing
+/// values are converted to universal time before writing — keeping timestamps consistent across tiers.
+/// </summary>
 public sealed class UtcDateTimeConverter : JsonConverter<DateTime>
 {
+    /// <inheritdoc/>
     public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         => DateTime.SpecifyKind(reader.GetDateTime(), DateTimeKind.Utc);
 
+    /// <inheritdoc/>
     public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         => writer.WriteStringValue(value.ToUniversalTime());
 }

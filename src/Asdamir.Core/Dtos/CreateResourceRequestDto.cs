@@ -10,10 +10,15 @@
 
 namespace Asdamir.Core.Dtos;
 
+/// <summary>Request to create a new localized string in the LocalizationResource table for one culture.</summary>
 public class CreateResourceRequestDto
 {
+    /// <summary>Stable resource key for the new entry (e.g. "Menu.Orders") — reused across cultures.</summary>
     public string Key { get; set; } = "";
+    /// <summary>Culture code (tr-TR / en-US / ru-RU) this value is created for.</summary>
     public string Culture { get; set; } = "";
+    /// <summary>Localized text to store for the key in this culture.</summary>
     public string Value { get; set; } = "";
+    /// <summary>Resource bucket: UI, VALIDATION, or ERROR.</summary>
     public string Category { get; set; } = "";
 }

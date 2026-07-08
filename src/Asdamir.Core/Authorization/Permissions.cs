@@ -10,11 +10,23 @@
 
 namespace Asdamir.Core.Authorization;
 
+/// <summary>
+/// Stable permission strings (<c>&lt;area&gt;.&lt;action&gt;</c>) evaluated by the two-tier RBAC. These
+/// are the durable identifiers stored in <c>Permissions</c>/<c>RolePermissions</c> and carried on the
+/// user's claims — bind checks to these constants rather than repeating the literal string.
+/// </summary>
 public static class Permissions
 {
+    /// <summary>Grants read access to the orders area (list/detail).</summary>
     public const string ProductsRead = "orders.read";
+
+    /// <summary>Grants the right to create a new order.</summary>
     public const string ProductsCreate = "orders.create";
+
+    /// <summary>Grants the right to modify an existing order.</summary>
     public const string ProductsUpdate = "orders.update";
+
+    /// <summary>Grants the right to delete an order.</summary>
     public const string ProductsDelete = "orders.delete";
 }
 

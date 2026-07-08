@@ -36,6 +36,13 @@ public class AuthorizationRateLimiter : IAuthorizationRateLimiter
     private readonly TimeSpan _lockout;
     private readonly object _gate = new();
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthorizationRateLimiter"/> class with configurable window and lockout thresholds.
+    /// </summary>
+    /// <param name="logger">Logger for rate-limit and lockout diagnostics.</param>
+    /// <param name="maxFailuresPerWindow">Number of authorization failures within the window that triggers a lockout.</param>
+    /// <param name="windowMinutes">Length of the sliding failure-counting window, in minutes.</param>
+    /// <param name="lockoutMinutes">Duration a user remains locked out after exceeding the threshold, in minutes.</param>
     public AuthorizationRateLimiter(
         ILogger<AuthorizationRateLimiter> logger,
         int maxFailuresPerWindow = DefaultMaxFailuresPerWindow,
@@ -50,6 +57,7 @@ public class AuthorizationRateLimiter : IAuthorizationRateLimiter
         _lockoutCache = new MemoryCache(new MemoryCacheOptions { SizeLimit = DefaultSizeLimit });
     }
 
+    /// <inheritdoc/>
     public Task<bool> IsRateLimitExceededAsync(string userId)
     {
         if (string.IsNullOrEmpty(userId)) return Task.FromResult(false);
@@ -98,6 +106,7 @@ public class AuthorizationRateLimiter : IAuthorizationRateLimiter
         }
     }
 
+    /// <inheritdoc/>
     public Task RecordFailureAsync(string userId)
     {
         if (string.IsNullOrEmpty(userId)) return Task.CompletedTask;
@@ -142,6 +151,7 @@ public class AuthorizationRateLimiter : IAuthorizationRateLimiter
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public Task ResetAsync(string userId)
     {
         if (string.IsNullOrEmpty(userId)) return Task.CompletedTask;
@@ -154,6 +164,7 @@ public class AuthorizationRateLimiter : IAuthorizationRateLimiter
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public Task<TimeSpan> GetRemainingLockoutTimeAsync(string userId)
     {
         if (string.IsNullOrEmpty(userId)) return Task.FromResult(TimeSpan.Zero);

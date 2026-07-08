@@ -34,8 +34,9 @@ the journaled runner (it errors if no connection is given, and does not create t
 1. **Apply the generated migration** to the app's own DB with the journaled runner (see
    `asdamir-migration`) — **or** skip this by passing `--apply` to `new entity` above:
    ```bash
-   asdamir db apply --server <sql> --database <AppDb> --user <login> --password <pwd> \
-     --migrations db/migrations
+   # No SQL password on the CLI: db apply resolves ConnectionStrings:Default from the app's Gateway
+   # user-secret. (Or pass --server/--database/--user/--password / --connection explicitly.)
+   asdamir db apply --migrations db/migrations
    ```
 2. **UI** — add a page that calls the new controller over HTTP (`asdamir new page <Name>`). The UI tier
    reaches the data **through the API**, never via a `DbConnection`. `new page` also emits the page's

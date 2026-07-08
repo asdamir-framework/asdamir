@@ -22,6 +22,13 @@ public class FileDlqWriter : IDlqWriter
     private readonly string _dlqDirectory;
     private readonly ILogger<FileDlqWriter> _logger;
 
+    /// <summary>
+    /// Creates the writer against a required, explicit DLQ directory, creating that directory on disk
+    /// if it does not yet exist. Throws when no directory is configured (the process cwd is not a safe
+    /// default on IIS / Windows services).
+    /// </summary>
+    /// <param name="logger">Logger used to record each successful DLQ write and any write failure.</param>
+    /// <param name="dlqDirectory">Absolute path of the directory where dead-letter JSON files are persisted; must be non-empty.</param>
     public FileDlqWriter(ILogger<FileDlqWriter> logger, string dlqDirectory)
     {
         // Audit fix: previously the parameter was optional and defaulted to
@@ -40,6 +47,16 @@ public class FileDlqWriter : IDlqWriter
 
 
 
+    /// <summary>
+    /// Persists a failed message to the DLQ using a single error text, which is stored under every
+    /// supported culture (tr/en/ru), with no extra metadata.
+    /// </summary>
+    /// <param name="source">Logical origin of the failed message (queue/worker/dispatcher name).</param>
+    /// <param name="correlationId">Correlation id of the originating request, if any, for tracing.</param>
+    /// <param name="payloadJson">Serialized payload of the message that could not be processed.</param>
+    /// <param name="errorText">Human-readable failure reason, replicated across all cultures.</param>
+    /// <param name="attempts">Number of processing attempts made before the message was dead-lettered.</param>
+    /// <returns>A task that completes once the DLQ entry has been written to disk.</returns>
     public async Task WriteAsync(string source, string? correlationId, string payloadJson, string errorText, int attempts)
     {
         var errorMessages = new Dictionary<string, string> {
@@ -50,6 +67,17 @@ public class FileDlqWriter : IDlqWriter
         await WriteAsync(source, correlationId, payloadJson, errorMessages, attempts, null);
     }
 
+    /// <summary>
+    /// Persists a failed message to the DLQ using a single error text (replicated across all cultures),
+    /// together with optional structured metadata attached to the entry.
+    /// </summary>
+    /// <param name="source">Logical origin of the failed message (queue/worker/dispatcher name).</param>
+    /// <param name="correlationId">Correlation id of the originating request, if any, for tracing.</param>
+    /// <param name="payloadJson">Serialized payload of the message that could not be processed.</param>
+    /// <param name="errorText">Human-readable failure reason, replicated across all cultures.</param>
+    /// <param name="attempts">Number of processing attempts made before the message was dead-lettered.</param>
+    /// <param name="metadata">Optional extra key/value context stored alongside the entry.</param>
+    /// <returns>A task that completes once the DLQ entry has been written to disk.</returns>
     public async Task WriteAsync(string source, string? correlationId, string payloadJson, string errorText, int attempts, Dictionary<string, object>? metadata = null)
     {
         var errorMessages = new Dictionary<string, string> {
@@ -60,6 +88,18 @@ public class FileDlqWriter : IDlqWriter
         await WriteAsync(source, correlationId, payloadJson, errorMessages, attempts, metadata);
     }
 
+    /// <summary>
+    /// Core write: serializes the failure as a single timestamped, uniquely named JSON file in the DLQ
+    /// directory, carrying per-culture error messages and optional metadata. Any write failure is logged
+    /// and rethrown so the caller can react (rather than silently losing the entry).
+    /// </summary>
+    /// <param name="source">Logical origin of the failed message (queue/worker/dispatcher name).</param>
+    /// <param name="correlationId">Correlation id of the originating request, if any, for tracing.</param>
+    /// <param name="payloadJson">Serialized payload of the message that could not be processed.</param>
+    /// <param name="errorMessages">Failure reason keyed by culture (e.g. tr/en/ru).</param>
+    /// <param name="attempts">Number of processing attempts made before the message was dead-lettered.</param>
+    /// <param name="metadata">Optional extra key/value context stored alongside the entry.</param>
+    /// <returns>A task that completes once the DLQ entry has been written to disk.</returns>
     public async Task WriteAsync(string source, string? correlationId, string payloadJson, Dictionary<string, string> errorMessages, int attempts, Dictionary<string, object>? metadata = null)
     {
         try

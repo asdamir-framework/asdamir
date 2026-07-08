@@ -23,13 +23,25 @@ public class RouteAuthorizationHandler : ComponentBase
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private ILogger<RouteAuthorizationHandler> Logger { get; set; } = default!;
 
+    /// <summary>Content rendered when the user is authorized; receives the current authentication state.</summary>
     [Parameter] public RenderFragment<AuthenticationState>? Authorized { get; set; }
+
+    /// <summary>Content rendered when the user is authenticated but lacks the required roles/policy.</summary>
     [Parameter] public RenderFragment? NotAuthorized { get; set; }
+
+    /// <summary>Content rendered while the authorization decision is still being evaluated.</summary>
     [Parameter] public RenderFragment? Authorizing { get; set; }
+
+    /// <summary>Optional explicit authorization requirements to evaluate against the user.</summary>
     [Parameter] public IAuthorizationRequirement[]? Requirements { get; set; }
+
+    /// <summary>Comma-separated list of roles; the user must be in at least one of them.</summary>
     [Parameter] public string? Roles { get; set; }
+
+    /// <summary>Optional named authorization policy to enforce.</summary>
     [Parameter] public string? Policy { get; set; }
 
+    /// <inheritdoc/>
     protected override async Task OnInitializedAsync()
     {
         try

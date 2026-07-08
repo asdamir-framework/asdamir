@@ -22,11 +22,24 @@ namespace Asdamir.Core.ErrorHandling.Http;
 /// </summary>
 public class CorrelationIdMiddleware
 {
+    /// <summary>
+    /// The HTTP header carrying the correlation id, both inbound (to reuse an upstream id) and
+    /// outbound (echoed on the response and forwarded on downstream calls).
+    /// </summary>
     public const string HeaderName = "X-Correlation-Id";
     private readonly RequestDelegate _next;
 
+    /// <summary>Creates the middleware with the next delegate in the request pipeline.</summary>
+    /// <param name="next">The next middleware to invoke.</param>
     public CorrelationIdMiddleware(RequestDelegate next) => _next = next;
 
+    /// <summary>
+    /// Resolves the correlation id for the request (reusing an inbound header/context value or
+    /// generating a new one), publishes it to the scoped mutator and the response header, and pushes
+    /// it onto the Serilog log context so every log line emitted while handling the request is tagged.
+    /// </summary>
+    /// <param name="ctx">The current HTTP context.</param>
+    /// <returns>A task that completes when the rest of the pipeline has run.</returns>
     public async Task Invoke(HttpContext ctx)
     {
         var correlationId = GetOrCreateCorrelationId(ctx);

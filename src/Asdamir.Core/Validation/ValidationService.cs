@@ -19,7 +19,7 @@ namespace Asdamir.Core.Validation;
 /// <summary>
 /// Enterprise validation service implementation
 /// </summary>
-public class ValidationService : IValidationService
+internal sealed class ValidationService : IValidationService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ValidationService> _logger;
@@ -163,7 +163,7 @@ public class ValidationService : IValidationService
 /// <summary>
 /// Validation context implementation
 /// </summary>
-public class ValidationContext : IValidationContext
+internal sealed class ValidationContext : IValidationContext
 {
     public string? UserId { get; set; }
     public string? TenantId { get; set; }
@@ -198,7 +198,7 @@ public class ValidationContext : IValidationContext
 /// <summary>
 /// Factory for creating validation contexts
 /// </summary>
-public class ValidationContextFactory : IValidationContextFactory
+internal sealed class ValidationContextFactory : IValidationContextFactory
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IHttpContextAccessor? _httpContextAccessor;

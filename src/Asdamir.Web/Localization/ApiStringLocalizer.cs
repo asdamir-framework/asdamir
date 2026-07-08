@@ -53,6 +53,13 @@ public sealed class ApiStringLocalizer : IStringLocalizer
     private static readonly ConcurrentDictionary<string, Dictionary<string, string>> WarmedMaps =
         new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// Initializes the localizer with the resource source, cache-generation tracker and optional tenant scope.
+    /// </summary>
+    /// <param name="localizationService">Service that supplies the per-culture resource map.</param>
+    /// <param name="cacheGeneration">Generation tracker whose bump invalidates the warmed maps.</param>
+    /// <param name="tenantContext">Optional tenant context; when multi-tenant it scopes the warmed map per tenant.</param>
+    /// <param name="logger">Optional logger for warm/miss diagnostics.</param>
     public ApiStringLocalizer(
         ILocalizationService localizationService,
         ILocalizationCacheGeneration cacheGeneration,
@@ -75,6 +82,9 @@ public sealed class ApiStringLocalizer : IStringLocalizer
     /// Async pre-load for one culture. Call from a hosted service / startup hook;
     /// the sync indexer doesn't trigger HTTP itself.
     /// </summary>
+    /// <param name="culture">The culture name to warm (e.g. <c>tr-TR</c>, <c>en-US</c>, <c>ru-RU</c>).</param>
+    /// <param name="ct">Token to cancel the fetch.</param>
+    /// <returns>A task that completes once the culture's map is loaded into the process-wide cache.</returns>
     public async Task WarmAsync(string culture, CancellationToken ct = default)
     {
         var key = CacheKey(culture);
@@ -87,8 +97,10 @@ public sealed class ApiStringLocalizer : IStringLocalizer
     private Dictionary<string, string>? TryGetWarmedMap(CultureInfo culture)
         => WarmedMaps.TryGetValue(CacheKey(culture.Name), out var map) ? map : null;
 
+    /// <inheritdoc/>
     public LocalizedString this[string name] => Resolve(name, Array.Empty<object>());
 
+    /// <inheritdoc/>
     public LocalizedString this[string name, params object[] arguments] => Resolve(name, arguments);
 
     private LocalizedString Resolve(string name, object[] args)
@@ -114,6 +126,7 @@ public sealed class ApiStringLocalizer : IStringLocalizer
         return new LocalizedString(name, name, resourceNotFound: true);
     }
 
+    /// <inheritdoc/>
     public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
     {
         var map = TryGetWarmedMap(CultureInfo.CurrentUICulture);
@@ -169,6 +182,13 @@ public sealed class ApiStringLocalizerFactory : IStringLocalizerFactory
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<ApiStringLocalizer>? _logger;
 
+    /// <summary>
+    /// Initializes the factory with the services shared by every localizer it creates.
+    /// </summary>
+    /// <param name="localizationService">Service that supplies the per-culture resource map.</param>
+    /// <param name="cacheGeneration">Generation tracker used to key/invalidate the warmed maps.</param>
+    /// <param name="httpContextAccessor">Accessor used to resolve the per-request tenant context.</param>
+    /// <param name="logger">Optional logger passed to the created localizers.</param>
     public ApiStringLocalizerFactory(
         ILocalizationService localizationService,
         ILocalizationCacheGeneration cacheGeneration,
@@ -181,9 +201,11 @@ public sealed class ApiStringLocalizerFactory : IStringLocalizerFactory
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public IStringLocalizer Create(Type resourceSource)
         => Create(resourceSource.FullName!, null);
 
+    /// <inheritdoc/>
     public IStringLocalizer Create(string? baseName, string? location)
     {
         ITenantContext? tenantContext = null;

@@ -38,11 +38,15 @@ public sealed class ModuleLoader
     private readonly List<IModule> _loaded = new();
     private readonly ILogger<ModuleLoader> _logger;
 
+    /// <summary>Creates the loader with the logger used to report per-module discovery and initialization events.</summary>
+    /// <param name="logger">Logger for module load/register/initialize diagnostics.</param>
     public ModuleLoader(ILogger<ModuleLoader> logger)
     {
         _logger = logger;
     }
 
+    /// <summary>Returns the modules successfully discovered and registered so far, in load order.</summary>
+    /// <returns>A read-only snapshot of the loaded <see cref="IModule"/> instances.</returns>
     public IReadOnlyList<IModule> GetLoadedModules() => _loaded;
 
     /// <summary>

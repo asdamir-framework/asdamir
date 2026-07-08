@@ -38,6 +38,12 @@ public sealed class LocalizationCacheRefresher : BackgroundService
     private readonly ILogger<LocalizationCacheRefresher> _logger;
     private long _lastVersion;
 
+    /// <summary>
+    /// Initializes the background refresher with the API client, cache-generation tracker and logger.
+    /// </summary>
+    /// <param name="apiClient">Client used to poll the current localization version.</param>
+    /// <param name="cacheGeneration">Generation tracker bumped when a version change is detected.</param>
+    /// <param name="logger">Logger for poll/backoff diagnostics.</param>
     public LocalizationCacheRefresher(
         ILocalizationApiClient apiClient,
         ILocalizationCacheGeneration cacheGeneration,
@@ -48,6 +54,7 @@ public sealed class LocalizationCacheRefresher : BackgroundService
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("Localization cache refresher started");

@@ -13,26 +13,47 @@ using System.ComponentModel.DataAnnotations;
 namespace Asdamir.Core.Validation;
 
 /// <summary>
-/// Email validation attribute
+/// Validates that a string member is a well-formed email address, with optional domain allow/block
+/// lists and role-address blocking. A null/empty/whitespace value passes (compose with <c>[Required]</c>
+/// to forbid empties). Apply to string properties.
 /// </summary>
+/// <example><code>
+/// [Email] public string Email { get; set; }
+/// [Email("corp.com", "partner.org")] public string WorkEmail { get; set; } // only these domains allowed
+/// </code></example>
 public class EmailAttribute : ValidationAttribute
 {
     private readonly string[] _allowedDomains;
     private readonly string[] _blockedDomains;
+
+    /// <summary>
+    /// When <c>true</c>, rejects role-based mailboxes (e.g. <c>info@</c>, <c>admin@</c>, <c>support@</c>);
+    /// when <c>false</c> (default) they are accepted.
+    /// </summary>
     public bool BlockRoleAddresses { get; set; } = false;
 
+    /// <summary>
+    /// Creates the attribute, optionally restricting the address to a whitelist of domains.
+    /// </summary>
+    /// <param name="allowedDomains">Domains the address must belong to; pass none to accept any domain.</param>
     public EmailAttribute(params string[] allowedDomains)
     {
         _allowedDomains = allowedDomains;
         _blockedDomains = Array.Empty<string>();
     }
 
+    /// <summary>
+    /// Creates the attribute with both an allow-list and a block-list of domains.
+    /// </summary>
+    /// <param name="allowedDomains">Domains the address must belong to; empty accepts any domain not blocked.</param>
+    /// <param name="blockedDomains">Domains that are rejected even if otherwise allowed (block wins).</param>
     public EmailAttribute(string[] allowedDomains, string[] blockedDomains)
     {
         _allowedDomains = allowedDomains ?? Array.Empty<string>();
         _blockedDomains = blockedDomains ?? Array.Empty<string>();
     }
 
+    /// <inheritdoc/>
     protected override ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext)
     {
         var options = new ValidationUtils.EmailOptions(_allowedDomains, _blockedDomains, BlockRoleAddresses);
@@ -45,18 +66,41 @@ public class EmailAttribute : ValidationAttribute
 }
 
 /// <summary>
-/// Strong password validation attribute
+/// Validates that a string member meets a configurable password-strength policy — length bounds plus
+/// required character classes (upper/lower/digit/special). A null/empty/whitespace value passes (pair
+/// with <c>[Required]</c> to forbid empties). All failing rules are reported together. Apply to string
+/// properties.
 /// </summary>
+/// <example><code>[StrongPassword(MinLength = 12, RequireSpecialCharacter = false)] public string Password { get; set; }</code></example>
 public class StrongPasswordAttribute : ValidationAttribute
 {
+    /// <summary>Minimum number of characters the password must contain (default 8).</summary>
     public int MinLength { get; set; } = 8;
+
+    /// <summary>Maximum number of characters the password may contain (default 128).</summary>
     public int MaxLength { get; set; } = 128;
+
+    /// <summary>When <c>true</c> (default), at least one uppercase letter (A–Z) is required.</summary>
     public bool RequireUppercase { get; set; } = true;
+
+    /// <summary>When <c>true</c> (default), at least one lowercase letter (a–z) is required.</summary>
     public bool RequireLowercase { get; set; } = true;
+
+    /// <summary>When <c>true</c> (default), at least one digit (0–9) is required.</summary>
     public bool RequireDigit { get; set; } = true;
+
+    /// <summary>
+    /// When <c>true</c> (default), at least one character from <see cref="SpecialCharacters"/> is required.
+    /// </summary>
     public bool RequireSpecialCharacter { get; set; } = true;
+
+    /// <summary>
+    /// The set of characters counted as "special" for <see cref="RequireSpecialCharacter"/>. Override to
+    /// widen or narrow which punctuation satisfies the rule.
+    /// </summary>
     public string SpecialCharacters { get; set; } = "!@#$%^&*()_+-=[]{}|;:,.<>?";
 
+    /// <inheritdoc/>
     protected override ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext)
     {
         if (value == null || string.IsNullOrWhiteSpace(value.ToString()))
@@ -107,13 +151,28 @@ public class StrongPasswordAttribute : ValidationAttribute
 }
 
 /// <summary>
-/// Business identifier validation attribute (for tax numbers, VAT numbers, etc.)
+/// Validates a country-specific business identifier (tax ID / VAT number). Hyphens and spaces are
+/// stripped before checking. Supported countries are US (9-digit EIN), GB (9-digit VAT, optional
+/// <c>GB</c> prefix) and DE (10–11 digit tax number); any other <see cref="CountryCode"/> passes
+/// unchecked. A null/empty/whitespace value passes (compose with <c>[Required]</c>). Apply to string
+/// properties.
 /// </summary>
+/// <example><code>[BusinessIdentifier(CountryCode = "GB")] public string VatNumber { get; set; }</code></example>
 public class BusinessIdentifierAttribute : ValidationAttribute
 {
+    /// <summary>
+    /// ISO country code selecting the validation ruleset (<c>US</c>, <c>GB</c>, <c>DE</c>); case-insensitive.
+    /// An unrecognized code skips validation. Default <c>US</c>.
+    /// </summary>
     public string CountryCode { get; set; } = "US";
+
+    /// <summary>
+    /// Advisory label for the kind of identifier expected (e.g. <c>TaxId</c>, <c>VatNumber</c>); does not
+    /// change the check, which is driven by <see cref="CountryCode"/>. Default <c>TaxId</c>.
+    /// </summary>
     public string IdentifierType { get; set; } = "TaxId";
 
+    /// <inheritdoc/>
     protected override ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext)
     {
         if (value == null || string.IsNullOrWhiteSpace(value.ToString()))
@@ -169,14 +228,32 @@ public class BusinessIdentifierAttribute : ValidationAttribute
 }
 
 /// <summary>
-/// Enterprise phone number validation attribute
+/// Validates that a string member is a parseable phone number (via libphonenumber), interpreting
+/// national-format numbers against <see cref="CountryCode"/>. A null/empty/whitespace value passes
+/// (compose with <c>[Required]</c>). Apply to string properties.
 /// </summary>
+/// <example><code>[Phone(CountryCode = "TR", RequireTurkishMobile = true)] public string Mobile { get; set; }</code></example>
 public class PhoneAttribute : ValidationAttribute
 {
+    /// <summary>
+    /// ISO country code used as the default region when parsing numbers written in national format
+    /// (default <c>TR</c>).
+    /// </summary>
     public string CountryCode { get; set; } = "TR";
+
+    /// <summary>
+    /// When <c>true</c> (default), numbers in international format (E.164, leading <c>+</c>) are accepted;
+    /// when <c>false</c>, only numbers valid for <see cref="CountryCode"/> pass.
+    /// </summary>
     public bool AllowInternational { get; set; } = true;
+
+    /// <summary>
+    /// When <c>true</c>, requires the value to be a Turkish mobile number specifically; when <c>false</c>
+    /// (default), any valid number type is accepted.
+    /// </summary>
     public bool RequireTurkishMobile { get; set; } = false;
 
+    /// <inheritdoc/>
     protected override ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext)
     {
         var options = new ValidationUtils.PhoneOptions(CountryCode, AllowInternational, RequireTurkishMobile);
@@ -189,15 +266,32 @@ public class PhoneAttribute : ValidationAttribute
 }
 
 /// <summary>
-/// Date range validation attribute
+/// Validates that a <see cref="DateTime"/> member falls within configured bounds — absolute min/max
+/// dates and/or past/future restrictions (compared against today's UTC date). A null value passes; a
+/// non-<see cref="DateTime"/> value fails. Apply to <see cref="DateTime"/> properties.
 /// </summary>
+/// <example><code>[DateRange(AllowFutureDates = false)] public DateTime BirthDate { get; set; }</code></example>
 public class DateRangeAttribute : ValidationAttribute
 {
+    /// <summary>
+    /// Inclusive lower bound as a parseable date string (e.g. <c>2000-01-01</c>); empty (default) disables
+    /// the lower bound.
+    /// </summary>
     public string MinDate { get; set; } = "";
+
+    /// <summary>
+    /// Inclusive upper bound as a parseable date string (e.g. <c>2030-12-31</c>); empty (default) disables
+    /// the upper bound.
+    /// </summary>
     public string MaxDate { get; set; } = "";
+
+    /// <summary>When <c>false</c>, rejects dates after today (UTC); <c>true</c> (default) permits them.</summary>
     public bool AllowFutureDates { get; set; } = true;
+
+    /// <summary>When <c>false</c>, rejects dates before today (UTC); <c>true</c> (default) permits them.</summary>
     public bool AllowPastDates { get; set; } = true;
 
+    /// <inheritdoc/>
     protected override ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext)
     {
         if (value == null)
@@ -237,19 +331,31 @@ public class DateRangeAttribute : ValidationAttribute
 }
 
 /// <summary>
-/// Decimal precision validation attribute
+/// Validates that a <see cref="decimal"/> member fits a fixed-point size — total significant digits
+/// (precision) and digits after the point (scale), mirroring a SQL <c>decimal(p,s)</c> column. A null
+/// value passes; a non-<see cref="decimal"/> value fails. Apply to <see cref="decimal"/> properties.
 /// </summary>
+/// <example><code>[DecimalPrecision(18, 2)] public decimal Amount { get; set; } // e.g. money</code></example>
 public class DecimalPrecisionAttribute : ValidationAttribute
 {
+    /// <summary>Maximum total number of significant digits allowed (integer part + fractional part).</summary>
     public int Precision { get; set; }
+
+    /// <summary>Maximum number of digits allowed after the decimal point.</summary>
     public int Scale { get; set; }
 
+    /// <summary>
+    /// Creates the attribute with the required fixed-point size.
+    /// </summary>
+    /// <param name="precision">Maximum total significant digits (see <see cref="Precision"/>).</param>
+    /// <param name="scale">Maximum fractional digits (see <see cref="Scale"/>).</param>
     public DecimalPrecisionAttribute(int precision, int scale)
     {
         Precision = precision;
         Scale = scale;
     }
 
+    /// <inheritdoc/>
     protected override ValidationResult? IsValid(object? value, System.ComponentModel.DataAnnotations.ValidationContext validationContext)
     {
         if (value == null)

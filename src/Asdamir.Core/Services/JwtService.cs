@@ -20,6 +20,12 @@ using System.Security.Claims;
 
 namespace Asdamir.Core.Services;
 
+/// <summary>
+/// Mints signed access and refresh tokens (<see cref="IJwtService"/> implementation). Access tokens are
+/// HMAC-SHA256-signed JWTs carrying identity, tenant/company and permission claims; refresh tokens are
+/// opaque 256-bit CSPRNG values (the caller stores only their hash and rotates on use). The signing key,
+/// issuer/audience and lifetimes come from <c>Jwt:*</c> configuration.
+/// </summary>
 public class JwtService : IJwtService
 {
     /// <summary>Minimum byte length for the HMAC-SHA256 signing key (≥256 bits).</summary>
@@ -36,6 +42,13 @@ public class JwtService : IJwtService
     private readonly TimeSpan _accessLifetime;
     private readonly TimeSpan _refreshLifetime;
 
+    /// <summary>
+    /// Builds the service from <c>Jwt:*</c> configuration (<c>Key</c>, optional <c>Issuer</c>/<c>Audience</c>,
+    /// and optional <c>AccessTokenLifetimeMinutes</c>/<c>RefreshTokenLifetimeDays</c>). The signing key is
+    /// held in memory only; never log it.
+    /// </summary>
+    /// <param name="configuration">Application configuration supplying the <c>Jwt:*</c> section.</param>
+    /// <exception cref="InvalidOperationException"><c>Jwt:Key</c> is missing or shorter than 32 bytes (too weak for HMAC-SHA256).</exception>
     public JwtService(IConfiguration configuration)
     {
         var jwtKey = configuration["Jwt:Key"]
@@ -62,10 +75,12 @@ public class JwtService : IJwtService
         _refreshLifetime = TimeSpan.FromDays(refreshDays);
     }
 
+    /// <inheritdoc/>
     public TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null,
         string? tokenUse = null, string? appCode = null)
         => IssueTokens(user, permissions, _accessLifetime, _refreshLifetime, company, tokenUse, appCode);
 
+    /// <inheritdoc/>
     public TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions,
         TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null,
         string? tokenUse = null, string? appCode = null)

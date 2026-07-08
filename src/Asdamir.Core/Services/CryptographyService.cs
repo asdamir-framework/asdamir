@@ -18,7 +18,7 @@ namespace Asdamir.Core.Services;
 /// Şifreleme, password hash ve genel hash işlemleri için servis.
 ///
 /// PASSWORD HASH:
-///   Format: $pbkdf2-sha256$<iterations>$<salt-b64>$<hash-b64>
+///   Format: <c>$pbkdf2-sha256$&lt;iterations&gt;$&lt;salt-b64&gt;$&lt;hash-b64&gt;</c>
 ///   - PBKDF2-HMAC-SHA256, 210.000 iter (OWASP 2025 önerisi)
 ///   - Per-record 16 byte rastgele salt
 ///   - SHA1 desteklenmez (audit fix: zayıf algoritma kaldırıldı)
@@ -47,6 +47,13 @@ public class CryptographyService
 
     private readonly string _encryptionKey;
 
+    /// <summary>
+    /// Creates the service with the symmetric passphrase used to derive the AES-256 key for
+    /// <c>Encrypt</c>/<c>Decrypt</c>. The passphrase is kept in memory only; never log it.
+    /// </summary>
+    /// <param name="encryptionKey">Master passphrase; must be at least 32 characters.</param>
+    /// <exception cref="ArgumentNullException">The key is null, empty, or whitespace.</exception>
+    /// <exception cref="ArgumentException">The key is shorter than 32 characters.</exception>
     public CryptographyService(string encryptionKey)
     {
         if (string.IsNullOrWhiteSpace(encryptionKey))
@@ -62,16 +69,24 @@ public class CryptographyService
 
     #region Hash Methods
 
+    /// <summary>Hash algorithm selector for the generic <see cref="ComputeHash"/> (content hashing only, not passwords).</summary>
     public enum HashAlgorithm
     {
+        /// <summary>SHA-256 (default).</summary>
         SHA256,
+        /// <summary>SHA-384.</summary>
         SHA384,
+        /// <summary>SHA-512.</summary>
         SHA512
     }
 
     /// <summary>
     /// Generic content hash (NOT for passwords — use HashPassword/VerifyPassword for credentials).
+    /// Plain SHA-2 with no salt; unsuitable for anything low-entropy or secret.
     /// </summary>
+    /// <param name="plainText">Content to hash; empty input returns an empty string.</param>
+    /// <param name="algorithm">SHA-2 variant to use (default SHA-256).</param>
+    /// <returns>Base64-encoded digest.</returns>
     public string ComputeHash(string plainText, HashAlgorithm algorithm = HashAlgorithm.SHA256)
     {
         if (string.IsNullOrEmpty(plainText))
@@ -83,6 +98,9 @@ public class CryptographyService
         return Convert.ToBase64String(hashBytes);
     }
 
+    /// <summary>Convenience SHA-256 content hash. Not for passwords (unsalted, fast).</summary>
+    /// <param name="plainText">Content to hash.</param>
+    /// <returns>Base64-encoded SHA-256 digest.</returns>
     public string ComputeSHA256Hash(string plainText) => ComputeHash(plainText, HashAlgorithm.SHA256);
 
     private static System.Security.Cryptography.HashAlgorithm CreateHashAlgorithm(HashAlgorithm algorithm) =>
@@ -99,9 +117,13 @@ public class CryptographyService
     #region Password Hash (PBKDF2-SHA256)
 
     /// <summary>
-    /// Hashes a password using PBKDF2-HMAC-SHA256 with a fresh random salt.
-    /// Returns a self-describing string: $pbkdf2-sha256$&lt;iter&gt;$&lt;salt-b64&gt;$&lt;hash-b64&gt;
+    /// Hashes a password using PBKDF2-HMAC-SHA256 (210k iterations) with a fresh 16-byte random salt.
+    /// Returns a self-describing string: $pbkdf2-sha256$&lt;iter&gt;$&lt;salt-b64&gt;$&lt;hash-b64&gt;.
+    /// Store only this string; never persist or log the plaintext password.
     /// </summary>
+    /// <param name="password">Plaintext password to hash.</param>
+    /// <returns>The self-describing PBKDF2 hash string, safe to store.</returns>
+    /// <exception cref="ArgumentException">The password is null or empty.</exception>
     public string HashPassword(string password)
     {
         if (string.IsNullOrEmpty(password))
@@ -119,10 +141,14 @@ public class CryptographyService
     }
 
     /// <summary>
-    /// Verifies a password against a hash produced by <see cref="HashPassword"/>.
-    /// Returns false (no throw) for malformed hashes.
-    /// Constant-time comparison.
+    /// Verifies a password against a hash produced by <see cref="HashPassword"/>, re-deriving with
+    /// the salt/iterations embedded in the stored hash and comparing in constant time
+    /// (<c>CryptographicOperations.FixedTimeEquals</c>) to avoid timing leaks.
+    /// Returns false (never throws) for a malformed or unrecognised hash.
     /// </summary>
+    /// <param name="password">Candidate plaintext password.</param>
+    /// <param name="storedHash">The stored PBKDF2 hash string to verify against.</param>
+    /// <returns><c>true</c> if the password matches; otherwise <c>false</c>.</returns>
     public bool VerifyPassword(string password, string storedHash)
     {
         if (string.IsNullOrEmpty(password) || string.IsNullOrEmpty(storedHash))
@@ -158,9 +184,11 @@ public class CryptographyService
     }
 
     /// <summary>
-    /// Returns true if the stored hash uses fewer than the current recommended iteration count
-    /// and should be rehashed on the next successful login.
+    /// Returns true if the stored hash uses fewer than the current recommended iteration count,
+    /// or is in an unknown/legacy format, and should be rehashed on the next successful login.
     /// </summary>
+    /// <param name="storedHash">The stored PBKDF2 hash string to inspect.</param>
+    /// <returns><c>true</c> if the hash should be upgraded; otherwise <c>false</c>.</returns>
     public bool NeedsRehash(string storedHash)
     {
         if (string.IsNullOrEmpty(storedHash))
@@ -190,8 +218,10 @@ public class CryptographyService
     ///
     /// Audit fix: previously used AES-CBC + PKCS7 with NO MAC (malleable; padding-oracle
     /// vulnerable) and derived the AES key as a single SHA-256 of the passphrase
-    /// (not a real KDF). v2 uses AEAD + PBKDF2.
+    /// (not a real KDF). v2 uses AEAD + PBKDF2. Never log the plaintext.
     /// </summary>
+    /// <param name="plainText">Value to encrypt; null/empty is returned unchanged.</param>
+    /// <returns>The versioned <c>"v2:"</c> ciphertext string.</returns>
     public string Encrypt(string plainText)
     {
         if (string.IsNullOrEmpty(plainText))
@@ -214,10 +244,13 @@ public class CryptographyService
     }
 
     /// <summary>
-    /// Decrypts a value produced by <see cref="Encrypt"/>. Throws on tampering. Legacy
-    /// CBC ciphertexts (no v2 prefix) are decrypted via the migration path so existing
+    /// Decrypts a value produced by <see cref="Encrypt"/>. The GCM auth tag detects tampering.
+    /// Legacy CBC ciphertexts (no v2 prefix) are decrypted via the migration path so existing
     /// stored values keep working; callers should re-encrypt on next save.
     /// </summary>
+    /// <param name="encryptedText">Ciphertext to decrypt; null/empty is returned unchanged.</param>
+    /// <returns>The recovered plaintext.</returns>
+    /// <exception cref="InvalidOperationException">The ciphertext is malformed, or the key is wrong / the payload was tampered with.</exception>
     public string Decrypt(string encryptedText)
     {
         if (string.IsNullOrEmpty(encryptedText))
@@ -339,6 +372,15 @@ public class CryptographyService
 
     #region Session ID Generation
 
+    /// <summary>
+    /// Derives a session identifier as a SHA-256 over the caller context plus a UTC timestamp and
+    /// 16 bytes of CSPRNG entropy, so two calls never collide (guards against session collision / replay).
+    /// </summary>
+    /// <param name="unitId">Originating unit/terminal identifier.</param>
+    /// <param name="userName">User the session belongs to.</param>
+    /// <param name="proxyName">Proxy/gateway name in the request path.</param>
+    /// <param name="networkCard">Client network-card identifier.</param>
+    /// <returns>Base64-encoded SHA-256 session id.</returns>
     public string GenerateSessionId(string unitId, string userName, string proxyName, string networkCard)
     {
         // Audit fix: v1 hashed only date (yyyyMMdd) — same user+unit+proxy produced the

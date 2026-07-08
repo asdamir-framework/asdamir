@@ -28,7 +28,7 @@ namespace Asdamir.Web.Security.Middleware;
 ///
 /// Hardened against the v1 audit findings:
 ///  - Verbose 🔴 Info logs that echoed raw request bodies are gone. The only
-///    body content reachable from logs now flows through <see cref="RemoveSensitiveProperties"/>
+///    body content reachable from logs now flows through <c>RemoveSensitiveProperties</c>
 ///    + the always-redact list and is at Debug level.
 ///  - EnableBuffering() used to read an unbounded request stream. We now cap the
 ///    body at <see cref="AuditLoggingOptions.MaxRequestBodyBytes"/> and answer 413
@@ -49,6 +49,10 @@ public class AuditLoggingMiddleware
     private readonly IReadOnlyList<IPAddress> _trustedProxies;
     private readonly HashSet<string> _alwaysRedact;
 
+    /// <summary>Creates the middleware, resolving the trusted-proxy set and always-redact property list from <see cref="AuditLoggingOptions"/>.</summary>
+    /// <param name="next">The next delegate in the request pipeline.</param>
+    /// <param name="logger">The logger for diagnostic/warning output.</param>
+    /// <param name="options">The audit-logging options; falls back to defaults when not registered.</param>
     public AuditLoggingMiddleware(
         RequestDelegate next,
         ILogger<AuditLoggingMiddleware> logger,
@@ -61,6 +65,13 @@ public class AuditLoggingMiddleware
         _alwaysRedact = new HashSet<string>(_options.AlwaysRedactProperties, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Audits the request when the matched endpoint carries an <see cref="AuditLogAttribute"/>: reads a size-capped,
+    /// redacted request body, buffers the response, and on a 2xx persists an audit entry via <c>IAuditLogService</c>.
+    /// Auditing failures are swallowed so they never break the request.
+    /// </summary>
+    /// <param name="context">The current HTTP context.</param>
+    /// <returns>A task that completes when the pipeline and audit write finish.</returns>
     public async Task InvokeAsync(HttpContext context)
     {
         var auditLogService = context.RequestServices.GetService<IAuditLogService>();
@@ -667,8 +678,12 @@ public class AuditLoggingMiddleware
     }
 }
 
+/// <summary>Pipeline registration for <see cref="AuditLoggingMiddleware"/>.</summary>
 public static class AuditLoggingMiddlewareExtensions
 {
+    /// <summary>Adds the audit-logging middleware to the request pipeline.</summary>
+    /// <param name="builder">The application builder.</param>
+    /// <returns>The same <see cref="IApplicationBuilder"/> for chaining.</returns>
     public static IApplicationBuilder UseAuditLogging(this IApplicationBuilder builder)
     {
         return builder.UseMiddleware<AuditLoggingMiddleware>();

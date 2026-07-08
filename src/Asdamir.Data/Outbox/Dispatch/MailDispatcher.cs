@@ -25,17 +25,20 @@ namespace Asdamir.Data.Outbox;
 /// </summary>
 public sealed class MailDispatcher : IOutboxDispatcher
 {
+    /// <inheritdoc/>
     public byte MessageType => 2; // Email
 
     private readonly SmtpOptions _smtp;
     private readonly ILogger<MailDispatcher> _logger;
 
+    /// <summary>Creates the SMTP mail dispatcher from <see cref="SmtpOptions"/> + logger.</summary>
     public MailDispatcher(IOptions<SmtpOptions> smtp, ILogger<MailDispatcher> logger)
     {
         _smtp = smtp.Value;
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public async Task DispatchAsync(ClaimedOutboxMessage message, CancellationToken ct)
     {
         var mime = BuildMimeMessage(message);

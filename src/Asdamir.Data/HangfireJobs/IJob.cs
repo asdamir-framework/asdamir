@@ -159,39 +159,3 @@ public interface IJobContext
     /// <param name="value">Parameter value</param>
     void SetParameter(string key, object value);
 }
-
-/// <summary>
-/// Job monitoring interface
-/// </summary>
-public interface IJobMonitor
-{
-    /// <summary>
-    /// Get all job statistics
-    /// </summary>
-    /// <returns>Job statistics</returns>
-    Task<JobStatistics> GetStatisticsAsync();
-
-    /// <summary>
-    /// Get failed jobs
-    /// </summary>
-    /// <param name="skip">Number of jobs to skip</param>
-    /// <param name="take">Number of jobs to take</param>
-    /// <returns>Failed jobs</returns>
-    Task<IEnumerable<JobInfo>> GetFailedJobsAsync(int skip = 0, int take = 50);
-
-    /// <summary>
-    /// Get processing jobs
-    /// </summary>
-    /// <param name="skip">Number of jobs to skip</param>
-    /// <param name="take">Number of jobs to take</param>
-    /// <returns>Processing jobs</returns>
-    Task<IEnumerable<JobInfo>> GetProcessingJobsAsync(int skip = 0, int take = 50);
-
-    /// <summary>
-    /// Get succeeded jobs
-    /// </summary>
-    /// <param name="skip">Number of jobs to skip</param>
-    /// <param name="take">Number of jobs to take</param>
-    /// <returns>Succeeded jobs</returns>
-    Task<IEnumerable<JobInfo>> GetSucceededJobsAsync(int skip = 0, int take = 50);
-}

@@ -44,6 +44,9 @@ reference: `AppManagement/db/README.md`, `docs/cli.md` → `db apply`, memory `2
 asdamir db apply --server <sql> --database AsdamirVault --user <login> --password <pwd> \
   --migrations AppManagement/db/migrations
 #   add --create-database for a fresh catalog; on Windows you may drop --user for integrated auth.
+# For a GENERATED APP's migrations (db/migrations under its Gateway), omit the connection entirely —
+#   `asdamir db apply --migrations db/migrations` resolves ConnectionStrings:Default from the Gateway
+#   user-secret (then the ConnectionStrings__Default env var), so no SQL password touches the CLI.
 ```
 Before pushing, prove it on a throwaway DB: apply (N applied) → re-run (`Done. 0 new … N skipped`).
 

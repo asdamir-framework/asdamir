@@ -21,6 +21,10 @@ public interface IOutboxDispatcher
     /// <summary>Message type this dispatcher handles. 1=SMS, 2=Email.</summary>
     byte MessageType { get; }
 
+    /// <summary>
+    /// Deliver one claimed outbox message. Throw <see cref="PermanentDispatchException"/> for a
+    /// non-retryable failure (moved to dead-letter); any other exception is treated as transient (retried).
+    /// </summary>
     Task DispatchAsync(ClaimedOutboxMessage message, CancellationToken ct);
 }
 
@@ -31,6 +35,8 @@ public interface IOutboxDispatcher
 /// </summary>
 public sealed class PermanentDispatchException : Exception
 {
+    /// <summary>Creates a permanent (non-retryable) dispatch failure with a message.</summary>
     public PermanentDispatchException(string message) : base(message) { }
+    /// <summary>Creates a permanent (non-retryable) dispatch failure wrapping an inner cause.</summary>
     public PermanentDispatchException(string message, Exception inner) : base(message, inner) { }
 }

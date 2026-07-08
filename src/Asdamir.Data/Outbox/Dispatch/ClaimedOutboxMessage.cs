@@ -12,7 +12,7 @@ namespace Asdamir.Data.Outbox;
 
 /// <summary>
 /// Row shape returned by <c>dbo.Outbox_ClaimBatch</c>. Worker-only DTO (not exposed via API);
-/// kept distinct from <see cref="OutboxMessageDto"/> so admin-view formatting can evolve without
+/// kept distinct from <c>OutboxMessageDto</c> so admin-view formatting can evolve without
 /// breaking worker dispatch.
 /// </summary>
 public sealed record ClaimedOutboxMessage(

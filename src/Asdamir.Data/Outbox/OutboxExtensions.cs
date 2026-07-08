@@ -16,8 +16,10 @@ using Asdamir.Data.Outbox.Options;
 
 namespace Asdamir.Data.Outbox;
 
+/// <summary>DI registration for the transactional-outbox email service.</summary>
 public static class OutboxExtensions
 {
+    /// <summary>Registers <see cref="EmailService"/> + its options (bound + validated) into the container.</summary>
     public static IServiceCollection AddEmailService(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<EmailOptions>(configuration.GetSection("Email"));

@@ -13,6 +13,10 @@ using Asdamir.Core.Dtos;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>
+/// Mints signed JWT access + refresh token pairs for authenticated users, embedding the tenant/company,
+/// audience-boundary (<c>console</c> vs <c>app</c>) and permission claims that downstream endpoints authorize against.
+/// </summary>
 public interface IJwtService
 {
     /// <summary>

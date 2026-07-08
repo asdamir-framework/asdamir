@@ -20,7 +20,9 @@ namespace Asdamir.Web.Security.Services;
 /// </summary>
 public class ClientInfoService
 {
+    /// <summary>The client IP address captured for the circuit (IPv6 loopback normalized to <c>127.0.0.1</c>); <c>null</c>/"Unknown" if unavailable.</summary>
     public string? IpAddress { get; set; }
+    /// <summary>The client <c>User-Agent</c> header captured for the circuit; <c>null</c>/"Unknown" if unavailable.</summary>
     public string? UserAgent { get; set; }
 }
 
@@ -34,6 +36,10 @@ public class ClientInfoCircuitHandler : CircuitHandler
     private readonly ClientInfoService _clientInfoService;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    /// <summary>Initializes the circuit handler with its logger, the per-circuit client-info holder, and the HTTP context accessor.</summary>
+    /// <param name="logger">Logger for circuit lifecycle and client-info capture.</param>
+    /// <param name="clientInfoService">Scoped holder populated with the captured IP/User-Agent.</param>
+    /// <param name="httpContextAccessor">Accessor used to read the originating HTTP request during circuit setup.</param>
     public ClientInfoCircuitHandler(
         ILogger<ClientInfoCircuitHandler> logger,
         ClientInfoService clientInfoService,
@@ -44,6 +50,10 @@ public class ClientInfoCircuitHandler : CircuitHandler
         _httpContextAccessor = httpContextAccessor;
     }
 
+    /// <summary>Captures the client IP/User-Agent from the HTTP context and publishes the circuit id to downstream async flows when the connection comes up.</summary>
+    /// <param name="circuit">The circuit that connected.</param>
+    /// <param name="cancellationToken">Token to observe for cancellation.</param>
+    /// <returns>A task that completes when capture and base handling finish.</returns>
     public override Task OnConnectionUpAsync(Circuit circuit, CancellationToken cancellationToken)
     {
         try
@@ -93,6 +103,9 @@ public class ClientInfoCircuitHandler : CircuitHandler
         return base.OnConnectionUpAsync(circuit, cancellationToken);
     }
 
+    /// <summary>Wraps inbound circuit activity so the current circuit id is set for every request, then restored afterwards — keeping it available even when the HTTP context is null.</summary>
+    /// <param name="next">The next inbound-activity handler in the chain.</param>
+    /// <returns>A handler that sets/restores the ambient circuit id around <paramref name="next"/>.</returns>
     public override Func<CircuitInboundActivityContext, Task> CreateInboundActivityHandler(Func<CircuitInboundActivityContext, Task> next)
     {
         // Ensure CircuitExecutionContext is set for EVERY inbound activity.
@@ -113,6 +126,10 @@ public class ClientInfoCircuitHandler : CircuitHandler
         };
     }
 
+    /// <summary>Publishes the circuit id to the ambient execution context as early as possible in the circuit lifecycle.</summary>
+    /// <param name="circuit">The circuit being opened.</param>
+    /// <param name="cancellationToken">Token to observe for cancellation.</param>
+    /// <returns>A task that completes when base handling finishes.</returns>
     public override Task OnCircuitOpenedAsync(Circuit circuit, CancellationToken cancellationToken)
     {
         // Ensure circuit id is available as early as possible in the circuit lifecycle
@@ -120,6 +137,10 @@ public class ClientInfoCircuitHandler : CircuitHandler
         return base.OnCircuitOpenedAsync(circuit, cancellationToken);
     }
 
+    /// <summary>Handles a (possibly transient, e.g. Ctrl+F5) disconnect: keeps the circuit id and defers token cleanup to the definitive CLOSED event.</summary>
+    /// <param name="circuit">The circuit that disconnected.</param>
+    /// <param name="cancellationToken">Token to observe for cancellation.</param>
+    /// <returns>A task that completes when base handling finishes.</returns>
     public override async Task OnConnectionDownAsync(Circuit circuit, CancellationToken cancellationToken)
     {
         var circuitId = circuit.Id;
@@ -133,6 +154,10 @@ public class ClientInfoCircuitHandler : CircuitHandler
         await base.OnConnectionDownAsync(circuit, cancellationToken);
     }
 
+    /// <summary>Handles definitive circuit close: clears the ambient circuit id and, after a short grace period, removes the circuit's cached auth tokens unless they were reused after close.</summary>
+    /// <param name="circuit">The circuit that closed.</param>
+    /// <param name="cancellationToken">Token to observe for cancellation.</param>
+    /// <returns>A task that completes when base handling finishes (grace cleanup runs in the background).</returns>
     public override async Task OnCircuitClosedAsync(Circuit circuit, CancellationToken cancellationToken)
     {
         var circuitId = circuit.Id;

@@ -12,9 +12,13 @@ using Asdamir.Core.Models;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>Store of error-key → localized-message rows backing <see cref="IErrorTranslationService"/>.</summary>
 public interface IErrorTranslationRepository
 {
+    /// <summary>The translation row for an error key in one language, or null.</summary>
     Task<ErrorTranslation?> GetTranslationAsync(string errorKey, string language);
+    /// <summary>All languages for an error key (culture→message).</summary>
     Task<Dictionary<string, string>> GetTranslationsAsync(string errorKey);
+    /// <summary>Every error-translation row (for management/export).</summary>
     Task<List<ErrorTranslation>> GetAllTranslationsAsync();
 }

@@ -12,8 +12,14 @@ using Microsoft.Extensions.Options;
 namespace Asdamir.Web.Security.Options;
 
 
+/// <summary>
+/// Fail-fast options validator for <see cref="SecurityHeadersOptions"/>: rejects a configuration where a
+/// header is enabled but its value is blank (an empty header would ship a meaningless directive). Runs at
+/// startup / first resolve via the options validation pipeline.
+/// </summary>
 public sealed class SecurityHeadersOptionsValidator : IValidateOptions<SecurityHeadersOptions>
 {
+    /// <inheritdoc/>
     public ValidateOptionsResult Validate(string? name, SecurityHeadersOptions options)
     {
         if (options.UseXFrameOptions && string.IsNullOrWhiteSpace(options.XFrameOptionsValue))

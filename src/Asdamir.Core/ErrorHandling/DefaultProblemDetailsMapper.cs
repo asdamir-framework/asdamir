@@ -37,11 +37,27 @@ public class DefaultProblemDetailsMapper : IProblemDetailsMapper
 {
     private readonly ILocalizationService? _localizationService;
 
+    /// <summary>
+    /// Creates the mapper, optionally with a localization service used to pre-translate a domain
+    /// exception's title; when none is supplied, titles stay as stable <c>error.&lt;code&gt;</c> keys for
+    /// the middleware to translate by request culture.
+    /// </summary>
+    /// <param name="localizationService">Resolver for <c>error.*</c> keys; null disables pre-translation.</param>
     public DefaultProblemDetailsMapper(ILocalizationService? localizationService = null)
     {
         _localizationService = localizationService;
     }
 
+    /// <summary>
+    /// Maps an exception to its HTTP status, a stable error code, and a base ProblemDetails: a
+    /// <see cref="DomainException"/> keeps its own <c>Code</c>, while every other type is folded into a
+    /// small fixed set of codes so the client can never enumerate internal exception types.
+    /// </summary>
+    /// <param name="exception">The unhandled exception to classify.</param>
+    /// <param name="traceId">Correlation id recorded as <see cref="ProblemDetails.Instance"/> for log matching.</param>
+    /// <param name="cancellationToken">Cancels the optional localization lookup.</param>
+    /// <returns>The chosen status code, the stable error code, and the seed ProblemDetails (its Title may be
+    /// re-localized by the middleware per the caller's culture).</returns>
     public async Task<(int StatusCode, string ErrorCode, ProblemDetails ProblemDetails)> MapAsync(
         Exception exception, string traceId, CancellationToken cancellationToken = default)
     {

@@ -210,6 +210,7 @@ public class JobExecutor
     private readonly IServiceProvider _services;
     private readonly ILogger<JobExecutor> _logger;
 
+    /// <summary>Creates the job executor over the service provider (for per-job scopes) and logger.</summary>
     public JobExecutor(IServiceProvider services, ILogger<JobExecutor> logger)
     {
         _services = services;

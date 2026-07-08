@@ -37,6 +37,11 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
     private readonly Timer _sweeper;
     private bool _disposed;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthorizationCache"/> class with a size-bounded memory cache and a periodic TTL sweeper.
+    /// </summary>
+    /// <param name="logger">Logger for cache hit/miss/eviction diagnostics.</param>
+    /// <param name="tenant">Optional tenant context; when present its tenant id is included in every cache key to prevent cross-tenant collisions.</param>
     public AuthorizationCache(ILogger<AuthorizationCache> logger, ITenantContext? tenant = null)
     {
         _logger = logger;
@@ -70,6 +75,7 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
         }
     }
 
+    /// <inheritdoc/>
     public void Dispose()
     {
         if (_disposed) return;
@@ -79,6 +85,7 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <inheritdoc/>
     public Task<AuthorizationResult?> GetAsync(string userId, string route)
     {
         var key = GetCacheKey(userId, route);
@@ -91,6 +98,7 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
         return Task.FromResult<AuthorizationResult?>(null);
     }
 
+    /// <inheritdoc/>
     public Task SetAsync(string userId, string route, AuthorizationResult result, TimeSpan? expiration = null)
     {
         var key = GetCacheKey(userId, route);
@@ -105,6 +113,7 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public Task InvalidateUserAsync(string userId)
     {
         // IMemoryCache doesn't expose key enumeration; we use a CancellationTokenSource per user
@@ -120,6 +129,7 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public Task InvalidateRouteAsync(string route)
     {
         if (_cache is MemoryCache mc) mc.Compact(1.0);
@@ -127,6 +137,7 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
         return Task.CompletedTask;
     }
 
+    /// <inheritdoc/>
     public Task ClearAllAsync()
     {
         if (_cache is MemoryCache mc) mc.Compact(1.0);

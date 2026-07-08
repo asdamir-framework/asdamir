@@ -24,6 +24,7 @@ namespace Asdamir.Web.UI.Services;
 /// </summary>
 public sealed class ExportService : IExportService
 {
+    /// <summary>Creates the service and registers the QuestPDF Community license used for PDF export.</summary>
     public ExportService()
     {
         // QuestPDF license configuration (Community license - free for non-commercial)

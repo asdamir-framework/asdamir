@@ -25,6 +25,12 @@ public class BlazorAuthenticationHandler : DelegatingHandler
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly AuthState _authState;
 
+    /// <summary>
+    /// Initializes the handler with the services needed to resolve and attach the circuit's token.
+    /// </summary>
+    /// <param name="logger">Logger for token-resolution diagnostics.</param>
+    /// <param name="httpContextAccessor">Accessor used to read circuit id, stored IP and User-Agent.</param>
+    /// <param name="authState">The current auth state, used to decide retry/logging behavior.</param>
     public BlazorAuthenticationHandler(
         ILogger<BlazorAuthenticationHandler> logger,
         IHttpContextAccessor httpContextAccessor,
@@ -35,6 +41,7 @@ public class BlazorAuthenticationHandler : DelegatingHandler
         _authState = authState;
     }
 
+    /// <inheritdoc/>
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         try

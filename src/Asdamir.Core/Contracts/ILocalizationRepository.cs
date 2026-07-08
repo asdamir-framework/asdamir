@@ -12,14 +12,25 @@ using Asdamir.Core.Dtos;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>
+/// Localization-resource store (the DB-backed strings, per key + culture): management CRUD, import/export,
+/// and the per-culture key→value map the UI is warmed from.
+/// </summary>
 public interface ILocalizationRepository
 {
+    /// <summary>The most recent resources for the management list (capped at <paramref name="top"/>).</summary>
     Task<IReadOnlyList<ResourceDto>> ListResourcesAsync(int top = 200);
+    /// <summary>Exports resources, optionally for a single culture (null = all cultures).</summary>
     Task<IReadOnlyList<ResourceDto>> ExportAsync(string? culture);
+    /// <summary>Imports/upserts a batch of resources; returns the number of rows affected.</summary>
     Task<int> ImportAsync(LocalizationImportDto input);
+    /// <summary>Finds a resource by id, or null if not found.</summary>
     Task<ResourceDto?> GetByIdAsync(int id);
+    /// <summary>Creates a resource and returns the created record.</summary>
     Task<ResourceDto> CreateAsync(CreateResourceRequestDto request);
+    /// <summary>Updates a resource; returns true if a row changed.</summary>
     Task<bool> UpdateAsync(int id, UpdateResourceRequestDto request);
+    /// <summary>Deletes a resource; returns true if a row was removed.</summary>
     Task<bool> DeleteAsync(int id);
     
     /// <summary>

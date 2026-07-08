@@ -13,15 +13,22 @@ using Asdamir.Web.Security.Middleware;
 namespace Asdamir.Web.Security.Services;
 
 
+/// <summary>
+/// Default <see cref="ICspNonceProvider"/> that reads the nonce placed in <c>HttpContext.Items</c> by the
+/// CSP nonce middleware for the current request.
+/// </summary>
 public sealed class CspNonceProvider : ICspNonceProvider
 {
     private readonly IHttpContextAccessor _http;
 
+    /// <summary>Initializes the provider with the HTTP context accessor used to read the current request's nonce.</summary>
+    /// <param name="http">Accessor for the current <c>HttpContext</c>.</param>
     public CspNonceProvider(IHttpContextAccessor http)
     {
         _http = http;
     }
 
+    /// <inheritdoc/>
     public string? GetNonce()
     {
         return _http.HttpContext?.Items.TryGetValue(CspNonceMiddleware.NonceItemsKey, out var value) == true

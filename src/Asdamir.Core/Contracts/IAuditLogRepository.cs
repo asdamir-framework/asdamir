@@ -12,8 +12,10 @@ using Asdamir.Core.Models;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>Audit-trail store (who did what, when): filtered read + append + retention housekeeping.</summary>
 public interface IAuditLogRepository
 {
+    /// <summary>Filtered, paged audit rows (by date range, entity, action, user).</summary>
     Task<List<AuditLog>> GetLogsAsync(
         DateTime? startDate = null,
         DateTime? endDate = null,
@@ -22,9 +24,12 @@ public interface IAuditLogRepository
         string? userId = null,
         int pageSize = 100);
 
+    /// <summary>Finds an audit row by id, or null.</summary>
     Task<AuditLog?> GetByIdAsync(long id);
 
+    /// <summary>Appends an audit row; returns its new id.</summary>
     Task<long> CreateAsync(AuditLog auditLog);
 
+    /// <summary>Purges audit rows older than the retention window.</summary>
     Task DeleteOldLogsAsync(int retentionDays = 90);
 }

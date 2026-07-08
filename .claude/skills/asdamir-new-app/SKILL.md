@@ -7,8 +7,9 @@ description: Use when scaffolding a brand-new application (or mobile app) on the
 
 `asdamir new app <Name>` emits a self-contained skeleton: **`<Name>.Server`** (Blazor Web App, the UI
 tier) + **`<Name>.Gateway`** (REST API tier) + the app's own DB schema/seed + a
-`db/admin-onboarding/register_<name>.sql`. Deep reference: `docs/MANAGED_APP_TEMPLATE.md`, `docs/cli.md`,
-`docs/mobile.md`, and `CLAUDE.md` → CENTRAL + Layered rules.
+`db/admin-onboarding/register_<name>.sql` (the managed-app registration/integration contract is part of the
+commercial AppManagement). Deep reference: `docs/cli.md`, `docs/mobile.md`, and `CLAUDE.md` → CENTRAL +
+Layered rules.
 
 > **Project names are DEFAULTS and are overridable at generation.** `<Name>.Server` / `<Name>.Gateway`
 > are just the prompted defaults (`AppCommand` asks "UI (Server) proje adı" / "REST API (Gateway) proje
@@ -39,8 +40,9 @@ cd MyPortal
 2. `dotnet build MyPortal.sln && dotnet test MyPortal.sln`
 3. **Create the app's own (business) DB** with the journaled runner (`asdamir-migration`):
    ```bash
-   asdamir db apply --server <sql> --database MyPortalDb --user <login> --password <pwd> \
-     --create-database --migrations db/migrations
+   # No SQL password on the CLI: db apply resolves ConnectionStrings:Default from the Gateway user-secret
+   # you set above. (Or pass --server/--database/--user/--password / --connection explicitly.)
+   asdamir db apply --create-database --migrations db/migrations
    ```
 4. **Register + seed in AppManagement** — run `db/admin-onboarding/register_myportal.sql` **against
    AsdamirVault** (not the app's DB). It registers the app and seeds its starter admin / role /

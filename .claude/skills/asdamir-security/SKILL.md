@@ -6,8 +6,8 @@ description: Use when working on authentication OR authorization — login/JWT/2
 # Asdamir security (authentication + authorization)
 
 Identity and access control are one concern — securing an endpoint means *both*. Deep reference:
-`docs/fundamentals/authentication.md`, `docs/fundamentals/authorization.md`, `docs/admin-console.md`,
-memory `2026-06-14-secrets-rotation-and-health-probes`.
+`docs/fundamentals/authentication.md`, `docs/fundamentals/authorization.md` (console-side user, role and
+permission administration is done in the commercial AppManagement app).
 
 ## Authentication
 
@@ -25,6 +25,13 @@ memory `2026-06-14-secrets-rotation-and-health-probes`.
 **Per-app login** — `api/admin/auth/app-login` / `app-twofactor/verify` / `app-refresh` issue **app-scoped**
 JWTs whose permissions are the user's role codes **on that app** (`dbo.UserAppRoles`), never the
 control-plane "all permissions". The generated Gateway exposes these as `gateway/auth/login` etc. (proxy).
+
+**Free mode** (`new app --mode free`) — a self-contained app has **no control plane**: its **Gateway issues
+and validates its own JWT** (`Asdamir.Core` `JwtService`) against the app's **own** `dbo.Users`, with the
+login gate "user exists + is active". The starter admin ships with **`ForcePasswordChange = 1`**, so the
+**first sign-in is forced through a change-password page** before the dashboard — the `gateway/auth/change-password`
+endpoint verifies the current password, sets the new one, clears the flag, and **revokes all refresh tokens**.
+Subsequent logins are normal. See `docs/cli.md` → *free vs commercial mode*.
 
 **Refresh tokens** — single-use **rotation with reuse detection** (re-presenting a used token revokes all
 of the user's tokens); stored as **SHA-256 hashes** in `dbo.RefreshTokens` (DB-backed in Dapper mode).

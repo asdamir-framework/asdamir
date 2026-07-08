@@ -18,6 +18,10 @@ namespace Asdamir.Data.Configuration;
 // The connection-factory abstraction is the single canonical Asdamir.Core.Contracts.IDbConnectionFactory.
 // (The former duplicate Asdamir.Data.Configuration.IDbConnectionFactory was removed — one source of truth.)
 
+/// <summary>
+/// <see cref="IConfigurationBuilder"/> extensions that add the DB-backed configuration source
+/// (<c>AppConfigurations</c>) so settings live in the database, not just appsettings.
+/// </summary>
 public static class ConfigurationBuilderExtensions
 {
     /// <summary>

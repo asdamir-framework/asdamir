@@ -10,10 +10,17 @@
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>
+/// Resolves a stable error key to a localized, user-facing message (the two-channel error rule). Values
+/// come from the localization store; supports parameter substitution and a safe fallback.
+/// </summary>
 public interface IErrorTranslationService
 {
+    /// <summary>The localized message for an error key in one language, with optional parameter substitution.</summary>
     Task<string> GetTranslatedMessageAsync(string errorKey, string language, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default);
+    /// <summary>The localized message for an error key in every configured language (culture→message).</summary>
     Task<Dictionary<string, string>> GetTranslatedMessagesAsync(string errorKey, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default);
+    /// <summary>A neutral fallback message when no translation exists for the key — never exposes the raw key/exception.</summary>
     Task<string> GetFallbackMessageAsync(string errorKey, string language, Exception? exception = null, CancellationToken cancellationToken = default);
 }
 

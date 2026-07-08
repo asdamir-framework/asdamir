@@ -33,7 +33,9 @@ public sealed class LocalizationCacheGeneration : ILocalizationCacheGeneration
 {
     private int _generation = 1;
 
+    /// <inheritdoc/>
     public int Current => Volatile.Read(ref _generation);
 
+    /// <inheritdoc/>
     public void Bump() => Interlocked.Increment(ref _generation);
 }

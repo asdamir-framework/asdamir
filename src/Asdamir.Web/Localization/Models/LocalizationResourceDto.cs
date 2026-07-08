@@ -16,7 +16,12 @@ namespace Asdamir.Web.Localization.Models;
 /// </summary>
 public class LocalizationResourceDto
 {
+    /// <summary>The resource key (e.g. <c>Common.Save</c>) that UI code resolves.</summary>
     public required string Key { get; set; }
+
+    /// <summary>The culture this value belongs to (e.g. <c>tr-TR</c>, <c>en-US</c>, <c>ru-RU</c>).</summary>
     public required string Culture { get; set; }
+
+    /// <summary>The localized text for the key in the given culture.</summary>
     public required string Value { get; set; }
 }

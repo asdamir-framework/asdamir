@@ -15,10 +15,21 @@ namespace Asdamir.Web.UI.Components;
 /// </summary>
 public enum DialogSize
 {
+    /// <summary>Compact dialog for short prompts or confirmations.</summary>
     Small,
+
+    /// <summary>Default, general-purpose dialog size.</summary>
     Medium,
+
+    /// <summary>Roomy dialog for longer forms or content.</summary>
     Large,
+
+    /// <summary>Extra-large dialog for dense or wide content.</summary>
     XLarge,
+
+    /// <summary>Dialog that fills the entire viewport.</summary>
     Fullscreen,
+
+    /// <summary>Caller-specified dimensions rather than a preset.</summary>
     Custom
 }

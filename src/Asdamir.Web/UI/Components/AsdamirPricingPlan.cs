@@ -11,7 +11,7 @@
 namespace Asdamir.Web.UI.Components;
 
 /// <summary>
-/// One pricing tier for <see cref="AsdamirPricing"/>. Dependency-light data holder — the component
+/// One pricing tier for the <c>AsdamirPricing</c> component. Dependency-light data holder — the component
 /// renders a responsive row of these as INSPINIA-style pricing cards.
 /// </summary>
 public sealed class AsdamirPricingPlan

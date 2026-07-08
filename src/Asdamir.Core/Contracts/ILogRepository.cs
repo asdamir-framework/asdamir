@@ -12,8 +12,11 @@ using Asdamir.Core.Dtos;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>Read-only access to application log entries for the log-viewer UI (list + export).</summary>
 public interface ILogRepository
 {
+    /// <summary>The most recent log entries (capped at <paramref name="top"/>).</summary>
     Task<IReadOnlyList<LogEntryDto>> ListAsync(int top = 200);
+    /// <summary>Log entries for export, filtered by level and/or a date range.</summary>
     Task<IReadOnlyList<LogEntryDto>> ExportAsync(string? level, DateTime? startDate, DateTime? endDate);
 }

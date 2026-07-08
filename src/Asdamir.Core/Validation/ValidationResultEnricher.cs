@@ -20,11 +20,16 @@ public class ValidationResultEnricher : IValidationResultEnricher
 {
     private readonly ILogger<ValidationResultEnricher> _logger;
 
+    /// <summary>
+    /// Creates the enricher with the logger used to record failed-validation diagnostics.
+    /// </summary>
+    /// <param name="logger">Logger that receives the per-property failure details.</param>
     public ValidationResultEnricher(ILogger<ValidationResultEnricher> logger)
     {
         _logger = logger;
     }
 
+    /// <inheritdoc/>
     public void Enrich<T>(ValidationResult result)
     {
         if (result.IsValid) return;

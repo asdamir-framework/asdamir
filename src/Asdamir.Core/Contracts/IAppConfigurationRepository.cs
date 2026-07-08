@@ -15,12 +15,19 @@ using Asdamir.Core.Models;
 
 namespace Asdamir.Core.Contracts;
 
+/// <summary>DB-backed application-configuration store (<c>dbo.AppConfigurations</c>): read/write runtime settings by key.</summary>
 public interface IAppConfigurationRepository
 {
+    /// <summary>All configuration entries.</summary>
     Task<List<AppConfiguration>> GetAllAsync(CancellationToken cancellationToken = default);
+    /// <summary>The raw value for a key, or null if the key is absent.</summary>
     Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default);
+    /// <summary>The full configuration entry for a key, or null.</summary>
     Task<AppConfiguration?> GetByKeyAsync(string key, CancellationToken cancellationToken = default);
+    /// <summary>Creates a configuration entry and returns it.</summary>
     Task<AppConfiguration> CreateAsync(AppConfiguration config, CancellationToken cancellationToken = default);
+    /// <summary>Updates a configuration entry and returns it.</summary>
     Task<AppConfiguration> UpdateAsync(AppConfiguration config, CancellationToken cancellationToken = default);
+    /// <summary>Deletes the configuration entry with the given key.</summary>
     Task DeleteAsync(string key, CancellationToken cancellationToken = default);
 }

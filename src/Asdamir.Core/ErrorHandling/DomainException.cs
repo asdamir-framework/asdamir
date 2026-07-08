@@ -11,19 +11,37 @@
 namespace Asdamir.Core.ErrorHandling.Domain;
 
 /// <summary>
-/// Represents a domain-specific exception with an error code
+/// An expected, business-level failure carrying a stable <c>Code</c> that maps to a localized user
+/// message; the global middleware translates it to a 400 ProblemDetails instead of an opaque 500, so
+/// throwing one is the intended way to signal a rule violation (not-found, conflict, etc.) to the caller.
 /// </summary>
 public class DomainException : Exception
 {
+    /// <summary>
+    /// Stable error key (e.g. <c>"user.not_found"</c>) used to resolve the localized message and to
+    /// group occurrences in the log — matched by value, never shown raw to the user.
+    /// </summary>
     public string Code { get; }
-    
-    public DomainException(string code, string message) : base(message) 
-    { 
-        Code = code; 
+
+    /// <summary>
+    /// Creates a domain exception with its stable <paramref name="code"/> and a developer-facing message.
+    /// </summary>
+    /// <param name="code">Stable error key that drives localization and grouping (see <c>Code</c>).</param>
+    /// <param name="message">Developer/log-facing description; never surfaced verbatim to the end user.</param>
+    public DomainException(string code, string message) : base(message)
+    {
+        Code = code;
     }
-    
-    public DomainException(string code, string message, Exception innerException) : base(message, innerException) 
-    { 
-        Code = code; 
+
+    /// <summary>
+    /// Creates a domain exception with its stable <paramref name="code"/>, a message, and the underlying
+    /// cause, preserving the original exception chain for logging.
+    /// </summary>
+    /// <param name="code">Stable error key that drives localization and grouping (see <c>Code</c>).</param>
+    /// <param name="message">Developer/log-facing description; never surfaced verbatim to the end user.</param>
+    /// <param name="innerException">The lower-level exception that triggered this domain failure.</param>
+    public DomainException(string code, string message, Exception innerException) : base(message, innerException)
+    {
+        Code = code;
     }
 }

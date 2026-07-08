@@ -20,6 +20,10 @@ public static class CircuitExecutionContext
 {
     private static readonly AsyncLocal<string?> _currentCircuitId = new();
 
+    /// <summary>
+    /// The circuit id flowing with the current execution context, set when a circuit handles a
+    /// request and read by out-of-scope HttpClient handlers to resolve the active circuit.
+    /// </summary>
     public static string? CurrentCircuitId
     {
         get => _currentCircuitId.Value;

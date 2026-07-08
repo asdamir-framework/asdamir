@@ -27,6 +27,11 @@ public sealed class LocalizationHttpClient : ILocalizationService
     private readonly ConcurrentDictionary<string, Dictionary<string, string>> _cache = new();
     private readonly SemaphoreSlim _lock = new(1, 1);
 
+    /// <summary>
+    /// Initializes the client with the HTTP transport used to fetch resources from the API.
+    /// </summary>
+    /// <param name="logger">Logger for load/cache diagnostics.</param>
+    /// <param name="httpClient">The configured HttpClient pointed at the localization API/Gateway.</param>
     public LocalizationHttpClient(
         ILogger<LocalizationHttpClient> logger,
         HttpClient httpClient)
@@ -38,19 +43,29 @@ public sealed class LocalizationHttpClient : ILocalizationService
         _configuredCultures = new List<string> { "tr-TR", "en-US", "ru-RU" };
     }
 
+    /// <inheritdoc/>
     public IReadOnlyList<string> SupportedCultures => _configuredCultures;
 
+    /// <summary>
+    /// Not supported by design. Localization resources are <b>SQL-managed</b> — they are mutated only via
+    /// <c>LocalizationResource</c> seed migrations, never over HTTP. This client is a <b>read-only</b>
+    /// delivery transport (it fetches the warmed per-culture map from the API). Throws
+    /// <see cref="NotSupportedException"/> — this is a deliberate contract, not an unfinished stub.
+    /// </summary>
+    /// <exception cref="NotSupportedException">Always — mutate localization via a migration, not this client.</exception>
     public Task UpsertAsync(string key, IDictionary<string, string> cultureToValue, CancellationToken cancellationToken = default)
-    {
-        // Not implemented - localization resources are managed via SQL scripts
-        throw new NotImplementedException("Upsert functionality not implemented. Use SQL scripts to manage localization resources.");
-    }
+        => throw new NotSupportedException(
+            "Localization is SQL-managed: this HTTP transport is read-only. Add/change resources via a LocalizationResource seed migration, not UpsertAsync.");
 
+    /// <summary>
+    /// Not supported by design. Localization resources are <b>SQL-managed</b> (see <see cref="UpsertAsync"/>):
+    /// deletion happens via a migration, not over this read-only HTTP transport. Throws
+    /// <see cref="NotSupportedException"/> by design.
+    /// </summary>
+    /// <exception cref="NotSupportedException">Always — remove localization via a migration, not this client.</exception>
     public Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)
-    {
-        // Not implemented - localization resources are managed via SQL scripts
-        throw new NotImplementedException("Delete functionality not implemented. Use SQL scripts to manage localization resources.");
-    }
+        => throw new NotSupportedException(
+            "Localization is SQL-managed: this HTTP transport is read-only. Remove resources via a LocalizationResource migration, not DeleteAsync.");
 
     /// <summary>
     /// Clear the in-memory cache to force reload from API
@@ -61,6 +76,7 @@ public sealed class LocalizationHttpClient : ILocalizationService
         _logger.LogInformation("Localization cache cleared");
     }
 
+    /// <inheritdoc/>
     public async Task<IDictionary<string, string>> GetResourcesAsync(string cultureName, CancellationToken cancellationToken = default)
     {
         // Return whatever was loaded (possibly empty). The upper layer (e.g. SimpleStringLocalizer)
@@ -70,12 +86,14 @@ public sealed class LocalizationHttpClient : ILocalizationService
         return await LoadCultureAsync(cultureName, cancellationToken);
     }
 
+    /// <inheritdoc/>
     public async Task<string?> GetAsync(string cultureName, string key, CancellationToken cancellationToken = default)
     {
         var resources = await LoadCultureAsync(cultureName, cancellationToken);
         return resources.TryGetValue(key, out var value) ? value : null;
     }
 
+    /// <inheritdoc/>
     public async Task<IDictionary<string, string>> GetResourcesByCategoryAsync(string cultureName, string category, CancellationToken cancellationToken = default)
     {
         var cacheKey = $"{cultureName}:{category}";

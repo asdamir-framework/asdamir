@@ -42,11 +42,18 @@ public class ApplicationPrefixEnricher : ILogEventEnricher
     // SourceContext strings (one per logger), so growth is finite in practice.
     private static readonly ConcurrentDictionary<string, string> PrefixCache = new();
 
+    /// <summary>
+    /// Creates the enricher. The prefix is derived per event from <c>SourceContext</c>, so no
+    /// configuration is needed; the parameter is retained only for backward compatibility with the
+    /// old DI registration and is ignored.
+    /// </summary>
+    /// <param name="_">Unused; kept so existing registrations that pass an argument still compile.</param>
     public ApplicationPrefixEnricher(string _ = "")
     {
         // Parameter kept for backward compatibility with the old DI registration.
     }
 
+    /// <inheritdoc/>
     public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
     {
         if (MessageTemplateField is null || logEvent.MessageTemplate?.Text is null)

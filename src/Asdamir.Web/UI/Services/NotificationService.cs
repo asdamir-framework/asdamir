@@ -17,69 +17,88 @@ namespace Asdamir.Web.UI.Services;
 /// </summary>
 public sealed class NotificationService : INotificationService
 {
+    /// <inheritdoc/>
     public event EventHandler<NotificationRequest>? NotificationRequested;
+    /// <inheritdoc/>
     public event EventHandler<ConfirmationRequest>? ConfirmationRequested;
+    /// <inheritdoc/>
     public event EventHandler<LoadingRequest>? LoadingChanged;
+    /// <inheritdoc/>
     public event EventHandler<ActionNotificationRequest>? ActionNotificationRequested;
 
     private readonly IStringLocalizer? _localizer;
-    
+
+    /// <summary>
+    /// Creates the service with an optional <see cref="IStringLocalizer"/>. When supplied, the
+    /// <c>Show*</c>/<c>Confirm*</c> overloads treat their first argument as a resource key and resolve it
+    /// (falling back to the raw key when the resource is missing); when <c>null</c>, keys are used verbatim.
+    /// </summary>
+    /// <param name="localizer">The localizer used to resolve message keys, or <c>null</c> for no localization.</param>
     public NotificationService(IStringLocalizer? localizer = null)
     {
         _localizer = localizer;
     }
-    
-    // Parameterless constructor for backward compatibility
+
+    /// <summary>
+    /// Creates the service without a localizer (backward-compatible overload); message keys are shown verbatim.
+    /// </summary>
     public NotificationService() : this((IStringLocalizer?)null)
     {
     }
 
-    // Simple methods (backward compatible - no localization)
+    /// <inheritdoc/>
     public void Success(string message, int timeoutMs = 3500)
     {
         Publish(new NotificationRequest(NotificationSeverity.Success, message, timeoutMs));
     }
 
+    /// <inheritdoc/>
     public void Info(string message, int timeoutMs = 3500)
     {
         Publish(new NotificationRequest(NotificationSeverity.Info, message, timeoutMs));
     }
 
+    /// <inheritdoc/>
     public void Warning(string message, int timeoutMs = 3500)
     {
         Publish(new NotificationRequest(NotificationSeverity.Warning, message, timeoutMs));
     }
 
+    /// <inheritdoc/>
     public void Error(string message, int timeoutMs = 5000)
     {
         Publish(new NotificationRequest(NotificationSeverity.Error, message, timeoutMs));
     }
 
-    // Localized methods
+    /// <inheritdoc/>
     public void ShowSuccess(string messageKey, params object[] args)
     {
         var message = GetLocalizedMessage(messageKey, args);
         Publish(new NotificationRequest(NotificationSeverity.Success, message, 3500));
     }
 
+    /// <inheritdoc/>
     public void ShowInfo(string messageKey, params object[] args)
     {
         var message = GetLocalizedMessage(messageKey, args);
         Publish(new NotificationRequest(NotificationSeverity.Info, message, 3500));
     }
 
+    /// <inheritdoc/>
     public void ShowWarning(string messageKey, params object[] args)
     {
         var message = GetLocalizedMessage(messageKey, args);
         Publish(new NotificationRequest(NotificationSeverity.Warning, message, 4000));
     }
 
+    /// <inheritdoc/>
     public void ShowError(string messageKey, params object[] args)
     {
         var message = GetLocalizedMessage(messageKey, args);
         Publish(new NotificationRequest(NotificationSeverity.Error, message, 5000));
     }
 
+    /// <inheritdoc/>
     public void Show(NotificationOptions options)
     {
         var message = GetLocalizedMessage(options.MessageKey, options.MessageArgs);
@@ -93,9 +112,11 @@ public sealed class NotificationService : INotificationService
 
     // Confirmation dialogs — raise an event carrying a TaskCompletionSource; the host
     // (AsdamirNotificationHost) shows the dialog and completes it with the user's choice.
+    /// <inheritdoc/>
     public Task<bool> ConfirmAsync(string messageKey, string? titleKey = null, params object[] args)
         => RaiseConfirmation(messageKey, titleKey, isDanger: false, args);
 
+    /// <inheritdoc/>
     public Task<bool> ConfirmDangerAsync(string messageKey, string? titleKey = null, params object[] args)
         => RaiseConfirmation(messageKey, titleKey, isDanger: true, args);
 
@@ -118,14 +139,17 @@ public sealed class NotificationService : INotificationService
     }
 
     // Loading overlay — host shows/hides it.
+    /// <inheritdoc/>
     public void ShowLoading(string messageKey, params object[] args)
         => LoadingChanged?.Invoke(this, new LoadingRequest(true, GetLocalizedMessage(messageKey, args)));
 
+    /// <inheritdoc/>
     public void HideLoading()
         => LoadingChanged?.Invoke(this, new LoadingRequest(false, null));
 
     // Persistent notification with action buttons. Falls back to a plain persistent toast when no
     // action-aware host is subscribed, so the message is still shown (just without the buttons).
+    /// <inheritdoc/>
     public void ShowWithActions(string messageKey, List<NotificationAction> actions, params object[] args)
     {
         var message = GetLocalizedMessage(messageKey, args);

@@ -12,6 +12,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Asdamir.Data.Configuration;
 
+/// <summary>
+/// DI registration for the DB-backed dynamic configuration + the <see cref="IFeatureManager"/>.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     /// <summary>
@@ -40,8 +43,11 @@ public static class ServiceCollectionExtensions
     }
 }
 
+/// <summary>Options for the DB-backed dynamic configuration source.</summary>
 public class DynamicConfigurationOptions
 {
+    /// <summary>How often the DB configuration is re-read into <c>IConfiguration</c>.</summary>
     public TimeSpan RefreshInterval { get; set; } = TimeSpan.FromMinutes(5);
+    /// <summary>Connection string to the configuration database (null = use the default connection).</summary>
     public string? ConnectionString { get; set; }
 }
