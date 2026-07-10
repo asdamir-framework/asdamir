@@ -50,6 +50,19 @@ cd MyPortal
 5. **Run both tiers:** `dotnet run --project src/MyPortal.Gateway` and `dotnet run --project src/MyPortal.Server`. Sign in with the seeded admin.
 6. Add real tables/pages with the `asdamir-new-entity` skill.
 
+## Billing (opt-in `--billing`, Model A)
+- **Off by default.** `asdamir new app MyPortal --billing` adds an **end-user payment page** (`/billing`):
+  plans + current subscription + checkout that **redirects to the tenant's Paddle hosted page** (pass-through
+  Merchant-of-Record). Without `--billing` no billing file is emitted (byte-identical scaffold).
+- **Commercial mode only** — billing data + the Paddle secret live centrally in AsdamirVault (AppId-scoped);
+  the app reaches them through AppManagement (`gateway/billing/*` → `api/admin/billing/*`, `AppId` resolved
+  from the token's `app_code` claim). The app never touches that DB and never holds the secret. `--billing
+  --mode free` is rejected fail-fast.
+- **Apply `db/admin-onboarding/seed_billing.sql` against AsdamirVault, AFTER `register_<app>.sql`** (it needs
+  the app's `AppId`). It seeds the `billing.view` permission + `/billing` menu + `Billing.Page.*` localization
+  (tr/en/ru) + the `Payment:Paddle:*` config templates (secrets empty — set this app's own Paddle keys, then
+  checkout goes live; until then it shows a calm "not configured" message).
+
 ## Mobile (`asdamir new mobile <Name>`)
 MAUI Blazor Hybrid app (login, nav drawer, dashboard, 401 refresh, offline cache). Needs
 `dotnet workload install maui-android` + an Android SDK platform; build a **single RID**

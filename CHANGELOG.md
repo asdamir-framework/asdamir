@@ -5,10 +5,29 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; the CLI (`Asdamir.Tools`) versions independently. Current published state:
-**Core/Data/Web `1.2.0`**, **Tools `1.2.2`** (nuget.org). AppManagement (the commercial control plane)
+**Core/Data/Web `1.2.0`**, **Tools `1.3.0`** (nuget.org). AppManagement (the commercial control plane)
 is not packed to NuGet — it ships as a compiled release for commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.0]
+
+### Added — opt-in end-user billing scaffold (`asdamir new app --billing`)
+
+- **`asdamir new app --billing`** (off by default) scaffolds an **end-user payment page** into a generated
+  app (commercial mode only). It emits, all fully conditional on the flag:
+  - a **Payment page** (`Payment.razor` at `/billing`) — lists plans, shows the current subscription, starts
+    checkout with a **redirect to the tenant's Paddle hosted page** (pass-through Merchant-of-Record). When
+    Paddle isn't configured yet it shows a calm localized message (never a raw status code / crash). Scoped
+    CSS, no inline style, no inline script (CSP-safe).
+  - a **Gateway proxy** (`gateway/billing/*` → AppManagement `api/admin/billing/*`) — forwards the bearer
+    (whose `app_code` claim AppManagement uses to resolve the app's `AppId`); holds no DB, no Paddle secret.
+  - an **AsdamirVault seed** (`db/admin-onboarding/seed_billing.sql`) — the `billing.view` permission + Admin
+    grant + `/billing` nav menu row + `Billing.Page.*` / `Menu.Billing` localization (tr-TR/en-US/ru-RU) +
+    `Payment:Paddle:*` / `Payment:Crypto:*` config templates (secrets seeded empty + encrypted, per-tenant).
+- **Backward-compatible:** WITHOUT `--billing` a generated app is byte-identical to before — not one billing
+  file is emitted. `--billing --mode free` is rejected fail-fast (free-mode billing needs a future
+  `Asdamir.Payments` package).
 
 - **FluentUI v5 migration** (`feature/fluentui-v5`) — pinned to the v5 RC (`5.0.0-rc.4-26180.1`); awaiting
   GA before merge to `main`. Not yet released.

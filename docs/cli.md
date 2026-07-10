@@ -28,7 +28,7 @@ dotnet tool install --global Asdamir.Tools
 
 | Command | Generates |
 |---|---|
-| `new app <Name>` | A full application (Server + Gateway) wired to the framework — including `Properties/launchSettings.json` on fixed dev ports (Gateway `7001` = the Server's `Gateway:BaseUrl`, Server `7010`) so `dotnet run` starts on a known port out of the box instead of the default `:5000`. **`--mode free\|commercial`** (default `commercial`) picks the identity model — see [free vs commercial mode](#asdamir-new-app-free-vs-commercial-mode). |
+| `new app <Name>` | A full application (Server + Gateway) wired to the framework — including `Properties/launchSettings.json` on fixed dev ports (Gateway `7001` = the Server's `Gateway:BaseUrl`, Server `7010`) so `dotnet run` starts on a known port out of the box instead of the default `:5000`. **`--mode free\|commercial`** (default `commercial`) picks the identity model — see [free vs commercial mode](#asdamir-new-app-free-vs-commercial-mode). **`--billing`** (opt-in, off by default) adds an end-user payment page + billing proxy + seeds — see [billing](#asdamir-new-app-billing). |
 | `new entity <Name>` | Entity + DTO + repository + service + controller + tests + a create migration + an **idempotent sample-seed migration**. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, **update round-trip**, **list**, and an **API auth-guard** (`GET` without a token → 401) — all DB-free (in-memory fake repo + `WebApplicationFactory`). The seed migration (since 1.1.1) writes 3 typed sample rows (guarded by `IF NOT EXISTS`, `TenantId='default'`) so the entity's grid is populated after `db apply` instead of empty. |
 | `new page <Name>` | A Blazor CRUD page (DataGrid + edit dialog + delete confirm) **plus** its localization seed (`localize_<plural>.sql`) and an idempotent, role-based **menu + permission seed** (`seed_menu_<plural>.sql`, AppId-scoped). `--icon` sets the nav icon. See [below](#asdamir-new-page-localization-menu-permission-seeds). |
 | `new feature <Name>` | **The one-command path for a complete CRUD feature** — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission & localization seeds, in one go. With `--apply` it also runs the entity migration, and with `--vault-connection` the AsdamirVault menu/permission seed. See [below](#asdamir-new-feature). |
@@ -107,6 +107,33 @@ a new password is set.
 (This is a free-mode flow — the starter admin lives in the app's own DB. Commercial-mode identity is managed
 in the control plane and is unaffected.) Add features exactly as in commercial mode with `asdamir new
 feature …` (see the free-mode note under it).
+
+### `asdamir new app`: billing
+
+`new app` takes an opt-in **`--billing`** flag (off by default). Without it a generated app is exactly as
+before — not a single billing file is emitted. With it, the app gains an **end-user payment page** so an
+app's own users can subscribe/pay:
+
+```bash
+asdamir new app MyApp --billing --yes
+```
+
+It requires **commercial mode** (billing is Model A): the billing data and the payment secret live centrally
+in AsdamirVault, scoped by the app's `AppId`, and are reached through AppManagement — the generated app never
+touches that DB and never holds the Paddle secret. `--billing` with `--mode free` is rejected fail-fast (free
+-mode billing needs the `Asdamir.Payments` package, not yet available).
+
+`--billing` emits three things, all fully conditional on the flag:
+
+| Piece | Where | What it does |
+|---|---|---|
+| **Payment page** | `src/<App>.Server/Components/Pages/Payment.razor` (+ `.razor.css`) | The end-user checkout UI at `/billing`: lists plans, shows the current subscription, and starts checkout. Checkout **redirects to the tenant's Paddle hosted page** (pass-through Merchant-of-Record). If Paddle isn't configured yet, it shows a calm localized message (never a raw status code / crash). |
+| **Gateway proxy** | `src/<App>.Gateway/Controllers/BillingController.cs` | Forwards `gateway/billing/*` → AppManagement's `api/admin/billing/*` (bearer forwarded; AppManagement resolves the app's `AppId` from the token's `app_code` claim). No DB, no secret here. |
+| **Seed** | `db/admin-onboarding/seed_billing.sql` | The `billing.view` permission + Admin grant + the `/billing` nav menu row + `Billing.Page.*` / `Menu.Billing` localization (tr-TR / en-US / ru-RU) + the `Payment:Paddle:*` / `Payment:Crypto:*` config templates (secrets seeded **empty + encrypted** — set this app's own Paddle keys, then checkout goes live). |
+
+Apply `seed_billing.sql` **after** the app is registered — it needs the app's `AppId` to exist. Each tenant
+connects its **own** Paddle account (pass-through: the framework is not in the money path). The crypto rail
+ships **default-off** with a TR-buyer geo-gate.
 
 ### `asdamir new feature`
 

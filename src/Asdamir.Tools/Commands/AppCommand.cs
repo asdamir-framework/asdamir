@@ -73,12 +73,15 @@ public static class AppCommand
         var modeOpt = new Option<string>(new[] { "--mode" },
             description: "'commercial' (default) — identity/menus/permissions/localization/config live CENTRALLY in AsdamirVault and are managed from AppManagement. 'free' — self-contained: those management tables are emitted into the app's OWN database (single-tenant), so the app needs no AppManagement.",
             getDefaultValue: () => "commercial");
+        var billingOpt = new Option<bool>(new[] { "--billing" },
+            description: "Opt-in: scaffold an end-user billing/payment page (Model A). Adds a Payment page (Server), a gateway/billing/* proxy (Gateway) and the billing menu/permission/localization + Paddle config seeds. Requires commercial mode (billing data + the Paddle secret live centrally in AsdamirVault; free-mode billing needs the Asdamir.Payments package — not yet available). Default off: without it the app is unchanged.",
+            getDefaultValue: () => false);
 
         var appCmd = new Command("app", "Generate a standalone Asdamir app (Server + Gateway + tests + sln + demo DB) that consumes the framework via DI and is managed from AppManagement.")
         {
             nameArg, outputOpt, namespaceOpt, localFeedOpt,
             serverNameOpt, apiNameOpt, databaseOpt, dbServerOpt, connStringOpt, gatewayUrlOpt,
-            adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt,
+            adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt, billingOpt,
         };
 
         appCmd.SetHandler((InvocationContext ctx) =>
@@ -98,7 +101,8 @@ public static class AppCommand
                 AdminEmail: r.GetValueForOption(adminEmailOpt) ?? "",
                 AdminPassword: r.GetValueForOption(adminPasswordOpt) ?? "",
                 Yes: r.GetValueForOption(yesOpt),
-                Mode: r.GetValueForOption(modeOpt) ?? "commercial"));
+                Mode: r.GetValueForOption(modeOpt) ?? "commercial",
+                Billing: r.GetValueForOption(billingOpt)));
         });
         return appCmd;
     }
@@ -107,7 +111,7 @@ public static class AppCommand
         string Name, DirectoryInfo Output, string NsOverride, string LocalFeed,
         string ServerName, string ApiName, string Database, string DbServer,
         string ConnString, string GatewayUrl, string AdminEmail, string AdminPassword, bool Yes,
-        string Mode);
+        string Mode, bool Billing);
 
     private static void Run(RawInputs raw)
     {
@@ -119,6 +123,18 @@ public static class AppCommand
         if (!isFreeMode && !string.Equals(raw.Mode, "commercial", StringComparison.OrdinalIgnoreCase))
         {
             Console.Error.WriteLine("--mode must be 'free' or 'commercial'.");
+            Environment.Exit(2);
+            return;
+        }
+
+        // Billing is opt-in (--billing) and Model A ONLY: the billing data + the Paddle secret live
+        // centrally in AsdamirVault and are reached through AppManagement. Free-mode billing (Model B)
+        // needs the Asdamir.Payments package + an app-local store/webhook, which is a separate, larger
+        // piece of work — so free + billing is rejected fail-fast rather than emitting a half-wired app.
+        var hasBilling = raw.Billing;
+        if (hasBilling && isFreeMode)
+        {
+            Console.Error.WriteLine("--billing requires commercial mode (Model A). Free-mode billing needs the Asdamir.Payments package, which is not yet available.");
             Environment.Exit(2);
             return;
         }
@@ -196,6 +212,10 @@ public static class AppCommand
             // Free mode → the Gateway issues JWTs + reads identity/menu/localization from its OWN DB
             // (local controllers); commercial → proxies to AppManagement. Templates branch on this.
             IsFreeMode = isFreeMode,
+            // Opt-in end-user billing (Model A, commercial only — free + billing is rejected above).
+            // Templates + the conditional emit below branch on this; false leaves the app byte-identical
+            // to a non-billing scaffold.
+            HasBilling = hasBilling,
             GeneratedAtUtc = now.ToString("u"),
             SchemaStamp = now.ToString("yyyyMMddHHmmss"),
             MigrationStamp = now.AddSeconds(1).ToString("yyyyMMddHHmmss"),
@@ -339,6 +359,19 @@ public static class AppCommand
             // this app's) — registers the app + seeds its central AppId-scoped management data. A free app
             // has no control plane, so this is not emitted there.
             written += WriteRendered(appRoot, $"db/admin-onboarding/register_{model.AppNameLower}.sql", "AppAdminOnboarding", model);
+        }
+
+        // Opt-in billing (Model A, commercial only — free + billing was rejected above). Emitted ONLY when
+        // --billing is passed; without it not a single billing file is written, so a non-billing scaffold is
+        // byte-identical to before this feature. The Gateway proxies gateway/billing/* → AppManagement (no
+        // DB, no Paddle secret here); the Server Payment page is the end-user checkout UI; the seeds add the
+        // billing menu/permission + localization + the Paddle config templates (AppId-scoped, in AsdamirVault).
+        if (hasBilling)
+        {
+            written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/BillingController.cs", "GatewayBillingController", model);
+            written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/Payment.razor", "ServerPaymentPage", model);
+            written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/Payment.razor.css", "ServerPaymentPageCss", model);
+            written += WriteRendered(appRoot, $"db/admin-onboarding/seed_billing.sql", "BillingSeed", model);
         }
 
         // Demo-only schema + seed (this app's OWN business DB — no management tables/data).

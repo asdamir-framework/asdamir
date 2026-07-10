@@ -22,8 +22,11 @@
          given (passwordless), the onboarding banner is mode-branched, register_<app>.sql is commercial-only,
          sample-seed rows are English, and `rollback` tears down free-mode seeds symmetrically.
          Backward-compatible: the default is still "commercial", unchanged. Core/Data/Web version is set in
-         Directory.Build.props. -->
-    <Version>1.2.2</Version>
+         Directory.Build.props.
+         1.3.0 (MINOR): a new opt-in billing flag on `asdamir new app` (commercial only) — scaffolds an
+         end-user payment page + a gateway/billing proxy + billing menu/permission/localization/config seeds.
+         Fully conditional: without the flag a generated app is byte-identical to before. -->
+    <Version>1.3.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

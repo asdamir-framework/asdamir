@@ -165,6 +165,11 @@ the app runs standalone with AppManagement not involved. The default (`--mode co
 control plane owns that data centrally in `AsdamirVault`, scoped per app. See the free quick-start in
 [docs/cli.md](docs/cli.md#asdamir-new-app-free-vs-commercial-mode).
 
+**Billing (opt-in).** `asdamir new app <Name> --billing` adds an **end-user payment page** (plans +
+subscription + Paddle checkout) — off by default, commercial mode only. The billing data + payment secret
+stay central in `AsdamirVault` (AppId-scoped); the app reaches them through AppManagement and never holds the
+secret. Without the flag no billing file is emitted. See [docs/cli.md](docs/cli.md#asdamir-new-app-billing).
+
 ### Configuration & secrets
 
 `appsettings.json` holds **non-secret defaults only**. Secrets come from `dotnet user-secrets` (dev) or environment variables (prod):
