@@ -1271,6 +1271,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#asdamir-new-app-billing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asdamir new app: billing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#asdamir-new-feature" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1656,6 +1667,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#asdamir-new-app-billing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        asdamir new app: billing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#asdamir-new-feature" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1849,7 +1871,7 @@
 <tbody>
 <tr>
 <td><code>new app &lt;Name&gt;</code></td>
-<td>A full application (Server + Gateway) wired to the framework — including <code>Properties/launchSettings.json</code> on fixed dev ports (Gateway <code>7001</code> = the Server's <code>Gateway:BaseUrl</code>, Server <code>7010</code>) so <code>dotnet run</code> starts on a known port out of the box instead of the default <code>:5000</code>. <strong><code>--mode free\|commercial</code></strong> (default <code>commercial</code>) picks the identity model — see <a href="#asdamir-new-app-free-vs-commercial-mode">free vs commercial mode</a>.</td>
+<td>A full application (Server + Gateway) wired to the framework — including <code>Properties/launchSettings.json</code> on fixed dev ports (Gateway <code>7001</code> = the Server's <code>Gateway:BaseUrl</code>, Server <code>7010</code>) so <code>dotnet run</code> starts on a known port out of the box instead of the default <code>:5000</code>. <strong><code>--mode free\|commercial</code></strong> (default <code>commercial</code>) picks the identity model — see <a href="#asdamir-new-app-free-vs-commercial-mode">free vs commercial mode</a>. <strong><code>--billing</code></strong> (opt-in, off by default) adds an end-user payment page + billing proxy + seeds — see <a href="#asdamir-new-app-billing">billing</a>.</td>
 </tr>
 <tr>
 <td><code>new entity &lt;Name&gt;</code></td>
@@ -1961,9 +1983,63 @@ register against), and its onboarding banner reflects the self-contained flow.</
 <a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/MyApp.Gateway<span class="w">    </span><span class="c1"># then, in another shell:</span>
 <a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/MyApp.Server<span class="w">     </span><span class="c1"># open the Server, sign in with the starter admin printed by `new app`</span>
 </code></pre></div>
-<p>The starter admin's email + one-time password are printed once by <code>new app</code> — change the password after
-first sign-in. Add features exactly as in commercial mode with <code>asdamir new feature …</code> (see the free-mode
-note under it).</p>
+<p>The starter admin's email + one-time password are printed once by <code>new app</code>. That password is a <strong>bootstrap
+credential</strong>, so the app <strong>forces a change on first sign-in</strong>: the starter admin ships with a
+<code>ForcePasswordChange</code> flag, and login redirects to a <strong>change-password</strong> page instead of the dashboard until
+a new password is set.</p>
+<p><strong>First sign-in — forced password change (free mode).</strong></p>
+<ol>
+<li>Sign in with the starter admin's email + one-time password.</li>
+<li>The app detects the flag and sends you to <code>/change-password</code> (not the dashboard).</li>
+<li>Enter the current password + a new one. The change-password endpoint verifies the current password,
+   stores the new one, <strong>clears <code>ForcePasswordChange</code>, and revokes all existing sessions</strong> (so any other
+   session is signed out).</li>
+<li>You're returned to the sign-in page; sign in again with the <strong>new</strong> password — the flag is now clear, so
+   you land on the dashboard. Subsequent logins are normal (no redirect).</li>
+</ol>
+<p>(This is a free-mode flow — the starter admin lives in the app's own DB. Commercial-mode identity is managed
+in the control plane and is unaffected.) Add features exactly as in commercial mode with <code>asdamir new
+feature …</code> (see the free-mode note under it).</p>
+<h3 id="asdamir-new-app-billing"><code>asdamir new app</code>: billing<a class="headerlink" href="#asdamir-new-app-billing" title="Permanent link">&para;</a></h3>
+<p><code>new app</code> takes an opt-in <strong><code>--billing</code></strong> flag (off by default). Without it a generated app is exactly as
+before — not a single billing file is emitted. With it, the app gains an <strong>end-user payment page</strong> so an
+app's own users can subscribe/pay:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>app<span class="w"> </span>MyApp<span class="w"> </span>--billing<span class="w"> </span>--yes
+</code></pre></div>
+<p>It requires <strong>commercial mode</strong> (billing is Model A): the billing data and the payment secret live centrally
+in AsdamirVault, scoped by the app's <code>AppId</code>, and are reached through AppManagement — the generated app never
+touches that DB and never holds the Paddle secret. <code>--billing</code> with <code>--mode free</code> is rejected fail-fast (free
+-mode billing needs the <code>Asdamir.Payments</code> package, not yet available).</p>
+<p><code>--billing</code> emits three things, all fully conditional on the flag:</p>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Where</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Payment page</strong></td>
+<td><code>src/&lt;App&gt;.Server/Components/Pages/Payment.razor</code> (+ <code>.razor.css</code>)</td>
+<td>The end-user checkout UI at <code>/billing</code>: lists plans, shows the current subscription, and starts checkout. Checkout <strong>redirects to the tenant's Paddle hosted page</strong> (pass-through Merchant-of-Record). If Paddle isn't configured yet, it shows a calm localized message (never a raw status code / crash).</td>
+</tr>
+<tr>
+<td><strong>Gateway proxy</strong></td>
+<td><code>src/&lt;App&gt;.Gateway/Controllers/BillingController.cs</code></td>
+<td>Forwards <code>gateway/billing/*</code> → AppManagement's <code>api/admin/billing/*</code> (bearer forwarded; AppManagement resolves the app's <code>AppId</code> from the token's <code>app_code</code> claim). No DB, no secret here.</td>
+</tr>
+<tr>
+<td><strong>Seed</strong></td>
+<td><code>db/admin-onboarding/seed_billing.sql</code></td>
+<td>The <code>billing.view</code> permission + Admin grant + the <code>/billing</code> nav menu row + <code>Billing.Page.*</code> / <code>Menu.Billing</code> localization (tr-TR / en-US / ru-RU) + the <code>Payment:Paddle:*</code> / <code>Payment:Crypto:*</code> config templates (secrets seeded <strong>empty + encrypted</strong> — set this app's own Paddle keys, then checkout goes live).</td>
+</tr>
+</tbody>
+</table>
+<p>Apply <code>seed_billing.sql</code> <strong>after</strong> the app is registered — it needs the app's <code>AppId</code> to exist. Each tenant
+connects its <strong>own</strong> Paddle account (pass-through: the framework is not in the money path). The crypto rail
+ships <strong>default-off</strong> with a TR-buyer geo-gate.</p>
 <h3 id="asdamir-new-feature"><code>asdamir new feature</code><a class="headerlink" href="#asdamir-new-feature" title="Permanent link">&para;</a></h3>
 <p><code>new feature</code> is <code>new entity</code> <strong>and</strong> <code>new page</code> <strong>and</strong> the menu/permission seed in a single command —
 the fast path when you want a complete, navigable CRUD feature rather than wiring the three steps by
@@ -2051,11 +2127,11 @@ control plane). <code>new page</code> behaves the same way in a free app.</p>
 <p><strong>Authorization:</strong> the menu row is gated by the role-based <code>&lt;plural&gt;.view</code> permission, and the seed grants
 it to the <strong>Admin</strong> role (which also holds <code>admin.access</code>, so admins see every menu). Other roles/users are
 granted from the AppManagement UI — generation does not touch them.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>feature<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string,Email:string&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--route<span class="w"> </span>/suppliers<span class="w"> </span>--icon<span class="w"> </span>truck<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span>--apply<span class="w"> </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>feature<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string,Email:string&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--route<span class="w"> </span>/suppliers<span class="w"> </span>--icon<span class="w"> </span>truck<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--apply<span class="w"> </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
 </code></pre></div>
 <p><strong>Fail-fast:</strong> if the entity step fails the page is <strong>not</strong> generated — fix the error and re-run
 (generation is idempotent: existing files are skipped, never overwritten). Afterwards, translate the
@@ -2065,8 +2141,8 @@ all three cultures). To undo a feature, see <a href="#rollback"><code>rollback</
 <p>By default <code>new entity</code> only <strong>writes files</strong> (review-first) and prints <code>next: asdamir db apply</code>. Pass
 <code>--apply</code> to run the create + sample-seed migrations immediately, through the same journaled <code>db apply</code>
 runner, against <code>&lt;output&gt;/db/migrations</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>entity<span class="w"> </span>Supplier<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--apply<span class="w"> </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>entity<span class="w"> </span>Supplier<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--apply<span class="w"> </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;
 </code></pre></div>
 <p>The connection flags are identical to <code>db apply</code>. <code>--apply</code> <strong>requires</strong> a connection — if neither
 <code>--connection</code> nor <code>--database</code> is given the runner errors (no silent skip). It does <strong>not</strong> create the
@@ -2084,8 +2160,8 @@ database (the app DB already exists by the time you add entities).</p>
 <code>register_&lt;app&gt;.sql</code> runs. (<code>new feature</code> with <code>--vault-connection</code> applies them for you.)</p>
 <h2 id="audit-lint"><code>audit-lint</code><a class="headerlink" href="#audit-lint" title="Permanent link">&para;</a></h2>
 <p><code>audit-lint</code> scans source for the framework's anti-pattern rule set (sync-over-async, silent failures, leaked API surface, unsafe defaults, …) and <strong>fails on any error/warning</strong>. Run it locally before pushing (CI runs it too when enabled).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>src<span class="w"> </span>--min-severity<span class="w"> </span>warning
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>AppManagement/src<span class="w"> </span>--min-severity<span class="w"> </span>warning
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>src<span class="w"> </span>--min-severity<span class="w"> </span>warning
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>AppManagement/src<span class="w"> </span>--min-severity<span class="w"> </span>warning
 </code></pre></div>
 <h3 id="suppressing-a-finding">Suppressing a finding<a class="headerlink" href="#suppressing-a-finding" title="Permanent link">&para;</a></h3>
 <ul>
@@ -2101,12 +2177,16 @@ idempotent is never re-executed). Each file is split into batches on <code>GO</c
 imposed (some migrations manage their own <code>BEGIN TRAN</code> and some carry DDL that can't run in a
 transaction); a migration is journaled only after all its batches succeed, so a partial failure is
 retried on the next run.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Cross-platform (SQL auth):</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="c1"># Or a full connection string (e.g. from a secret); on Windows you may omit --user for integrated auth:</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># Preferred — no SQL password on the command line: set the Gateway user-secret once, then apply.</span>
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># db apply resolves ConnectionStrings:Default from the Gateway user-secret (see &quot;Connection resolution&quot; below).</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="c1"># Or pass connection details explicitly (SQL auth):</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="c1"># Or a full connection string (e.g. from a secret); on Windows you may omit --user for integrated auth:</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--migrations<span class="w"> </span>db/migrations
 </code></pre></div>
 <p>Options: <code>--connection/-c</code> (full string, wins over the parts), <code>--server/-S</code>, <code>--database/-d</code>,
 <code>--user/-U</code> + <code>--password/-P</code> (SQL auth — omit for Windows integrated), <code>--migrations/-m</code>,
@@ -2139,10 +2219,10 @@ exists (by the entity's name + plural — no broad globbing, scoped by name and 
 <li><strong>AsdamirVault</strong> (only with <code>--vault-connection</code>): the <code>&lt;plural&gt;.view</code> permission, its menu row(s), role
   grants, and user-menu permissions — AppId-scoped, in FK order, in one transaction.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="w">  </span>--output<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--output<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
 </code></pre></div>
 <p>Options: <code>&lt;Name&gt;</code>, <code>--output</code>/<code>-o</code> (app root), <code>--gateway-dir</code>/<code>--server-dir</code> (overrides),
 <code>--connection</code>/<code>-c</code> or <code>--server</code>/<code>-S</code>+<code>--database</code>/<code>-d</code>+<code>--user</code>/<code>-U</code>+<code>--password</code>/<code>-P</code> (app DB),
@@ -2169,14 +2249,14 @@ FK order, one transaction). <code>--vault-connection</code> is not used in free 
 <p>Registers a managed app into a company's AppManagement database — an <code>Apps</code> row, <strong>not</strong> a new
 database — by calling the running AdminConsole.Api (<code>POST /api/admin/apps</code>). Auth and at-rest
 secret encryption are delegated to the API, so the CLI stays credential- and crypto-free.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
 </code></pre></div>
 <p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>2</code> bad arguments. The
 company is taken from the token's <code>company</code> claim. See the AppManagement console's multi-company (firma) operation.</p>
@@ -2189,10 +2269,10 @@ and <code>AppConfigurations</code> rows with <code>IsEncrypted=1</code> — so y
 losing data. <strong>Dry-run by default</strong> (decrypt + re-encrypt + verify, no writes); <code>--apply</code> commits in a
 single transaction. Idempotent (rows already on the new key are skipped) and aborts+rolls back if a value
 can't be decrypted with the old key.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
 </code></pre></div>
 <p>Connection flags match <code>db apply</code> (<code>--connection</code> / <code>--server</code>+<code>--database</code>+<code>--user</code>+<code>--password</code>; omit
 <code>--user</code> for Windows integrated auth). Keys/salts: <code>--old-key</code>/<code>--new-key</code> (+ <code>--old-salt</code>/<code>--new-salt</code>)
@@ -2201,8 +2281,8 @@ or the <code>ASDAMIR_OLD_ENCRYPTION_KEY</code> / <code>ASDAMIR_NEW_ENCRYPTION_KE
 <p>Encrypts a value with <code>Security:EncryptionKey</code> and prints the <code>v2:</code> ciphertext — to seed an encrypted
 <code>AppConfigurations</code> value or a <code>v2:</code> Companies connection string. (There is no <code>decrypt</code> — it never prints
 a stored secret back.)</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
 </code></pre></div>
 <p>Full procedures (incl. <code>Jwt:Key</code> and per-app client-secret rotation): <strong><a href="../secret-rotation/">Secret Management &amp; Key Rotation</a></strong>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
