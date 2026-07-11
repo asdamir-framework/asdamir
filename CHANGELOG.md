@@ -26,8 +26,23 @@ is not packed to NuGet — it ships as a compiled release for commercial custome
     grant + `/billing` nav menu row + `Billing.Page.*` / `Menu.Billing` localization (tr-TR/en-US/ru-RU) +
     `Payment:Paddle:*` / `Payment:Crypto:*` config templates (secrets seeded empty + encrypted, per-tenant).
 - **Backward-compatible:** WITHOUT `--billing` a generated app is byte-identical to before — not one billing
-  file is emitted. `--billing --mode free` is rejected fail-fast (free-mode billing needs a future
-  `Asdamir.Payments` package).
+  file is emitted.
+- **`--billing --mode free` (Model B) is supported** — a free app gets **self-contained** billing: the
+  Gateway serves billing LOCALLY from the app's own DB via the new open-core **`Asdamir.Payments`** package
+  (`LocalDbBillingStore` + Paddle/crypto rails + local webhook) — no control plane, no central secret. It
+  emits a local Gateway billing + webhook controller, the shared Payment page, and the app-own-DB billing
+  schema/procs/seed migrations. Model A (commercial) output is unchanged.
+
+## [Asdamir.Payments 1.2.0]
+
+### Added — new package: the payment rails
+
+- **`Asdamir.Payments`** (nuget) — the concrete payment plumbing on top of `Asdamir.Core`'s `IPaymentProvider`
+  contract: `PaddlePaymentProvider` (Merchant-of-Record, pass-through — each tenant/app connects its own
+  account) + a default-off crypto provider, a `PaymentService` facade, a store-agnostic `BillingWebhookProcessor`,
+  the operational `IBillingStore`, the shared billing DTOs, an `AddPayments(...)` DI extension, and
+  **`LocalDbBillingStore`** (app-local, single-tenant, over Core's `IDbConnectionFactory`). Free-mode apps
+  consume it for self-contained (Model B) billing. Cohort-aligned at `1.2.0`.
 
 - **FluentUI v5 migration** (`feature/fluentui-v5`) — pinned to the v5 RC (`5.0.0-rc.4-26180.1`); awaiting
   GA before merge to `main`. Not yet released.

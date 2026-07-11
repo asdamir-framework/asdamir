@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <AssemblyName>Asdamir.Payments</AssemblyName>
+    <RootNamespace>Asdamir.Payments</RootNamespace>
+
+    <!-- NuGet Package Metadata -->
+    <PackageId>Asdamir.Payments</PackageId>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <Description>Payment rails for Asdamir: concrete Paddle (Merchant-of-Record) + crypto providers behind Asdamir.Core's IPaymentProvider, a PaymentService facade, a store-agnostic webhook handler, and an app-local (single-tenant) billing store — so an app can take end-user payments with or without the AppManagement control plane.</Description>
+    <PackageTags>payments;billing;paddle;crypto;subscriptions;webhooks;merchant-of-record</PackageTags>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <!-- Public XML-doc gate: generate the doc file AND treat missing public docs (CS1591) as an error
+         (TreatWarningsAsErrors is on). Every public member must carry a meaningful ///. Same gate the rest
+         of the open core (Core/Data/Web) enforces — never add a CS1591 NoWarn here. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- IPaymentProvider + PaymentProviderOptions + Result/DomainException + IDbConnectionFactory live in Core. -->
+    <ProjectReference Include="../Asdamir.Core/Asdamir.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Options binding + DI + logging + configuration come from the ASP.NET Core shared framework (same as
+         Asdamir.Core) — NOT as separate NuGet packages. Declaring them as PackageReferences would break a
+         consuming app that uses CentralPackageTransitivePinningEnabled (it would have to pin each one). -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- HttpClient factory + typed clients come from the shared framework (Microsoft.Extensions.Http is
+         provided by Microsoft.AspNetCore.App). Resilience (Polly handlers) is a separate package, and the
+         generated app already pins it. -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <!-- The app-local (Model B) billing store reads/writes the app's OWN DB via Core's IDbConnectionFactory. -->
+    <PackageReference Include="Dapper" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

@@ -28,6 +28,11 @@
          namespaces in ONE package; Asdamir.Data carries the Dapper + Hangfire data layer. -->
     <PackageReference Include="Asdamir.Core" />
     <PackageReference Include="Asdamir.Data" />
+{{ if HasLocalBilling ~}}
+    <!-- Free-mode (Model B) billing: the app-local IBillingStore (LocalDbBillingStore) + the payment
+         rails (Paddle / Crypto) + the webhook processor live in Asdamir.Payments. -->
+    <PackageReference Include="Asdamir.Payments" />
+{{ end ~}}
   </ItemGroup>
 
 </Project>

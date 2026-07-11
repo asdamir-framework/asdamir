@@ -54,9 +54,14 @@
     <!-- The framework ships FOUR packages; an app references Core/Data/Web (Tools is the CLI).
          Contracts/Validation/ErrorHandling/Security/Localization/Configuration are NAMESPACES
          inside Asdamir.Core, not separate packages. -->
-    <PackageVersion Include="Asdamir.Core" Version="1.1.2" />
-    <PackageVersion Include="Asdamir.Data" Version="1.1.2" />
-    <PackageVersion Include="Asdamir.Web" Version="1.1.2" />
+    <PackageVersion Include="Asdamir.Core" Version="1.2.0" />
+    <PackageVersion Include="Asdamir.Data" Version="1.2.0" />
+    <PackageVersion Include="Asdamir.Web" Version="1.2.0" />
+{{ if HasLocalBilling ~}}
+    <!-- Free-mode (Model B) billing only: the app-local billing store + payment rails.
+         Referenced by the Gateway when scaffolded in free mode with the billing option. -->
+    <PackageVersion Include="Asdamir.Payments" Version="1.2.0" />
+{{ end ~}}
   </ItemGroup>
 
   <ItemGroup Label="Testing">

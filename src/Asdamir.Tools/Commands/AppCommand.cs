@@ -74,7 +74,7 @@ public static class AppCommand
             description: "'commercial' (default) — identity/menus/permissions/localization/config live CENTRALLY in AsdamirVault and are managed from AppManagement. 'free' — self-contained: those management tables are emitted into the app's OWN database (single-tenant), so the app needs no AppManagement.",
             getDefaultValue: () => "commercial");
         var billingOpt = new Option<bool>(new[] { "--billing" },
-            description: "Opt-in: scaffold an end-user billing/payment page (Model A). Adds a Payment page (Server), a gateway/billing/* proxy (Gateway) and the billing menu/permission/localization + Paddle config seeds. Requires commercial mode (billing data + the Paddle secret live centrally in AsdamirVault; free-mode billing needs the Asdamir.Payments package — not yet available). Default off: without it the app is unchanged.",
+            description: "Opt-in: scaffold an end-user billing/payment page. Adds a Payment page (Server) plus the billing menu/permission/localization seeds. In commercial mode (Model A) the Gateway proxies gateway/billing/* → AppManagement and the billing data + Paddle secret live centrally in AsdamirVault; in free mode (Model B) the Gateway serves billing LOCALLY from the app's OWN DB via the Asdamir.Payments package (LocalDbBillingStore + payment rails + webhook). Default off: without it the app is unchanged.",
             getDefaultValue: () => false);
 
         var appCmd = new Command("app", "Generate a standalone Asdamir app (Server + Gateway + tests + sln + demo DB) that consumes the framework via DI and is managed from AppManagement.")
@@ -127,17 +127,18 @@ public static class AppCommand
             return;
         }
 
-        // Billing is opt-in (--billing) and Model A ONLY: the billing data + the Paddle secret live
-        // centrally in AsdamirVault and are reached through AppManagement. Free-mode billing (Model B)
-        // needs the Asdamir.Payments package + an app-local store/webhook, which is a separate, larger
-        // piece of work — so free + billing is rejected fail-fast rather than emitting a half-wired app.
+        // Billing is opt-in (--billing) and works in BOTH modes now:
+        //   • Model A (commercial + billing): the Gateway PROXIES gateway/billing/* → AppManagement; the
+        //     billing data + the Paddle secret live centrally in AsdamirVault, AppId-scoped.
+        //   • Model B (free + billing): self-contained — the Gateway serves gateway/billing/* LOCALLY from
+        //     the app's OWN DB via Asdamir.Payments (LocalDbBillingStore + the payment rails). No control plane.
         var hasBilling = raw.Billing;
-        if (hasBilling && isFreeMode)
-        {
-            Console.Error.WriteLine("--billing requires commercial mode (Model A). Free-mode billing needs the Asdamir.Payments package, which is not yet available.");
-            Environment.Exit(2);
-            return;
-        }
+        // Only free + billing needs the Asdamir.Payments package + the app-local store/webhook + billing
+        // migrations; Model A billing is a thin proxy that needs none of that. Precomputed here so the
+        // Gateway program/csproj templates can branch on a single boolean (the templater has no `&&` in
+        // its model, only in conditions — but keeping the flag explicit avoids leaking Model-A billing into
+        // the Gateway wiring, which must stay byte-identical to R3).
+        var hasLocalBilling = hasBilling && isFreeMode;
 
         var name = raw.Name;
         if (string.IsNullOrWhiteSpace(name))
@@ -212,10 +213,14 @@ public static class AppCommand
             // Free mode → the Gateway issues JWTs + reads identity/menu/localization from its OWN DB
             // (local controllers); commercial → proxies to AppManagement. Templates branch on this.
             IsFreeMode = isFreeMode,
-            // Opt-in end-user billing (Model A, commercial only — free + billing is rejected above).
-            // Templates + the conditional emit below branch on this; false leaves the app byte-identical
-            // to a non-billing scaffold.
+            // Opt-in end-user billing. Templates + the conditional emit below branch on these; both false
+            // leaves the app byte-identical to a non-billing scaffold.
+            //   HasBilling      — any billing (Model A proxy OR Model B local): emits the Payment page.
+            //   HasLocalBilling — free + billing (Model B) ONLY: the Gateway needs the Asdamir.Payments
+            //                     package + AddPayments + LocalDbBillingStore. Commercial billing (Model A)
+            //                     leaves the Gateway program/csproj byte-identical to R3 (it's a proxy).
             HasBilling = hasBilling,
+            HasLocalBilling = hasLocalBilling,
             GeneratedAtUtc = now.ToString("u"),
             SchemaStamp = now.ToString("yyyyMMddHHmmss"),
             MigrationStamp = now.AddSeconds(1).ToString("yyyyMMddHHmmss"),
@@ -226,6 +231,13 @@ public static class AppCommand
             FreeModeSchemaStamp = now.AddSeconds(-5).ToString("yyyyMMddHHmmss"),
             FreeModeProcsStamp = now.AddSeconds(-4).ToString("yyyyMMddHHmmss"),
             FreeModeSeedStamp = now.AddSeconds(-3).ToString("yyyyMMddHHmmss"),
+            // Free-mode (Model B) billing migrations — self-contained billing tables/procs/seed in THIS app's
+            // OWN DB. Placed AFTER the business schema (+3/+4/+5): billing is independent of the demo/business
+            // tables, and the free-management schema/procs it depends on (dbo.Menus/Permissions +
+            // LocalizationResource_UpsertValue) are already applied at -5/-4. Schema → procs → seed order.
+            FreeModeBillingSchemaStamp = now.AddSeconds(3).ToString("yyyyMMddHHmmss"),
+            FreeModeBillingProcsStamp = now.AddSeconds(4).ToString("yyyyMMddHHmmss"),
+            FreeModeBillingSeedStamp = now.AddSeconds(5).ToString("yyyyMMddHHmmss"),
             LocalFeedPath = string.IsNullOrWhiteSpace(raw.LocalFeed) ? "" : raw.LocalFeed.Replace('\\', '/'),
             HasLocalFeed = !string.IsNullOrWhiteSpace(raw.LocalFeed),
             DatabaseName = database,
@@ -361,17 +373,37 @@ public static class AppCommand
             written += WriteRendered(appRoot, $"db/admin-onboarding/register_{model.AppNameLower}.sql", "AppAdminOnboarding", model);
         }
 
-        // Opt-in billing (Model A, commercial only — free + billing was rejected above). Emitted ONLY when
-        // --billing is passed; without it not a single billing file is written, so a non-billing scaffold is
-        // byte-identical to before this feature. The Gateway proxies gateway/billing/* → AppManagement (no
-        // DB, no Paddle secret here); the Server Payment page is the end-user checkout UI; the seeds add the
-        // billing menu/permission + localization + the Paddle config templates (AppId-scoped, in AsdamirVault).
+        // Opt-in billing (--billing). Emitted ONLY when --billing is passed; without it not a single billing
+        // file is written, so a non-billing scaffold is byte-identical to before this feature.
         if (hasBilling)
         {
-            written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/BillingController.cs", "GatewayBillingController", model);
+            // Shared BOTH modes — the end-user Payment page (+ scoped CSS). Its gateway/billing/* calls are
+            // served by the local Gateway in free mode and proxied to AppManagement in commercial mode; the
+            // page (and its template) is identical either way.
             written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/Payment.razor", "ServerPaymentPage", model);
             written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/Payment.razor.css", "ServerPaymentPageCss", model);
-            written += WriteRendered(appRoot, $"db/admin-onboarding/seed_billing.sql", "BillingSeed", model);
+
+            if (isFreeMode)
+            {
+                // Model B (free + billing): self-contained LOCAL billing REST at the SAME gateway/billing/*
+                // routes the page calls, backed by Asdamir.Payments (LocalDbBillingStore + IPaymentService) over
+                // THIS app's OWN DB — no proxy, no AppManagement. Plus the app-local webhook sink, and the
+                // single-tenant billing tables + operational procs + permission/menu/localization seed as
+                // journaled migrations (so `db apply` sets it all up).
+                written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/BillingController.cs", "FreeGatewayBillingController", model);
+                written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/BillingWebhookController.cs", "FreeGatewayBillingWebhookController", model);
+                written += WriteAsset(appRoot, $"db/migrations/V{model.FreeModeBillingSchemaStamp}__freemode_billing_schema.sql", "FreeModeBillingSchema.sql");
+                written += WriteAsset(appRoot, $"db/migrations/V{model.FreeModeBillingProcsStamp}__freemode_billing_procs.sql", "FreeModeBillingProcs.sql");
+                written += WriteAsset(appRoot, $"db/migrations/V{model.FreeModeBillingSeedStamp}__freemode_billing_seed.sql", "FreeModeBillingSeed.sql");
+            }
+            else
+            {
+                // Model A (commercial + billing): the Gateway PROXIES gateway/billing/* → AppManagement (no DB,
+                // no Paddle secret here); the seed adds the billing menu/permission + localization + Paddle
+                // config templates into AsdamirVault (AppId-scoped). BYTE-IDENTICAL to the R3 output.
+                written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/BillingController.cs", "GatewayBillingController", model);
+                written += WriteRendered(appRoot, $"db/admin-onboarding/seed_billing.sql", "BillingSeed", model);
+            }
         }
 
         // Demo-only schema + seed (this app's OWN business DB — no management tables/data).

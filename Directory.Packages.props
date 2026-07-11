@@ -8,9 +8,10 @@
   <!-- Open-core packages — used only when AppManagement is built standalone (commercial repo, no src/).
        In this dev monorepo the open core is consumed via ProjectReference, so these stay inactive. -->
   <ItemGroup Label="Asdamir open core (standalone consumption)">
-    <PackageVersion Include="Asdamir.Core" Version="1.0.4" />
-    <PackageVersion Include="Asdamir.Data" Version="1.0.4" />
-    <PackageVersion Include="Asdamir.Web" Version="1.0.4" />
+    <PackageVersion Include="Asdamir.Core" Version="1.2.0" />
+    <PackageVersion Include="Asdamir.Data" Version="1.2.0" />
+    <PackageVersion Include="Asdamir.Web" Version="1.2.0" />
+    <PackageVersion Include="Asdamir.Payments" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup Label="Microsoft.Extensions (.NET 10)">
@@ -37,6 +38,10 @@
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.8" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
+    <!-- Transitively pin Microsoft.OpenApi to close GHSA-v5pm-xwqc-g5wc: the 2.0.0 pulled in transitively
+         by Microsoft.AspNetCore.OpenApi is a known high-severity vulnerability (NU1903). CPM transitive
+         pinning overrides it with the patched 2.7.5. -->
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.2.1" />
   </ItemGroup>
 

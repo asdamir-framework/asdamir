@@ -118,12 +118,16 @@ app's own users can subscribe/pay:
 asdamir new app MyApp --billing --yes
 ```
 
-It requires **commercial mode** (billing is Model A): the billing data and the payment secret live centrally
-in AsdamirVault, scoped by the app's `AppId`, and are reached through AppManagement — the generated app never
-touches that DB and never holds the Paddle secret. `--billing` with `--mode free` is rejected fail-fast (free
--mode billing needs the `Asdamir.Payments` package, not yet available).
+`--billing` works in **both** modes; the wiring differs:
 
-`--billing` emits three things, all fully conditional on the flag:
+- **Commercial (Model A)** — the billing data and the payment secret live centrally in AsdamirVault, scoped
+  by the app's `AppId`, reached through AppManagement. The generated app never touches that DB and never holds
+  the Paddle secret; its Gateway **proxies** `gateway/billing/*` → AppManagement.
+- **Free (`--mode free`, Model B)** — self-contained: the Gateway serves billing **locally** from the app's
+  **own** database via the open-core **`Asdamir.Payments`** package (`LocalDbBillingStore` + the Paddle/crypto
+  rails + a local webhook). No control plane, no central secret — the app owns its own Paddle config.
+
+`--billing` (commercial, Model A) emits three things, all fully conditional on the flag:
 
 | Piece | Where | What it does |
 |---|---|---|
@@ -134,6 +138,17 @@ touches that DB and never holds the Paddle secret. `--billing` with `--mode free
 Apply `seed_billing.sql` **after** the app is registered — it needs the app's `AppId` to exist. Each tenant
 connects its **own** Paddle account (pass-through: the framework is not in the money path). The crypto rail
 ships **default-off** with a TR-buyer geo-gate.
+
+`--billing --mode free` (Model B) instead emits, into the app's **own** tiers (no control plane, no proxy):
+
+| Piece | Where | What it does |
+|---|---|---|
+| **Payment page** | `src/<App>.Server/Components/Pages/Payment.razor` (+ `.razor.css`) | The same end-user page at `/billing` — here its `gateway/billing/*` calls are served **locally** by the Gateway (not proxied). |
+| **Local billing API** | `src/<App>.Gateway/Controllers/BillingController.cs` + `BillingWebhookController.cs` | Serve plans/subscription/checkout/cancel + the Paddle webhook **locally**, backed by `Asdamir.Payments` (`LocalDbBillingStore` over the app's own DB, single-tenant). |
+| **App-DB billing migrations** | `db/migrations/V*__freemode_billing_{schema,procs,seed}.sql` | The single-tenant billing tables + procs + a starter plan seed, applied by the app's own `asdamir db apply`. |
+
+The free app reads its **own** `Payment:Paddle:*` config (user-secrets / env) — it never holds a central
+secret. The Gateway pins `Asdamir.Payments` (published on nuget alongside Core/Data/Web).
 
 ### `asdamir new feature`
 

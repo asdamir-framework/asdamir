@@ -12,6 +12,9 @@ using OpenTelemetry.Trace;
 {{ if IsFreeMode ~}}
 using System.Threading.RateLimiting;
 {{ end ~}}
+{{ if HasLocalBilling ~}}
+using Asdamir.Payments;
+{{ end ~}}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -214,6 +217,17 @@ foreach (var impl in typeof(Program).Assembly.GetTypes()
     var iface = impl.GetInterface("I" + impl.Name);
     if (iface is not null) builder.Services.AddScoped(iface, impl);
 }
+{{ if HasLocalBilling ~}}
+
+// FREE-MODE BILLING (Model B) — self-contained end-user billing over THIS app's OWN database. AddPayments
+// registers the Paddle + Crypto rails, the IPaymentService facade and the webhook processor; they read
+// Payment:* from configuration (seed the keys via user-secrets / env or this app's own AppConfigurations —
+// never hardcode a secret). The IBillingStore is the app-local LocalDbBillingStore (single-tenant, over the
+// canonical IDbConnectionFactory + the FreeModeBilling* procs). No control plane, no proxy — the local
+// BillingController serves gateway/billing/* and BillingWebhookController receives provider webhooks.
+builder.Services.AddPayments(builder.Configuration);
+builder.Services.AddScoped<Asdamir.Payments.IBillingStore, Asdamir.Payments.LocalDbBillingStore>();
+{{ end ~}}
 
 var app = builder.Build();
 
