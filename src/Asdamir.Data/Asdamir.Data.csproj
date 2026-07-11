@@ -10,6 +10,10 @@
 
     <!-- NuGet Package Metadata -->
     <PackageId>Asdamir.Data</PackageId>
+    <!-- Per-project version override: Data is on its own 1.2.x line (patch over the published 1.2.0 -
+         the FeatureManager value-type fallback fix), independent of the shared Directory.Build.props
+         <Version> (Core's line). Bump this, not the global, for a Data-only release. -->
+    <Version>1.2.1</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Data + background processing for Asdamir: Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox (mail/SMS dispatch).</Description>
     <PackageTags>dapper;outbox;hangfire;sql-server;oracle;postgresql;mail;sms;background-jobs</PackageTags>

@@ -46,9 +46,11 @@ public sealed class FeatureManager : IFeatureManager
     {
         var tid = tenantId ?? _tenant.TenantId ?? "default";
         var keyTenant = BuildKey(key, tid);
-        var valTenant = _cfg.GetSection(keyTenant).Get<T>();
-        if (valTenant is not null) return Task.FromResult((T?)valTenant);
-        var valGlobal = _cfg.GetSection(key).Get<T>();
-        return Task.FromResult((T?)valGlobal);
+        // Decide presence via Exists(), NOT "Get<T>() is not null": a VALUE type binds to default(T) (e.g. 0
+        // for int, false for bool) when the tenant key is ABSENT, which would wrongly shadow the global
+        // fallback and make it unreachable. Exists() is true only when the section has a value or children.
+        var tenantSection = _cfg.GetSection(keyTenant);
+        if (tenantSection.Exists()) return Task.FromResult(tenantSection.Get<T>());
+        return Task.FromResult(_cfg.GetSection(key).Get<T>());
     }
 }

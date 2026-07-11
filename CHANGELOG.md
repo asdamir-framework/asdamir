@@ -5,12 +5,23 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core/Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**,
-**Tools `1.3.0`**. **Pending publish: Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary; Data/Web/Payments stay `1.2.0`).
+independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.0`**. **Pending publish: Data `1.2.1`** (the
+FeatureManager value-type fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Data 1.2.1]
+
+### Fixed — `FeatureManager.GetConfigurationAsync<T>` global fallback for value types (`Asdamir.Data`)
+
+- **`GetConfigurationAsync<int>` / `<bool>` / any value type now correctly falls back to the global key.** It
+  decided the tenant-scoped key's presence with `Get<T>() is not null`, but a value type binds to `default(T)`
+  (0 / false) when the key is ABSENT — so the guard passed and the global fallback was unreachable, returning
+  `default(T)` instead of the global value. Now uses `IConfigurationSection.Exists()`. Reference types were
+  unaffected. Patch over the published `1.2.0`.
 
 ## [Core 1.3.0]
 
