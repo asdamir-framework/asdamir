@@ -4,9 +4,10 @@ All notable changes to this repo. Format: [Keep a Changelog](https://keepachange
 Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
-`Directory.Build.props`; the CLI (`Asdamir.Tools`) versions independently. Current published state:
-**Core/Data/Web `1.2.0`**, **Tools `1.3.0`** (nuget.org). AppManagement (the commercial control plane)
-is not packed to NuGet — it ships as a compiled release for commercial customers.
+`Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
+independently. Current published state (nuget.org): **Core/Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**,
+**Tools `1.3.0`**. AppManagement (the commercial control plane) is not packed to NuGet — it ships as a
+compiled release for commercial customers.
 
 ## [Unreleased]
 
