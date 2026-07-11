@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# restart-{{ AppNameLower }}.sh — stop then start BOTH tiers of {{ AppName }} (Gateway + Server).
+#
+# Emitted by `asdamir new app {{ AppName }}` (a per-app companion to run-tests.sh). Use it whenever you
+# change config/secrets, apply a migration, or re-seed localization — a running host caches its DB-backed
+# localization + config at startup, so the change only takes effect after a restart. Runs both tiers in the
+# BACKGROUND with logs under ./logs; re-running kills the old processes first (idempotent).
+set -euo pipefail
+cd "$(dirname "$0")"
+
+GATEWAY_PROJECT="src/{{ GatewayProject }}"
+SERVER_PROJECT="src/{{ ServerProject }}"
+GATEWAY_URL="{{ GatewayUrlNoSlash }}"
+SERVER_URL="{{ ServerUrl }}"
+
+echo "Stopping {{ AppName }} …"
+# Match the built assembly / `dotnet run` invocation for THIS app's projects only.
+pkill -f "{{ GatewayProject }}" 2>/dev/null || true
+pkill -f "{{ ServerProject }}"  2>/dev/null || true
+sleep 2
+
+mkdir -p logs
+echo "Starting Gateway → $GATEWAY_URL  (log: logs/gateway.log)"
+nohup dotnet run --project "$GATEWAY_PROJECT" --urls "$GATEWAY_URL" > logs/gateway.log 2>&1 &
+echo "Starting Server  → $SERVER_URL  (log: logs/server.log)"
+nohup dotnet run --project "$SERVER_PROJECT" --urls "$SERVER_URL" > logs/server.log 2>&1 &
+
+sleep 1
+echo ""
+echo "{{ AppName }} restarted."
+echo "  Gateway: $GATEWAY_URL"
+echo "  Server:  $SERVER_URL   ← open this, sign in"
+echo "  Logs:    ./logs/{gateway,server}.log   (tail -f to watch startup)"

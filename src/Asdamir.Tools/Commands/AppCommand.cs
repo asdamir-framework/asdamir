@@ -261,6 +261,9 @@ public static class AppCommand
             // Clean test output: `./run-tests.sh` runs the suite and prints one PASS/FAIL line per test
             // (parses the TRX), with zero build/host/xUnit noise. See the script header.
             ("run-tests.sh",                                              "RunTestsSh"),
+            // Per-app stop+start of both tiers (Gateway + Server). Restart after a config/secret/migration
+            // /localization-seed change — a running host caches DB-backed localization + config at startup.
+            ($"restart-{model.AppNameLower}.sh",                          "RestartSh"),
             (".gitignore",                                                "GitIgnore"),
             // Free apps get a self-contained README (no control plane); commercial gets the proxy one.
             ("README.md",                                                 isFreeMode ? "FreeAppReadme" : "AppReadme"),
@@ -268,6 +271,9 @@ public static class AppCommand
             // Server (consumes framework UI/auth/localization via DI)
             ($"src/{serverProject}/{serverProject}.csproj",               "ServerCsproj"),
             ($"src/{serverProject}/Program.cs",                           "ServerProgram"),
+            // Re-applies the picked culture on the interactive circuit so L["..."] localizes on
+            // @rendermode InteractiveServer pages too (SSR-only UseRequestLocalization isn't enough).
+            ($"src/{serverProject}/CultureCircuitHandler.cs",             "ServerCultureCircuitHandler"),
             ($"src/{serverProject}/Components/App.razor",                 "ServerAppRazor"),
             ($"src/{serverProject}/Components/Routes.razor",              "ServerRoutesRazor"),
             ($"src/{serverProject}/Components/_Imports.razor",            "ServerImportsRazor"),

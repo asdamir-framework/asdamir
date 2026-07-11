@@ -114,6 +114,13 @@ builder.Services.AddFrameworkLocalization(gatewayUrl);
 builder.Services.AddSingleton<ILocalizationCacheGeneration, LocalizationCacheGeneration>();
 builder.Services.AddSingleton<ApiStringLocalizer>();
 builder.Services.AddHostedService<{{ ServerNamespace }}.Services.LocalizationWarmupService>();
+// Interactive (@rendermode InteractiveServer) pages run their render loop on a circuit whose async
+// context does NOT inherit the SSR request thread's culture, so ApiStringLocalizer (which reads
+// CultureInfo.CurrentUICulture) would resolve the DEFAULT culture there — L["..."] on an interactive
+// page (the Payment page, generated CRUD pages) would ignore the picked language. CultureCircuitHandler
+// re-applies the connection's culture on every inbound circuit activity. (UseRequestLocalization below
+// only covers SSR.)
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, {{ ServerNamespace }}.CultureCircuitHandler>();
 
 // Cookie auth. The Server doesn't issue JWTs itself — AdminConsole does. After the
 // user signs in there, the operator lands here with a JWT (typically in a query
