@@ -364,6 +364,9 @@ public static class AppCommand
             // Local menu / localization / config reads (auto-registered) + the client-settings controller
             // that the commercial Gateway never served (a gap) — all reading the app's OWN DB.
             written += WriteRendered(appRoot, $"src/{gatewayProject}/Auth/FreeManagementRepository.cs", "FreeGatewayManagementRepository", model);
+            // ILocalizationService over the app's OWN DB — GlobalExceptionHandling needs it to LOCALIZE error
+            // messages (error.<code>); without it every error falls back to the generic English string.
+            written += WriteRendered(appRoot, $"src/{gatewayProject}/Auth/FreeLocalizationService.cs", "FreeGatewayLocalizationService", model);
             written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/ClientSettingsController.cs", "FreeGatewayClientSettingsController", model);
             // First-login / forced change-password page (self-contained auth). Reached via the login redirect
             // when the user's ForcePasswordChange flag is set; posts to the Gateway's change-password endpoint.

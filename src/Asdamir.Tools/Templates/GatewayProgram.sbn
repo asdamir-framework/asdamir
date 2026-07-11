@@ -217,6 +217,15 @@ foreach (var impl in typeof(Program).Assembly.GetTypes()
     var iface = impl.GetInterface("I" + impl.Name);
     if (iface is not null) builder.Services.AddScoped(iface, impl);
 }
+{{ if IsFreeMode ~}}
+
+// Error-message localization for the Gateway's GlobalExceptionHandling. FreeLocalizationService reads this
+// app's OWN localization (its interface is the framework ILocalizationService, NOT IFreeLocalizationService,
+// so the convention scan above doesn't register it) — wire it explicitly. Without it the middleware has no
+// ILocalizationService, so error.<code> can't resolve and every error message shows a generic English string
+// instead of the seeded per-culture text (e.g. the checkout "Paddle not configured" message).
+builder.Services.AddSingleton<Asdamir.Core.Contracts.ILocalizationService, {{ GatewayNamespace }}.Auth.FreeLocalizationService>();
+{{ end ~}}
 {{ if HasLocalBilling ~}}
 
 // FREE-MODE BILLING (Model B) — self-contained end-user billing over THIS app's OWN database. AddPayments
