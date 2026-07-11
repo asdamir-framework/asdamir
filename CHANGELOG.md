@@ -6,10 +6,23 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core/Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**,
-**Tools `1.3.0`**. AppManagement (the commercial control plane) is not packed to NuGet — it ships as a
-compiled release for commercial customers.
+**Tools `1.3.0`**. **Pending publish: Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary; Data/Web/Payments stay `1.2.0`).
+AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
+commercial customers.
 
 ## [Unreleased]
+
+## [Core 1.3.0]
+
+### Added — `Jwt:ConsoleAudience` for a cryptographic control-plane token boundary (`Asdamir.Core`)
+
+- **`JwtService` now supports an optional distinct audience for control-plane tokens.** When
+  `Jwt:ConsoleAudience` is configured, a token minted with `token_use=console` is stamped with THAT audience
+  instead of `Jwt:Audience`; every other token keeps `Jwt:Audience` unchanged. This lets a host run two
+  audience-scoped JWT bearer schemes so a lower-privilege token is rejected at the **authentication layer** on
+  control-plane endpoints — not merely by a claim filter. **Additive and backward-compatible**: unset →
+  console tokens fall back to `Jwt:Audience` (prior behavior). **Only `Asdamir.Core` is bumped;
+  `Asdamir.Data`/`Web`/`Payments` remain `1.2.0` (no code change).**
 
 ## [Tools 1.3.0]
 

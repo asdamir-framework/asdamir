@@ -39,6 +39,7 @@ public class JwtService : IJwtService
     private readonly SigningCredentials _signingCredentials;
     private readonly string? _issuer;
     private readonly string? _audience;
+    private readonly string? _consoleAudience;
     private readonly TimeSpan _accessLifetime;
     private readonly TimeSpan _refreshLifetime;
 
@@ -66,6 +67,11 @@ public class JwtService : IJwtService
         _signingCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256);
         _issuer = configuration["Jwt:Issuer"];
         _audience = configuration["Jwt:Audience"];
+        // Optional cryptographic audience boundary: when set, a control-plane ("console") token is stamped
+        // with THIS audience instead of Jwt:Audience, so a validator scoped to the console audience rejects
+        // managed-app ("app") tokens at the signature/audience layer — not merely by a claim check. Unset →
+        // console tokens fall back to Jwt:Audience (legacy behavior; free-mode apps mint only app tokens).
+        _consoleAudience = configuration["Jwt:ConsoleAudience"];
 
         var accessMinutes = configuration.GetValue<int?>("Jwt:AccessTokenLifetimeMinutes")
                             ?? DefaultAccessTokenLifetimeMinutes;
@@ -100,17 +106,24 @@ public class JwtService : IJwtService
         if (!string.IsNullOrWhiteSpace(company))
             claims.Add(new Claim("company", company));
         // Audience boundary: token_use marks whether this is a control-plane ("console") token or a
-        // managed-app end-user ("app") token (app_code names the app). Every token shares the same
-        // signing key/audience, so this claim is what lets control-plane endpoints reject app tokens.
+        // managed-app end-user ("app") token (app_code names the app). It is kept as defense-in-depth, but
+        // the primary boundary is now the audience below: a console token carries the console audience, so a
+        // console-scoped validator rejects app tokens cryptographically (not merely by this claim).
         if (!string.IsNullOrWhiteSpace(tokenUse))
             claims.Add(new Claim("token_use", tokenUse));
         if (!string.IsNullOrWhiteSpace(appCode))
             claims.Add(new Claim("app_code", appCode));
         claims.AddRange(permissions.Select(p => new Claim("perm", p)));
 
+        // A console token gets the (distinct) console audience when configured; every other token keeps
+        // Jwt:Audience — so app tokens are unchanged and already-deployed Gateways keep validating them.
+        var audience = string.Equals(tokenUse, "console", StringComparison.Ordinal) && _consoleAudience is not null
+            ? _consoleAudience
+            : _audience;
+
         var jwtToken = new JwtSecurityToken(
             issuer: _issuer,
-            audience: _audience,
+            audience: audience,
             claims: claims,
             notBefore: now,
             expires: expiresAtUtc,
