@@ -65,7 +65,27 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'Billing.Page.CheckoutStarted', N'ru-RU', N'Сессия оплаты создана.'),
     (N'Billing.Page.LoadError',       N'tr-TR', N'Faturalama bilgileri yüklenemedi.'),
     (N'Billing.Page.LoadError',       N'en-US', N'Failed to load billing.'),
-    (N'Billing.Page.LoadError',       N'ru-RU', N'Не удалось загрузить данные оплаты.');
+    (N'Billing.Page.LoadError',       N'ru-RU', N'Не удалось загрузить данные оплаты.'),
+    -- error.* keys the payment checkout surfaces (the engine maps a DomainException code → error.<code> →
+    -- ProblemDetails.Title). Without these the Payment page's checkout error falls back to a generic message.
+    (N'error.billing.paddle.not_configured', N'tr-TR', N'Ödeme sağlayıcı (Paddle) henüz yapılandırılmadı.'),
+    (N'error.billing.paddle.not_configured', N'en-US', N'The payment provider (Paddle) is not configured yet.'),
+    (N'error.billing.paddle.not_configured', N'ru-RU', N'Платёжный провайдер (Paddle) ещё не настроен.'),
+    (N'error.billing.checkout_failed', N'tr-TR', N'Ödeme başlatılamadı. Lütfen tekrar deneyin.'),
+    (N'error.billing.checkout_failed', N'en-US', N'Checkout could not be started. Please try again.'),
+    (N'error.billing.checkout_failed', N'ru-RU', N'Не удалось начать оплату. Повторите попытку.'),
+    (N'error.billing.rail_unknown',    N'tr-TR', N'Bilinmeyen ödeme yöntemi.'),
+    (N'error.billing.rail_unknown',    N'en-US', N'Unknown payment method.'),
+    (N'error.billing.rail_unknown',    N'ru-RU', N'Неизвестный способ оплаты.'),
+    (N'error.billing.crypto.disabled', N'tr-TR', N'Kripto ödeme kapalı.'),
+    (N'error.billing.crypto.disabled', N'en-US', N'Crypto payment is disabled.'),
+    (N'error.billing.crypto.disabled', N'ru-RU', N'Оплата криптовалютой отключена.'),
+    (N'error.billing.crypto.not_configured', N'tr-TR', N'Kripto ödeme sağlayıcısı yapılandırılmadı.'),
+    (N'error.billing.crypto.not_configured', N'en-US', N'The crypto payment provider is not configured.'),
+    (N'error.billing.crypto.not_configured', N'ru-RU', N'Криптоплатёжный провайдер не настроен.'),
+    (N'error.billing.crypto.region_blocked', N'tr-TR', N'Kripto ödeme bölgenizde kullanılamıyor.'),
+    (N'error.billing.crypto.region_blocked', N'en-US', N'Crypto payment is not available in your region.'),
+    (N'error.billing.crypto.region_blocked', N'ru-RU', N'Оплата криптовалютой недоступна в вашем регионе.');
 
 DECLARE @Key NVARCHAR(200), @Culture NVARCHAR(20), @Value NVARCHAR(MAX);
 DECLARE seed_cur CURSOR LOCAL FAST_FORWARD FOR SELECT [Key],[Culture],[Value] FROM @Seed;

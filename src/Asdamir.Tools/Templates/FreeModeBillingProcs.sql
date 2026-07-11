@@ -69,7 +69,13 @@ CREATE OR ALTER PROCEDURE [dbo].[BillingAccount_GetByOwner]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT TOP 1 Id, Name, Email, OwnerUserId, PaddleCustomerRef, IsActive
+    -- Project the FULL BillingAccountDto shape. TenantId + AppId are Model-A (multi-app) concepts that
+    -- don't exist as columns here (single-tenant), but the shared DTO's constructor requires them, so emit
+    -- NULLs — otherwise Dapper can't materialize the record (it needs a ctor matching ALL selected columns).
+    SELECT TOP 1 Id, Name, Email, OwnerUserId,
+                 CAST(NULL AS UNIQUEIDENTIFIER) AS TenantId,
+                 PaddleCustomerRef, IsActive,
+                 CAST(NULL AS UNIQUEIDENTIFIER) AS AppId
       FROM dbo.BillingAccounts
      WHERE OwnerUserId = @ownerUserId
      ORDER BY CreatedAtUtc DESC;
