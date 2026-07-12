@@ -5,6 +5,11 @@
 # change config/secrets, apply a migration, or re-seed localization — a running host caches its DB-backed
 # localization + config at startup, so the change only takes effect after a restart. Runs both tiers in the
 # BACKGROUND with logs under ./logs; re-running kills the old processes first (idempotent).
+#
+# Stopping is TWO-LAYERED: (1) name-targeted (this app's own old `dotnet run` instances) AND (2) PORT-targeted
+# (whoever is actually squatting the Gateway/Server port — a *different* app can hold it, and then this app
+# can't bind). It WARNS before killing another process, and VERIFIES the port is free before starting (fails
+# fast if it can't free it, instead of a blind start that would just fail to bind).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -13,11 +18,56 @@ SERVER_PROJECT="src/{{ ServerProject }}"
 GATEWAY_URL="{{ GatewayUrlNoSlash }}"
 SERVER_URL="{{ ServerUrl }}"
 
+# Ports come from the configured URLs (not hardcoded): take the text after the last ':' and before any '/'.
+GATEWAY_PORT="${GATEWAY_URL##*:}"; GATEWAY_PORT="${GATEWAY_PORT%%/*}"
+SERVER_PORT="${SERVER_URL##*:}";   SERVER_PORT="${SERVER_PORT%%/*}"
+
+# Which tool can list the PID listening on a TCP port: lsof (macOS/most Linux) → fuser (some Linux) → none.
+if   command -v lsof  >/dev/null 2>&1; then PORT_TOOL="lsof"
+elif command -v fuser >/dev/null 2>&1; then PORT_TOOL="fuser"
+else PORT_TOOL=""; fi
+
+port_pids() { # echo the PID(s) LISTENing on $1
+  case "$PORT_TOOL" in
+    lsof)  lsof -ti:"$1" -sTCP:LISTEN 2>/dev/null || true ;;
+    fuser) fuser "$1"/tcp 2>/dev/null | tr -s ' ' '\n' | grep -E '^[0-9]+$' || true ;;
+    *)     : ;;
+  esac
+}
+proc_name() { ps -p "$1" -o args= 2>/dev/null | cut -c1-60 | sed 's/[[:space:]]*$//'; }
+
+# Free a port no matter who holds it: WARN (never silent), kill, then VERIFY it actually released (3×1s,
+# escalating to SIGKILL). If it still won't free, FAIL FAST — don't start blindly into a bound port.
+free_port() {
+  port="$1"; label="$2"
+  case "$port" in ''|*[!0-9]*) return 0 ;; esac   # no numeric port in the URL → nothing to free
+  if [ -z "$PORT_TOOL" ]; then
+    echo "  ⚠ Neither lsof nor fuser found — can't check port $port ($label); relying on name-targeted kill." >&2
+    return 0
+  fi
+  pids="$(port_pids "$port")"
+  [ -z "$pids" ] && return 0
+  for pid in $pids; do
+    echo "  Port $port ($label) is held by PID $pid ($(proc_name "$pid")) — stopping it."
+    kill "$pid" 2>/dev/null || true
+  done
+  for i in 1 2 3; do
+    sleep 1
+    [ -z "$(port_pids "$port")" ] && return 0
+    [ "$i" = "2" ] && for pid in $(port_pids "$port"); do kill -9 "$pid" 2>/dev/null || true; done
+  done
+  echo "  ✗ Port $port ($label) is STILL in use after kill — stop it manually, then re-run ./restart-{{ AppNameLower }}.sh" >&2
+  exit 1
+}
+
 echo "Stopping {{ AppName }} …"
-# Match the built assembly / `dotnet run` invocation for THIS app's projects only.
+# (1) name-targeted — this app's own old instances (started via `dotnet run --project src/<Project>`).
 pkill -f "{{ GatewayProject }}" 2>/dev/null || true
 pkill -f "{{ ServerProject }}"  2>/dev/null || true
-sleep 2
+sleep 1
+# (2) port-targeted — free the ports whoever holds them (a different app may be squatting them).
+free_port "$GATEWAY_PORT" "Gateway"
+free_port "$SERVER_PORT"  "Server"
 
 mkdir -p logs
 echo "Starting Gateway → $GATEWAY_URL  (log: logs/gateway.log)"

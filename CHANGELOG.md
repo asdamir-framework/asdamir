@@ -14,6 +14,16 @@ commercial customers.
 
 ## [Unreleased]
 
+### Changed — generated `restart-<app>.sh` frees the PORT, not just the process by name (`Asdamir.Tools`)
+
+The generated restart script killed the old tiers by process name (`pkill -f "<App>.Gateway"/"<App>.Server"`),
+which misses the real failure: a **different** app squatting the port (e.g. DemoPay's Server on `7010`) — name-kill
+never finds it, so the new app can't bind. Restart stopping is now **two-layered**: the name-targeted kill (kept)
+**plus** a **port-targeted** one that frees the Gateway/Server port whoever holds it (`lsof -ti:<port>`, `fuser`
+fallback). It **warns before killing another process** ("Port 7010 is held by PID … — stopping it."), then
+**verifies the port actually freed** (3×1s, escalating to SIGKILL) and **fails fast** (`exit 1`) rather than a
+blind start into a bound port. Ports are parsed from the script's `GATEWAY_URL`/`SERVER_URL` (not hardcoded).
+
 ## [Tools 1.3.4]
 
 ### Changed — `asdamir new app` creates the database + applies migrations too (generate → run) (`Asdamir.Tools`)
