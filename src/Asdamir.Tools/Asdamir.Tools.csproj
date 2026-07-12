@@ -26,7 +26,7 @@
          1.3.0 (MINOR): a new opt-in billing flag on `asdamir new app` (commercial only) — scaffolds an
          end-user payment page + a gateway/billing proxy + billing menu/permission/localization/config seeds.
          Fully conditional: without the flag a generated app is byte-identical to before. -->
-    <Version>1.3.5</Version>
+    <Version>1.3.6</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

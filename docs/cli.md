@@ -360,9 +360,11 @@ What it removes:
   `.sln` is the guard against deleting the wrong directory), removed recursively.
 - **App database** — `DROP DATABASE [<Name>]` (the app's OWN DB — free **or** commercial; name defaults to the
   app name, override with `--database`). Kicks open connections first (`SINGLE_USER WITH ROLLBACK IMMEDIATE`).
-- **AsdamirVault registration** (commercial only, with `--vault-connection`) — purges the `dbo.Apps` row + ALL
-  its AppId-scoped rows (users/roles/menus/permissions/config/localization/logs/audit) via the existing
-  `dbo.App_Purge` proc (FK-safe, one transaction).
+- **App registration in AsdamirVault** (commercial only, with `--vault-connection`) — purges the app's `dbo.Apps`
+  row + ALL its AppId-scoped rows (users/roles/menus/permissions/config/localization/logs/audit) via the existing
+  `dbo.App_Purge` proc (FK-safe, one transaction). This removes the app's **registration**, **not** the
+  AsdamirVault database itself (which is never dropped). A **free** app has no registration, so this line is
+  hidden entirely in free-mode teardown.
 
 ```bash
 asdamir rollback app CustomerOrders \

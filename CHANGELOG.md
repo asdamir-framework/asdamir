@@ -6,13 +6,25 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.5`** (generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.6`** (`rollback app` clearer AsdamirVault wording; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.6]
+
+### Fixed — `rollback app`: clearer AsdamirVault wording + hidden in free mode (`Asdamir.Tools`)
+
+`rollback app`'s teardown lines read `AsdamirVault: NOT purged …`, which sounded like the **AsdamirVault
+database** could be purged (it can't) and frightened users. Two fixes: (1) the wording is now **"App
+registration (AsdamirVault)"** and spells out that it removes the app's **registration + AppId-scoped rows** via
+`App_Purge`, **NOT** the AsdamirVault DB (which is never dropped); (2) a **free-mode** app has no control-plane
+registration, so the line is **hidden entirely** (no more "N/A — free-mode app" noise). Behaviour is unchanged —
+only the messaging and the free-mode visibility. When the mode can't be determined (the app directory is already
+gone), the line still shows, with the clear wording.
 
 ## [Tools 1.3.5]
 

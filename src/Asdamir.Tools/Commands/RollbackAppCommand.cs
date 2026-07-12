@@ -125,14 +125,15 @@ public static class RollbackAppCommand
             : dbExists
                 ? $"  App DB: DROP DATABASE [{dbName}]  on server '{serverLabel}'"
                 : $"  App DB: [{dbName}] on '{serverLabel}' — absent (skip)");
-        if (isFree)
-            Console.WriteLine("  AsdamirVault: N/A — free-mode app (no control plane).");
-        else
+        // AsdamirVault only holds a COMMERCIAL app's registration — a free app has none, so the line is hidden
+        // for free mode entirely (not even an "N/A" noise line). What's purged is the app's REGISTRATION + its
+        // AppId-scoped rows via App_Purge — NOT the AsdamirVault database itself (say so, so nobody panics).
+        if (!isFree)
             Console.WriteLine(string.IsNullOrWhiteSpace(vaultConnection)
-                ? "  AsdamirVault: SKIP — no --vault-connection (registration not purged)"
+                ? "  App registration (AsdamirVault): SKIP — no --vault-connection (the app's registration + AppId-scoped rows stay; the AsdamirVault DB is never dropped)"
                 : vault.exists
-                    ? $"  AsdamirVault: purge registration '{appCode}' (AppId {vault.appId}) + ALL its AppId-scoped rows"
-                    : $"  AsdamirVault: registration '{appCode}' absent (skip)");
+                    ? $"  App registration (AsdamirVault): purge '{appCode}' (AppId {vault.appId}) + its AppId-scoped rows (users/roles/menus/permissions/config/localization/logs) — NOT the AsdamirVault database"
+                    : $"  App registration (AsdamirVault): '{appCode}' is not registered (skip)");
         Console.WriteLine();
 
         if (!yes)
@@ -161,14 +162,15 @@ public static class RollbackAppCommand
         }
         else Console.WriteLine("App DB: NOT dropped (no --connection/-S -d). Re-run with a connection to DROP the database.");
 
+        // Free apps have no AsdamirVault registration → skip the whole step (and its output) silently.
         if (!isFree)
         {
             if (!string.IsNullOrWhiteSpace(vaultConnection))
             {
-                try { var n = await PurgeVaultAsync(vaultConnection, appCode); Console.WriteLine(n > 0 ? $"AsdamirVault: purged registration '{appCode}'." : $"AsdamirVault: registration '{appCode}' already absent."); }
-                catch (SqlException ex) { Console.Error.WriteLine($"AsdamirVault purge failed: {ex.Message}"); return 1; }
+                try { var n = await PurgeVaultAsync(vaultConnection, appCode); Console.WriteLine(n > 0 ? $"App registration (AsdamirVault): purged '{appCode}'." : $"App registration (AsdamirVault): '{appCode}' was not registered."); }
+                catch (SqlException ex) { Console.Error.WriteLine($"App registration purge failed: {ex.Message}"); return 1; }
             }
-            else Console.WriteLine("AsdamirVault: NOT purged (no --vault-connection). Re-run with --vault-connection to remove the registration.");
+            else Console.WriteLine("App registration (AsdamirVault): NOT purged (no --vault-connection). Re-run with --vault-connection to remove the app's registration (the AsdamirVault DB itself is never touched).");
         }
 
         Console.WriteLine($"\n✓ Tore down app '{name}'.");
