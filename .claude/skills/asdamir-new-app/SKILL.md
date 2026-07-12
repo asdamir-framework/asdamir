@@ -70,6 +70,17 @@ MAUI Blazor Hybrid app (login, nav drawer, dashboard, 401 refresh, offline cache
 (`dotnet build … -f net10.0-android -r android-arm64` — a plain multi-RID build fails NETSDK1047). See
 `docs/mobile.md`.
 
+## Teardown — `asdamir rollback app <Name>` (the inverse of `new app`)
+Undo a whole generated app: it removes the **directory** (the dir whose `<Name>.sln` exists), `DROP DATABASE`s
+the app's **own DB** (free **and** commercial), and — commercial + `--vault-connection` — purges the
+**AsdamirVault registration** + AppId-scoped rows via `dbo.App_Purge`. DESTRUCTIVE + interactive (shows the full
+path + server/db + vault code, asks `[y/N]`; `-y` for scripts). Fail-closed: never drops `AsdamirVault`/system
+DBs, and `App_Purge` refuses the self-app; every step is idempotent (missing = "already gone"). Prefer this over
+a hand `DROP DATABASE` + `rm -rf`.
+```bash
+asdamir rollback app MyPortal -o <parent-dir> -S localhost -U sa -P <pwd> --vault-connection "<AsdamirVault>"
+```
+
 ## DON'T
 - **Don't put management tables/seed in the app's own DB** — central seed goes via `register_<app>.sql`
   into AsdamirVault.

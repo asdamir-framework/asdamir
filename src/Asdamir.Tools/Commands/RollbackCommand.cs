@@ -40,6 +40,10 @@ public static class RollbackCommand
             nameArg, outputOpt, gatewayDirOpt, serverDirOpt, connOpt, serverOpt, databaseOpt, userOpt, passwordOpt, vaultConnOpt, yesOpt,
         };
 
+        // `asdamir rollback app <Name>` — the symmetric inverse of `new app` (whole-app teardown). A subcommand,
+        // so the bare `rollback <Feature>` form is unaffected (only a feature literally named "app" is shadowed).
+        cmd.AddCommand(RollbackAppCommand.Build());
+
         cmd.SetHandler(async ctx =>
         {
             ctx.ExitCode = await RunAsync(

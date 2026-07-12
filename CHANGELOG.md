@@ -14,6 +14,18 @@ commercial customers.
 
 ## [Unreleased]
 
+### Added — `asdamir rollback app <Name>`: whole-app teardown, the symmetric inverse of `new app` (`Asdamir.Tools`)
+
+`rollback` gained an `app` subcommand that tears down a generated app end-to-end — the inverse of `new app`
+(previously there was no CLI path back; you had to `DROP DATABASE` + `rm -rf` by hand). It removes: the generated
+**directory** (the dir whose `<Name>.sln` exists — the guard against deleting the wrong dir), the app's **OWN
+database** (`DROP DATABASE`, free **and** commercial), and — in commercial mode with `--vault-connection` — the
+**AsdamirVault registration** + all AppId-scoped rows via the existing `dbo.App_Purge` proc. DESTRUCTIVE +
+interactive by default (shows the full path + server/database + vault code, asks `[y/N]`; `-y`/`--yes` for
+scripts). Fail-closed: it NEVER drops a protected DB (`AsdamirVault`/`master`/`model`/`msdb`/`tempdb`) and
+`App_Purge` refuses the self-app. Every step is conditional + idempotent (a missing dir/DB/registration is
+"already gone", never an error). Implemented as a subcommand, so the bare `rollback <Feature>` form is unaffected.
+
 ## [Tools 1.3.1]
 
 ### Fixed — `asdamir new app` prompts for SQL auth (user/password), not a Windows-only Trusted_Connection (`Asdamir.Tools`)

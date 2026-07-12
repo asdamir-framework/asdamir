@@ -36,7 +36,7 @@ dotnet tool install --global Asdamir.Tools
 | `new mobile <Name>` | A .NET MAUI **Blazor Hybrid** app — `.Mobile` (Android host) + `.Mobile.Shared` (UI) + `.Mobile.Data` (SQLite) + tests. Login, left nav drawer, dashboard; talks to the app's Gateway. See [Mobile App](mobile.md). |
 | `add field <Name>` | Adds a field across the entity/DTO/repository/migration set |
 
-> The verb comes first: **`asdamir new app|entity|page|feature|module|mobile`**, **`asdamir add field`**, and **`asdamir rollback`** (the inverse of `new feature`).
+> The verb comes first: **`asdamir new app|entity|page|feature|module|mobile`**, **`asdamir add field`**, **`asdamir rollback`** (the inverse of `new feature`), and **`asdamir rollback app`** (the inverse of `new app` — whole-app teardown).
 
 Generated output uses the framework's templates (`src/Asdamir.Tools/Templates/*.sbn`) and references the `Asdamir.*` packages.
 
@@ -340,6 +340,45 @@ Options: `<Name>`, `--output`/`-o` (app root), `--gateway-dir`/`--server-dir` (o
 > journal rows, and, with a connection, also removes the free-mode **menu, permission, role grant,
 > localization keys** and the freemode seed-journal rows from the app's **own** database (single-tenant, in
 > FK order, one transaction). `--vault-connection` is not used in free mode (there is no AsdamirVault).
+
+### `rollback app`
+
+The **symmetric inverse of [`new app`](#asdamir-new-app)** — tears down a whole generated app, not just one
+feature. Like the feature rollback it is **destructive** and **interactive by default**: it shows EXACTLY what
+will be removed (the full directory path + the server/database name + the vault app code) and asks `[y/N]`
+before touching anything. Works in **both** modes (detected from the app).
+
+What it removes:
+
+- **Directory** — the generated app root (the ancestor/child dir whose `<Name>.sln` exists; requiring that
+  `.sln` is the guard against deleting the wrong directory), removed recursively.
+- **App database** — `DROP DATABASE [<Name>]` (the app's OWN DB — free **or** commercial; name defaults to the
+  app name, override with `--database`). Kicks open connections first (`SINGLE_USER WITH ROLLBACK IMMEDIATE`).
+- **AsdamirVault registration** (commercial only, with `--vault-connection`) — purges the `dbo.Apps` row + ALL
+  its AppId-scoped rows (users/roles/menus/permissions/config/localization/logs/audit) via the existing
+  `dbo.App_Purge` proc (FK-safe, one transaction).
+
+```bash
+asdamir rollback app CustomerOrders \
+  --output ~/src/asdamirgenerated \
+  -S localhost -U sa -P <pwd> \
+  --vault-connection "Server=localhost;Database=AsdamirVault;User Id=sa;Password=<pwd>;TrustServerCertificate=True"
+```
+
+Options: `<Name>`, `--output`/`-o` (the app's parent dir OR the app dir itself), `--connection`/`-c` or
+`--server`/`-S`+`--database`/`-d`+`--user`/`-U`+`--password`/`-P` (app DB), `--vault-connection` (commercial),
+`--yes`/`-y` (skip the prompt).
+
+**Fail-closed & idempotent:**
+
+- It **NEVER** drops a protected database — `AsdamirVault`, `master`, `model`, `msdb`, `tempdb` are refused;
+  and `App_Purge` refuses the self-app (`EnvironmentName='Self'`, i.e. AppManagement itself).
+- Each step is conditional: a missing directory / database / registration is reported as **"already gone"**,
+  never an error (re-run any time).
+- DB/vault cleanup runs only when the matching connection is supplied — without it the step is **skipped and
+  reported**, never silently dropped.
+- It's a subcommand, so the bare `rollback <Feature>` form is unaffected (only a feature literally named
+  `app` is shadowed by `rollback app`).
 
 ## `app register`
 
