@@ -6,13 +6,26 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.6`** (`rollback app` clearer AsdamirVault wording; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.7`** (`rollback app` reads the DB connection from the Gateway user-secret; clearer AsdamirVault wording; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.7]
+
+### Fixed — `rollback app` resolves the DB connection from the Gateway user-secret (no orphan DBs) (`Asdamir.Tools`)
+
+`rollback app <Name>` said "App DB: SKIP — no connection (database not dropped)" even though `new app` had
+prompted for the SQL password and stored it in the Gateway user-secret (`ConnectionStrings:Default`) — the same
+value `db apply` reads. So `rollback app` deleted the directory but left the database behind (an orphan). It now
+resolves the connection in the **same order as `db apply`** (reusing its resolver, no duplication): explicit
+`--connection` → `-S/-d/-U/-P` flags → the **Gateway user-secret**. So `rollback app <Name>` with **no flags**
+drops the DB. The secret is read **before** the directory is deleted (it holds the UserSecretsId); the
+confirmation shows the resolved server + database and its source (**never** the password), and DROP DATABASE
+stays idempotent (`IF DB_ID IS NULL`). Works in free + commercial mode.
 
 ## [Tools 1.3.6]
 

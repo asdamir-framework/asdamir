@@ -78,8 +78,24 @@ public static class RollbackAppCommand
         //    still need cleanup).
         var appRoot = ResolveAppRoot(output, name);
 
-        // The app's OWN database defaults to the app name (the no-Db-suffix naming standard).
-        var dbName = string.IsNullOrWhiteSpace(database) ? name : database.Trim();
+        // 1b) Resolve the DB connection in the SAME order as `db apply` (reusing its resolver, no duplication):
+        //     explicit --connection → -S/-d/-U/-P flags → the Gateway user-secret (ConnectionStrings:Default,
+        //     the value `new app` wrote). Read the secret NOW, while the app directory (and its Gateway csproj →
+        //     UserSecretsId) still exists — the teardown below deletes it. So `rollback app` (no flags) drops
+        //     the DB the same way `db apply` (no flags) applies to it, instead of leaving an orphan DB behind.
+        var connSource = "";
+        var effectiveConn = connection;
+        if (string.IsNullOrWhiteSpace(connection) && string.IsNullOrWhiteSpace(database)
+            && string.IsNullOrWhiteSpace(user) && string.IsNullOrWhiteSpace(password) && appRoot is not null)
+        {
+            var resolved = DbApplyCommand.TryResolveConnectionFromApp(new DirectoryInfo(appRoot), out connSource);
+            if (!string.IsNullOrWhiteSpace(resolved)) effectiveConn = resolved;
+        }
+
+        // The DB name: an explicit --database wins, else the resolved connection's catalog, else the app name
+        // (the no-Db-suffix naming standard).
+        var dbName = !string.IsNullOrWhiteSpace(database) ? database.Trim()
+                   : (TryGetCatalog(effectiveConn) ?? name);
 
         // 2) Fail-closed: never drop the control plane or a system database.
         if (ProtectedDatabases.Contains(dbName))
@@ -92,17 +108,16 @@ public static class RollbackAppCommand
         var isFree = appRoot is not null && PageCommand.IsFreeModeApp(appRoot);
         var appCode = name; // == the .sln basename == dbo.Apps.Code that `new app` wrote
 
-        // The DB step runs ONLY when the caller actually supplied DB targeting (a connection string, a SQL
-        // login, an explicit --database, or a non-default server). Without any of these it is skipped +
-        // reported — never attempted with integrated security (which fails on Linux/macOS).
-        var hasDbTarget = !string.IsNullOrWhiteSpace(connection)
+        // The DB step runs whenever we resolved a connection (flags OR the Gateway user-secret) — otherwise it's
+        // skipped + reported (never attempted with integrated security, which fails on Linux/macOS).
+        var hasDbTarget = !string.IsNullOrWhiteSpace(effectiveConn)
                        || !string.IsNullOrWhiteSpace(user)
                        || !string.IsNullOrWhiteSpace(database)
                        || !string.Equals(server, "localhost", StringComparison.OrdinalIgnoreCase);
-        var masterConn = hasDbTarget ? BuildMasterConnection(connection, server, dbName, user, password) : null;
+        var masterConn = hasDbTarget ? BuildMasterConnection(effectiveConn, server, dbName, user, password) : null;
 
         // 4) Probe for the confirmation screen (best-effort — a probe failure never blocks the report).
-        var serverLabel = masterConn is null ? "" : SafeServer(connection, server);
+        var serverLabel = masterConn is null ? "" : SafeServer(effectiveConn, server);
         var dbExists = masterConn is not null && await DatabaseExistsAsync(masterConn, dbName);
         (bool exists, bool isSelf, Guid appId) vault = (false, false, Guid.Empty);
         if (!isFree && !string.IsNullOrWhiteSpace(vaultConnection))
@@ -120,11 +135,14 @@ public static class RollbackAppCommand
         Console.WriteLine(appRoot is null
             ? $"  Directory: (not found under '{output.FullName}' — skip)"
             : $"  Directory: {appRoot}  ← deleted recursively");
+        // The source note tells the user WHERE the connection came from (never echoing the password — only the
+        // server + database name are shown).
+        var connNote = string.IsNullOrWhiteSpace(connSource) ? "" : $"  (connection from {connSource})";
         Console.WriteLine(masterConn is null
-            ? "  App DB: SKIP — no --connection/-S -d (database not dropped)"
+            ? "  App DB: SKIP — no connection (pass --connection / -S -d -U -P, or set the Gateway ConnectionStrings:Default user-secret)"
             : dbExists
-                ? $"  App DB: DROP DATABASE [{dbName}]  on server '{serverLabel}'"
-                : $"  App DB: [{dbName}] on '{serverLabel}' — absent (skip)");
+                ? $"  App DB: DROP DATABASE [{dbName}]  on server '{serverLabel}'{connNote}"
+                : $"  App DB: [{dbName}] on '{serverLabel}' — absent (skip){connNote}");
         // AsdamirVault only holds a COMMERCIAL app's registration — a free app has none, so the line is hidden
         // for free mode entirely (not even an "N/A" noise line). What's purged is the app's REGISTRATION + its
         // AppId-scoped rows via App_Purge — NOT the AsdamirVault database itself (say so, so nobody panics).
@@ -205,6 +223,14 @@ public static class RollbackAppCommand
     {
         if (string.IsNullOrWhiteSpace(connection)) return server;
         try { return new SqlConnectionStringBuilder(connection).DataSource; } catch { return server; }
+    }
+
+    /// <summary>The Initial Catalog (database name) of a connection string, or null if it has none / is empty.</summary>
+    private static string? TryGetCatalog(string connection)
+    {
+        if (string.IsNullOrWhiteSpace(connection)) return null;
+        try { var c = new SqlConnectionStringBuilder(connection).InitialCatalog; return string.IsNullOrWhiteSpace(c) ? null : c; }
+        catch { return null; }
     }
 
     private static async Task<bool> DatabaseExistsAsync(string masterConn, string dbName)

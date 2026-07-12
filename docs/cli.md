@@ -360,6 +360,11 @@ What it removes:
   `.sln` is the guard against deleting the wrong directory), removed recursively.
 - **App database** — `DROP DATABASE [<Name>]` (the app's OWN DB — free **or** commercial; name defaults to the
   app name, override with `--database`). Kicks open connections first (`SINGLE_USER WITH ROLLBACK IMMEDIATE`).
+  The connection resolves in the **same order as `db apply`** (reusing its resolver): explicit `--connection` →
+  `-S/-d/-U/-P` flags → the **Gateway user-secret** (`ConnectionStrings:Default`, the value `new app` wrote). So
+  `rollback app <Name>` with **no flags** drops the DB just like `db apply` with no flags applies to it — no
+  orphan DB left behind. The secret is read **before** the directory is deleted (it holds the id); the
+  confirmation shows the server + database (never the password).
 - **App registration in AsdamirVault** (commercial only, with `--vault-connection`) — purges the app's `dbo.Apps`
   row + ALL its AppId-scoped rows (users/roles/menus/permissions/config/localization/logs/audit) via the existing
   `dbo.App_Purge` proc (FK-safe, one transaction). This removes the app's **registration**, **not** the
@@ -383,8 +388,9 @@ Options: `<Name>`, `--output`/`-o` (the app's parent dir OR the app dir itself),
   and `App_Purge` refuses the self-app (`EnvironmentName='Self'`, i.e. AppManagement itself).
 - Each step is conditional: a missing directory / database / registration is reported as **"already gone"**,
   never an error (re-run any time).
-- DB/vault cleanup runs only when the matching connection is supplied — without it the step is **skipped and
-  reported**, never silently dropped.
+- The **DB** drop runs when a connection resolves (flags **or** the Gateway user-secret); the **vault** purge
+  runs only with `--vault-connection`. When neither resolves, the step is **skipped and reported** (with how to
+  supply it), never silently dropped.
 - It's a subcommand, so the bare `rollback <Feature>` form is unaffected (only a feature literally named
   `app` is shadowed by `rollback app`).
 

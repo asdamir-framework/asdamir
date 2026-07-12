@@ -243,7 +243,11 @@ public static class DbApplyCommand
     /// reading its &lt;UserSecretsId&gt;), then from the ConnectionStrings__Default environment variable.
     /// Returns null when neither is set (the caller then reports the normal "provide --database" error).
     /// </summary>
-    private static string? TryResolveConnectionFromApp(DirectoryInfo migrations, out string source)
+    /// <summary>Resolves ConnectionStrings:Default from a generated app's Gateway user-secret (walking up from
+    /// <paramref name="migrations"/> to the nearest <c>*.Gateway.csproj</c>) or the ConnectionStrings__Default env
+    /// var. Exposed (internal) so <c>rollback app</c> reuses the exact same passwordless resolution as
+    /// <c>db apply</c> instead of re-implementing it. Read it BEFORE deleting the app dir (it holds the id).</summary>
+    internal static string? TryResolveConnectionFromApp(DirectoryInfo migrations, out string source)
     {
         source = "";
         var gatewayCsproj = FindGatewayCsproj(migrations);
