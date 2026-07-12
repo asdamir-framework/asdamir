@@ -6,13 +6,28 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.2`** (the `rollback app` whole-app teardown
-command). **Pending publish: Data `1.2.1`** (the FeatureManager value-type fallback fix; Core stays `1.3.0`,
-Web/Payments stay `1.2.0`).
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.3`** (`new app` auto-configures the Gateway dev
+user-secrets — run-ready in 2 commands). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
+fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.3]
+
+### Changed — `asdamir new app` is run-ready: it auto-configures the Gateway dev user-secrets (`Asdamir.Tools`)
+
+`new app` already asks for the SQL user + a masked password; it now **writes the Gateway's dev user-secrets**
+itself so the app runs with no hand-editing — cutting the old 6-step "next steps" checklist to **2 commands**
+(`asdamir db apply` → `./restart-<app>.sh`). It sets: a **CSPRNG `Jwt:Key`** (free mode only — the Gateway owns
+its JWT; commercial mode's `Jwt:Key` must equal AppManagement's, so it stays manual), a **CSPRNG
+`Security:EncryptionKey`**, and **`ConnectionStrings:Default`** (only when a real password was supplied — masked
+prompt or a full `--connection-string`; an empty password keeps the printed manual line). Secrets go to
+**user-secrets, NEVER `appsettings.json`** (the security model is unchanged), and the masked password is never
+echoed back. New **`--no-secrets`** flag opts out (CI / external secret store) and restores the full manual
+block. `--yes`/CI is unaffected (the CSPRNG keys are still generated; the connection string comes from
+`--connection-string` if given).
 
 ## [Tools 1.3.2]
 

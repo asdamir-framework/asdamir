@@ -26,29 +26,22 @@ Layered rules.
 - **Layered:** the Gateway (API) owns all DB access; the Server (UI) only calls HTTP — no DB creds in the UI.
 
 ## Steps
+`new app` asks for the SQL user + a **masked** password, then **auto-configures the Gateway dev user-secrets**
+(CSPRNG `Jwt:Key` in free mode + `Security:EncryptionKey` + `ConnectionStrings:Default` when a password was
+given) — secrets go to **user-secrets, NEVER appsettings.json**. So a **free** app is run-ready in 2 commands:
 ```bash
-asdamir new app MyPortal            # → MyPortal.Server + MyPortal.Gateway + db + register_myportal.sql
-cd MyPortal
+asdamir new app MyPortal --mode free                          # asks SQL user + password → writes Gateway dev secrets
+cd MyPortal && asdamir db apply --create-database --migrations db/migrations   # DB + all migrations (reads the secret)
+./restart-myportal.sh                                         # both tiers → sign in with the starter admin printed above
 ```
-1. **Dev secrets on the GATEWAY** (never in appsettings.json):
-   ```bash
-   cd src/MyPortal.Gateway
-   dotnet user-secrets set "Jwt:Key" "<the SAME 64+ byte key AppManagement signs with>"
-   dotnet user-secrets set "ConnectionStrings:Default" "Server=...;User Id=...;Password=...;TrustServerCertificate=True"   # cross-platform SQL auth
-   cd ../..
-   ```
-2. `dotnet build MyPortal.sln && dotnet test MyPortal.sln`
-3. **Create the app's own (business) DB** with the journaled runner (`asdamir-migration`):
-   ```bash
-   # No SQL password on the CLI: db apply resolves ConnectionStrings:Default from the Gateway user-secret
-   # you set above. (Or pass --server/--database/--user/--password / --connection explicitly.)
-   asdamir db apply --create-database --migrations db/migrations
-   ```
-4. **Register + seed in AppManagement** — run `db/admin-onboarding/register_myportal.sql` **against
-   AsdamirVault** (not the app's DB). It registers the app and seeds its starter admin / role /
-   permissions / menus / config / localization there, scoped by `AppId`.
-5. **Run both tiers:** `dotnet run --project src/MyPortal.Gateway` and `dotnet run --project src/MyPortal.Server`. Sign in with the seeded admin.
-6. Add real tables/pages with the `asdamir-new-entity` skill.
+Notes:
+- **Empty password** → everything else is auto-set; `new app` prints the one `ConnectionStrings:Default` line to
+  run first. **`--no-secrets`** → skip auto-config, manage secrets yourself (CI / external store).
+- **Commercial mode** is the same **except `Jwt:Key`**: it MUST equal AppManagement's signing key (the CLI can't
+  know it), so it stays manual — and you also run `db/admin-onboarding/register_<app>.sql` against **AsdamirVault**
+  (registers the app + seeds its users/roles/permissions/menus/config/localization, AppId-scoped) before the run.
+- Optional: `dotnet build/test MyPortal.sln`; add tables/pages with the `asdamir-new-entity` skill; undo the whole
+  app with `asdamir rollback app MyPortal` (see Teardown).
 
 ## Billing (opt-in `--billing`)
 - **Off by default.** `asdamir new app MyPortal --billing` adds an **end-user payment page** (`/billing`):

@@ -67,27 +67,27 @@ emits an extra set of migrations (the management schema/procs + a seed for a sta
 `db apply` sets the whole thing up. It does **not** emit `register_<app>.sql` (there is no control plane to
 register against), and its onboarding banner reflects the self-contained flow.
 
-**Free quick-start** (verified end-to-end, with AppManagement not running):
+**Free quick-start** (verified end-to-end, with AppManagement not running) — **run-ready in 2 commands.** The
+interactive `new app` asks for the SQL user + a **masked** password, then **auto-configures the Gateway's dev
+user-secrets** (a CSPRNG `Jwt:Key` — free mode owns its JWT — plus `Security:EncryptionKey`, and
+`ConnectionStrings:Default` when you gave a password). Secrets go to **user-secrets, NEVER `appsettings.json`**.
 
 ```bash
-asdamir new app MyApp --mode free --yes
+asdamir new app MyApp --mode free          # asks SQL user + masked password → writes the Gateway dev secrets
 cd MyApp
-
-# One-time secrets on the Gateway (NEVER in appsettings.json). The Gateway signs + validates its
-# own JWTs, so Jwt:Key is just a 64+ byte random value (not shared with anything).
-cd src/MyApp.Gateway
-dotnet user-secrets set "Jwt:Key" "<a 64+ byte random key>"
-dotnet user-secrets set "ConnectionStrings:Default" "Server=localhost,1433;Database=MyApp;User Id=<login>;Password=<pwd>;TrustServerCertificate=True"
-cd ../..
-
-dotnet build MyApp.sln
-# Creates the DB and applies EVERY migration (management schema/procs/seed + business) in one pass.
-# No password on the command line — the runner reads ConnectionStrings:Default from the secret above.
-asdamir db apply --create-database --migrations db/migrations
-
-dotnet run --project src/MyApp.Gateway    # then, in another shell:
-dotnet run --project src/MyApp.Server     # open the Server, sign in with the starter admin printed by `new app`
+asdamir db apply --create-database --migrations db/migrations   # creates the DB + all migrations; reads ConnectionStrings:Default from the secret
+./restart-myapp.sh                          # starts both tiers → open the Server, sign in with the starter admin printed by `new app`
 ```
+
+- **Empty password** (defer it): everything else is still auto-configured; `new app` prints the one
+  `dotnet user-secrets set "ConnectionStrings:Default" …` line to run before `db apply`.
+- **`--no-secrets`**: skip the auto-config entirely and set the secrets yourself (CI, or an external secret
+  store) — `new app` then prints the full manual `user-secrets` block.
+- **`--yes` / CI**: with a password only via `--connection-string`; the CSPRNG keys are still generated.
+- **Commercial mode** is the same, minus one thing the CLI can't know: `Jwt:Key` **must equal AppManagement's**
+  signing key, so it stays a manual step (the Gateway only validates tokens AppManagement issued);
+  `Security:EncryptionKey` + `ConnectionStrings:Default` are still auto-configured, and you also run
+  `register_<app>.sql` against AsdamirVault.
 
 The starter admin's email + one-time password are printed once by `new app`. That password is a **bootstrap
 credential**, so the app **forces a change on first sign-in**: the starter admin ships with a

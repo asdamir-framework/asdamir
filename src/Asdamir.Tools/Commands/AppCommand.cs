@@ -76,12 +76,15 @@ public static class AppCommand
         var billingOpt = new Option<bool>(new[] { "--billing" },
             description: "Opt-in: scaffold an end-user billing/payment page. Adds a Payment page (Server) plus the billing menu/permission/localization seeds. In commercial mode (Model A) the Gateway proxies gateway/billing/* → AppManagement and the billing data + Paddle secret live centrally in AsdamirVault; in free mode (Model B) the Gateway serves billing LOCALLY from the app's OWN DB via the Asdamir.Payments package (LocalDbBillingStore + payment rails + webhook). Default off: without it the app is unchanged.",
             getDefaultValue: () => false);
+        var noSecretsOpt = new Option<bool>(new[] { "--no-secrets" },
+            description: "Skip auto-configuring the Gateway's dev user-secrets (CSPRNG Jwt:Key [free mode] + Security:EncryptionKey + ConnectionStrings:Default). By default `new app` writes them so the app is run-ready; pass this to manage secrets yourself.",
+            getDefaultValue: () => false);
 
         var appCmd = new Command("app", "Generate a standalone Asdamir app (Server + Gateway + tests + sln + demo DB) that consumes the framework via DI and is managed from AppManagement.")
         {
             nameArg, outputOpt, namespaceOpt, localFeedOpt,
             serverNameOpt, apiNameOpt, databaseOpt, dbServerOpt, connStringOpt, gatewayUrlOpt,
-            adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt, billingOpt,
+            adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt, billingOpt, noSecretsOpt,
         };
 
         appCmd.SetHandler((InvocationContext ctx) =>
@@ -102,7 +105,8 @@ public static class AppCommand
                 AdminPassword: r.GetValueForOption(adminPasswordOpt) ?? "",
                 Yes: r.GetValueForOption(yesOpt),
                 Mode: r.GetValueForOption(modeOpt) ?? "commercial",
-                Billing: r.GetValueForOption(billingOpt)));
+                Billing: r.GetValueForOption(billingOpt),
+                NoSecrets: r.GetValueForOption(noSecretsOpt)));
         });
         return appCmd;
     }
@@ -111,7 +115,7 @@ public static class AppCommand
         string Name, DirectoryInfo Output, string NsOverride, string LocalFeed,
         string ServerName, string ApiName, string Database, string DbServer,
         string ConnString, string GatewayUrl, string AdminEmail, string AdminPassword, bool Yes,
-        string Mode, bool Billing);
+        string Mode, bool Billing, bool NoSecrets);
 
     private static void Run(RawInputs raw)
     {
@@ -159,10 +163,11 @@ public static class AppCommand
         // SQL-auth credentials (portable, unlike Windows Trusted_Connection) — the user + a MASKED password.
         var connString = raw.ConnString;
         var dbUser = "sa";
+        var dbPassword = "";
         if (string.IsNullOrWhiteSpace(connString))
         {
             dbUser = interactive ? Ask(true, "SQL kullanıcı / SQL user", "sa") : "sa";
-            var dbPassword = interactive
+            dbPassword = interactive
                 ? AskSecret("SQL şifre / SQL password (boş = user-secrets ile ayarla / empty = set via user-secrets)")
                 : "";
             connString = ComposeConnString(dbServer, database, dbUser, dbPassword);
@@ -170,6 +175,11 @@ public static class AppCommand
 
         var connHasSecret = connString.Contains("password=", StringComparison.OrdinalIgnoreCase)
                             || connString.Contains("pwd=", StringComparison.OrdinalIgnoreCase);
+        // A REAL secret we can write to the Gateway user-secrets: a masked password from the prompt, OR a full
+        // --connection-string that carries one. (ComposeConnString uses a <your-password> PLACEHOLDER when the
+        // prompt password is empty, so `connHasSecret` alone can't distinguish real from placeholder.)
+        var hasRealSecret = !string.IsNullOrEmpty(dbPassword)
+                         || (!string.IsNullOrWhiteSpace(raw.ConnString) && connHasSecret);
         var connIsWindowsAuth = connString.Contains("Trusted_Connection", StringComparison.OrdinalIgnoreCase)
                                 || connString.Contains("Integrated Security", StringComparison.OrdinalIgnoreCase);
         // appsettings.json holds ONLY a portable, secret-free connection string. A Windows-auth
@@ -431,6 +441,19 @@ public static class AppCommand
         Console.WriteLine();
         Console.WriteLine($"Done. {written} files written to '{appRoot}'.");
         Console.WriteLine();
+
+        // Auto-configure the Gateway's dev user-secrets so the app is run-ready with no hand-editing (unless
+        // --no-secrets). Secrets NEVER go to appsettings.json — always to user-secrets. Free mode: the Gateway
+        // issues + validates its OWN JWT, so a fresh CSPRNG Jwt:Key is correct. Commercial: the Jwt:Key MUST
+        // equal AppManagement's signing key (the Gateway only validates tokens AppManagement issued) — the CLI
+        // can't know that, so it's left for the user. ConnectionStrings:Default is written only when a real
+        // password was supplied (masked prompt or a full --connection-string); an empty password keeps the
+        // manual placeholder instruction.
+        var gatewayCsproj = Path.Combine(appRoot, "src", gatewayProject, $"{gatewayProject}.csproj");
+        var secrets = raw.NoSecrets
+            ? SecretsResult.Skipped
+            : ConfigureSecrets(gatewayCsproj, isFreeMode, hasRealSecret, connString);
+
         if (isFreeMode)
         {
             // Free mode — self-contained app. The starter admin + menu + localization + config are seeded
@@ -443,31 +466,18 @@ public static class AppCommand
             Console.WriteLine($"  │    Password: {adminPassword,-58}│");
             Console.WriteLine("  └─────────────────────────────────────────────────────────────────────────┘");
             Console.WriteLine();
+            PrintConfigured(secrets, hasRealSecret, isFreeMode);
             Console.WriteLine("Next steps (free mode — self-contained; no control plane):");
-            Console.WriteLine($"  1. cd {name}");
-            Console.WriteLine($"  2. Dev secrets (NEVER in appsettings.json):");
-            Console.WriteLine($"     cd src/{gatewayProject}");
-            Console.WriteLine($"     # the Gateway ISSUES + validates its own JWTs — use any 64+ byte CSPRNG-generated key");
-            Console.WriteLine($"     dotnet user-secrets set \"Jwt:Key\" \"<a 64+ byte random key>\"");
-            Console.WriteLine($"     # at-rest encryption key (32+ chars) — REQUIRED (the Gateway fails closed without it, no demo default)");
-            Console.WriteLine($"     dotnet user-secrets set \"Security:EncryptionKey\" \"<a 32+ char random key>\"");
-            if (connNeedsSecret)
-            {
-                Console.WriteLine($"     # this app's OWN database (management + business tables) — cross-platform (SQL auth). On Windows you may use Trusted_Connection=True instead.");
-                Console.WriteLine($"     dotnet user-secrets set \"ConnectionStrings:Default\" \"{connSecretExample}\"");
-            }
-            Console.WriteLine($"     cd ../..");
-            Console.WriteLine($"  3. dotnet build {name}.sln && dotnet test {name}.sln");
-            Console.WriteLine($"  4. Create the app's own database + apply ALL migrations (journaled — the management");
-            Console.WriteLine($"     schema/procs/seed AND the business schema in one pass; this seeds the starter admin +");
-            Console.WriteLine($"     menu + localization + config into THIS app's OWN database):");
-            Console.WriteLine($"     asdamir db apply --create-database --migrations db/migrations");
-            Console.WriteLine($"     # reads ConnectionStrings:Default from the Gateway user-secret you set in step 2 — no");
-            Console.WriteLine($"     # password on the command line. (You can still pass --connection / --server / --user / --password.)");
-            Console.WriteLine($"  5. Run both tiers, then sign in with the starter admin above:");
-            Console.WriteLine($"     dotnet run --project src/{gatewayProject}   # {gatewayUrl}");
-            Console.WriteLine($"     dotnet run --project src/{serverProject}");
-            Console.WriteLine($"  6. Add your first real table/page: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
+            var freeStep = 1;
+            Console.WriteLine($"  {freeStep++}. cd {name}");
+            PrintManualSecretSteps(secrets, hasRealSecret, isFreeMode, gatewayProject, connSecretExample, ref freeStep);
+            Console.WriteLine($"  {freeStep++}. asdamir db apply --create-database --migrations db/migrations");
+            Console.WriteLine($"     # creates the DB + applies ALL migrations (management schema/procs/seed + business schema);");
+            Console.WriteLine($"     # seeds the starter admin + menu + localization + config. Reads ConnectionStrings:Default");
+            Console.WriteLine($"     # from the Gateway user-secret (or pass --connection / -S -d -U -P).");
+            Console.WriteLine($"  {freeStep++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl} and sign in with the starter admin above");
+            Console.WriteLine();
+            Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
         }
         else
         {
@@ -478,31 +488,121 @@ public static class AppCommand
         Console.WriteLine($"  │    Password: {adminPassword,-58}│");
         Console.WriteLine("  └─────────────────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
+        PrintConfigured(secrets, hasRealSecret, isFreeMode);
         Console.WriteLine("Next steps:");
-        Console.WriteLine($"  1. cd {name}");
-        Console.WriteLine($"  2. Dev secrets (NEVER in appsettings.json):");
-        Console.WriteLine($"     cd src/{gatewayProject}");
-        Console.WriteLine($"     dotnet user-secrets set \"Jwt:Key\" \"<the SAME 64+ byte key AppManagement signs with>\"");
-        if (connNeedsSecret)
+        var step = 1;
+        Console.WriteLine($"  {step++}. cd {name}");
+        // Commercial: the Jwt:Key MUST match AppManagement's signing key — the CLI can't know it, so it stays
+        // manual (on BOTH tiers). ConnectionStrings + EncryptionKey were auto-configured above (when possible).
+        Console.WriteLine($"  {step++}. Set Jwt:Key to match AppManagement's (the Gateway validates tokens AppManagement issued):");
+        Console.WriteLine($"     cd src/{gatewayProject} && dotnet user-secrets set \"Jwt:Key\" \"<AppManagement's Jwt:Key>\" && cd ../..");
+        PrintManualSecretSteps(secrets, hasRealSecret, isFreeMode, gatewayProject, connSecretExample, ref step);
+        Console.WriteLine($"  {step++}. asdamir db apply --create-database --migrations db/migrations");
+        Console.WriteLine($"     # creates the app's own (business) DB + demo table. Reads ConnectionStrings:Default from the");
+        Console.WriteLine($"     # Gateway user-secret (or pass --connection / -S -d -U -P). Journaled — re-runs apply only new ones.");
+        Console.WriteLine($"  {step++}. Register + seed in AppManagement: run db/admin-onboarding/register_{model.AppNameLower}.sql");
+        Console.WriteLine($"     against AsdamirVault — registers the app + seeds its users/roles/permissions/menus/config/localization (AppId-scoped).");
+        Console.WriteLine($"  {step++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl}");
+        Console.WriteLine();
+        Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
+        }
+    }
+
+    // ── Auto-configure the Gateway's dev user-secrets (run-ready out of the box) ────────────────────────
+    private readonly record struct SecretsResult(bool Attempted, bool JwtSet, bool EncSet, bool ConnSet, string? Error)
+    {
+        public static readonly SecretsResult Skipped = new(false, false, false, false, null);
+    }
+
+    private static SecretsResult ConfigureSecrets(string gatewayCsproj, bool isFreeMode, bool hasRealSecret, string connStringWithSecret)
+    {
+        if (!File.Exists(gatewayCsproj))
+            return new SecretsResult(true, false, false, false, $"Gateway csproj not found ({gatewayCsproj})");
+
+        var errors = new List<string>();
+        bool Set(string key, string value)
         {
-            Console.WriteLine($"     # this app's OWN (business) DB — cross-platform (SQL auth). On Windows you may use Trusted_Connection=True instead.");
-            Console.WriteLine($"     dotnet user-secrets set \"ConnectionStrings:Default\" \"{connSecretExample}\"");
+            var (ok, log) = RunUserSecretSet(gatewayCsproj, key, value);
+            if (!ok) errors.Add($"{key} ({log.Trim()})");
+            return ok;
         }
-        Console.WriteLine($"     cd ../..");
-        Console.WriteLine($"  3. dotnet build {name}.sln && dotnet test {name}.sln");
-        Console.WriteLine($"  4. Create the app's own (business) database + demo table (migrations are journaled — re-runs apply only new ones):");
-        Console.WriteLine($"     asdamir db apply --create-database --migrations db/migrations");
-        Console.WriteLine($"     # reads ConnectionStrings:Default from the Gateway user-secret you set in step 2 — no");
-        Console.WriteLine($"     # password on the command line. (You can still pass --connection / --server / --user / --password.)");
-        Console.WriteLine($"  5. Register + seed the app in AppManagement (control plane): run");
-        Console.WriteLine($"     db/admin-onboarding/register_{model.AppNameLower}.sql against the AsdamirVault DB —");
-        Console.WriteLine($"     it registers the app and seeds its users / roles / permissions / menus / config /");
-        Console.WriteLine($"     localization there, scoped by AppId (this app reads them via AppManagement's API).");
-        Console.WriteLine($"  6. Run both tiers:");
-        Console.WriteLine($"     dotnet run --project src/{gatewayProject}   # {gatewayUrl}");
-        Console.WriteLine($"     dotnet run --project src/{serverProject}");
-        Console.WriteLine($"  7. Add your first real table/page: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
+
+        // Free mode → the Gateway owns its JWT, so a fresh 64-byte CSPRNG key is correct. Commercial → the key
+        // must equal AppManagement's, which we don't have; skip it (left as a manual step in next-steps).
+        var jwtSet = isFreeMode && Set("Jwt:Key", NewSecret(64));
+        // At-rest encryption key (≥32 chars) — REQUIRED by the Gateway; a fresh CSPRNG key is fine for both modes.
+        var encSet = Set("Security:EncryptionKey", NewSecret(32));
+        // The connection string carries the real password only when one was supplied; otherwise it's left manual.
+        var connSet = hasRealSecret && Set("ConnectionStrings:Default", connStringWithSecret);
+
+        return new SecretsResult(true, jwtSet, encSet, connSet, errors.Count == 0 ? null : string.Join("; ", errors));
+    }
+
+    /// <summary>A base64 CSPRNG secret from <paramref name="bytes"/> random bytes (64 → an 88-char Jwt:Key,
+    /// 32 → a 44-char encryption key — both well over their minimums).</summary>
+    private static string NewSecret(int bytes)
+        => Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(bytes));
+
+    /// <summary>Shells out to <c>dotnet user-secrets set</c> for the Gateway project. Uses ArgumentList so the
+    /// secret value + csproj path need no shell quoting, and captures output so a failure can fall back to the
+    /// printed manual instruction. The secret is never echoed to the console by us.</summary>
+    private static (bool ok, string log) RunUserSecretSet(string gatewayCsproj, string key, string value)
+    {
+        try
+        {
+            var psi = new System.Diagnostics.ProcessStartInfo("dotnet")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+            };
+            psi.ArgumentList.Add("user-secrets");
+            psi.ArgumentList.Add("set");
+            psi.ArgumentList.Add(key);
+            psi.ArgumentList.Add(value);
+            psi.ArgumentList.Add("--project");
+            psi.ArgumentList.Add(gatewayCsproj);
+            using var p = System.Diagnostics.Process.Start(psi)!;
+            var outp = p.StandardOutput.ReadToEnd();
+            var err = p.StandardError.ReadToEnd();
+            p.WaitForExit();
+            return (p.ExitCode == 0, p.ExitCode == 0 ? "" : (err + outp));
         }
+        catch (Exception ex) { return (false, ex.Message); }
+    }
+
+    /// <summary>Prints the "✓ configured" summary line for whatever secrets were written.</summary>
+    private static void PrintConfigured(SecretsResult s, bool hasRealSecret, bool isFreeMode)
+    {
+        if (!s.Attempted) return;  // --no-secrets → say nothing (the manual steps are printed below)
+        var set = new List<string>();
+        if (s.JwtSet) set.Add("Jwt:Key");
+        if (s.EncSet) set.Add("Security:EncryptionKey");
+        if (s.ConnSet) set.Add("ConnectionStrings:Default");
+        if (set.Count > 0)
+            Console.WriteLine($"  ✓ Configured Gateway dev user-secrets: {string.Join(" + ", set)}.");
+        if (s.Error is not null)
+            Console.WriteLine($"  ⚠️  Some user-secrets could not be set ({s.Error}) — set them by hand (see below).");
+        Console.WriteLine();
+    }
+
+    /// <summary>Prints the manual `user-secrets set` steps ONLY for what auto-config could NOT do (an empty
+    /// password → ConnectionStrings; a failed/skipped run → all of them), bumping the step counter.</summary>
+    private static void PrintManualSecretSteps(SecretsResult s, bool hasRealSecret, bool isFreeMode, string gatewayProject, string connSecretExample, ref int step)
+    {
+        // Fully skipped (--no-secrets) or a hard failure → print the whole secret block.
+        if (!s.Attempted || (!s.EncSet && s.Error is not null))
+        {
+            Console.WriteLine($"  {step++}. Dev secrets (NEVER in appsettings.json) — cd src/{gatewayProject}, then:");
+            if (isFreeMode)
+                Console.WriteLine($"     dotnet user-secrets set \"Jwt:Key\" \"<a 64+ byte random key>\"    # the Gateway issues+validates its own JWT");
+            Console.WriteLine($"     dotnet user-secrets set \"Security:EncryptionKey\" \"<a 32+ char random key>\"");
+            Console.WriteLine($"     dotnet user-secrets set \"ConnectionStrings:Default\" \"{connSecretExample}\"    # then cd ../..");
+            return;
+        }
+        // Configured, but the connection string was left manual (empty password).
+        if (!s.ConnSet)
+            Console.WriteLine($"  {step++}. Set the DB connection (empty password entered): cd src/{gatewayProject} && dotnet user-secrets set \"ConnectionStrings:Default\" \"{connSecretExample}\" && cd ../..");
     }
 
     private static int WriteAsset(string appRoot, string relPath, string assetName)
