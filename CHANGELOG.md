@@ -14,6 +14,17 @@ commercial customers.
 
 ## [Unreleased]
 
+### Changed — `asdamir new app` creates the database + applies migrations too (generate → run) (`Asdamir.Tools`)
+
+Building on the auto-secret configuration, `new app` now also **sets up the database** — it runs
+`db apply --create-database` for you (reusing the SAME journaled runner, no duplication; `CREATE DATABASE` is
+idempotent via `IF DB_ID IS NULL`, and applied migrations are skipped). So a free app is **generate → run**:
+`asdamir new app` → `./restart-<app>.sh`. It runs only when a real password was supplied (a masked prompt or a
+full `--connection-string`); an **empty password** or the new **`--no-db`** flag scaffolds files only and prints
+the `db apply` line for later (offline / CI / review-first). If the DB setup fails (server unreachable, no
+rights) the files are still generated and the exact `cd <app> && asdamir db apply …` recovery command is printed
+— never left half-done. `db apply` itself is unchanged and still used over the app's lifetime.
+
 ## [Tools 1.3.3]
 
 ### Changed — `asdamir new app` is run-ready: it auto-configures the Gateway dev user-secrets (`Asdamir.Tools`)

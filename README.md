@@ -162,10 +162,11 @@ asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
 plane**: its identity, RBAC, menus, localization and config live in the app's **own** database
 (single-tenant), the Gateway **issues and validates its own JWTs**, and logging goes to file + console — so
 the app runs standalone with AppManagement not involved. The default (`--mode commercial`) is unchanged: the
-control plane owns that data centrally in `AsdamirVault`, scoped per app. **Run-ready in 2 commands:** `new app`
-asks for the SQL user + a masked password and auto-configures the Gateway's dev user-secrets (a CSPRNG `Jwt:Key`
-+ `Security:EncryptionKey` + the connection string — never in `appsettings.json`), so a free app goes straight to
-`asdamir db apply` → `./restart-<app>.sh`. See the free quick-start in
+control plane owns that data centrally in `AsdamirVault`, scoped per app. **Generate → run:** `new app` asks for
+the SQL user + a masked password, then auto-configures the Gateway's dev user-secrets (a CSPRNG `Jwt:Key` +
+`Security:EncryptionKey` + the connection string — never in `appsettings.json`) **and creates the database +
+applies every migration**, so a free app goes straight to `./restart-<app>.sh`. Pass `--no-db` (or `--no-secrets`)
+to scaffold files only. See the free quick-start in
 [docs/cli.md](docs/cli.md#asdamir-new-app-free-vs-commercial-mode).
 
 **Billing (opt-in).** `asdamir new app <Name> --billing` adds an **end-user payment page** (plans +

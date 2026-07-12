@@ -67,27 +67,33 @@ emits an extra set of migrations (the management schema/procs + a seed for a sta
 `db apply` sets the whole thing up. It does **not** emit `register_<app>.sql` (there is no control plane to
 register against), and its onboarding banner reflects the self-contained flow.
 
-**Free quick-start** (verified end-to-end, with AppManagement not running) — **run-ready in 2 commands.** The
-interactive `new app` asks for the SQL user + a **masked** password, then **auto-configures the Gateway's dev
-user-secrets** (a CSPRNG `Jwt:Key` — free mode owns its JWT — plus `Security:EncryptionKey`, and
-`ConnectionStrings:Default` when you gave a password). Secrets go to **user-secrets, NEVER `appsettings.json`**.
+**Free quick-start** (verified end-to-end, with AppManagement not running) — **generate → run.** The interactive
+`new app` asks for the SQL user + a **masked** password, then does everything to make the app run-ready:
+auto-configures the Gateway's dev user-secrets (a CSPRNG `Jwt:Key` — free mode owns its JWT — plus
+`Security:EncryptionKey` + `ConnectionStrings:Default`, in **user-secrets, NEVER `appsettings.json`**) **AND
+creates the database + applies every migration** (reusing the `db apply --create-database` runner — idempotent).
 
 ```bash
-asdamir new app MyApp --mode free          # asks SQL user + masked password → writes the Gateway dev secrets
-cd MyApp
-asdamir db apply --create-database --migrations db/migrations   # creates the DB + all migrations; reads ConnectionStrings:Default from the secret
-./restart-myapp.sh                          # starts both tiers → open the Server, sign in with the starter admin printed by `new app`
+asdamir new app MyApp --mode free          # asks SQL user + masked password → secrets + DB created + migrations applied
+cd MyApp && ./restart-myapp.sh             # starts both tiers → open the Server, sign in with the starter admin printed by `new app`
 ```
 
-- **Empty password** (defer it): everything else is still auto-configured; `new app` prints the one
-  `dotnet user-secrets set "ConnectionStrings:Default" …` line to run before `db apply`.
-- **`--no-secrets`**: skip the auto-config entirely and set the secrets yourself (CI, or an external secret
-  store) — `new app` then prints the full manual `user-secrets` block.
-- **`--yes` / CI**: with a password only via `--connection-string`; the CSPRNG keys are still generated.
+- **`--no-db`**: scaffold files only — don't touch SQL (offline / CI / review-first). `new app` then prints the
+  `asdamir db apply --create-database --migrations db/migrations` line to run when you're ready.
+- **Empty password** (defer it): the DB can't be set up (no connection), so it's skipped like `--no-db`, and
+  `new app` prints the `ConnectionStrings:Default` + `db apply` lines.
+- **DB setup failure** (server unreachable, no rights): the files are still generated — `new app` prints the
+  exact `cd <app> && asdamir db apply …` recovery command (never left half-done).
+- **`--no-secrets`**: skip the user-secrets auto-config (manage them yourself); combine with `--no-db` for a
+  pure files-only scaffold. **`--yes`/CI**: a password only via `--connection-string`; the CSPRNG keys are still
+  generated.
 - **Commercial mode** is the same, minus one thing the CLI can't know: `Jwt:Key` **must equal AppManagement's**
   signing key, so it stays a manual step (the Gateway only validates tokens AppManagement issued);
-  `Security:EncryptionKey` + `ConnectionStrings:Default` are still auto-configured, and you also run
+  `Security:EncryptionKey` + `ConnectionStrings:Default` + the DB are still auto-set-up, and you also run
   `register_<app>.sql` against AsdamirVault.
+
+> `asdamir db apply` isn't going away — it's what you run over the app's lifetime (after `new entity`, when a
+> teammate clones the repo, in CI, in prod). `new app` just runs it **once** for you at creation.
 
 The starter admin's email + one-time password are printed once by `new app`. That password is a **bootstrap
 credential**, so the app **forces a change on first sign-in**: the starter admin ships with a

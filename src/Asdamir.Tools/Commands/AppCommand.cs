@@ -79,18 +79,21 @@ public static class AppCommand
         var noSecretsOpt = new Option<bool>(new[] { "--no-secrets" },
             description: "Skip auto-configuring the Gateway's dev user-secrets (CSPRNG Jwt:Key [free mode] + Security:EncryptionKey + ConnectionStrings:Default). By default `new app` writes them so the app is run-ready; pass this to manage secrets yourself.",
             getDefaultValue: () => false);
+        var noDbOpt = new Option<bool>(new[] { "--no-db" },
+            description: "Skip creating the database + applying migrations. By default (when a SQL password was supplied) `new app` runs `db apply --create-database` so the app is ready to run; pass this to scaffold files only (offline / CI / review-first).",
+            getDefaultValue: () => false);
 
         var appCmd = new Command("app", "Generate a standalone Asdamir app (Server + Gateway + tests + sln + demo DB) that consumes the framework via DI and is managed from AppManagement.")
         {
             nameArg, outputOpt, namespaceOpt, localFeedOpt,
             serverNameOpt, apiNameOpt, databaseOpt, dbServerOpt, connStringOpt, gatewayUrlOpt,
-            adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt, billingOpt, noSecretsOpt,
+            adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt, billingOpt, noSecretsOpt, noDbOpt,
         };
 
-        appCmd.SetHandler((InvocationContext ctx) =>
+        appCmd.SetHandler(async (InvocationContext ctx) =>
         {
             var r = ctx.ParseResult;
-            Run(new RawInputs(
+            await Run(new RawInputs(
                 Name: r.GetValueForArgument(nameArg),
                 Output: r.GetValueForOption(outputOpt)!,
                 NsOverride: r.GetValueForOption(namespaceOpt) ?? "",
@@ -106,7 +109,8 @@ public static class AppCommand
                 Yes: r.GetValueForOption(yesOpt),
                 Mode: r.GetValueForOption(modeOpt) ?? "commercial",
                 Billing: r.GetValueForOption(billingOpt),
-                NoSecrets: r.GetValueForOption(noSecretsOpt)));
+                NoSecrets: r.GetValueForOption(noSecretsOpt),
+                NoDb: r.GetValueForOption(noDbOpt)));
         });
         return appCmd;
     }
@@ -115,9 +119,9 @@ public static class AppCommand
         string Name, DirectoryInfo Output, string NsOverride, string LocalFeed,
         string ServerName, string ApiName, string Database, string DbServer,
         string ConnString, string GatewayUrl, string AdminEmail, string AdminPassword, bool Yes,
-        string Mode, bool Billing, bool NoSecrets);
+        string Mode, bool Billing, bool NoSecrets, bool NoDb);
 
-    private static void Run(RawInputs raw)
+    private static async Task Run(RawInputs raw)
     {
         var interactive = !raw.Yes && !Console.IsInputRedirected;
 
@@ -454,6 +458,31 @@ public static class AppCommand
             ? SecretsResult.Skipped
             : ConfigureSecrets(gatewayCsproj, isFreeMode, hasRealSecret, connString);
 
+        // Create the database + apply migrations so the app is ready to run (unless --no-db). Reuses the SAME
+        // journaled runner as `asdamir db apply --create-database` (no duplication) — CREATE DATABASE is
+        // idempotent (IF DB_ID IS NULL), and the runner skips already-applied migrations. Needs a real
+        // connection: an empty password (or --no-db) skips it and leaves the `db apply` step in next-steps.
+        // A failure never leaves the user blind — the files are generated and the exact command is printed.
+        var dbProvisioned = false;
+        var dbAttempted = !raw.NoDb && hasRealSecret;
+        if (dbAttempted)
+        {
+            Console.WriteLine("Setting up the database (db apply --create-database)…");
+            Console.WriteLine();
+            var appMigrations = new DirectoryInfo(Path.Combine(appRoot, "db", "migrations"));
+            int dbExit;
+            try { dbExit = await DbApplyCommand.RunAsync(connString, "localhost", "", "", "", appMigrations, createDatabase: true); }
+            catch (Exception ex) { dbExit = 1; Console.Error.WriteLine($"Database setup error: {ex.Message}"); }
+            dbProvisioned = dbExit == 0;
+            Console.WriteLine();
+            if (!dbProvisioned)
+            {
+                Console.Error.WriteLine($"⚠️  Database setup did not complete (exit {dbExit}). The files ARE generated — finish it by hand:");
+                Console.Error.WriteLine($"      cd {name} && asdamir db apply --create-database --migrations db/migrations");
+                Console.Error.WriteLine();
+            }
+        }
+
         if (isFreeMode)
         {
             // Free mode — self-contained app. The starter admin + menu + localization + config are seeded
@@ -466,18 +495,23 @@ public static class AppCommand
             Console.WriteLine($"  │    Password: {adminPassword,-58}│");
             Console.WriteLine("  └─────────────────────────────────────────────────────────────────────────┘");
             Console.WriteLine();
+            if (dbProvisioned) Console.WriteLine("  ✓ Database created + all migrations applied (starter admin/menu/localization/config seeded).");
             PrintConfigured(secrets, hasRealSecret, isFreeMode);
             Console.WriteLine("Next steps (free mode — self-contained; no control plane):");
             var freeStep = 1;
-            Console.WriteLine($"  {freeStep++}. cd {name}");
-            PrintManualSecretSteps(secrets, hasRealSecret, isFreeMode, gatewayProject, connSecretExample, ref freeStep);
-            Console.WriteLine($"  {freeStep++}. asdamir db apply --create-database --migrations db/migrations");
-            Console.WriteLine($"     # creates the DB + applies ALL migrations (management schema/procs/seed + business schema);");
-            Console.WriteLine($"     # seeds the starter admin + menu + localization + config. Reads ConnectionStrings:Default");
-            Console.WriteLine($"     # from the Gateway user-secret (or pass --connection / -S -d -U -P).");
-            Console.WriteLine($"  {freeStep++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl} and sign in with the starter admin above");
+            if (dbProvisioned)
+            {
+                Console.WriteLine($"  {freeStep++}. cd {name} && ./restart-{model.AppNameLower}.sh    # starts both tiers → open {gatewayUrl}, sign in with the starter admin above");
+            }
+            else
+            {
+                Console.WriteLine($"  {freeStep++}. cd {name}");
+                PrintManualSecretSteps(secrets, hasRealSecret, isFreeMode, gatewayProject, connSecretExample, ref freeStep);
+                Console.WriteLine($"  {freeStep++}. asdamir db apply --create-database --migrations db/migrations   # creates the DB + applies ALL migrations (reads ConnectionStrings:Default from the secret, or pass -S -d -U -P)");
+                Console.WriteLine($"  {freeStep++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl} and sign in with the starter admin above");
+            }
             Console.WriteLine();
-            Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
+            Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
         }
         else
         {
@@ -488,6 +522,7 @@ public static class AppCommand
         Console.WriteLine($"  │    Password: {adminPassword,-58}│");
         Console.WriteLine("  └─────────────────────────────────────────────────────────────────────────┘");
         Console.WriteLine();
+        if (dbProvisioned) Console.WriteLine($"  ✓ App (business) database created + all migrations applied.");
         PrintConfigured(secrets, hasRealSecret, isFreeMode);
         Console.WriteLine("Next steps:");
         var step = 1;
@@ -497,14 +532,15 @@ public static class AppCommand
         Console.WriteLine($"  {step++}. Set Jwt:Key to match AppManagement's (the Gateway validates tokens AppManagement issued):");
         Console.WriteLine($"     cd src/{gatewayProject} && dotnet user-secrets set \"Jwt:Key\" \"<AppManagement's Jwt:Key>\" && cd ../..");
         PrintManualSecretSteps(secrets, hasRealSecret, isFreeMode, gatewayProject, connSecretExample, ref step);
-        Console.WriteLine($"  {step++}. asdamir db apply --create-database --migrations db/migrations");
-        Console.WriteLine($"     # creates the app's own (business) DB + demo table. Reads ConnectionStrings:Default from the");
-        Console.WriteLine($"     # Gateway user-secret (or pass --connection / -S -d -U -P). Journaled — re-runs apply only new ones.");
+        if (!dbProvisioned)
+        {
+            Console.WriteLine($"  {step++}. asdamir db apply --create-database --migrations db/migrations   # creates the app's own (business) DB (reads ConnectionStrings:Default from the secret, or pass -S -d -U -P)");
+        }
         Console.WriteLine($"  {step++}. Register + seed in AppManagement: run db/admin-onboarding/register_{model.AppNameLower}.sql");
         Console.WriteLine($"     against AsdamirVault — registers the app + seeds its users/roles/permissions/menus/config/localization (AppId-scoped).");
         Console.WriteLine($"  {step++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl}");
         Console.WriteLine();
-        Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"");
+        Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
         }
     }
 

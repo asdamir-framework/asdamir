@@ -26,20 +26,23 @@ Layered rules.
 - **Layered:** the Gateway (API) owns all DB access; the Server (UI) only calls HTTP — no DB creds in the UI.
 
 ## Steps
-`new app` asks for the SQL user + a **masked** password, then **auto-configures the Gateway dev user-secrets**
-(CSPRNG `Jwt:Key` in free mode + `Security:EncryptionKey` + `ConnectionStrings:Default` when a password was
-given) — secrets go to **user-secrets, NEVER appsettings.json**. So a **free** app is run-ready in 2 commands:
+`new app` asks for the SQL user + a **masked** password, then makes the app run-ready end-to-end:
+auto-configures the Gateway dev user-secrets (CSPRNG `Jwt:Key` in free mode + `Security:EncryptionKey` +
+`ConnectionStrings:Default` — in **user-secrets, NEVER appsettings.json**) **AND creates the DB + applies every
+migration** (reusing the idempotent `db apply --create-database` runner). So a **free** app is generate → run:
 ```bash
-asdamir new app MyPortal --mode free                          # asks SQL user + password → writes Gateway dev secrets
-cd MyPortal && asdamir db apply --create-database --migrations db/migrations   # DB + all migrations (reads the secret)
-./restart-myportal.sh                                         # both tiers → sign in with the starter admin printed above
+asdamir new app MyPortal --mode free       # asks SQL user + password → secrets + DB created + migrations applied
+cd MyPortal && ./restart-myportal.sh       # both tiers → sign in with the starter admin printed above
 ```
 Notes:
-- **Empty password** → everything else is auto-set; `new app` prints the one `ConnectionStrings:Default` line to
-  run first. **`--no-secrets`** → skip auto-config, manage secrets yourself (CI / external store).
+- **`--no-db`** → files only, don't touch SQL (offline/CI); `new app` prints the `db apply` line. **Empty
+  password** → same (no connection → DB skipped). **DB setup failure** → files still generated + the exact
+  `cd <app> && asdamir db apply …` recovery command is printed. **`--no-secrets`** → skip user-secrets auto-config.
+- **`db apply` stays** — it's what you run over the app's lifetime (after `new entity`, on clone, in CI/prod);
+  `new app` just runs it once at creation.
 - **Commercial mode** is the same **except `Jwt:Key`**: it MUST equal AppManagement's signing key (the CLI can't
   know it), so it stays manual — and you also run `db/admin-onboarding/register_<app>.sql` against **AsdamirVault**
-  (registers the app + seeds its users/roles/permissions/menus/config/localization, AppId-scoped) before the run.
+  (registers the app + seeds its users/roles/permissions/menus/config/localization, AppId-scoped).
 - Optional: `dotnet build/test MyPortal.sln`; add tables/pages with the `asdamir-new-entity` skill; undo the whole
   app with `asdamir rollback app MyPortal` (see Teardown).
 
