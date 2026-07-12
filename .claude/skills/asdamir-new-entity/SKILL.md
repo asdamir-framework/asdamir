@@ -16,23 +16,26 @@ Layered rules).
 
 ## Scaffold it
 
-Run from the app's API/Gateway project (where data access lives):
+Run it **from the app root** — `new entity` finds the Gateway project itself (nearest `.sln` → `src/<App>.Gateway`):
 ```bash
-cd src/<App>.Gateway        # the REST API tier of the generated app
+cd MyApp                     # the app root — no cd into src/…
 asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool,DueAtUtc:datetime"
-# optional: apply the migration immediately (opt-in; default is files-only = review-first)
-asdamir new entity Invoice --fields "…" --apply -S <sql> -d <AppDb> -U <login> -P <pwd>
+# files only (offline / CI / review-first — don't touch SQL):
+asdamir new entity Invoice --fields "…" --no-db
 ```
 This emits the full slice following audited conventions: **entity + DTO + repository + service +
-controller + tests + a migration** for the app's own DB. By default it only **writes files** (review
-first); add **`--apply`** (+ a connection — same flags as `db apply`) to run the migration right away via
-the journaled runner (it errors if no connection is given, and does not create the DB).
-(`asdamir add field <Entity> --fields "…"` later appends a field across the whole set.)
+controller + tests + a migration** for the app's own DB, and **applies the migration by default** via the
+journaled runner — resolving the connection from the Gateway user-secret `ConnectionStrings:Default` (the
+same passwordless resolution as `db apply`; explicit `--connection`/`-S`/`-d`/`-U`/`-P` override it). No
+`cd`, no separate `db apply`. Running from inside the Gateway dir still works (backward-compatible).
+Pass **`--no-db`** to scaffold files only; if no connection is resolvable the migration is still generated
+and the command prints the `db apply` recovery line. It does not create the DB.
+(`asdamir add field <Entity> --fields "…"` later appends a field across the whole set — also auto-applied.)
 
 ## After scaffolding
 
-1. **Apply the generated migration** to the app's own DB with the journaled runner (see
-   `asdamir-migration`) — **or** skip this by passing `--apply` to `new entity` above:
+1. **The migration is already applied** (unless you passed `--no-db`). To apply it later — a teammate clones
+   the repo, CI, prod — the journaled runner is still there (idempotent; skips applied migrations):
    ```bash
    # No SQL password on the CLI: db apply resolves ConnectionStrings:Default from the app's Gateway
    # user-secret. (Or pass --server/--database/--user/--password / --connection explicitly.)

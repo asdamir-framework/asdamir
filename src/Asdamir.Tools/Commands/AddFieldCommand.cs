@@ -48,19 +48,26 @@ public static class AddFieldCommand
 
         var outputOpt = new Option<DirectoryInfo>(
             new[] { "--output", "-o" },
-            description: "Project root containing the entity's Domain/ and Dtos/ folders. Defaults to the current working directory.",
+            description: "The app root OR the Gateway project. Defaults to the current directory (run from the app root).",
             getDefaultValue: () => new DirectoryInfo(Directory.GetCurrentDirectory()));
+        var noDbOpt = new Option<bool>("--no-db",
+            description: "Generate the ALTER migration only — don't apply it. (By default `add field` applies it via `db apply`.)",
+            getDefaultValue: () => false);
 
-        var fieldCmd = new Command("field", "Append one field to an existing entity scaffold (patches Entity.cs + Dto.cs, generates a new ALTER TABLE migration, prints the snippets you still need to add by hand).")
+        var fieldCmd = new Command("field", "Append one field to an existing entity scaffold (patches Entity.cs + Dto.cs, generates + applies a new ALTER TABLE migration, prints the snippets you still need to add by hand).")
         {
-            nameArg, fieldOpt, outputOpt,
+            nameArg, fieldOpt, outputOpt, noDbOpt,
         };
 
-        fieldCmd.SetHandler(Run, nameArg, fieldOpt, outputOpt);
+        fieldCmd.SetHandler(async ctx => await Run(
+            ctx.ParseResult.GetValueForArgument(nameArg),
+            ctx.ParseResult.GetValueForOption(fieldOpt) ?? "",
+            ctx.ParseResult.GetValueForOption(outputOpt)!,
+            ctx.ParseResult.GetValueForOption(noDbOpt)));
         return fieldCmd;
     }
 
-    private static void Run(string entityName, string fieldRaw, DirectoryInfo output)
+    private static async Task Run(string entityName, string fieldRaw, DirectoryInfo output, bool noDb)
     {
         if (string.IsNullOrWhiteSpace(entityName) || !char.IsUpper(entityName[0]))
         {
@@ -87,6 +94,17 @@ public static class AddFieldCommand
             Environment.Exit(2);
             return;
         }
+
+        // Run from the app ROOT (no `cd src/<App>.Gateway` needed) — resolve the Gateway project from --output
+        // (the .sln + src/<Gateway>), or use --output verbatim when it already IS the Gateway (backward-compat).
+        var gatewayDir = FeatureCommand.ResolveProjectDir(output, isGateway: true);
+        if (gatewayDir is null)
+        {
+            Console.Error.WriteLine("Not inside an Asdamir app (no .sln found, and this isn't a Gateway project). Run this from the app root or pass --output <app root or Gateway project>.");
+            Environment.Exit(2);
+            return;
+        }
+        output = new DirectoryInfo(gatewayDir);
 
         var field = fields[0];
         var entityPath = Path.Combine(output.FullName, "Domain", $"{entityName}.cs");
@@ -150,6 +168,28 @@ public static class AddFieldCommand
         Console.WriteLine("    " + RenderValidatorRule(field).Replace("\n", "\n    "));
         Console.WriteLine();
         Console.WriteLine($"Done. {(entityResult == PatchOutcome.Patched ? 1 : 0) + (dtoResult == PatchOutcome.Patched ? 1 : 0)} files patched, {(migrationWritten ? 1 : 0)} migration written.");
+
+        // Auto-apply the ALTER migration by DEFAULT (unless --no-db), reusing `db apply`'s journaled runner and
+        // resolving the connection from the Gateway user-secret (same as `new entity`). Idempotent; if no
+        // connection resolves, the file is written and the manual command is printed — never a hard failure.
+        if (!migrationWritten) return;
+        var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
+        var appRoot = FeatureCommand.FindAppRoot(output);
+        var migRel = appRoot is not null ? Path.GetRelativePath(appRoot, migDir.FullName).Replace('\\', '/') : "db/migrations";
+        var applyCmd = $"asdamir db apply --migrations {migRel}";
+        if (noDb)
+        {
+            Console.WriteLine($"  --no-db: apply the ALTER with:  {applyCmd}");
+            return;
+        }
+        if (DbApplyCommand.TryResolveConnectionFromApp(migDir, out _) is not { Length: > 0 })
+        {
+            Console.WriteLine($"  no connection resolved — apply the ALTER with:  {applyCmd}  (or set the Gateway ConnectionStrings:Default secret)");
+            return;
+        }
+        Console.WriteLine();
+        var exit = await DbApplyCommand.RunAsync("", "localhost", "", "", "", migDir, createDatabase: false);
+        if (exit != 0) Console.Error.WriteLine($"  ⚠️  ALTER not applied (exit {exit}) — apply it with:  {applyCmd}");
     }
 
     private enum PatchOutcome { Patched, AnchorMissing, FileMissing, AlreadyPresent }

@@ -46,11 +46,17 @@ public static class EntityCommand
             description: "Root namespace for generated code. Defaults to the entity name.",
             getDefaultValue: () => "");
 
-        // Optional: apply the generated migration right away (reuses `db apply`'s journaled runner against
-        // <output>/db/migrations). Connection options mirror `db apply` exactly — required when --apply is set.
+        // By DEFAULT the generated migration is applied right away (reuses `db apply`'s journaled runner against
+        // the Gateway's db/migrations; connection resolved like `db apply` — explicit flags → Gateway
+        // user-secret). `--no-db` skips it (offline / CI / review-first). `--apply` is kept (now a no-op — apply
+        // is the default) so existing scripts don't break.
+        var noDbOpt = new Option<bool>(
+            "--no-db",
+            description: "Generate files only — don't apply the migration. (By default `new entity` applies it via `db apply`.)",
+            getDefaultValue: () => false);
         var applyOpt = new Option<bool>(
             "--apply",
-            description: "After generating, apply the migration via the journaled `db apply` runner. Requires a connection (below).",
+            description: "Deprecated (now the default): applying the migration is on by default. Pass --no-db to skip.",
             getDefaultValue: () => false);
         var connOpt = new Option<string>(
             new[] { "--connection", "-c" },
@@ -69,9 +75,9 @@ public static class EntityCommand
             new[] { "--password", "-P" }, description: "Password for --user.",
             getDefaultValue: () => "");
 
-        var entityCmd = new Command("entity", "Generate a complete entity slice (POCO + DTO + repo + service + controller + tests + migration).")
+        var entityCmd = new Command("entity", "Generate a complete entity slice (POCO + DTO + repo + service + controller + tests + migration) and apply the migration.")
         {
-            nameArg, fieldsOpt, outputOpt, namespaceOpt, applyOpt, connOpt, serverOpt, databaseOpt, userOpt, passwordOpt,
+            nameArg, fieldsOpt, outputOpt, namespaceOpt, noDbOpt, applyOpt, connOpt, serverOpt, databaseOpt, userOpt, passwordOpt,
         };
 
         entityCmd.SetHandler(async ctx =>
@@ -81,7 +87,7 @@ public static class EntityCommand
                 ctx.ParseResult.GetValueForOption(fieldsOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(outputOpt)!,
                 ctx.ParseResult.GetValueForOption(namespaceOpt) ?? "",
-                ctx.ParseResult.GetValueForOption(applyOpt),
+                ctx.ParseResult.GetValueForOption(noDbOpt),
                 ctx.ParseResult.GetValueForOption(connOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(serverOpt) ?? "localhost",
                 ctx.ParseResult.GetValueForOption(databaseOpt) ?? "",
@@ -92,13 +98,23 @@ public static class EntityCommand
     }
 
     internal static async Task<int> RunAsync(string name, string fieldsRaw, DirectoryInfo output, string nsOverride,
-        bool apply, string connection, string server, string database, string user, string password)
+        bool noDb, string connection, string server, string database, string user, string password)
     {
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
             return 2;
         }
+
+        // Run from the app ROOT (no `cd src/<App>.Gateway` needed) — resolve the Gateway project from --output
+        // (the .sln + src/<Gateway>), or use --output verbatim when it already IS the Gateway (backward-compat).
+        var gatewayDir = FeatureCommand.ResolveProjectDir(output, isGateway: true);
+        if (gatewayDir is null)
+        {
+            Console.Error.WriteLine("Not inside an Asdamir app (no .sln found, and this isn't a Gateway project). Run this from the app root or pass --output <app root or Gateway project>.");
+            return 2;
+        }
+        output = new DirectoryInfo(gatewayDir);   // the entity slice + its migration are written here
 
         IReadOnlyList<FieldSpec> fields;
         try
@@ -205,21 +221,48 @@ public static class EntityCommand
         OutputFormatter.PrintGroupedFiles(rows);
         Console.WriteLine();
         var testNote = testCount > 0 ? $"{testCount} tests" : "";
+        var prefix = testNote.Length > 0 ? testNote + " · " : "";
 
-        if (apply)
+        // The generated migration lives in the Gateway's db/migrations. Its app-root-relative path is what the
+        // user would pass to a manual `db apply` (shown in the skip / failure notes so they're never stuck).
+        var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
+        var appRoot = FeatureCommand.FindAppRoot(output);
+        var migRel = appRoot is not null ? Path.GetRelativePath(appRoot, migDir.FullName).Replace('\\', '/') : "db/migrations";
+        var applyCmd = $"asdamir db apply --migrations {migRel}";
+
+        if (noDb)
         {
-            if (testNote.Length > 0) Console.WriteLine($"  {testNote} · applying migration via db apply…");
-            Console.WriteLine();
-            // Reuse db apply's journaled runner: it validates the connection (errors if neither --connection
-            // nor --database is given), prints applied/skipped, and returns the exit code we propagate.
-            // createDatabase:false — the app DB already exists by the time you add entities.
-            var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
-            return await DbApplyCommand.RunAsync(connection, server, database, user, password, migDir, createDatabase: false);
+            Console.WriteLine($"  {prefix}--no-db: migration generated but NOT applied. Apply it with:  {applyCmd}");
+            return 0;
         }
 
-        var prefix = testNote.Length > 0 ? testNote + " · " : "";
-        Console.WriteLine($"  {prefix}next: asdamir db apply  (apply the migration · DI auto-registers by convention)");
-        return 0;
+        // Apply by DEFAULT — reuse `db apply`'s journaled runner (createDatabase:false — the app DB already
+        // exists). It resolves the connection like `db apply`: explicit flags → the Gateway user-secret
+        // (ConnectionStrings:Default). If nothing resolves, we don't hard-fail the generation — the files are
+        // written; we just print the manual apply command.
+        var effectiveConn = connection;
+        if (string.IsNullOrWhiteSpace(connection) && string.IsNullOrWhiteSpace(database)
+            && string.IsNullOrWhiteSpace(user) && string.IsNullOrWhiteSpace(password))
+        {
+            var resolved = DbApplyCommand.TryResolveConnectionFromApp(migDir, out _);
+            if (!string.IsNullOrWhiteSpace(resolved)) effectiveConn = resolved;
+        }
+        var canApply = !string.IsNullOrWhiteSpace(effectiveConn) || !string.IsNullOrWhiteSpace(database) || !string.IsNullOrWhiteSpace(user);
+        if (!canApply)
+        {
+            Console.WriteLine($"  {prefix}no connection resolved — migration NOT applied. Set the Gateway ConnectionStrings:Default secret (or pass -S -d -U -P), then:  {applyCmd}");
+            return 0;
+        }
+
+        if (testNote.Length > 0) Console.WriteLine($"  {testNote} · applying migration via db apply…");
+        Console.WriteLine();
+        var dbExit = await DbApplyCommand.RunAsync(effectiveConn, server, database, user, password, migDir, createDatabase: false);
+        if (dbExit != 0)
+        {
+            Console.Error.WriteLine();
+            Console.Error.WriteLine($"  ⚠️  Migration not applied (exit {dbExit}). The files ARE generated — apply it with:  {applyCmd}");
+        }
+        return 0;   // generation succeeded regardless of the DB step
     }
 
     // Maps a template name to the human-readable layer label shown in the grouped output table.

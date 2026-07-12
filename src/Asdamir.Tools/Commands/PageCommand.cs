@@ -59,29 +59,44 @@ public static class PageCommand
             description: "Nav-menu icon for the generated menu row (seed_menu_<plural>.sql). Defaults to 'list'.",
             getDefaultValue: () => "list");
 
+        var noDbOpt = new Option<bool>("--no-db",
+            description: "Generate files only — in free mode, don't apply the menu/localization seed migrations. (By default they're applied via `db apply`.)",
+            getDefaultValue: () => false);
+
         var pageCmd = new Command("page", "Generate a Blazor CRUD page (DataGrid + edit dialog + delete confirm) bound to an entity DTO.")
         {
-            nameArg, fieldsOpt, routeOpt, outputOpt, namespaceOpt, policyOpt, iconOpt,
+            nameArg, fieldsOpt, routeOpt, outputOpt, namespaceOpt, policyOpt, iconOpt, noDbOpt,
         };
 
-        pageCmd.SetHandler(ctx => ctx.ExitCode = Run(
+        pageCmd.SetHandler(async ctx => ctx.ExitCode = await Run(
             ctx.ParseResult.GetValueForArgument(nameArg),
             ctx.ParseResult.GetValueForOption(fieldsOpt) ?? "",
             ctx.ParseResult.GetValueForOption(routeOpt) ?? "",
             ctx.ParseResult.GetValueForOption(outputOpt)!,
             ctx.ParseResult.GetValueForOption(namespaceOpt) ?? "",
             ctx.ParseResult.GetValueForOption(policyOpt) ?? "AdminAccess",
-            ctx.ParseResult.GetValueForOption(iconOpt) ?? "list"));
+            ctx.ParseResult.GetValueForOption(iconOpt) ?? "list",
+            ctx.ParseResult.GetValueForOption(noDbOpt)));
         return pageCmd;
     }
 
-    internal static int Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy, string icon)
+    internal static async Task<int> Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy, string icon, bool noDb = false)
     {
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
             return 2;
         }
+
+        // Run from the app ROOT (no `cd src/<App>.Server` needed) — resolve the Server project from --output
+        // (the .sln + src/<Server>), or use --output verbatim when it already IS the Server (backward-compat).
+        var serverDir = FeatureCommand.ResolveProjectDir(output, isGateway: false);
+        if (serverDir is null)
+        {
+            Console.Error.WriteLine("Not inside an Asdamir app (no .sln found, and this isn't a Server project). Run this from the app root or pass --output <app root or Server project>.");
+            return 2;
+        }
+        output = new DirectoryInfo(serverDir);   // the page + dialog are written here; the seeds resolve the app root from it
 
         IReadOnlyList<FieldSpec> fields;
         try
@@ -186,7 +201,22 @@ public static class PageCommand
         OutputFormatter.PrintGroupedFiles(rows);
         Console.WriteLine();
         if (isFree)
-            Console.WriteLine($"  next: apply db/migrations/V*__freemode_{{localize,menu}}_{pluralLower}.sql to the app's own DB via `asdamir db apply` (menu + permission + localization)");
+        {
+            // Free-mode menu/localization seeds are journaled migrations in the app's OWN db/migrations —
+            // auto-apply them by DEFAULT (unless --no-db), reusing `db apply` + the Gateway user-secret.
+            var rootMigDir = new DirectoryInfo(Path.Combine(appRoot!, "db", "migrations"));
+            if (noDb)
+                Console.WriteLine("  --no-db: apply the menu/localization seeds with `asdamir db apply --migrations db/migrations`.");
+            else if (DbApplyCommand.TryResolveConnectionFromApp(rootMigDir, out _) is { Length: > 0 })
+            {
+                Console.WriteLine("  applying the menu/localization seeds via db apply…");
+                Console.WriteLine();
+                var exit = await DbApplyCommand.RunAsync("", "localhost", "", "", "", rootMigDir, createDatabase: false);
+                if (exit != 0) Console.Error.WriteLine("  ⚠️  Seeds not applied — apply with: asdamir db apply --migrations db/migrations");
+            }
+            else
+                Console.WriteLine("  no connection resolved — apply with `asdamir db apply --migrations db/migrations` (or set the Gateway ConnectionStrings:Default secret)");
+        }
         else
         {
             Console.WriteLine($"  next: apply db/admin-onboarding/{{localize,seed_menu}}_{pluralLower}.sql to AsdamirVault (menu + permission + localization)");

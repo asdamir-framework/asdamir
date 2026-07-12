@@ -155,7 +155,9 @@ Migration runbook + first-SuperAdmin seed are provided with AppManagement (the c
 ```bash
 asdamir new app MyPortal          # Server (Blazor) + Gateway (REST API) + DB schema/seed
 asdamir new mobile MyPortal       # MAUI Blazor Hybrid app
-asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
+cd MyPortal                        # then run the rest from the app root — no cd into src/…
+asdamir new feature Invoice --fields "Number:string,Total:decimal,IsPaid:bool"   # entity + page + menu, migration applied
+asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"    # API-only; migration applied (--no-db to skip)
 ```
 
 **Free mode.** `asdamir new app <Name> --mode free` scaffolds a **self-contained** app with **no control

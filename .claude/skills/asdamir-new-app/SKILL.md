@@ -43,8 +43,9 @@ Notes:
 - **Commercial mode** is the same **except `Jwt:Key`**: it MUST equal AppManagement's signing key (the CLI can't
   know it), so it stays manual — and you also run `db/admin-onboarding/register_<app>.sql` against **AsdamirVault**
   (registers the app + seeds its users/roles/permissions/menus/config/localization, AppId-scoped).
-- Optional: `dotnet build/test MyPortal.sln`; add tables/pages with the `asdamir-new-entity` skill; undo the whole
-  app with `asdamir rollback app MyPortal` (see Teardown).
+- Optional: `dotnet build/test MyPortal.sln`; add features **from the app root** (`cd MyPortal`, then
+  `asdamir new feature <Name> --fields "…"` — entity + page + menu, migration applied automatically; or
+  `asdamir-new-entity` for the API-only slice). Undo the whole app with `asdamir rollback app MyPortal` (see Teardown).
 
 ## Billing (opt-in `--billing`)
 - **Off by default.** `asdamir new app MyPortal --billing` adds an **end-user payment page** (`/billing`):

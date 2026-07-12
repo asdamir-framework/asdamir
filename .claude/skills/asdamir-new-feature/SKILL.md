@@ -28,28 +28,29 @@ rules.
 
 Run from the app root (the nearest `.sln`):
 ```bash
+cd MyApp                                   # the entity migration is applied automatically
 asdamir new feature Supplier \
   --fields "Name:string,Phone:string,Email:string" \
   --route /suppliers --icon truck \
-  --apply -S localhost -d AppDb -U sa -P <pwd> \
   --vault-connection "Server=localhost;Database=AsdamirVault;User Id=sa;Password=<pwd>;TrustServerCertificate=True"
 ```
 - `--fields` — `Name:type,...` (same syntax as `new entity`/`new page`; required).
 - `--route` — page route (default `/<plural-lowercase>`). `--icon` — nav-menu icon (default `list`).
   `--policy` — page authorization policy (default `AdminAccess`).
-- **`--apply` (+ a connection)** applies the entity migration to the **app DB** via the journaled
-  `db apply` runner.
+- **The entity migration is applied by default** to the **app DB** via the journaled `db apply` runner —
+  the connection resolves from the Gateway user-secret (override with `--connection`/`-S`/`-d`/`-U`/`-P`).
+  Pass **`--no-db`** to scaffold files only.
 - **`--vault-connection`** applies the menu/permission + localization seeds to **AsdamirVault** — opt-in
   and explicit (no connection guessing).
 - `--gateway-dir` / `--server-dir` override the auto-detected projects; `--namespace` overrides the root
   namespace.
 
 ## After scaffolding
-1. **With `--apply` AND `--vault-connection`:** the feature is ready — sign in as an admin and the new
-   menu appears (the seed grants `<plural>.view` to the Admin role, which also has `admin.access`).
-2. **Without them:** the files + seeds are written but not applied. Apply the entity migration with
-   `asdamir db apply … --migrations src/<App>.Gateway/db/migrations` (see `asdamir-migration`), then run
-   `db/admin-onboarding/{seed_menu,localize}_<plural>.sql` **against AsdamirVault**.
+1. **With `--vault-connection`:** the feature is ready — the entity migration is applied and, sign in as an
+   admin, the new menu appears (the seed grants `<plural>.view` to the Admin role, which also has `admin.access`).
+2. **Without it (or with `--no-db`):** the entity migration still applies by default (unless `--no-db`), but
+   the AsdamirVault seeds are written and not applied — run
+   `db/admin-onboarding/{seed_menu,localize}_<plural>.sql` **against AsdamirVault** (see `asdamir-migration`).
 3. **Translate** the `tr-TR`/`ru-RU` values in `localize_<plural>.sql` — the generator seeds the English
    name as the default for all three cultures (an untranslated `tr-TR` label renders the wrong dotted-İ
    under the uppercase house style).

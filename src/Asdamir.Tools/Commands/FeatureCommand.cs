@@ -40,8 +40,10 @@ public static class FeatureCommand
         var serverDirOpt = new Option<string>("--server-dir",
             description: "Override: the Server/UI project directory (the page is generated here).", getDefaultValue: () => "");
 
+        var noDbOpt = new Option<bool>("--no-db",
+            description: "Generate files only — don't apply the entity migration or free-mode seeds. (By default `new feature` applies them via `db apply`.)", getDefaultValue: () => false);
         var applyOpt = new Option<bool>("--apply",
-            description: "Apply the entity migration to the app DB after generating (needs a connection below).", getDefaultValue: () => false);
+            description: "Deprecated (now the default): applying is on by default. Pass --no-db to skip.", getDefaultValue: () => false);
         var connOpt = new Option<string>(new[] { "--connection", "-c" },
             description: "App-DB connection string for --apply (entity migration). Overrides --server/--database/etc.", getDefaultValue: () => "");
         var serverOpt = new Option<string>(new[] { "--server", "-S" },
@@ -59,7 +61,7 @@ public static class FeatureCommand
         var cmd = new Command("feature", "Generate a full feature in one shot: entity (Gateway) + CRUD page (Server) + menu/permission seed.")
         {
             nameArg, fieldsOpt, routeOpt, iconOpt, policyOpt, nsOpt, outputOpt, gatewayDirOpt, serverDirOpt,
-            applyOpt, connOpt, serverOpt, databaseOpt, userOpt, passwordOpt, vaultConnOpt,
+            noDbOpt, applyOpt, connOpt, serverOpt, databaseOpt, userOpt, passwordOpt, vaultConnOpt,
         };
 
         cmd.SetHandler(async ctx =>
@@ -74,7 +76,7 @@ public static class FeatureCommand
                 ctx.ParseResult.GetValueForOption(outputOpt)!,
                 ctx.ParseResult.GetValueForOption(gatewayDirOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(serverDirOpt) ?? "",
-                ctx.ParseResult.GetValueForOption(applyOpt),
+                ctx.ParseResult.GetValueForOption(noDbOpt),
                 ctx.ParseResult.GetValueForOption(connOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(serverOpt) ?? "localhost",
                 ctx.ParseResult.GetValueForOption(databaseOpt) ?? "",
@@ -87,7 +89,7 @@ public static class FeatureCommand
 
     private static async Task<int> RunAsync(string name, string fields, string route, string icon, string policy, string ns,
         DirectoryInfo output, string gatewayDirOverride, string serverDirOverride,
-        bool apply, string connection, string server, string database, string user, string password, string vaultConnection)
+        bool noDb, string connection, string server, string database, string user, string password, string vaultConnection)
     {
         var appRoot = FindAppRoot(output);
         if (appRoot is null)
@@ -105,17 +107,19 @@ public static class FeatureCommand
         Console.WriteLine($"  entity → {Path.GetRelativePath(appRoot, gatewayDir)}   ·   page → {Path.GetRelativePath(appRoot, serverDir)}");
         Console.WriteLine();
 
-        // 1) entity slice (Gateway) — applies its migration to the app DB when --apply.
-        var entityExit = await EntityCommand.RunAsync(name, fields, new DirectoryInfo(gatewayDir), ns, apply, connection, server, database, user, password);
+        // 1) entity slice (Gateway) — auto-applies its migration to the app DB (unless --no-db), resolving the
+        // connection from the Gateway user-secret exactly like a standalone `new entity`.
+        var entityExit = await EntityCommand.RunAsync(name, fields, new DirectoryInfo(gatewayDir), ns, noDb, connection, server, database, user, password);
         if (entityExit != 0)
         {
             Console.Error.WriteLine("\n✗ entity step failed — stopping (page not generated). Fix the error and re-run (generation is idempotent).");
             return entityExit;
         }
 
-        // 2) CRUD page (Server) — also writes the AsdamirVault seeds (not applied here).
+        // 2) CRUD page (Server) — in FREE mode it also AUTO-APPLIES its menu/localization seed migrations to the
+        // app's own DB (unless --no-db); in commercial mode it writes the AsdamirVault seeds (applied below).
         Console.WriteLine();
-        var pageExit = PageCommand.Run(name, fields, route, new DirectoryInfo(serverDir), ns, policy, icon);
+        var pageExit = await PageCommand.Run(name, fields, route, new DirectoryInfo(serverDir), ns, policy, icon, noDb);
         if (pageExit != 0) { Console.Error.WriteLine("\n✗ page step failed — stopping."); return pageExit; }
 
         // 3) Menu/permission + localization seeds. In FREE mode PageCommand emitted them as journaled
@@ -125,20 +129,20 @@ public static class FeatureCommand
         Console.WriteLine();
         if (PageCommand.IsFreeModeApp(appRoot))
         {
-            Console.WriteLine($"  free mode: menu/permission + localization seeded as db/migrations/V*__freemode_{{menu,localize}}_{pluralLower}.sql");
-            Console.WriteLine("  apply to the app's own DB with `asdamir db apply` (no --vault-connection needed).");
+            // Free mode: the page step already auto-applied the menu/localization seed migrations to the app's
+            // own DB (or printed the manual command under --no-db) — nothing to do at the Vault level.
         }
         else
         {
             var seedDir = Path.Combine(appRoot, "db", "admin-onboarding");
             var menuSeed = Path.Combine(seedDir, $"seed_menu_{pluralLower}.sql");
             var locSeed = Path.Combine(seedDir, $"localize_{pluralLower}.sql");
-            if (apply && !string.IsNullOrWhiteSpace(vaultConnection))
+            if (!noDb && !string.IsNullOrWhiteSpace(vaultConnection))
             {
                 var vaultExit = await ApplyVaultSeedsAsync(vaultConnection, new[] { menuSeed, locSeed });
                 if (vaultExit != 0) return vaultExit;
             }
-            else if (apply)
+            else if (!noDb)
             {
                 Console.WriteLine("  menu/permission + localization seed generated but NOT applied (no --vault-connection).");
                 Console.WriteLine($"  apply to AsdamirVault: re-run with --vault-connection \"<AsdamirVault connstr>\", or run {Path.GetRelativePath(appRoot, menuSeed)} via sqlcmd.");
@@ -200,6 +204,23 @@ public static class FeatureCommand
             if (!isGateway && Directory.Exists(Path.Combine(proj, "Components", "Pages")))
                 return proj;
         }
+        return null;
+    }
+
+    /// <summary>Resolves the Gateway (or Server) project directory the scaffolder should write into, from the
+    /// CLI's <c>--output</c>. Works whether <c>--output</c> is the **app root** (finds the .sln, then the project
+    /// under <c>src/</c>) OR the **project directory itself** (backward-compat with the old "cd
+    /// src/&lt;App&gt;.Gateway" workflow, and with an explicit <c>--output &lt;project&gt;</c>). Reuses
+    /// <see cref="FindAppRoot"/> + <see cref="FindProject"/> — no duplicated detection. Returns null when neither
+    /// resolves (not inside an Asdamir app).</summary>
+    internal static string? ResolveProjectDir(DirectoryInfo output, bool isGateway)
+    {
+        // Backward-compat: --output already points AT the project (running from inside it, or an explicit path).
+        var marker = isGateway ? "Controllers" : Path.Combine("Components", "Pages");
+        if (Directory.Exists(Path.Combine(output.FullName, marker))) return output.FullName;
+        // Otherwise treat --output as the app root (or any descendant): walk up to the .sln, then pick the project.
+        var appRoot = FindAppRoot(output);
+        if (appRoot is not null && FindProject(appRoot, isGateway) is { } proj) return proj;
         return null;
     }
 }

@@ -25,8 +25,12 @@
          Directory.Build.props.
          1.3.0 (MINOR): a new opt-in billing flag on `asdamir new app` (commercial only) — scaffolds an
          end-user payment page + a gateway/billing proxy + billing menu/permission/localization/config seeds.
-         Fully conditional: without the flag a generated app is byte-identical to before. -->
-    <Version>1.3.8</Version>
+         Fully conditional: without the flag a generated app is byte-identical to before.
+         1.3.9 (MINOR): new entity/new page/new feature/add field run from the app root (no need to cd into
+         the Gateway project) and apply the generated migration by default (resolving the Gateway
+         user-secret), with a new no-db flag to scaffold files only. Backward-compatible; the old apply flag
+         is a deprecated no-op and db apply is unchanged. -->
+    <Version>1.3.9</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

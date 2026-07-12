@@ -511,7 +511,7 @@ public static class AppCommand
                 Console.WriteLine($"  {freeStep++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl} and sign in with the starter admin above");
             }
             Console.WriteLine();
-            Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
+            Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add a feature: asdamir new feature <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
         }
         else
         {
@@ -540,7 +540,7 @@ public static class AppCommand
         Console.WriteLine($"     against AsdamirVault — registers the app + seeds its users/roles/permissions/menus/config/localization (AppId-scoped).");
         Console.WriteLine($"  {step++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl}");
         Console.WriteLine();
-        Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add tables: cd src/{gatewayProject} && asdamir new entity <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
+        Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add a feature: asdamir new feature <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
         }
     }
 

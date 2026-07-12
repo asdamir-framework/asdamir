@@ -31,10 +31,10 @@ dotnet tool install --global Asdamir.Tools
 | `new app <Name>` | A full application (Server + Gateway) wired to the framework — including `Properties/launchSettings.json` on fixed dev ports (Gateway `7001` = the Server's `Gateway:BaseUrl`, Server `7010`) so `dotnet run` starts on a known port out of the box instead of the default `:5000`. **`--mode free\|commercial`** (default `commercial`) picks the identity model — see [free vs commercial mode](#asdamir-new-app-free-vs-commercial-mode). **`--billing`** (opt-in, off by default) adds an end-user payment page + billing proxy + seeds — see [billing](#asdamir-new-app-billing). |
 | `new entity <Name>` | Entity + DTO + repository + service + controller + tests + a create migration + an **idempotent sample-seed migration**. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, **update round-trip**, **list**, and an **API auth-guard** (`GET` without a token → 401) — all DB-free (in-memory fake repo + `WebApplicationFactory`). The seed migration (since 1.1.1) writes 3 typed sample rows (guarded by `IF NOT EXISTS`, `TenantId='default'`) so the entity's grid is populated after `db apply` instead of empty. |
 | `new page <Name>` | A Blazor CRUD page (DataGrid + edit dialog + delete confirm) **plus** its localization seed (`localize_<plural>.sql`) and an idempotent, role-based **menu + permission seed** (`seed_menu_<plural>.sql`, AppId-scoped). `--icon` sets the nav icon. See [below](#asdamir-new-page-localization-menu-permission-seeds). |
-| `new feature <Name>` | **The one-command path for a complete CRUD feature** — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission & localization seeds, in one go. With `--apply` it also runs the entity migration, and with `--vault-connection` the AsdamirVault menu/permission seed. See [below](#asdamir-new-feature). |
+| `new feature <Name>` | **The one-command path for a complete CRUD feature** — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission & localization seeds, in one go. Runs from the app root and **applies the entity migration automatically** (`--no-db` to skip); `--vault-connection` also applies the AsdamirVault menu/permission seed. See [below](#asdamir-new-feature). |
 | `new module <Name>` | A self-registering [module](fundamentals/modules.md) project |
 | `new mobile <Name>` | A .NET MAUI **Blazor Hybrid** app — `.Mobile` (Android host) + `.Mobile.Shared` (UI) + `.Mobile.Data` (SQLite) + tests. Login, left nav drawer, dashboard; talks to the app's Gateway. See [Mobile App](mobile.md). |
-| `add field <Name>` | Adds a field across the entity/DTO/repository/migration set |
+| `add field <Name>` | Adds a field across the entity/DTO/repository/migration set. Runs from the app root and **applies the ALTER migration automatically** (`--no-db` to skip). |
 
 > The verb comes first: **`asdamir new app|entity|page|feature|module|mobile`**, **`asdamir add field`**, **`asdamir rollback`** (the inverse of `new feature`), and **`asdamir rollback app`** (the inverse of `new app` — whole-app teardown).
 
@@ -182,15 +182,17 @@ hand. It locates the app from the nearest `.sln` and routes each part to the rig
 | `--namespace` / `-n` | Root namespace override (defaults to each project's namespace). |
 | `--output` / `-o` | App root (nearest ancestor with a `.sln`). Defaults to the current directory. |
 | `--gateway-dir` / `--server-dir` | Override the auto-detected Gateway / Server project directories. |
-| `--apply` | After generating, apply the entity migration to the app DB (needs a connection below). |
-| `--connection`/`-c`, `--server`/`-S`, `--database`/`-d`, `--user`/`-U`, `--password`/`-P` | App-DB connection for `--apply` (the same flags as `db apply`). |
-| `--vault-connection` | AsdamirVault connection. **With `--apply`**, the menu/permission + localization seeds are applied to AsdamirVault too. |
+| `--no-db` | Scaffold files only — don't apply the entity migration (offline / CI / review-first). |
+| `--connection`/`-c`, `--server`/`-S`, `--database`/`-d`, `--user`/`-U`, `--password`/`-P` | App-DB connection override (the same flags as `db apply`; defaults to the Gateway user-secret). |
+| `--vault-connection` | AsdamirVault connection — applies the menu/permission + localization seeds to AsdamirVault too. |
 
-**What `--apply` does — two databases, opt-in each:**
+**Two databases — the entity migration is applied by default, the vault seeds are opt-in:**
 
-- The **entity migration** goes to the **app's own (business) DB** via the journaled `db apply` runner —
-  `--apply` + a connection (`--connection` or `-S`/`-d`/`-U`/`-P`).
-- The **menu/permission + localization seeds** go to **AsdamirVault** only when you ALSO pass
+- The **entity migration** goes to the **app's own (business) DB** via the journaled `db apply` runner,
+  **automatically** — the connection resolves from the Gateway user-secret (override with `--connection`
+  or `-S`/`-d`/`-U`/`-P`). Pass **`--no-db`** to scaffold files only. If no connection is resolvable the
+  migration is still generated and the command prints the `db apply` recovery line.
+- The **menu/permission + localization seeds** go to **AsdamirVault** only when you pass
   `--vault-connection` (explicit — there is no connection guessing). Without it the seeds are still
   generated and the command prints how to apply them later.
 
@@ -205,10 +207,10 @@ it to the **Admin** role (which also holds `admin.access`, so admins see every m
 granted from the AppManagement UI — generation does not touch them.
 
 ```bash
+cd MyApp                                   # the app root — the entity migration is applied automatically
 asdamir new feature Supplier \
   --fields "Name:string,Phone:string,Email:string" \
   --route /suppliers --icon truck \
-  --apply -S localhost -d AppDb -U sa -P <pwd> \
   --vault-connection "Server=localhost;Database=AsdamirVault;User Id=sa;Password=<pwd>;TrustServerCertificate=True"
 ```
 
@@ -217,20 +219,32 @@ asdamir new feature Supplier \
 `tr-TR`/`ru-RU` values in `localize_<plural>.sql` (the generator seeds the English name as the default for
 all three cultures). To undo a feature, see [`rollback`](#rollback).
 
-### `asdamir new entity --apply`
+### `asdamir new entity` — runs from the app root, auto-applies the migration
 
-By default `new entity` only **writes files** (review-first) and prints `next: asdamir db apply`. Pass
-`--apply` to run the create + sample-seed migrations immediately, through the same journaled `db apply`
-runner, against `<output>/db/migrations`:
+`new entity` **runs from the app root** — you no longer `cd src/<App>.Gateway` first. It finds the Gateway
+project itself (the nearest `.sln`, then `src/<App>.Gateway`) and writes the entity slice + create/sample-seed
+migrations **there**. Running it from inside the Gateway directory still works (backward-compatible); pass
+`--output` / `--gateway-dir` to point it elsewhere.
 
 ```bash
-asdamir new entity Supplier --fields "Name:string,Phone:string" \
-  --apply -S localhost -d AppDb -U sa -P <pwd>
+cd MyApp                                              # the app root — no cd into src/…
+asdamir new entity Supplier --fields "Name:string,Phone:string"
 ```
 
-The connection flags are identical to `db apply`. `--apply` **requires** a connection — if neither
-`--connection` nor `--database` is given the runner errors (no silent skip). It does **not** create the
-database (the app DB already exists by the time you add entities).
+By default it **also applies** the create + sample-seed migrations immediately, through the same journaled
+`db apply` runner — resolving the connection from the **Gateway user-secret** `ConnectionStrings:Default`
+(the same passwordless resolution as `db apply`; explicit `--connection`/`-S`/`-d`/`-U`/`-P` override it).
+No `cd`, no separate `db apply` — the new table is ready when the command returns.
+
+- **`--no-db`**: scaffold files only — don't touch SQL (offline / CI / review-first). It prints the exact
+  `asdamir db apply --migrations <path>` line to run when you're ready.
+- **No connection resolvable** (no secret set, no flags): the migration is still **generated** — the command
+  prints the `db apply` recovery line instead of failing (never left blind).
+- It does **not** create the database (the app DB already exists by the time you add entities). Idempotent:
+  the journaled runner skips an already-applied migration.
+
+`asdamir db apply` isn't going away — it's what you run over the app's lifetime (a teammate clones the repo,
+CI, prod). `new entity` just runs it **once** for you at generation.
 
 ### `asdamir new page` — localization, menu & permission seeds
 
@@ -242,8 +256,14 @@ Besides the page and its editor dialog, `new page` writes two idempotent, AppId-
 - `seed_menu_<plural>.sql` — a `<plural>.view` permission, an Admin-role grant, and a guarded `dbo.Menus`
   row (so the page appears in the nav for users who may view it). `--icon` sets that row's icon.
 
-Apply **both** against **AsdamirVault** (not the app's own DB) after generating — the same place
-`register_<app>.sql` runs. (`new feature` with `--vault-connection` applies them for you.)
+`new page` **runs from the app root** — it finds the Server project itself (the nearest `.sln`, then
+`src/<App>.Server`); running from inside the Server directory still works. Apply **both** seeds against
+**AsdamirVault** (not the app's own DB) after generating — the same place `register_<app>.sql` runs.
+(`new feature` with `--vault-connection` applies them for you.)
+
+> **In a free-mode app**, `new page` emits the menu/localization seeds as ordinary app-DB migrations and
+> **applies them automatically** (resolving the Gateway user-secret, like `new entity`) — pass **`--no-db`**
+> to scaffold files only.
 
 ## `audit-lint`
 

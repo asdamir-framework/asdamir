@@ -6,13 +6,39 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.8`** (`rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; clearer AsdamirVault wording; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.9`** (`new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.9]
+
+### Changed — `new entity` / `new page` / `new feature` / `add field` run from the app root + auto-apply the migration (`Asdamir.Tools`)
+
+These four commands no longer need you to `cd src/<App>.Gateway` first — run them **from the app root** and
+each finds the right project itself (the nearest `.sln`, then `src/<App>.Gateway` / `src/<App>.Server`).
+Running from inside the Gateway/Server directory still works (backward-compatible); `--output` /
+`--gateway-dir` / `--server-dir` override the auto-detection. If you're not inside an Asdamir app they now
+fail fast with *"Not inside an Asdamir app (no .sln found…)"* instead of scaffolding into the wrong place.
+
+They also **apply the generated migration by default** — through the same journaled `db apply` runner,
+resolving the connection from the Gateway user-secret `ConnectionStrings:Default` (the passwordless
+resolution `db apply` already uses; explicit `--connection`/`-S`/`-d`/`-U`/`-P` override it). So
+`asdamir new feature Order …` from the app root scaffolds **and** creates the table in one step — no `cd`,
+no separate `db apply`.
+
+- **`--no-db`** (new, on all four) scaffolds files only — don't touch SQL (offline / CI / review-first).
+  It prints the exact `asdamir db apply --migrations <path>` line to run later.
+- If **no connection is resolvable** (no secret, no flags), the migration is still **generated** and the
+  command prints the `db apply` recovery line — never left blind, never a hard failure.
+- `--apply` (the old opt-in flag on `new entity` / `new feature`) is now a **deprecated no-op** — apply is
+  the default; use `--no-db` to opt out.
+- `db apply` is unchanged and stays — it's what you run over the app's lifetime (clone, CI, prod);
+  `new entity`/`new feature` just run it once for you at generation. Idempotent (the journaled runner skips
+  already-applied migrations).
 
 ## [Tools 1.3.8]
 
