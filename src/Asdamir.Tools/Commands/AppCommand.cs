@@ -155,11 +155,18 @@ public static class AppCommand
         var database = FirstNonEmpty(raw.Database, () => Ask(interactive, "Veritabanı adı / Database name", name));
         var dbServer = FirstNonEmpty(raw.DbServer, () => Ask(interactive, "SQL Server", "localhost"));
 
+        // If a full connection string was passed via --connection-string, honor it verbatim. Otherwise gather
+        // SQL-auth credentials (portable, unlike Windows Trusted_Connection) — the user + a MASKED password.
         var connString = raw.ConnString;
-        if (string.IsNullOrWhiteSpace(connString) && interactive)
-            connString = Ask(true, "Connection string", ComposeConnString(dbServer, database));
+        var dbUser = "sa";
         if (string.IsNullOrWhiteSpace(connString))
-            connString = ComposeConnString(dbServer, database);
+        {
+            dbUser = interactive ? Ask(true, "SQL kullanıcı / SQL user", "sa") : "sa";
+            var dbPassword = interactive
+                ? AskSecret("SQL şifre / SQL password (boş = user-secrets ile ayarla / empty = set via user-secrets)")
+                : "";
+            connString = ComposeConnString(dbServer, database, dbUser, dbPassword);
+        }
 
         var connHasSecret = connString.Contains("password=", StringComparison.OrdinalIgnoreCase)
                             || connString.Contains("pwd=", StringComparison.OrdinalIgnoreCase);
@@ -170,10 +177,12 @@ public static class AppCommand
         // secret — both are left empty here and set via user-secrets / env (printed in next steps).
         var connForAppsettings = (connHasSecret || connIsWindowsAuth) ? "" : connString;
         var connNeedsSecret = string.IsNullOrEmpty(connForAppsettings);
-        // Cross-platform (SQL auth) example for the secret command; the user supplies the password.
-        var connSecretExample = connHasSecret
+        // Cross-platform (SQL auth) example for the user-secrets command. If a full string came via
+        // --connection-string it's already in the caller's shell history, so echo it verbatim; otherwise show a
+        // placeholder (User Id from the prompt) so the MASKED password is never echoed back to the terminal.
+        var connSecretExample = (connHasSecret && !string.IsNullOrWhiteSpace(raw.ConnString))
             ? connString
-            : $"Server={dbServer},1433;Database={database};User Id=sa;Password=<your-password>;TrustServerCertificate=True;";
+            : $"Server={dbServer},1433;Database={database};User Id={dbUser};Password=<your-password>;TrustServerCertificate=True;";
 
         var gatewayUrl = FirstNonEmpty(raw.GatewayUrl, () => Ask(interactive, "Gateway BaseUrl", "https://localhost:7001/"));
         if (!gatewayUrl.EndsWith('/')) gatewayUrl += "/";
@@ -518,8 +527,12 @@ public static class AppCommand
         return 1;
     }
 
-    private static string ComposeConnString(string server, string database) =>
-        $"Server={server};Database={database};Trusted_Connection=True;TrustServerCertificate=True;";
+    // SQL auth (portable to Linux/macOS/containers) — NOT Trusted_Connection, which is Windows-only and breaks
+    // a cross-platform dev/CI setup. An empty password becomes a clear <your-password> placeholder; either way a
+    // real secret is routed to user-secrets, never written to appsettings.json (see the caller).
+    private static string ComposeConnString(string server, string database, string user, string password) =>
+        $"Server={server},1433;Database={database};User Id={(string.IsNullOrWhiteSpace(user) ? "sa" : user)};" +
+        $"Password={(string.IsNullOrEmpty(password) ? "<your-password>" : password)};TrustServerCertificate=True;";
 
     private static string FirstNonEmpty(string flagValue, Func<string> fallback) =>
         string.IsNullOrWhiteSpace(flagValue) ? fallback() : flagValue.Trim();
@@ -530,5 +543,33 @@ public static class AppCommand
         Console.Write($"{label} [{defaultValue}]: ");
         var input = Console.ReadLine();
         return string.IsNullOrWhiteSpace(input) ? defaultValue : input.Trim();
+    }
+
+    /// <summary>Reads a secret from the console WITHOUT echoing it (masked). Falls back to a plain read when
+    /// no interactive console is attached (redirected input). Enter with nothing typed returns empty.</summary>
+    private static string AskSecret(string label)
+    {
+        Console.Write($"{label}: ");
+        try
+        {
+            var buffer = new System.Text.StringBuilder();
+            while (true)
+            {
+                var key = Console.ReadKey(intercept: true);
+                if (key.Key == ConsoleKey.Enter) { Console.WriteLine(); break; }
+                if (key.Key == ConsoleKey.Backspace)
+                {
+                    if (buffer.Length > 0) buffer.Length--;
+                    continue;
+                }
+                if (!char.IsControl(key.KeyChar)) buffer.Append(key.KeyChar);
+            }
+            return buffer.ToString();
+        }
+        catch (InvalidOperationException)
+        {
+            // Input redirected / no console — fall back to a normal line read.
+            return Console.ReadLine()?.Trim() ?? "";
+        }
     }
 }

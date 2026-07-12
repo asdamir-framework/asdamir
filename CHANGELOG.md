@@ -6,12 +6,25 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.0`**. **Pending publish: Data `1.2.1`** (the
-FeatureManager value-type fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.1`** (the cross-platform `new app` SQL-auth
+prompt fix). **Pending publish: Data `1.2.1`** (the FeatureManager value-type fallback fix; Core stays `1.3.0`,
+Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.1]
+
+### Fixed — `asdamir new app` prompts for SQL auth (user/password), not a Windows-only Trusted_Connection (`Asdamir.Tools`)
+
+The interactive `new app` flow defaulted the connection string to `Trusted_Connection=True` (Windows integrated
+auth), which is not portable to Linux/macOS/containers. It now asks for the **SQL user** (default `sa`) and a
+**masked SQL password**, and composes a cross-platform **SQL-auth** connection string
+(`Server=<host>,1433;Database=<db>;User Id=<user>;Password=…;TrustServerCertificate=True;`). A real password is
+never written to `appsettings.json` (left empty, secret-free) — it goes to `dotnet user-secrets` per the printed
+next steps (which use the entered user + a `<your-password>` placeholder, so the masked password is never echoed
+back). The generated Gateway smoke-test factory's placeholder connection string was made portable too.
 
 ## [Data 1.2.1]
 

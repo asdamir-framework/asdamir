@@ -20,7 +20,9 @@ public sealed class SmokeFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:Key", "smoke-test-key-must-be-at-least-64-bytes-long-deterministic-XXXX");
         builder.UseSetting("Jwt:Issuer", "smoke");
         builder.UseSetting("Jwt:Audience", "smoke");
-        builder.UseSetting("ConnectionStrings:Default", "Server=.;Database=smoke;Trusted_Connection=True;TrustServerCertificate=True;");
+        // Portable SQL-auth placeholder (never actually connected — the health endpoint doesn't touch the DB);
+        // kept cross-platform (no Windows-only Trusted_Connection) so the tree is consistent on Linux/macOS.
+        builder.UseSetting("ConnectionStrings:Default", "Server=localhost,1433;Database=smoke;User Id=sa;Password=smoke;TrustServerCertificate=True;");
         builder.UseSetting("AdminConsole:ClientId", "smoke");
         builder.UseSetting("AdminConsole:BaseUrl", "https://localhost:5202/");
     }
