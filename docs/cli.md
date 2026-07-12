@@ -369,7 +369,8 @@ What it removes:
   row + ALL its AppId-scoped rows (users/roles/menus/permissions/config/localization/logs/audit) via the existing
   `dbo.App_Purge` proc (FK-safe, one transaction). This removes the app's **registration**, **not** the
   AsdamirVault database itself (which is never dropped). A **free** app has no registration, so this line is
-  hidden entirely in free-mode teardown.
+  hidden entirely in free-mode teardown — **and** when the mode can't be determined (the app directory is already
+  gone), unless you pass `--vault-connection` explicitly (then it's shown + acted on, in any mode).
 
 ```bash
 asdamir rollback app CustomerOrders \

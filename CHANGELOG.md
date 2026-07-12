@@ -6,13 +6,25 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.7`** (`rollback app` reads the DB connection from the Gateway user-secret; clearer AsdamirVault wording; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.8`** (`rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; clearer AsdamirVault wording; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.8]
+
+### Fixed — `rollback app`: hide the AsdamirVault line when the mode can't be determined (`Asdamir.Tools`)
+
+When the app **directory was already gone**, `rollback app` couldn't tell free from commercial (the free signal
+lives in `db/migrations`), so it fell back to printing the commercial vault lines — a scary, irrelevant
+"App registration (AsdamirVault): NOT purged …" for what may well have been a free app that never had a
+registration (and nothing could act anyway without a connection). The vault line is now shown **only** when the
+app is **known-commercial** (its directory is present and not free-mode) **or** `--vault-connection` was passed
+explicitly (honoured in any mode). Undetermined mode + no `--vault-connection` → **silent** (the `App DB` line
+stays — it's still actionable with `--connection`). Behaviour unchanged; visibility only.
 
 ## [Tools 1.3.7]
 

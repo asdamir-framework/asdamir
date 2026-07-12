@@ -108,6 +108,13 @@ public static class RollbackAppCommand
         var isFree = appRoot is not null && PageCommand.IsFreeModeApp(appRoot);
         var appCode = name; // == the .sln basename == dbo.Apps.Code that `new app` wrote
 
+        // The AsdamirVault registration line is shown ONLY when we KNOW it's a commercial app (its directory is
+        // present AND not free-mode) OR the user explicitly passed --vault-connection. When the app directory is
+        // already GONE the mode can't be determined — so we stay SILENT rather than print a scary "NOT purged"
+        // line for what may well be a free app that never had a registration (the user deleted the dir
+        // deliberately; nothing here can act without a connection anyway). Pass --vault-connection to act on it.
+        var showVault = (!isFree && appRoot is not null) || !string.IsNullOrWhiteSpace(vaultConnection);
+
         // The DB step runs whenever we resolved a connection (flags OR the Gateway user-secret) — otherwise it's
         // skipped + reported (never attempted with integrated security, which fails on Linux/macOS).
         var hasDbTarget = !string.IsNullOrWhiteSpace(effectiveConn)
@@ -120,7 +127,7 @@ public static class RollbackAppCommand
         var serverLabel = masterConn is null ? "" : SafeServer(effectiveConn, server);
         var dbExists = masterConn is not null && await DatabaseExistsAsync(masterConn, dbName);
         (bool exists, bool isSelf, Guid appId) vault = (false, false, Guid.Empty);
-        if (!isFree && !string.IsNullOrWhiteSpace(vaultConnection))
+        if (!string.IsNullOrWhiteSpace(vaultConnection))   // an explicit vault connection is honoured in any mode
             vault = await ProbeVaultAppAsync(vaultConnection, appCode);
 
         // 5) Refuse the self-app on the vault side too (App_Purge is the DB-level backstop; this is the friendly stop).
@@ -143,10 +150,10 @@ public static class RollbackAppCommand
             : dbExists
                 ? $"  App DB: DROP DATABASE [{dbName}]  on server '{serverLabel}'{connNote}"
                 : $"  App DB: [{dbName}] on '{serverLabel}' — absent (skip){connNote}");
-        // AsdamirVault only holds a COMMERCIAL app's registration — a free app has none, so the line is hidden
-        // for free mode entirely (not even an "N/A" noise line). What's purged is the app's REGISTRATION + its
-        // AppId-scoped rows via App_Purge — NOT the AsdamirVault database itself (say so, so nobody panics).
-        if (!isFree)
+        // AsdamirVault only holds a COMMERCIAL app's registration — hidden for free mode AND when the mode is
+        // unknown (dir gone), unless --vault-connection was explicitly passed. What's purged is the app's
+        // REGISTRATION + its AppId-scoped rows via App_Purge — NOT the AsdamirVault database itself.
+        if (showVault)
             Console.WriteLine(string.IsNullOrWhiteSpace(vaultConnection)
                 ? "  App registration (AsdamirVault): SKIP — no --vault-connection (the app's registration + AppId-scoped rows stay; the AsdamirVault DB is never dropped)"
                 : vault.exists
@@ -180,8 +187,9 @@ public static class RollbackAppCommand
         }
         else Console.WriteLine("App DB: NOT dropped (no --connection/-S -d). Re-run with a connection to DROP the database.");
 
-        // Free apps have no AsdamirVault registration → skip the whole step (and its output) silently.
-        if (!isFree)
+        // Free apps (and apps whose mode we can't determine because the dir is gone) have no reason to show a
+        // vault line — skip the whole step + its output silently unless --vault-connection was explicitly given.
+        if (showVault)
         {
             if (!string.IsNullOrWhiteSpace(vaultConnection))
             {
