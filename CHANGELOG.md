@@ -6,13 +6,15 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.1`** (the cross-platform `new app` SQL-auth
-prompt fix). **Pending publish: Data `1.2.1`** (the FeatureManager value-type fallback fix; Core stays `1.3.0`,
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.2`** (the `rollback app` whole-app teardown
+command). **Pending publish: Data `1.2.1`** (the FeatureManager value-type fallback fix; Core stays `1.3.0`,
 Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.2]
 
 ### Added — `asdamir rollback app <Name>`: whole-app teardown, the symmetric inverse of `new app` (`Asdamir.Tools`)
 
