@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 
 using System.CommandLine;
+using System.Linq;
 using Microsoft.Data.SqlClient;
 
 namespace Asdamir.Tools.Commands;
@@ -109,7 +110,7 @@ public static class FeatureCommand
 
         // 1) entity slice (Gateway) — auto-applies its migration to the app DB (unless --no-db), resolving the
         // connection from the Gateway user-secret exactly like a standalone `new entity`.
-        var entityExit = await EntityCommand.RunAsync(name, fields, new DirectoryInfo(gatewayDir), ns, noDb, connection, server, database, user, password);
+        var entityExit = await EntityCommand.RunAsync(name, fields, new DirectoryInfo(gatewayDir), ns, noDb, connection, server, database, user, password, restartHint: false);
         if (entityExit != 0)
         {
             Console.Error.WriteLine("\n✗ entity step failed — stopping (page not generated). Fix the error and re-run (generation is idempotent).");
@@ -119,7 +120,7 @@ public static class FeatureCommand
         // 2) CRUD page (Server) — in FREE mode it also AUTO-APPLIES its menu/localization seed migrations to the
         // app's own DB (unless --no-db); in commercial mode it writes the AsdamirVault seeds (applied below).
         Console.WriteLine();
-        var pageExit = await PageCommand.Run(name, fields, route, new DirectoryInfo(serverDir), ns, policy, icon, noDb);
+        var pageExit = await PageCommand.Run(name, fields, route, new DirectoryInfo(serverDir), ns, policy, icon, noDb, restartHint: false);
         if (pageExit != 0) { Console.Error.WriteLine("\n✗ page step failed — stopping."); return pageExit; }
 
         // 3) Menu/permission + localization seeds. In FREE mode PageCommand emitted them as journaled
@@ -151,6 +152,10 @@ public static class FeatureCommand
 
         Console.WriteLine();
         Console.WriteLine($"✓ Feature '{name}' ready.");
+        // One restart reminder for the whole feature (the entity + page steps suppressed theirs). A migration was
+        // applied unless --no-db, and the running host caches its menu/localization + registers new controllers at
+        // startup — so the new page/menu won't appear until a restart.
+        if (!noDb) PrintRestartHint(appRoot);
         return 0;
     }
 
@@ -222,5 +227,20 @@ public static class FeatureCommand
         var appRoot = FindAppRoot(output);
         if (appRoot is not null && FindProject(appRoot, isGateway) is { } proj) return proj;
         return null;
+    }
+
+    /// <summary>Prints a reminder to restart the app after a migration/seed was applied. A running host caches
+    /// its DB-backed menu + localization + config at startup (per the framework's culture/menu-cache behaviour),
+    /// so a freshly-applied menu/localization/config row only shows on screen after a restart — the #1 cause of
+    /// "I added a page but its menu didn't appear". Locates the app's <c>restart-&lt;app&gt;.sh</c> by glob (every
+    /// generated app ships one) and names it; falls back to a generic line. No-op when <paramref name="appRoot"/>
+    /// is null. Call only when a migration was actually applied (not on <c>--no-db</c>, where nothing changed yet).</summary>
+    internal static void PrintRestartHint(string? appRoot)
+    {
+        if (string.IsNullOrEmpty(appRoot)) return;
+        var script = Directory.EnumerateFiles(appRoot, "restart-*.sh").Select(Path.GetFileName).FirstOrDefault();
+        Console.WriteLine(script is not null
+            ? $"  ↻ Restart the app for the change to show (menu/localization is cached at startup):  ./{script}"
+            : "  ↻ Restart the app for the change to show — its menu/localization is cached at startup.");
     }
 }

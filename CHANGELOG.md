@@ -6,13 +6,36 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.9`** (`new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.10`** (`new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.10]
+
+### Added — restart reminder after `new entity`/`new page`/`new feature`/`add field` auto-applies a migration (`Asdamir.Tools`)
+
+Now that these commands **apply the migration by default** (1.3.9), the one missing step was easy to forget:
+a running generated app **caches its DB-backed menu + localization + config at startup** and **registers new
+controllers at startup**, so a freshly-applied page/menu/field does **not** appear until the app is restarted.
+That produced the confusing "I added a page but its menu didn't show" — the DB was correct; the app was still
+serving its startup cache.
+
+The scaffolders now print a restart reminder **after a migration is actually applied** (not on `--no-db`),
+naming the app's own script:
+
+```
+✓ Feature 'Order' ready.
+  ↻ Restart the app for the change to show (menu/localization is cached at startup):  ./restart-myapp.sh
+```
+
+- One reminder per command — `new feature` suppresses the entity/page steps' reminders and prints a single one.
+- Locates the app's `restart-<app>.sh` by glob (every generated app ships one); falls back to a generic line.
+- Commercial `new page` (whose AsdamirVault seeds are applied separately) prints a matching "then restart"
+  note next to its "apply to AsdamirVault" guidance.
 
 ## [Tools 1.3.9]
 

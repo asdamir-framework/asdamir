@@ -219,6 +219,10 @@ asdamir new feature Supplier \
 `tr-TR`/`ru-RU` values in `localize_<plural>.sql` (the generator seeds the English name as the default for
 all three cultures). To undo a feature, see [`rollback`](#rollback).
 
+**Restart the app when it's done.** `new feature` prints a single `↻ … ./restart-<app>.sh` reminder after it
+applies the migration — the running app caches its menu/localization at startup, so the new page's menu won't
+appear until you restart. (In commercial mode, apply the AsdamirVault seeds first, then restart.)
+
 ### `asdamir new entity` — runs from the app root, auto-applies the migration
 
 `new entity` **runs from the app root** — you no longer `cd src/<App>.Gateway` first. It finds the Gateway
@@ -242,6 +246,11 @@ No `cd`, no separate `db apply` — the new table is ready when the command retu
   prints the `db apply` recovery line instead of failing (never left blind).
 - It does **not** create the database (the app DB already exists by the time you add entities). Idempotent:
   the journaled runner skips an already-applied migration.
+- **After it applies, restart the app.** A running generated app **caches its DB-backed menu + localization +
+  config at startup** and **registers new controllers at startup**, so a freshly-applied page/menu/field does
+  **not** show until a restart. The command prints a reminder naming the app's own script
+  (`↻ … ./restart-<app>.sh`); run it (don't hand-kill/re-run). This is the #1 cause of "I added a page but its
+  menu didn't appear" — the DB is correct; the app is still serving its startup cache.
 
 `asdamir db apply` isn't going away — it's what you run over the app's lifetime (a teammate clones the repo,
 CI, prod). `new entity` just runs it **once** for you at generation.

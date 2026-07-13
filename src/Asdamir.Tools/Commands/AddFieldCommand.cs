@@ -190,6 +190,7 @@ public static class AddFieldCommand
         Console.WriteLine();
         var exit = await DbApplyCommand.RunAsync("", "localhost", "", "", "", migDir, createDatabase: false);
         if (exit != 0) Console.Error.WriteLine($"  ⚠️  ALTER not applied (exit {exit}) — apply it with:  {applyCmd}");
+        else FeatureCommand.PrintRestartHint(appRoot);   // schema + code changed → rebuild/restart to pick it up
     }
 
     private enum PatchOutcome { Patched, AnchorMissing, FileMissing, AlreadyPresent }

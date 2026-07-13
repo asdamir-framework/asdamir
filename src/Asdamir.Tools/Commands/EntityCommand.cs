@@ -98,7 +98,7 @@ public static class EntityCommand
     }
 
     internal static async Task<int> RunAsync(string name, string fieldsRaw, DirectoryInfo output, string nsOverride,
-        bool noDb, string connection, string server, string database, string user, string password)
+        bool noDb, string connection, string server, string database, string user, string password, bool restartHint = true)
     {
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
@@ -262,6 +262,8 @@ public static class EntityCommand
             Console.Error.WriteLine();
             Console.Error.WriteLine($"  ⚠️  Migration not applied (exit {dbExit}). The files ARE generated — apply it with:  {applyCmd}");
         }
+        else if (restartHint)
+            FeatureCommand.PrintRestartHint(appRoot);   // migration applied → the running host caches at startup
         return 0;   // generation succeeded regardless of the DB step
     }
 

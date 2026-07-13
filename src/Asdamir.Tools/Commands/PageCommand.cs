@@ -80,7 +80,7 @@ public static class PageCommand
         return pageCmd;
     }
 
-    internal static async Task<int> Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy, string icon, bool noDb = false)
+    internal static async Task<int> Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy, string icon, bool noDb = false, bool restartHint = true)
     {
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
@@ -213,6 +213,7 @@ public static class PageCommand
                 Console.WriteLine();
                 var exit = await DbApplyCommand.RunAsync("", "localhost", "", "", "", rootMigDir, createDatabase: false);
                 if (exit != 0) Console.Error.WriteLine("  ⚠️  Seeds not applied — apply with: asdamir db apply --migrations db/migrations");
+                else if (restartHint) FeatureCommand.PrintRestartHint(appRoot);   // menu/localization applied → cached at startup
             }
             else
                 Console.WriteLine("  no connection resolved — apply with `asdamir db apply --migrations db/migrations` (or set the Gateway ConnectionStrings:Default secret)");
@@ -223,6 +224,7 @@ public static class PageCommand
             Console.WriteLine($"        register the 'AdminApi' HttpClient in DI · ensure the '{model.Policy}' policy is configured");
             if (string.IsNullOrEmpty(appCode))
                 Console.WriteLine("        NOTE: app Code unresolved (no .sln) — set @AppCode at the top of those SQL files before running them");
+            Console.WriteLine("        then restart the app — its menu/localization is cached at startup, so the new page won't appear until you do");
         }
         return 0;
     }
