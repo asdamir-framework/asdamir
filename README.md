@@ -2,6 +2,20 @@
 
 **A security-first application framework for .NET 10 + Blazor — and a ready-to-run control plane that registers, configures and operates every app you build on it.**
 
+![Asdamir — zero to a running app in ~46 seconds](docs/assets/demo.gif)
+
+> **Zero to a running enterprise app** — generate a feature, start the app, see it in the menu. **~46 seconds.**
+
+```bash
+# Prereqs: .NET 10 SDK + SQL Server (localhost:1433)
+dotnet tool install -g Asdamir.Tools
+mkdir my-apps && cd my-apps
+asdamir new app DemoApp --mode free      # secrets + DB + migrations, all automatic
+cd DemoApp && ./restart-demoapp.sh       # → https://localhost:7010, sign in with the starter admin
+asdamir new feature Product --fields "Name:string,Price:decimal,Stock:int"
+./restart-demoapp.sh                     # → Product in the menu, CRUD page
+```
+
 Asdamir gives you two things at once:
 
 1. **A framework** (four NuGet packages) so a new line-of-business app starts with auth, RBAC, validation, error handling, localization, configuration, observability, background jobs, a transactional outbox and a FluentUI component library already wired and hardened — not as a to-do list.
@@ -110,13 +124,15 @@ flowchart TB
 Install the CLI from nuget.org and scaffold a fully wired app — it builds with **0 warnings** and its generated tests pass **DB-free**:
 
 ```bash
-dotnet tool install --global Asdamir.Tools     # provides the `asdamir` command
-asdamir new app MyPortal                        # Server (Blazor) + Gateway (REST API) + tests
-cd MyPortal
-asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"
-dotnet build MyPortal.sln                        # 0 warnings
-dotnet test  MyPortal.sln                        # generated tests pass — no SQL Server needed
+dotnet tool install -g Asdamir.Tools                        # provides the `asdamir` command
+asdamir new app DemoApp --mode free --no-db                 # files only — no SQL Server needed
+cd DemoApp
+asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool" --no-db
+dotnet build DemoApp.sln                                    # 0 warnings
+dotnet test  DemoApp.sln                                    # generated tests pass — no SQL Server needed
 ```
+
+> For a **running** app (with a database), use the canonical flow at the top of this README — `new app DemoApp --mode free` sets up secrets + DB + migrations automatically, then `./restart-demoapp.sh`.
 
 ### Build the repo from source
 
@@ -153,9 +169,9 @@ Migration runbook + first-SuperAdmin seed are provided with AppManagement (the c
 **Scaffold a new app:**
 
 ```bash
-asdamir new app MyPortal          # Server (Blazor) + Gateway (REST API) + DB schema/seed
-asdamir new mobile MyPortal       # MAUI Blazor Hybrid app
-cd MyPortal                        # then run the rest from the app root — no cd into src/…
+asdamir new app DemoApp          # Server (Blazor) + Gateway (REST API) + DB schema/seed
+asdamir new mobile DemoApp       # MAUI Blazor Hybrid app
+cd DemoApp                        # then run the rest from the app root — no cd into src/…
 asdamir new feature Invoice --fields "Number:string,Total:decimal,IsPaid:bool"   # entity + page + menu, migration applied
 asdamir new entity Invoice --fields "Number:string,Total:decimal,IsPaid:bool"    # API-only; migration applied (--no-db to skip)
 ```
