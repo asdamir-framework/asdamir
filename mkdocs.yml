@@ -84,6 +84,7 @@ nav:
       - Audit Logging: fundamentals/audit-logging.md
       - Encryption: fundamentals/encryption.md
       - Observability: fundamentals/observability.md
+      - Billing: fundamentals/billing.md
   - Web & UI:
       - Web Security: web-security.md
       - UI Components: ui-components.md
