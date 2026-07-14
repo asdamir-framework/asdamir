@@ -18,7 +18,7 @@ asdamir new feature Product --fields "Name:string,Price:decimal,Stock:int"
 
 Asdamir gives you two things at once:
 
-1. **A framework** (four NuGet packages) so a new line-of-business app starts with auth, RBAC, validation, error handling, localization, configuration, observability, background jobs, a transactional outbox and a FluentUI component library already wired and hardened — not as a to-do list.
+1. **A framework** (five NuGet packages) so a new line-of-business app starts with auth, RBAC, validation, error handling, localization, configuration, observability, background jobs, a transactional outbox, opt-in billing and a FluentUI component library already wired and hardened — not as a to-do list.
 2. **AppManagement** — a real control plane (Blazor admin console + REST API) that manages *all* your apps from one place: central identity, permissions, menus, localization, configuration and logs, scoped per app.
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
@@ -29,7 +29,7 @@ Asdamir gives you two things at once:
 
 📚 **Docs:** [docs.asdamir.com](https://docs.asdamir.com) · 🧩 **Offline & AI-free** — the CLI needs no cloud and no AI; an optional [Claude Code](https://docs.asdamir.com) skill/agent layer is there if you want it.
 
-> Status: stable (`1.1.0`). Production-ready; semantic versioning — breaking changes bump the major. The production-readiness features below are in place.
+> Status: stable. Open-core packages on nuget.org — `Asdamir.Core` `1.3.0`, `Asdamir.Data` · `Asdamir.Web` · `Asdamir.Payments` `1.2.x`, `Asdamir.Tools` `1.3.11`. Production-ready; semantic versioning — breaking changes bump the major. The production-readiness features below are in place.
 
 ---
 
@@ -90,7 +90,7 @@ flowchart TB
 
 | Layer | What it is |
 |---|---|
-| **Framework** (`src/`) | Four NuGet packages — `Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`, `Asdamir.Tools` — referenced from any .NET 10 app. |
+| **Framework** (`src/`) | Five NuGet packages — `Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`, `Asdamir.Payments`, `Asdamir.Tools` — referenced from any .NET 10 app. |
 | **AppManagement** (`AppManagement/`) | `Asdamir.AdminConsole` (Blazor Web App) + `Asdamir.AdminConsole.Api` (REST backend). The control plane: app registry, identity/RBAC, localization, configuration, outbox, jobs and monitoring across managed apps. |
 
 ### Framework packages
@@ -100,7 +100,8 @@ flowchart TB
 | **Asdamir.Core** | `Asdamir.Core.*` | Models, DTOs, contracts, modules, multi-tenancy, error handling, validation, JWT, AES-GCM encryption, authorization |
 | **Asdamir.Data** | `Asdamir.Data.*` | Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox + dispatchers |
 | **Asdamir.Web** | `Asdamir.Web.*` | Blazor + FluentUI components, API-backed localization, web security (JWT / Data Protection / CSP / rate limiting) |
-| **Asdamir.Tools** | `Asdamir.Tools.*` | The `asdamir` CLI: scaffolding, `audit lint`, `db apply`, `secrets`, `app register` |
+| **Asdamir.Payments** | `Asdamir.Payments.*` | Payment rails: Paddle (Merchant-of-Record) + crypto, webhook signature verification, subscription lifecycle |
+| **Asdamir.Tools** | `Asdamir.Tools.*` | The `asdamir` CLI: scaffolding, `audit lint`, `db apply`, `rollback`, `secrets`, `app register` |
 
 ---
 
