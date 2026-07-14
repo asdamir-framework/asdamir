@@ -5,11 +5,45 @@ This guide gets a new application running on Asdamir in a few minutes.
 ## Prerequisites
 
 - **.NET 10 SDK**
-- A database for persistence (SQL Server / Oracle / PostgreSQL). For local exploration the management app can run fully in-memory.
+- **SQL Server** running on `localhost:1433` (local or Docker). Oracle / PostgreSQL are also supported.
 
-## Install the packages
+## Scaffold and run your first app
 
-Reference the packages you need. Most apps start with `Asdamir.Core` and add others as required.
+The fastest path is the **`asdamir` CLI** — it generates a complete, run-ready app (both tiers, dev secrets,
+database, migrations). This is the **one canonical flow**, identical across the docs, the README and the CLI guide.
+
+```bash
+# 1) Install the CLI (once)
+dotnet tool install -g Asdamir.Tools
+
+# 2) Create your app — runs ANYWHERE; the app is born in the current folder
+mkdir my-apps && cd my-apps
+asdamir new app DemoApp --mode free       # files + dev secrets + database + migrations; starter admin printed once
+
+# 3) Run it
+cd DemoApp && ./restart-demoapp.sh        # → https://localhost:7010 — sign in with the starter admin
+
+# 4) Add a feature — from INSIDE the app folder
+asdamir new feature Product --fields "Name:string,Price:decimal,InStock:bool"
+./restart-demoapp.sh                      # → Product appears in the nav menu
+
+# 5) Undo the whole app
+asdamir rollback app DemoApp
+```
+
+> **`asdamir new app` runs anywhere** (the app is created in the current directory). **Every other command —
+> `new feature`, `new entity`, `add field`, `rollback` — runs from _inside_ the app folder.** No `cd src/…`
+> and no separate `db apply`: `new app` sets up the DB + migrations, `new feature` applies its own migration,
+> then `./restart-<app>.sh` picks up the change.
+
+`--mode free` (above) is **self-contained** and the fastest way to start. **Commercial mode**
+(`--mode commercial`, the default) keeps identity/menus/config centrally in **AppManagement** and needs more
+setup. Full command reference: **[CLI guide](cli.md)**.
+
+## Add the framework to an existing project
+
+If instead you're adding Asdamir to an app you already have, reference the packages directly. Most apps start
+with `Asdamir.Core` and add others as required.
 
 ```bash
 dotnet add package Asdamir.Core

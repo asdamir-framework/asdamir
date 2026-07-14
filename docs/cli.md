@@ -6,23 +6,51 @@
 
 `Asdamir.Tools` is a `dotnet`-based command-line tool that (1) **scaffolds** code following the framework's audited conventions and (2) runs **`audit-lint`**, the static-analysis gate (run it locally before every push; it also runs in CI when CI is enabled).
 
-During development run it from source:
-
-```bash
-dotnet run --project src/Asdamir.Tools -- <command> [options]
-```
-
 ### Install as a global tool
 
 The packaged command is `asdamir <command>` (formerly `framework`).
 
 ```bash
-dotnet tool install --global Asdamir.Tools
-#   update later:  dotnet tool update --global Asdamir.Tools
+dotnet tool install -g Asdamir.Tools
+#   update later:  dotnet tool update -g Asdamir.Tools
 ```
 
-`Asdamir.Tools` is published on **nuget.org** (currently `1.1.3`). Generated apps restore the framework
-**libraries** — `Asdamir.Core` / `.Data` / `.Web` (currently `1.1.1`) — from nuget.org as well.
+`Asdamir.Tools` is published on **nuget.org** (currently `1.3.11`). Generated apps restore the framework
+**libraries** — `Asdamir.Core` (`1.3.0`) / `.Data` · `.Web` (`1.2.0`) — from nuget.org as well.
+
+## Quick start
+
+Scaffold and run your own app end-to-end. This is the **one canonical flow** — the same everywhere.
+
+**Prerequisites:** **.NET 10 SDK** · **SQL Server** on `localhost:1433` (local or Docker).
+
+```bash
+# 1) Install the CLI (once)
+dotnet tool install -g Asdamir.Tools
+
+# 2) Create your app — runs ANYWHERE; the app is born in the current folder
+mkdir my-apps && cd my-apps
+asdamir new app DemoApp --mode free       # files + dev secrets + database + migrations; starter admin printed once
+
+# 3) Run it
+cd DemoApp && ./restart-demoapp.sh        # → https://localhost:7010 — sign in with the starter admin
+
+# 4) Add a feature — from INSIDE the app folder
+asdamir new feature Product --fields "Name:string,Price:decimal,InStock:bool"
+./restart-demoapp.sh                      # → Product appears in the nav menu
+
+# 5) Undo the whole app
+asdamir rollback app DemoApp
+```
+
+> **`asdamir new app` runs anywhere** (the app is created in the current directory). **Every other command —
+> `new feature`, `new entity`, `add field`, `rollback` — runs from _inside_ the app folder.** There is no
+> `cd src/<App>.Gateway` and no separate `db apply`: `new app` sets up secrets + DB + migrations, and
+> `new feature` applies its migration for you — then `./restart-<app>.sh` picks up the change.
+
+`--mode free` (above) is **self-contained** and the fastest way to start. **Commercial mode**
+(`--mode commercial`, the default) keeps identity/menus/config centrally in **AppManagement** and needs more
+setup — see [free vs commercial mode](#asdamir-new-app-free-vs-commercial-mode).
 
 ## Scaffolding
 
