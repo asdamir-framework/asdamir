@@ -23,7 +23,7 @@ Asdamir gives you two things at once:
 
 ![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)
 ![Blazor](https://img.shields.io/badge/Blazor-FluentUI-5C2D91)
-![Tests](https://img.shields.io/badge/tests-300%2B%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-650%2B%20passing-2ea44f)
 ![Open core](https://img.shields.io/badge/open%20core-LGPL--3.0-blue)
 ![Commercial](https://img.shields.io/badge/AppManagement-commercial-orange)
 
@@ -41,7 +41,7 @@ Asdamir gives you two things at once:
 - **Secure by default, not bolted on.** Safe defaults everywhere: CSP nonce, security headers, request rate limiting, AES-256-GCM encryption with PBKDF2, ASP.NET Data Protection key persistence, audit logging, PII-safe logging. A static **audit-lint** gate fails the build on anti-patterns (sync-over-async, silent failures, leaked API surface, unsafe defaults).
 - **Scaffold in seconds — with tests.** `asdamir new app`, `new mobile` (MAUI Blazor Hybrid), `new entity`, `new page`, `new feature` (one command: entity + page + menu/permission), `new module` emit code that already follows the framework's audited conventions — entity → DTO → repository → service → controller → **tests** → migration. Every scaffolded entity ships with **working tests** (CRUD round-trips, validation, and an API auth-guard that asserts the endpoint returns `401` without a token) that run **DB-free**. You generate a *tested* app, not just an app.
 - **Observability that actually helps.** OpenTelemetry traces **and** metrics (incl. SQL/Dapper DB spans) over OTLP, Kubernetes-style liveness/readiness health probes, correlation-ID propagation, and Serilog to console / file / database. Point it at a collector and you get full-stack traces end-to-end.
-- **Built to run in production.** A journaled, idempotent migration runner; encryption-key rotation tooling; DB-backed (scale-out) rate limiting; restart-safe Data Protection keys; offline-resilient mobile. **0-warning builds** (`TreatWarningsAsErrors` + latest analyzers) and **300+ automated tests**.
+- **Built to run in production.** A journaled, idempotent migration runner; encryption-key rotation tooling; DB-backed (scale-out) rate limiting; restart-safe Data Protection keys; offline-resilient mobile. **0-warning builds** (`TreatWarningsAsErrors` + latest analyzers) and **650+ automated tests**.
 
 ### For organizations
 
