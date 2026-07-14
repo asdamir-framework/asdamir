@@ -114,6 +114,15 @@ a new password is set.
 in the control plane and is unaffected.) Add features exactly as in commercial mode with `asdamir new
 feature …` (see the free-mode note under it).
 
+**Session lifetime — a restart (or a delete + re-create) ends every session.** The generated Server ties
+each auth cookie to a **server-side session registry** (`Auth/AppUserSessionStore.cs`, an in-memory
+singleton): sign-in registers the session, sign-out removes it, and `OnValidatePrincipal` rejects any cookie
+whose user isn't in the registry. Because the registry is in-memory, **restarting the app (or tearing it down
+and re-creating it under the same name) clears it → every outstanding cookie is rejected until the user signs
+in again**. This closes a subtle gap: Data Protection keys persist outside the app folder
+(`~/.aspnet/DataProtection-Keys/`, keyed by `DataProtection:ApplicationName`), so without the registry a
+self-contained cookie would still decrypt after a re-create and land on the dashboard with no login.
+
 ### `asdamir new app`: billing
 
 `new app` takes an opt-in **`--billing`** flag (off by default). Without it a generated app is exactly as

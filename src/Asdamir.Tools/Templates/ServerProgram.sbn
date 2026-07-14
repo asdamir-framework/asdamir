@@ -138,7 +138,28 @@ builder.Services
         opts.Cookie.SameSite = SameSiteMode.Strict;
         opts.ExpireTimeSpan = TimeSpan.FromHours(8);
         opts.SlidingExpiration = true;
+        // Bind the cookie to a LIVE server-side session (AppUserSessionStore). The store is in-memory, so it
+        // is empty after a restart / app re-create — every outstanding cookie is then rejected until the user
+        // signs in again. Without this a self-contained cookie (still decryptable via the persisted Data
+        // Protection keys) would land on the dashboard with no login after the app is torn down and recreated.
+        // Same pattern as the AppManagement control plane (AdminUserSessionStore + OnValidatePrincipal).
+        opts.Events.OnValidatePrincipal = ctx =>
+        {
+            var sub = ctx.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                   ?? ctx.Principal?.FindFirst("sub")?.Value;
+            var sessions = ctx.HttpContext.RequestServices.GetService<{{ ServerNamespace }}.Auth.AppUserSessionStore>();
+            if (sessions is null || !sessions.IsActive(sub))
+            {
+                ctx.RejectPrincipal();
+                return Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions
+                    .SignOutAsync(ctx.HttpContext, CookieAuthenticationDefaults.AuthenticationScheme);
+            }
+            return System.Threading.Tasks.Task.CompletedTask;
+        };
     });
+
+// Server-side session registry (in-memory singleton) — a restart clears it, ending every cookie session.
+builder.Services.AddSingleton<{{ ServerNamespace }}.Auth.AppUserSessionStore>();
 
 builder.Services.AddAuthorization(o =>
     o.AddPolicy("AdminAccess", p => p.RequireAuthenticatedUser()));

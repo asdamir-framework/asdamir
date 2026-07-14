@@ -6,13 +6,36 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.10`** (`new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.11`** (`new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.11]
+
+### Fixed — generated apps: a session survived app teardown / restart (server-side session registry) (`Asdamir.Tools`)
+
+A generated app's auth cookie was **self-contained**: the server held no session, so a cookie stayed valid
+as long as it decrypted and hadn't expired. Two things combined into a real hole: **(1)** Data Protection
+keys persist **outside** the app folder (`~/.aspnet/DataProtection-Keys/`, keyed by the stable
+`DataProtection:ApplicationName`), so **deleting an app and re-creating it under the same name reused the same
+key ring** and the old cookie still verified; **(2)** cookie auth had no server-side validation, so a restart
+or a fresh (empty) DB didn't drop the session — the old cookie **landed on the dashboard without a login**.
+
+The generated Server template now ships a server-side session registry:
+
+- A new **`Auth/AppUserSessionStore.cs`** — an in-memory (singleton) registry of active sessions by `sub`.
+- **Sign-in registers** the session (`Login.razor` → `Sessions.Register(sub)`); **sign-out removes** it
+  (`AuthEndpoints` `/logout`).
+- **`OnValidatePrincipal`** rejects any cookie whose `sub` is not in the store. Because the store is
+  in-memory, a **process restart clears it → every cookie is rejected until the user signs in again**, and a
+  torn-down + re-created app starts with an empty store.
+
+Verified end-to-end on a free-mode app: same auth cookie returns **HTTP 200** on `/` before a restart and
+**HTTP 302 → /login** after.
 
 ## [Tools 1.3.10]
 

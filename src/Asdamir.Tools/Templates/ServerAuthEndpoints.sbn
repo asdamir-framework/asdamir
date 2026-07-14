@@ -9,8 +9,12 @@ public static class AuthEndpoints
 {
     public static void MapAuthEndpoints(IEndpointRouteBuilder app)
     {
-        app.MapGet("/logout", async (HttpContext http) =>
+        app.MapGet("/logout", async (HttpContext http, {{ ServerNamespace }}.Auth.AppUserSessionStore sessions) =>
         {
+            // End the server-side session first so the cookie is rejected immediately (even if it lingers).
+            var sub = http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                   ?? http.User.FindFirst("sub")?.Value;
+            sessions.Remove(sub);
             await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             http.Response.Cookies.Delete("asd_access_token");
             return Results.Redirect("/login");

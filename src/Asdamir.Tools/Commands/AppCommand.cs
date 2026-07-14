@@ -321,6 +321,7 @@ public static class AppCommand
             ($"src/{serverProject}/Components/Pages/ForgotPassword.razor.css", "ServerForgotPasswordPageCss"),
             ($"src/{serverProject}/Components/Pages/AccessDenied.razor",  "ServerAccessDeniedPage"),
             ($"src/{serverProject}/Auth/AuthEndpoints.cs",                "ServerAuthEndpoints"),
+            ($"src/{serverProject}/Auth/AppUserSessionStore.cs",          "ServerAppUserSessionStore"),
             ($"src/{serverProject}/Auth/ThemeEndpoints.cs",               "ServerThemeEndpoints"),
             ($"src/{serverProject}/Services/LocalizationWarmupService.cs", "ServerLocalizationWarmup"),
             ($"src/{serverProject}/appsettings.json",                     "ServerAppsettings"),

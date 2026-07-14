@@ -30,11 +30,15 @@
          the Gateway project) and apply the generated migration by default (resolving the Gateway
          user-secret), with a new no-db flag to scaffold files only. Backward-compatible; the old apply flag
          is a deprecated no-op and db apply is unchanged.
+         1.3.11 (PATCH): generated apps bind the auth cookie to a server-side session registry (an in-memory
+         AppUserSessionStore + OnValidatePrincipal), so a restart or a delete then re-create ends every
+         session instead of a stale cookie landing on the dashboard with no login. Mirrors the AppManagement
+         control plane.
          1.3.10 (PATCH): after those commands auto-apply a migration, they print a restart reminder
          (the running app caches its DB-backed menu/localization at startup and registers new controllers at
          startup, so a freshly-applied page/menu/field only shows after a restart). Names the app's own
          restart script. Not printed on no-db. -->
-    <Version>1.3.10</Version>
+    <Version>1.3.11</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

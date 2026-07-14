@@ -4,6 +4,7 @@
 @inject IHttpClientFactory HttpFactory
 @inject NavigationManager Nav
 @inject Asdamir.Web.Localization.ApiStringLocalizer L
+@inject {{ ServerNamespace }}.Auth.AppUserSessionStore Sessions
 @using System.ComponentModel.DataAnnotations
 @using System.IdentityModel.Tokens.Jwt
 @using System.Security.Claims
@@ -137,6 +138,9 @@
         // Carry the access token as a claim so interactive (circuit) pages can attach it as Bearer on
         // Gateway API calls — HttpContext/cookies aren't available on the Blazor Server circuit.
         claims.Add(new Claim("access_token", body.Tokens.AccessToken));
+
+        // Register the server-side session so OnValidatePrincipal accepts this cookie until the next restart.
+        Sessions.Register(sub);
 
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,
