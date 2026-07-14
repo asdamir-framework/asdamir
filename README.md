@@ -143,7 +143,7 @@ dotnet test  DemoApp.sln                                    # generated tests pa
 # Restore, build, test
 dotnet restore Asdamir.sln
 dotnet build   Asdamir.sln -c Release          # 0 warnings (warnings-as-errors)
-dotnet test    Asdamir.sln                      # 300+ tests, in-memory
+dotnet test    Asdamir.sln                      # 650+ tests, in-memory
 ```
 
 **Run the management app against a real database:**
