@@ -38,6 +38,12 @@ Add only what you need — each middleware has its own `Use…` extension.
 <script nonce="@CspNonce.Current">/* allow-listed by the per-request nonce */</script>
 ```
 
+Apps scaffolded with `asdamir new app` ship this **enforced by default**: the Server wires `UseCspNonce` + a
+strict `script-src 'self' 'nonce-…'` policy, and its `App.razor` stamps the per-request nonce on its inline
+script. Keep page JavaScript out of per-page inline `<script>` blocks (fold it into that one nonced block, or
+serve it from `wwwroot` under `script-src 'self'`) so the policy stays clean; likewise self-host fonts rather
+than importing them from a CDN.
+
 ## Rate limiting
 
 ```csharp

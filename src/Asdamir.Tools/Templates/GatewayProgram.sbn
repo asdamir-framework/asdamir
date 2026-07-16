@@ -18,7 +18,10 @@ using Asdamir.Payments;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
+// Audit: a global filter records every state-changing request (POST/PUT/PATCH/DELETE) to this app's own
+// audit trail (dbo.AuditLog) — who did what, with what outcome. Endpoints opt out with [SkipAudit]; the
+// label/target refine with [AuditAction]. AppManagement reads the trail via gateway/admin/audittrail.
+builder.Services.AddControllers(o => o.Filters.Add<{{ GatewayNamespace }}.Audit.AuditActionFilter>());
 
 // OpenTelemetry traces + metrics → OTLP. Opt-in: enabled only when an OTLP endpoint is configured
 // (OpenTelemetry:Otlp:Endpoint, or the standard OTEL_EXPORTER_OTLP_ENDPOINT env var), so local runs
@@ -205,6 +208,10 @@ builder.Services.AddDataAccess(dbConnString ?? string.Empty);
 
 // Multi-tenancy: the generated repositories inject ITenantContext to scope every query by TenantId.
 builder.Services.AddMultiTenancy();
+
+// Audit-trail store (Dapper over dbo.AuditLog_* procs). Its interface is IAuditLogStore (not I…Repository /
+// I…Service), so the convention scan below doesn't pick it up — wire it explicitly.
+builder.Services.AddScoped<{{ GatewayNamespace }}.Audit.IAuditLogStore, {{ GatewayNamespace }}.Audit.DapperAuditLogStore>();
 
 // Auto-register entity repositories + services by convention — every `asdamir new entity` is picked up
 // here, so you never edit DI by hand. Matches I<Name>Repository → <Name>Repository and

@@ -6,13 +6,33 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.11`** (`new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.12`** (generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.12]
+
+Generated apps (`asdamir new app`, free + commercial) gain two direct security/observability capabilities,
+both proven end to end by the scaffold + browser E2E.
+
+### Added — generated apps now enforce a nonce-based Content-Security-Policy
+
+The Server previously shipped with CSP off. Generated apps now wire `UseCspNonce` + a strict
+`Content-Security-Policy` (`script-src 'self' 'nonce-…'`); `App.razor` stamps the same per-request nonce
+(URL-safe base64 so header + attribute match) on its single inline `<script>`. The change-password page's
+inline toggle folds into that one nonced block (no per-page scripts), and the external Google-Fonts `@import`
+is dropped (it violates the strict policy — self-host a woff2 to restore Inter).
+
+### Added — generated apps now have an audit trail
+
+A global `AuditActionFilter` records every state-changing request (POST/PUT/PATCH/DELETE) to the app's OWN
+`dbo.AuditLog` — who did what, to which target, with what outcome. `AuditTrailController` serves it at
+`GET gateway/admin/audittrail`; endpoints opt out with `[SkipAudit]` and refine the label with `[AuditAction]`.
+The `dbo.AuditLog` table + `AuditLog_Insert`/`AuditLog_List` procs ship in the app's schema migration.
 
 ## [Tools 1.3.11]
 

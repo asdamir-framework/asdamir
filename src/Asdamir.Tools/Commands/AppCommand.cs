@@ -338,6 +338,10 @@ public static class AppCommand
             ($"src/{gatewayProject}/Controllers/MenuController.cs",       isFreeMode ? "FreeGatewayMenuController" : "GatewayMenuController"),
             ($"src/{gatewayProject}/Controllers/LocalizationController.cs", isFreeMode ? "FreeGatewayLocalizationController" : "GatewayLocalizationController"),
             ($"src/{gatewayProject}/Controllers/DemoItemsController.cs",   "GatewayDemoItemsController"),
+            // Audit trail: a global filter writes every state-changing request to the app's own dbo.AuditLog;
+            // AuditTrailController serves it to AppManagement at gateway/admin/audittrail (both app flavors).
+            ($"src/{gatewayProject}/Audit/Audit.cs",                     "GatewayAudit"),
+            ($"src/{gatewayProject}/Controllers/AuditTrailController.cs", "GatewayAuditTrailController"),
             ($"src/{gatewayProject}/appsettings.json",                   "GatewayAppsettings"),
             ($"src/{gatewayProject}/Properties/launchSettings.json",     "GatewayLaunchSettings"),
 
