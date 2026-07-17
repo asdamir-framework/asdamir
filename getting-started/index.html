@@ -554,10 +554,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-the-packages" class="md-nav__link">
+  <a href="#scaffold-and-run-your-first-app" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install the packages
+        Scaffold and run your first app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-the-framework-to-an-existing-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add the framework to an existing project
       
     </span>
   </a>
@@ -1087,6 +1098,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fundamentals/billing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Billing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1477,10 +1516,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#install-the-packages" class="md-nav__link">
+  <a href="#scaffold-and-run-your-first-app" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Install the packages
+        Scaffold and run your first app
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#add-the-framework-to-an-existing-project" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Add the framework to an existing project
       
     </span>
   </a>
@@ -1556,41 +1606,71 @@
 <h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>.NET 10 SDK</strong></li>
-<li>A database for persistence (SQL Server / Oracle / PostgreSQL). For local exploration the management app can run fully in-memory.</li>
+<li><strong>SQL Server</strong> running on <code>localhost:1433</code> (local or Docker). Oracle / PostgreSQL are also supported.</li>
 </ul>
-<h2 id="install-the-packages">Install the packages<a class="headerlink" href="#install-the-packages" title="Permanent link">&para;</a></h2>
-<p>Reference the packages you need. Most apps start with <code>Asdamir.Core</code> and add others as required.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dotnet<span class="w"> </span>add<span class="w"> </span>package<span class="w"> </span>Asdamir.Core
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dotnet<span class="w"> </span>add<span class="w"> </span>package<span class="w"> </span>Asdamir.Data<span class="w">    </span><span class="c1"># data access, configuration, jobs, outbox</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>dotnet<span class="w"> </span>add<span class="w"> </span>package<span class="w"> </span>Asdamir.Web<span class="w">     </span><span class="c1"># Blazor + FluentUI, web security, localization</span>
+<h2 id="scaffold-and-run-your-first-app">Scaffold and run your first app<a class="headerlink" href="#scaffold-and-run-your-first-app" title="Permanent link">&para;</a></h2>
+<p>The fastest path is the <strong><code>asdamir</code> CLI</strong> — it generates a complete, run-ready app (both tiers, dev secrets,
+database, migrations). This is the <strong>one canonical flow</strong>, identical across the docs, the README and the CLI guide.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># 1) Install the CLI (once)</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>Asdamir.Tools
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># 2) Create your app — runs ANYWHERE; the app is born in the current folder</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>mkdir<span class="w"> </span>my-apps<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>my-apps
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>asdamir<span class="w"> </span>new<span class="w"> </span>app<span class="w"> </span>DemoApp<span class="w"> </span>--mode<span class="w"> </span>free<span class="w">       </span><span class="c1"># files + dev secrets + database + migrations; starter admin printed once</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># 3) Run it</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">cd</span><span class="w"> </span>DemoApp<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./restart-demoapp.sh<span class="w">        </span><span class="c1"># → https://localhost:7010 — sign in with the starter admin</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># 4) Add a feature — from INSIDE the app folder</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>asdamir<span class="w"> </span>new<span class="w"> </span>feature<span class="w"> </span>Product<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Price:decimal,InStock:bool&quot;</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>./restart-demoapp.sh<span class="w">                      </span><span class="c1"># → Product appears in the nav menu</span>
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="c1"># 5) Undo the whole app</span>
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>app<span class="w"> </span>DemoApp
+</code></pre></div>
+<blockquote>
+<p><strong><code>asdamir new app</code> runs anywhere</strong> (the app is created in the current directory). <strong>Every other command —
+<code>new feature</code>, <code>new entity</code>, <code>add field</code>, <code>rollback</code> — runs from <em>inside</em> the app folder.</strong> No <code>cd src/…</code>
+and no separate <code>db apply</code>: <code>new app</code> sets up the DB + migrations, <code>new feature</code> applies its own migration,
+then <code>./restart-&lt;app&gt;.sh</code> picks up the change.</p>
+</blockquote>
+<p><code>--mode free</code> (above) is <strong>self-contained</strong> and the fastest way to start. <strong>Commercial mode</strong>
+(<code>--mode commercial</code>, the default) keeps identity/menus/config centrally in <strong>AppManagement</strong> and needs more
+setup. Full command reference: <strong><a href="../cli/">CLI guide</a></strong>.</p>
+<h2 id="add-the-framework-to-an-existing-project">Add the framework to an existing project<a class="headerlink" href="#add-the-framework-to-an-existing-project" title="Permanent link">&para;</a></h2>
+<p>If instead you're adding Asdamir to an app you already have, reference the packages directly. Most apps start
+with <code>Asdamir.Core</code> and add others as required.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>dotnet<span class="w"> </span>add<span class="w"> </span>package<span class="w"> </span>Asdamir.Core
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>dotnet<span class="w"> </span>add<span class="w"> </span>package<span class="w"> </span>Asdamir.Data<span class="w">    </span><span class="c1"># data access, configuration, jobs, outbox</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>dotnet<span class="w"> </span>add<span class="w"> </span>package<span class="w"> </span>Asdamir.Web<span class="w">     </span><span class="c1"># Blazor + FluentUI, web security, localization</span>
 </code></pre></div>
 <blockquote>
 <p>Inside this repository the four packages are consumed via <strong>ProjectReference</strong> (lockstep versioning). External consumers use <strong>PackageReference</strong> against the published <code>Asdamir.*</code> NuGet packages.</p>
 </blockquote>
 <h2 id="wire-up-the-framework">Wire up the framework<a class="headerlink" href="#wire-up-the-framework" title="Permanent link">&para;</a></h2>
 <p>The umbrella extensions register the core building blocks and add the matching middleware to the pipeline:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">using</span><span class="w"> </span><span class="nn">Asdamir.Core</span><span class="p">;</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="kt">var</span><span class="w"> </span><span class="n">builder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WebApplication</span><span class="p">.</span><span class="n">CreateBuilder</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="c1">// Registers the framework building blocks (error handling, validation,</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="c1">// correlation IDs, options, Serilog wiring, …).</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddFramework</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">);</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>
-<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="kt">var</span><span class="w"> </span><span class="n">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">builder</span><span class="p">.</span><span class="n">Build</span><span class="p">();</span>
-<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
-<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1">// Adds the framework middleware (global exception handling, correlation id, …)</span>
-<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="c1">// early in the pipeline.</span>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="n">app</span><span class="p">.</span><span class="n">UseFramework</span><span class="p">();</span>
-<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
-<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="n">app</span><span class="p">.</span><span class="n">Run</span><span class="p">();</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">using</span><span class="w"> </span><span class="nn">Asdamir.Core</span><span class="p">;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="kt">var</span><span class="w"> </span><span class="n">builder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">WebApplication</span><span class="p">.</span><span class="n">CreateBuilder</span><span class="p">(</span><span class="n">args</span><span class="p">);</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1">// Registers the framework building blocks (error handling, validation,</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="c1">// correlation IDs, options, Serilog wiring, …).</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddFramework</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">);</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="kt">var</span><span class="w"> </span><span class="n">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">builder</span><span class="p">.</span><span class="n">Build</span><span class="p">();</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">// Adds the framework middleware (global exception handling, correlation id, …)</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1">// early in the pipeline.</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="n">app</span><span class="p">.</span><span class="n">UseFramework</span><span class="p">();</span>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="n">app</span><span class="p">.</span><span class="n">Run</span><span class="p">();</span>
 </code></pre></div>
 <p>You can also opt in to building blocks individually instead of the umbrella — every feature has its own <code>Add…</code> extension:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddGlobalExceptionHandling</span><span class="p">();</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddValidation</span><span class="p">();</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddMultiTenancy</span><span class="p">();</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddModuleSystem</span><span class="p">();</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddFeatureManager</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">);</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddGlobalExceptionHandling</span><span class="p">();</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddValidation</span><span class="p">();</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddMultiTenancy</span><span class="p">();</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddModuleSystem</span><span class="p">();</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddFeatureManager</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">);</span>
 </code></pre></div>
 <p>See <strong><a href="../#fundamentals">Fundamentals</a></strong> for each feature.</p>
 <h2 id="configuration-secrets">Configuration &amp; secrets<a class="headerlink" href="#configuration-secrets" title="Permanent link">&para;</a></h2>
@@ -1621,15 +1701,15 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span>init
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;Jwt:Key&quot;</span><span class="w"> </span><span class="s2">&quot;&lt;64+ byte base64 value&gt;&quot;</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;Security:EncryptionKey&quot;</span><span class="w"> </span><span class="s2">&quot;&lt;32+ char value&gt;&quot;</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;ConnectionStrings:Default&quot;</span><span class="w"> </span><span class="s2">&quot;Server=...;Database=...;&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span>init
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;Jwt:Key&quot;</span><span class="w"> </span><span class="s2">&quot;&lt;64+ byte base64 value&gt;&quot;</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;Security:EncryptionKey&quot;</span><span class="w"> </span><span class="s2">&quot;&lt;32+ char value&gt;&quot;</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;ConnectionStrings:Default&quot;</span><span class="w"> </span><span class="s2">&quot;Server=...;Database=...;&quot;</span>
 </code></pre></div>
 <h2 id="run-the-reference-management-app">Run the reference management app<a class="headerlink" href="#run-the-reference-management-app" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">cd</span><span class="w"> </span>AppManagement/src/Asdamir.AdminConsole.Api
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;Persistence:UseInMemory&quot;</span><span class="w"> </span><span class="s2">&quot;false&quot;</span><span class="w">   </span><span class="c1"># or &quot;true&quot; to skip the DB</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>dotnet<span class="w"> </span>run
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>AppManagement/src/Asdamir.AdminConsole.Api
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;Persistence:UseInMemory&quot;</span><span class="w"> </span><span class="s2">&quot;false&quot;</span><span class="w">   </span><span class="c1"># or &quot;true&quot; to skip the DB</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>dotnet<span class="w"> </span>run
 </code></pre></div>
 <p>The first-run database setup (schema + first SuperAdmin) is handled by AppManagement (the commercial control plane).</p>
 <h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>

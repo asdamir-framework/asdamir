@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://docs.asdamir.com/web-security/">
       
       
-        <link rel="prev" href="../fundamentals/observability/">
+        <link rel="prev" href="../fundamentals/billing/">
       
       
         <link rel="next" href="../ui-components/">
@@ -974,6 +974,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fundamentals/billing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Billing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1634,6 +1662,11 @@
 <h2 id="csp-nonce-example">CSP nonce example<a class="headerlink" href="#csp-nonce-example" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>&lt;script nonce=&quot;@CspNonce.Current&quot;&gt;/* allow-listed by the per-request nonce */&lt;/script&gt;
 </code></pre></div>
+<p>Apps scaffolded with <code>asdamir new app</code> ship this <strong>enforced by default</strong>: the Server wires <code>UseCspNonce</code> + a
+strict <code>script-src 'self' 'nonce-…'</code> policy, and its <code>App.razor</code> stamps the per-request nonce on its inline
+script. Keep page JavaScript out of per-page inline <code>&lt;script&gt;</code> blocks (fold it into that one nonced block, or
+serve it from <code>wwwroot</code> under <code>script-src 'self'</code>) so the policy stays clean; likewise self-host fonts rather
+than importing them from a CDN.</p>
 <h2 id="rate-limiting">Rate limiting<a class="headerlink" href="#rate-limiting" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="na">[RateLimit(3, 300)]</span><span class="w">   </span><span class="c1">// limit, windowSeconds — e.g. ForgotPassword</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">IActionResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ForgotPassword</span><span class="p">(...)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">}</span>

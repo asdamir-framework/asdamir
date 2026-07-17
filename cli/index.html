@@ -974,6 +974,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fundamentals/billing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Billing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1248,6 +1276,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#scaffolding" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1293,10 +1332,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#asdamir-new-entity-apply" class="md-nav__link">
+  <a href="#asdamir-new-entity-runs-from-the-app-root-auto-applies-the-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        asdamir new entity --apply
+        asdamir new entity — runs from the app root, auto-applies the migration
       
     </span>
   </a>
@@ -1366,6 +1405,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="rollback">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rollback-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rollback app
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1644,6 +1700,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#scaffolding" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1689,10 +1756,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#asdamir-new-entity-apply" class="md-nav__link">
+  <a href="#asdamir-new-entity-runs-from-the-app-root-auto-applies-the-migration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        asdamir new entity --apply
+        asdamir new entity — runs from the app root, auto-applies the migration
       
     </span>
   </a>
@@ -1762,6 +1829,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="rollback">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rollback-app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rollback app
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1850,16 +1934,42 @@
 <p><strong>Package:</strong> <code>Asdamir.Tools</code> · <strong>Command:</strong> <code>asdamir</code></p>
 <h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
 <p><code>Asdamir.Tools</code> is a <code>dotnet</code>-based command-line tool that (1) <strong>scaffolds</strong> code following the framework's audited conventions and (2) runs <strong><code>audit-lint</code></strong>, the static-analysis gate (run it locally before every push; it also runs in CI when CI is enabled).</p>
-<p>During development run it from source:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>&lt;command&gt;<span class="w"> </span><span class="o">[</span>options<span class="o">]</span>
-</code></pre></div>
 <h3 id="install-as-a-global-tool">Install as a global tool<a class="headerlink" href="#install-as-a-global-tool" title="Permanent link">&para;</a></h3>
 <p>The packaged command is <code>asdamir &lt;command&gt;</code> (formerly <code>framework</code>).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>--global<span class="w"> </span>Asdamir.Tools
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">#   update later:  dotnet tool update --global Asdamir.Tools</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>Asdamir.Tools
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">#   update later:  dotnet tool update -g Asdamir.Tools</span>
 </code></pre></div>
-<p><code>Asdamir.Tools</code> is published on <strong>nuget.org</strong> (currently <code>1.1.3</code>). Generated apps restore the framework
-<strong>libraries</strong> — <code>Asdamir.Core</code> / <code>.Data</code> / <code>.Web</code> (currently <code>1.1.1</code>) — from nuget.org as well.</p>
+<p><code>Asdamir.Tools</code> is published on <strong>nuget.org</strong> (currently <code>1.3.14</code>). Generated apps restore the framework
+<strong>libraries</strong> — <code>Asdamir.Core</code> (<code>1.3.0</code>) / <code>.Data</code> · <code>.Web</code> (<code>1.2.0</code>) — from nuget.org as well.</p>
+<h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
+<p>Scaffold and run your own app end-to-end. This is the <strong>one canonical flow</strong> — the same everywhere.</p>
+<p><strong>Prerequisites:</strong> <strong>.NET 10 SDK</strong> · <strong>SQL Server</strong> on <code>localhost:1433</code> (local or Docker).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># 1) Install the CLI (once)</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>Asdamir.Tools
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># 2) Create your app — runs ANYWHERE; the app is born in the current folder</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>mkdir<span class="w"> </span>my-apps<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nb">cd</span><span class="w"> </span>my-apps
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>asdamir<span class="w"> </span>new<span class="w"> </span>app<span class="w"> </span>DemoApp<span class="w"> </span>--mode<span class="w"> </span>free<span class="w">       </span><span class="c1"># files + dev secrets + database + migrations; starter admin printed once</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="c1"># 3) Run it</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="nb">cd</span><span class="w"> </span>DemoApp<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./restart-demoapp.sh<span class="w">        </span><span class="c1"># → https://localhost:7010 — sign in with the starter admin</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1"># 4) Add a feature — from INSIDE the app folder</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>asdamir<span class="w"> </span>new<span class="w"> </span>feature<span class="w"> </span>Product<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Price:decimal,InStock:bool&quot;</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a>./restart-demoapp.sh<span class="w">                      </span><span class="c1"># → Product appears in the nav menu</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="c1"># 5) Undo the whole app</span>
+<a id="__codelineno-1-16" name="__codelineno-1-16" href="#__codelineno-1-16"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>app<span class="w"> </span>DemoApp
+</code></pre></div>
+<blockquote>
+<p><strong><code>asdamir new app</code> runs anywhere</strong> (the app is created in the current directory). <strong>Every other command —
+<code>new feature</code>, <code>new entity</code>, <code>add field</code>, <code>rollback</code> — runs from <em>inside</em> the app folder.</strong> There is no
+<code>cd src/&lt;App&gt;.Gateway</code> and no separate <code>db apply</code>: <code>new app</code> sets up secrets + DB + migrations, and
+<code>new feature</code> applies its migration for you — then <code>./restart-&lt;app&gt;.sh</code> picks up the change.</p>
+</blockquote>
+<p><code>--mode free</code> (above) is <strong>self-contained</strong> and the fastest way to start. <strong>Commercial mode</strong>
+(<code>--mode commercial</code>, the default) keeps identity/menus/config centrally in <strong>AppManagement</strong> and needs more
+setup — see <a href="#asdamir-new-app-free-vs-commercial-mode">free vs commercial mode</a>.</p>
 <h2 id="scaffolding">Scaffolding<a class="headerlink" href="#scaffolding" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1871,11 +1981,11 @@
 <tbody>
 <tr>
 <td><code>new app &lt;Name&gt;</code></td>
-<td>A full application (Server + Gateway) wired to the framework — including <code>Properties/launchSettings.json</code> on fixed dev ports (Gateway <code>7001</code> = the Server's <code>Gateway:BaseUrl</code>, Server <code>7010</code>) so <code>dotnet run</code> starts on a known port out of the box instead of the default <code>:5000</code>. <strong><code>--mode free\|commercial</code></strong> (default <code>commercial</code>) picks the identity model — see <a href="#asdamir-new-app-free-vs-commercial-mode">free vs commercial mode</a>. <strong><code>--billing</code></strong> (opt-in, off by default) adds an end-user payment page + billing proxy + seeds — see <a href="#asdamir-new-app-billing">billing</a>.</td>
+<td>A full application (Server + Gateway) wired to the framework — including <code>Properties/launchSettings.json</code> on fixed dev ports (Gateway <code>7001</code> = the Server's <code>Gateway:BaseUrl</code>, Server <code>7010</code>) so <code>dotnet run</code> starts on a known port out of the box instead of the default <code>:5000</code>. <strong><code>--mode free\|commercial</code></strong> (default <code>commercial</code>) picks the identity model — see <a href="#asdamir-new-app-free-vs-commercial-mode">free vs commercial mode</a>. <strong><code>--billing</code></strong> (opt-in, off by default) adds an end-user payment page + billing proxy + seeds — see <a href="#asdamir-new-app-billing">billing</a>. The Gateway ships a global <strong>audit trail</strong> (every state-changing request → <code>dbo.AuditLog</code>, served to the control plane at <code>gateway/admin/audittrail</code>) and the Server enforces a <strong>nonce-based Content-Security-Policy</strong> by default.</td>
 </tr>
 <tr>
 <td><code>new entity &lt;Name&gt;</code></td>
-<td>Entity + DTO + repository + service + controller + tests + a create migration + an <strong>idempotent sample-seed migration</strong>. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, <strong>update round-trip</strong>, <strong>list</strong>, and an <strong>API auth-guard</strong> (<code>GET</code> without a token → 401) — all DB-free (in-memory fake repo + <code>WebApplicationFactory</code>). The seed migration (since 1.1.1) writes 3 typed sample rows (guarded by <code>IF NOT EXISTS</code>, <code>TenantId='default'</code>) so the entity's grid is populated after <code>db apply</code> instead of empty.</td>
+<td>Entity + DTO + repository + service + controller + tests + a create migration + an <strong>idempotent sample-seed migration</strong>. The generated tests (since 1.1.0) cover create/get round-trip, validator rejection, delete, <strong>update round-trip</strong>, <strong>list</strong>, and an <strong>API auth-guard</strong> (<code>GET</code> without a token → 401) — all DB-free (in-memory fake repo + <code>WebApplicationFactory</code>). The seed migration (since 1.1.1) writes 3 typed sample rows (guarded by <code>IF NOT EXISTS</code>, <code>TenantId='default'</code>) so the entity's grid is populated after <code>db apply</code> instead of empty. Every generated table/column identifier is <strong><code>[bracket]</code>-quoted</strong> (since 1.3.14), so a field named after a T-SQL reserved word (<code>RowCount</code>, <code>Order</code>, <code>User</code>, <code>Group</code>, <code>Key</code>, …) still produces valid SQL.</td>
 </tr>
 <tr>
 <td><code>new page &lt;Name&gt;</code></td>
@@ -1883,7 +1993,7 @@
 </tr>
 <tr>
 <td><code>new feature &lt;Name&gt;</code></td>
-<td><strong>The one-command path for a complete CRUD feature</strong> — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission &amp; localization seeds, in one go. With <code>--apply</code> it also runs the entity migration, and with <code>--vault-connection</code> the AsdamirVault menu/permission seed. See <a href="#asdamir-new-feature">below</a>.</td>
+<td><strong>The one-command path for a complete CRUD feature</strong> — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission &amp; localization seeds, in one go. Runs from the app root and <strong>applies the entity migration automatically</strong> (<code>--no-db</code> to skip); <code>--vault-connection</code> also applies the AsdamirVault menu/permission seed. See <a href="#asdamir-new-feature">below</a>.</td>
 </tr>
 <tr>
 <td><code>new module &lt;Name&gt;</code></td>
@@ -1895,12 +2005,12 @@
 </tr>
 <tr>
 <td><code>add field &lt;Name&gt;</code></td>
-<td>Adds a field across the entity/DTO/repository/migration set</td>
+<td>Adds a field across the entity/DTO/repository/migration set. Runs from the app root and <strong>applies the ALTER migration automatically</strong> (<code>--no-db</code> to skip).</td>
 </tr>
 </tbody>
 </table>
 <blockquote>
-<p>The verb comes first: <strong><code>asdamir new app|entity|page|feature|module|mobile</code></strong>, <strong><code>asdamir add field</code></strong>, and <strong><code>asdamir rollback</code></strong> (the inverse of <code>new feature</code>).</p>
+<p>The verb comes first: <strong><code>asdamir new app|entity|page|feature|module|mobile</code></strong>, <strong><code>asdamir add field</code></strong>, <strong><code>asdamir rollback</code></strong> (the inverse of <code>new feature</code>), and <strong><code>asdamir rollback app</code></strong> (the inverse of <code>new app</code> — whole-app teardown).</p>
 </blockquote>
 <p>Generated output uses the framework's templates (<code>src/Asdamir.Tools/Templates/*.sbn</code>) and references the <code>Asdamir.*</code> packages.</p>
 <blockquote>
@@ -1964,25 +2074,33 @@ emits an extra set of migrations (the management schema/procs + a seed for a sta
 + permissions, the Dashboard menu, config and localization) into the app's own <code>db/migrations</code>, so a single
 <code>db apply</code> sets the whole thing up. It does <strong>not</strong> emit <code>register_&lt;app&gt;.sql</code> (there is no control plane to
 register against), and its onboarding banner reflects the self-contained flow.</p>
-<p><strong>Free quick-start</strong> (verified end-to-end, with AppManagement not running):</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>app<span class="w"> </span>MyApp<span class="w"> </span>--mode<span class="w"> </span>free<span class="w"> </span>--yes
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>MyApp
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># One-time secrets on the Gateway (NEVER in appsettings.json). The Gateway signs + validates its</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># own JWTs, so Jwt:Key is just a 64+ byte random value (not shared with anything).</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="nb">cd</span><span class="w"> </span>src/MyApp.Gateway
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;Jwt:Key&quot;</span><span class="w"> </span><span class="s2">&quot;&lt;a 64+ byte random key&gt;&quot;</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>dotnet<span class="w"> </span>user-secrets<span class="w"> </span><span class="nb">set</span><span class="w"> </span><span class="s2">&quot;ConnectionStrings:Default&quot;</span><span class="w"> </span><span class="s2">&quot;Server=localhost,1433;Database=MyApp;User Id=&lt;login&gt;;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="nb">cd</span><span class="w"> </span>../..
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>dotnet<span class="w"> </span>build<span class="w"> </span>MyApp.sln
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="c1"># Creates the DB and applies EVERY migration (management schema/procs/seed + business) in one pass.</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="c1"># No password on the command line — the runner reads ConnectionStrings:Default from the secret above.</span>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/MyApp.Gateway<span class="w">    </span><span class="c1"># then, in another shell:</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/MyApp.Server<span class="w">     </span><span class="c1"># open the Server, sign in with the starter admin printed by `new app`</span>
+<p><strong>Free quick-start</strong> (verified end-to-end, with AppManagement not running) — <strong>generate → run.</strong> The interactive
+<code>new app</code> asks for the SQL user + a <strong>masked</strong> password, then does everything to make the app run-ready:
+auto-configures the Gateway's dev user-secrets (a CSPRNG <code>Jwt:Key</code> — free mode owns its JWT — plus
+<code>Security:EncryptionKey</code> + <code>ConnectionStrings:Default</code>, in <strong>user-secrets, NEVER <code>appsettings.json</code></strong>) <strong>AND
+creates the database + applies every migration</strong> (reusing the <code>db apply --create-database</code> runner — idempotent).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>app<span class="w"> </span>MyApp<span class="w"> </span>--mode<span class="w"> </span>free<span class="w">          </span><span class="c1"># asks SQL user + masked password → secrets + DB created + migrations applied</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="nb">cd</span><span class="w"> </span>MyApp<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>./restart-myapp.sh<span class="w">             </span><span class="c1"># starts both tiers → open the Server, sign in with the starter admin printed by `new app`</span>
 </code></pre></div>
+<ul>
+<li><strong><code>--no-db</code></strong>: scaffold files only — don't touch SQL (offline / CI / review-first). <code>new app</code> then prints the
+  <code>asdamir db apply --create-database --migrations db/migrations</code> line to run when you're ready.</li>
+<li><strong>Empty password</strong> (defer it): the DB can't be set up (no connection), so it's skipped like <code>--no-db</code>, and
+  <code>new app</code> prints the <code>ConnectionStrings:Default</code> + <code>db apply</code> lines.</li>
+<li><strong>DB setup failure</strong> (server unreachable, no rights): the files are still generated — <code>new app</code> prints the
+  exact <code>cd &lt;app&gt; &amp;&amp; asdamir db apply …</code> recovery command (never left half-done).</li>
+<li><strong><code>--no-secrets</code></strong>: skip the user-secrets auto-config (manage them yourself); combine with <code>--no-db</code> for a
+  pure files-only scaffold. <strong><code>--yes</code>/CI</strong>: a password only via <code>--connection-string</code>; the CSPRNG keys are still
+  generated.</li>
+<li><strong>Commercial mode</strong> is the same, minus one thing the CLI can't know: <code>Jwt:Key</code> <strong>must equal AppManagement's</strong>
+  signing key, so it stays a manual step (the Gateway only validates tokens AppManagement issued);
+  <code>Security:EncryptionKey</code> + <code>ConnectionStrings:Default</code> + the DB are still auto-set-up, and you also run
+  <code>register_&lt;app&gt;.sql</code> against AsdamirVault.</li>
+</ul>
+<blockquote>
+<p><code>asdamir db apply</code> isn't going away — it's what you run over the app's lifetime (after <code>new entity</code>, when a
+teammate clones the repo, in CI, in prod). <code>new app</code> just runs it <strong>once</strong> for you at creation.</p>
+</blockquote>
 <p>The starter admin's email + one-time password are printed once by <code>new app</code>. That password is a <strong>bootstrap
 credential</strong>, so the app <strong>forces a change on first sign-in</strong>: the starter admin ships with a
 <code>ForcePasswordChange</code> flag, and login redirects to a <strong>change-password</strong> page instead of the dashboard until
@@ -2000,17 +2118,30 @@ a new password is set.</p>
 <p>(This is a free-mode flow — the starter admin lives in the app's own DB. Commercial-mode identity is managed
 in the control plane and is unaffected.) Add features exactly as in commercial mode with <code>asdamir new
 feature …</code> (see the free-mode note under it).</p>
+<p><strong>Session lifetime — a restart (or a delete + re-create) ends every session.</strong> The generated Server ties
+each auth cookie to a <strong>server-side session registry</strong> (<code>Auth/AppUserSessionStore.cs</code>, an in-memory
+singleton): sign-in registers the session, sign-out removes it, and <code>OnValidatePrincipal</code> rejects any cookie
+whose user isn't in the registry. Because the registry is in-memory, <strong>restarting the app (or tearing it down
+and re-creating it under the same name) clears it → every outstanding cookie is rejected until the user signs
+in again</strong>. This closes a subtle gap: Data Protection keys persist outside the app folder
+(<code>~/.aspnet/DataProtection-Keys/</code>, keyed by <code>DataProtection:ApplicationName</code>), so without the registry a
+self-contained cookie would still decrypt after a re-create and land on the dashboard with no login.</p>
 <h3 id="asdamir-new-app-billing"><code>asdamir new app</code>: billing<a class="headerlink" href="#asdamir-new-app-billing" title="Permanent link">&para;</a></h3>
 <p><code>new app</code> takes an opt-in <strong><code>--billing</code></strong> flag (off by default). Without it a generated app is exactly as
 before — not a single billing file is emitted. With it, the app gains an <strong>end-user payment page</strong> so an
 app's own users can subscribe/pay:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>app<span class="w"> </span>MyApp<span class="w"> </span>--billing<span class="w"> </span>--yes
 </code></pre></div>
-<p>It requires <strong>commercial mode</strong> (billing is Model A): the billing data and the payment secret live centrally
-in AsdamirVault, scoped by the app's <code>AppId</code>, and are reached through AppManagement — the generated app never
-touches that DB and never holds the Paddle secret. <code>--billing</code> with <code>--mode free</code> is rejected fail-fast (free
--mode billing needs the <code>Asdamir.Payments</code> package, not yet available).</p>
-<p><code>--billing</code> emits three things, all fully conditional on the flag:</p>
+<p><code>--billing</code> works in <strong>both</strong> modes; the wiring differs:</p>
+<ul>
+<li><strong>Commercial (Model A)</strong> — the billing data and the payment secret live centrally in AsdamirVault, scoped
+  by the app's <code>AppId</code>, reached through AppManagement. The generated app never touches that DB and never holds
+  the Paddle secret; its Gateway <strong>proxies</strong> <code>gateway/billing/*</code> → AppManagement.</li>
+<li><strong>Free (<code>--mode free</code>, Model B)</strong> — self-contained: the Gateway serves billing <strong>locally</strong> from the app's
+  <strong>own</strong> database via the open-core <strong><code>Asdamir.Payments</code></strong> package (<code>LocalDbBillingStore</code> + the Paddle/crypto
+  rails + a local webhook). No control plane, no central secret — the app owns its own Paddle config.</li>
+</ul>
+<p><code>--billing</code> (commercial, Model A) emits three things, all fully conditional on the flag:</p>
 <table>
 <thead>
 <tr>
@@ -2040,6 +2171,35 @@ touches that DB and never holds the Paddle secret. <code>--billing</code> with <
 <p>Apply <code>seed_billing.sql</code> <strong>after</strong> the app is registered — it needs the app's <code>AppId</code> to exist. Each tenant
 connects its <strong>own</strong> Paddle account (pass-through: the framework is not in the money path). The crypto rail
 ships <strong>default-off</strong> with a TR-buyer geo-gate.</p>
+<p><code>--billing --mode free</code> (Model B) instead emits, into the app's <strong>own</strong> tiers (no control plane, no proxy):</p>
+<table>
+<thead>
+<tr>
+<th>Piece</th>
+<th>Where</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Payment page</strong></td>
+<td><code>src/&lt;App&gt;.Server/Components/Pages/Payment.razor</code> (+ <code>.razor.css</code>)</td>
+<td>The same end-user page at <code>/billing</code> — here its <code>gateway/billing/*</code> calls are served <strong>locally</strong> by the Gateway (not proxied).</td>
+</tr>
+<tr>
+<td><strong>Local billing API</strong></td>
+<td><code>src/&lt;App&gt;.Gateway/Controllers/BillingController.cs</code> + <code>BillingWebhookController.cs</code></td>
+<td>Serve plans/subscription/checkout/cancel + the Paddle webhook <strong>locally</strong>, backed by <code>Asdamir.Payments</code> (<code>LocalDbBillingStore</code> over the app's own DB, single-tenant).</td>
+</tr>
+<tr>
+<td><strong>App-DB billing migrations</strong></td>
+<td><code>db/migrations/V*__freemode_billing_{schema,procs,seed}.sql</code></td>
+<td>The single-tenant billing tables + procs + a starter plan seed, applied by the app's own <code>asdamir db apply</code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The free app reads its <strong>own</strong> <code>Payment:Paddle:*</code> config (user-secrets / env) — it never holds a central
+secret. The Gateway pins <code>Asdamir.Payments</code> (published on nuget alongside Core/Data/Web).</p>
 <h3 id="asdamir-new-feature"><code>asdamir new feature</code><a class="headerlink" href="#asdamir-new-feature" title="Permanent link">&para;</a></h3>
 <p><code>new feature</code> is <code>new entity</code> <strong>and</strong> <code>new page</code> <strong>and</strong> the menu/permission seed in a single command —
 the fast path when you want a complete, navigable CRUD feature rather than wiring the three steps by
@@ -2096,24 +2256,26 @@ hand. It locates the app from the nearest <code>.sln</code> and routes each part
 <td>Override the auto-detected Gateway / Server project directories.</td>
 </tr>
 <tr>
-<td><code>--apply</code></td>
-<td>After generating, apply the entity migration to the app DB (needs a connection below).</td>
+<td><code>--no-db</code></td>
+<td>Scaffold files only — don't apply the entity migration (offline / CI / review-first).</td>
 </tr>
 <tr>
 <td><code>--connection</code>/<code>-c</code>, <code>--server</code>/<code>-S</code>, <code>--database</code>/<code>-d</code>, <code>--user</code>/<code>-U</code>, <code>--password</code>/<code>-P</code></td>
-<td>App-DB connection for <code>--apply</code> (the same flags as <code>db apply</code>).</td>
+<td>App-DB connection override (the same flags as <code>db apply</code>; defaults to the Gateway user-secret).</td>
 </tr>
 <tr>
 <td><code>--vault-connection</code></td>
-<td>AsdamirVault connection. <strong>With <code>--apply</code></strong>, the menu/permission + localization seeds are applied to AsdamirVault too.</td>
+<td>AsdamirVault connection — applies the menu/permission + localization seeds to AsdamirVault too.</td>
 </tr>
 </tbody>
 </table>
-<p><strong>What <code>--apply</code> does — two databases, opt-in each:</strong></p>
+<p><strong>Two databases — the entity migration is applied by default, the vault seeds are opt-in:</strong></p>
 <ul>
-<li>The <strong>entity migration</strong> goes to the <strong>app's own (business) DB</strong> via the journaled <code>db apply</code> runner —
-  <code>--apply</code> + a connection (<code>--connection</code> or <code>-S</code>/<code>-d</code>/<code>-U</code>/<code>-P</code>).</li>
-<li>The <strong>menu/permission + localization seeds</strong> go to <strong>AsdamirVault</strong> only when you ALSO pass
+<li>The <strong>entity migration</strong> goes to the <strong>app's own (business) DB</strong> via the journaled <code>db apply</code> runner,
+  <strong>automatically</strong> — the connection resolves from the Gateway user-secret (override with <code>--connection</code>
+  or <code>-S</code>/<code>-d</code>/<code>-U</code>/<code>-P</code>). Pass <strong><code>--no-db</code></strong> to scaffold files only. If no connection is resolvable the
+  migration is still generated and the command prints the <code>db apply</code> recovery line.</li>
+<li>The <strong>menu/permission + localization seeds</strong> go to <strong>AsdamirVault</strong> only when you pass
   <code>--vault-connection</code> (explicit — there is no connection guessing). Without it the seeds are still
   generated and the command prints how to apply them later.</li>
 </ul>
@@ -2127,26 +2289,46 @@ control plane). <code>new page</code> behaves the same way in a free app.</p>
 <p><strong>Authorization:</strong> the menu row is gated by the role-based <code>&lt;plural&gt;.view</code> permission, and the seed grants
 it to the <strong>Admin</strong> role (which also holds <code>admin.access</code>, so admins see every menu). Other roles/users are
 granted from the AppManagement UI — generation does not touch them.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>feature<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string,Email:string&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--route<span class="w"> </span>/suppliers<span class="w"> </span>--icon<span class="w"> </span>truck<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--apply<span class="w"> </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nb">cd</span><span class="w"> </span>MyApp<span class="w">                                   </span><span class="c1"># the app root — the entity migration is applied automatically</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>asdamir<span class="w"> </span>new<span class="w"> </span>feature<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string,Email:string&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span>--route<span class="w"> </span>/suppliers<span class="w"> </span>--icon<span class="w"> </span>truck<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
 </code></pre></div>
 <p><strong>Fail-fast:</strong> if the entity step fails the page is <strong>not</strong> generated — fix the error and re-run
 (generation is idempotent: existing files are skipped, never overwritten). Afterwards, translate the
 <code>tr-TR</code>/<code>ru-RU</code> values in <code>localize_&lt;plural&gt;.sql</code> (the generator seeds the English name as the default for
 all three cultures). To undo a feature, see <a href="#rollback"><code>rollback</code></a>.</p>
-<h3 id="asdamir-new-entity-apply"><code>asdamir new entity --apply</code><a class="headerlink" href="#asdamir-new-entity-apply" title="Permanent link">&para;</a></h3>
-<p>By default <code>new entity</code> only <strong>writes files</strong> (review-first) and prints <code>next: asdamir db apply</code>. Pass
-<code>--apply</code> to run the create + sample-seed migrations immediately, through the same journaled <code>db apply</code>
-runner, against <code>&lt;output&gt;/db/migrations</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>asdamir<span class="w"> </span>new<span class="w"> </span>entity<span class="w"> </span>Supplier<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="w">  </span>--apply<span class="w"> </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;
+<p><strong>Restart the app when it's done.</strong> <code>new feature</code> prints a single <code>↻ … ./restart-&lt;app&gt;.sh</code> reminder after it
+applies the migration — the running app caches its menu/localization at startup, so the new page's menu won't
+appear until you restart. (In commercial mode, apply the AsdamirVault seeds first, then restart.)</p>
+<h3 id="asdamir-new-entity-runs-from-the-app-root-auto-applies-the-migration"><code>asdamir new entity</code> — runs from the app root, auto-applies the migration<a class="headerlink" href="#asdamir-new-entity-runs-from-the-app-root-auto-applies-the-migration" title="Permanent link">&para;</a></h3>
+<p><code>new entity</code> <strong>runs from the app root</strong> — you no longer <code>cd src/&lt;App&gt;.Gateway</code> first. It finds the Gateway
+project itself (the nearest <code>.sln</code>, then <code>src/&lt;App&gt;.Gateway</code>) and writes the entity slice + create/sample-seed
+migrations <strong>there</strong>. Running it from inside the Gateway directory still works (backward-compatible); pass
+<code>--output</code> / <code>--gateway-dir</code> to point it elsewhere.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nb">cd</span><span class="w"> </span>MyApp<span class="w">                                              </span><span class="c1"># the app root — no cd into src/…</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>asdamir<span class="w"> </span>new<span class="w"> </span>entity<span class="w"> </span>Supplier<span class="w"> </span>--fields<span class="w"> </span><span class="s2">&quot;Name:string,Phone:string&quot;</span>
 </code></pre></div>
-<p>The connection flags are identical to <code>db apply</code>. <code>--apply</code> <strong>requires</strong> a connection — if neither
-<code>--connection</code> nor <code>--database</code> is given the runner errors (no silent skip). It does <strong>not</strong> create the
-database (the app DB already exists by the time you add entities).</p>
+<p>By default it <strong>also applies</strong> the create + sample-seed migrations immediately, through the same journaled
+<code>db apply</code> runner — resolving the connection from the <strong>Gateway user-secret</strong> <code>ConnectionStrings:Default</code>
+(the same passwordless resolution as <code>db apply</code>; explicit <code>--connection</code>/<code>-S</code>/<code>-d</code>/<code>-U</code>/<code>-P</code> override it).
+No <code>cd</code>, no separate <code>db apply</code> — the new table is ready when the command returns.</p>
+<ul>
+<li><strong><code>--no-db</code></strong>: scaffold files only — don't touch SQL (offline / CI / review-first). It prints the exact
+  <code>asdamir db apply --migrations &lt;path&gt;</code> line to run when you're ready.</li>
+<li><strong>No connection resolvable</strong> (no secret set, no flags): the migration is still <strong>generated</strong> — the command
+  prints the <code>db apply</code> recovery line instead of failing (never left blind).</li>
+<li>It does <strong>not</strong> create the database (the app DB already exists by the time you add entities). Idempotent:
+  the journaled runner skips an already-applied migration.</li>
+<li><strong>After it applies, restart the app.</strong> A running generated app <strong>caches its DB-backed menu + localization +
+  config at startup</strong> and <strong>registers new controllers at startup</strong>, so a freshly-applied page/menu/field does
+  <strong>not</strong> show until a restart. The command prints a reminder naming the app's own script
+  (<code>↻ … ./restart-&lt;app&gt;.sh</code>); run it (don't hand-kill/re-run). This is the #1 cause of "I added a page but its
+  menu didn't appear" — the DB is correct; the app is still serving its startup cache.</li>
+</ul>
+<p><code>asdamir db apply</code> isn't going away — it's what you run over the app's lifetime (a teammate clones the repo,
+CI, prod). <code>new entity</code> just runs it <strong>once</strong> for you at generation.</p>
 <h3 id="asdamir-new-page-localization-menu-permission-seeds"><code>asdamir new page</code> — localization, menu &amp; permission seeds<a class="headerlink" href="#asdamir-new-page-localization-menu-permission-seeds" title="Permanent link">&para;</a></h3>
 <p>Besides the page and its editor dialog, <code>new page</code> writes two idempotent, AppId-scoped SQL seeds under
 <code>db/admin-onboarding/</code>:</p>
@@ -2156,8 +2338,15 @@ database (the app DB already exists by the time you add entities).</p>
 <li><code>seed_menu_&lt;plural&gt;.sql</code> — a <code>&lt;plural&gt;.view</code> permission, an Admin-role grant, and a guarded <code>dbo.Menus</code>
   row (so the page appears in the nav for users who may view it). <code>--icon</code> sets that row's icon.</li>
 </ul>
-<p>Apply <strong>both</strong> against <strong>AsdamirVault</strong> (not the app's own DB) after generating — the same place
-<code>register_&lt;app&gt;.sql</code> runs. (<code>new feature</code> with <code>--vault-connection</code> applies them for you.)</p>
+<p><code>new page</code> <strong>runs from the app root</strong> — it finds the Server project itself (the nearest <code>.sln</code>, then
+<code>src/&lt;App&gt;.Server</code>); running from inside the Server directory still works. Apply <strong>both</strong> seeds against
+<strong>AsdamirVault</strong> (not the app's own DB) after generating — the same place <code>register_&lt;app&gt;.sql</code> runs.
+(<code>new feature</code> with <code>--vault-connection</code> applies them for you.)</p>
+<blockquote>
+<p><strong>In a free-mode app</strong>, <code>new page</code> emits the menu/localization seeds as ordinary app-DB migrations and
+<strong>applies them automatically</strong> (resolving the Gateway user-secret, like <code>new entity</code>) — pass <strong><code>--no-db</code></strong>
+to scaffold files only.</p>
+</blockquote>
 <h2 id="audit-lint"><code>audit-lint</code><a class="headerlink" href="#audit-lint" title="Permanent link">&para;</a></h2>
 <p><code>audit-lint</code> scans source for the framework's anti-pattern rule set (sync-over-async, silent failures, leaked API surface, unsafe defaults, …) and <strong>fails on any error/warning</strong>. Run it locally before pushing (CI runs it too when enabled).</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>src<span class="w"> </span>--min-severity<span class="w"> </span>warning
@@ -2245,18 +2434,61 @@ journal rows, and, with a connection, also removes the free-mode <strong>menu, p
 localization keys</strong> and the freemode seed-journal rows from the app's <strong>own</strong> database (single-tenant, in
 FK order, one transaction). <code>--vault-connection</code> is not used in free mode (there is no AsdamirVault).</p>
 </blockquote>
+<h3 id="rollback-app"><code>rollback app</code><a class="headerlink" href="#rollback-app" title="Permanent link">&para;</a></h3>
+<p>The <strong>symmetric inverse of <a href="#asdamir-new-app"><code>new app</code></a></strong> — tears down a whole generated app, not just one
+feature. Like the feature rollback it is <strong>destructive</strong> and <strong>interactive by default</strong>: it shows EXACTLY what
+will be removed (the full directory path + the server/database name + the vault app code) and asks <code>[y/N]</code>
+before touching anything. Works in <strong>both</strong> modes (detected from the app).</p>
+<p>What it removes:</p>
+<ul>
+<li><strong>Directory</strong> — the generated app root (the ancestor/child dir whose <code>&lt;Name&gt;.sln</code> exists; requiring that
+  <code>.sln</code> is the guard against deleting the wrong directory), removed recursively.</li>
+<li><strong>App database</strong> — <code>DROP DATABASE [&lt;Name&gt;]</code> (the app's OWN DB — free <strong>or</strong> commercial; name defaults to the
+  app name, override with <code>--database</code>). Kicks open connections first (<code>SINGLE_USER WITH ROLLBACK IMMEDIATE</code>).
+  The connection resolves in the <strong>same order as <code>db apply</code></strong> (reusing its resolver): explicit <code>--connection</code> →
+  <code>-S/-d/-U/-P</code> flags → the <strong>Gateway user-secret</strong> (<code>ConnectionStrings:Default</code>, the value <code>new app</code> wrote). So
+  <code>rollback app &lt;Name&gt;</code> with <strong>no flags</strong> drops the DB just like <code>db apply</code> with no flags applies to it — no
+  orphan DB left behind. The secret is read <strong>before</strong> the directory is deleted (it holds the id); the
+  confirmation shows the server + database (never the password).</li>
+<li><strong>App registration in AsdamirVault</strong> (commercial only, with <code>--vault-connection</code>) — purges the app's <code>dbo.Apps</code>
+  row + ALL its AppId-scoped rows (users/roles/menus/permissions/config/localization/logs/audit) via the existing
+  <code>dbo.App_Purge</code> proc (FK-safe, one transaction). This removes the app's <strong>registration</strong>, <strong>not</strong> the
+  AsdamirVault database itself (which is never dropped). A <strong>free</strong> app has no registration, so this line is
+  hidden entirely in free-mode teardown — <strong>and</strong> when the mode can't be determined (the app directory is already
+  gone), unless you pass <code>--vault-connection</code> explicitly (then it's shown + acted on, in any mode).</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>app<span class="w"> </span>CustomerOrders<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--output<span class="w"> </span>~/src/asdamirgenerated<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
+</code></pre></div>
+<p>Options: <code>&lt;Name&gt;</code>, <code>--output</code>/<code>-o</code> (the app's parent dir OR the app dir itself), <code>--connection</code>/<code>-c</code> or
+<code>--server</code>/<code>-S</code>+<code>--database</code>/<code>-d</code>+<code>--user</code>/<code>-U</code>+<code>--password</code>/<code>-P</code> (app DB), <code>--vault-connection</code> (commercial),
+<code>--yes</code>/<code>-y</code> (skip the prompt).</p>
+<p><strong>Fail-closed &amp; idempotent:</strong></p>
+<ul>
+<li>It <strong>NEVER</strong> drops a protected database — <code>AsdamirVault</code>, <code>master</code>, <code>model</code>, <code>msdb</code>, <code>tempdb</code> are refused;
+  and <code>App_Purge</code> refuses the self-app (<code>EnvironmentName='Self'</code>, i.e. AppManagement itself).</li>
+<li>Each step is conditional: a missing directory / database / registration is reported as <strong>"already gone"</strong>,
+  never an error (re-run any time).</li>
+<li>The <strong>DB</strong> drop runs when a connection resolves (flags <strong>or</strong> the Gateway user-secret); the <strong>vault</strong> purge
+  runs only with <code>--vault-connection</code>. When neither resolves, the step is <strong>skipped and reported</strong> (with how to
+  supply it), never silently dropped.</li>
+<li>It's a subcommand, so the bare <code>rollback &lt;Feature&gt;</code> form is unaffected (only a feature literally named
+  <code>app</code> is shadowed by <code>rollback app</code>).</li>
+</ul>
 <h2 id="app-register"><code>app register</code><a class="headerlink" href="#app-register" title="Permanent link">&para;</a></h2>
 <p>Registers a managed app into a company's AppManagement database — an <code>Apps</code> row, <strong>not</strong> a new
 database — by calling the running AdminConsole.Api (<code>POST /api/admin/apps</code>). Auth and at-rest
 secret encryption are delegated to the API, so the CLI stays credential- and crypto-free.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
 </code></pre></div>
 <p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>2</code> bad arguments. The
 company is taken from the token's <code>company</code> claim. See the AppManagement console's multi-company (firma) operation.</p>
@@ -2269,10 +2501,10 @@ and <code>AppConfigurations</code> rows with <code>IsEncrypted=1</code> — so y
 losing data. <strong>Dry-run by default</strong> (decrypt + re-encrypt + verify, no writes); <code>--apply</code> commits in a
 single transaction. Idempotent (rows already on the new key are skipped) and aborts+rolls back if a value
 can't be decrypted with the old key.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
 </code></pre></div>
 <p>Connection flags match <code>db apply</code> (<code>--connection</code> / <code>--server</code>+<code>--database</code>+<code>--user</code>+<code>--password</code>; omit
 <code>--user</code> for Windows integrated auth). Keys/salts: <code>--old-key</code>/<code>--new-key</code> (+ <code>--old-salt</code>/<code>--new-salt</code>)
@@ -2281,8 +2513,8 @@ or the <code>ASDAMIR_OLD_ENCRYPTION_KEY</code> / <code>ASDAMIR_NEW_ENCRYPTION_KE
 <p>Encrypts a value with <code>Security:EncryptionKey</code> and prints the <code>v2:</code> ciphertext — to seed an encrypted
 <code>AppConfigurations</code> value or a <code>v2:</code> Companies connection string. (There is no <code>decrypt</code> — it never prints
 a stored secret back.)</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
 </code></pre></div>
 <p>Full procedures (incl. <code>Jwt:Key</code> and per-app client-secret rotation): <strong><a href="../secret-rotation/">Secret Management &amp; Key Rotation</a></strong>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
