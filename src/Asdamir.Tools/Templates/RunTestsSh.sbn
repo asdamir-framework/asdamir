@@ -5,7 +5,12 @@ cd "$(dirname "$0")"
 # değil). Yalnız kökü silmek, derlemesi kırılan bir projenin ESKİ results.trx'ini bırakır → parser onu
 # yanlışlıkla "yeşil" sayar. Bu yüzden koşumdan önce TÜM per-project results.trx'leri sil (bin/ hariç).
 find . -path "*/TestResults/*" -name "results.trx" -not -path '*/bin/*' -delete 2>/dev/null
-dotnet test --logger "trx;LogFileName=results.trx" > /tmp/asd-test-build.log 2>&1
+# Varsayılan koşum HIZLI + Docker'sız: Category=Integration (Testcontainers/gerçek SQL) ve Category=E2E
+# (gerçek tarayıcı) hariç. Bunları açıkça çalıştır:
+#   dotnet test --filter "Category=Integration"   (Docker gerekir)
+# (Hariç tutmayı --filter ile yapıyoruz; RunSettingsFilePath'i Directory.Build.props'a koymak bazı SDK
+#  sürümlerinde solution restore'a dokunabildiğinden tercih edilmez.)
+dotnet test --filter "Category!=Integration&Category!=E2E" --logger "trx;LogFileName=results.trx" > /tmp/asd-test-build.log 2>&1
 TRX=$(find . -path "*/TestResults/*" -name "results.trx" -not -path '*/bin/*' 2>/dev/null)
 if [ -z "$TRX" ]; then
   echo "BUILD/TEST FAILED — derleme veya test çalışmadı. Detay:"

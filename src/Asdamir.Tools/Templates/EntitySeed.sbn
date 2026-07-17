@@ -9,10 +9,10 @@
 SET NOCOUNT ON;
 GO
 
-IF NOT EXISTS (SELECT 1 FROM dbo.{{ TableName }} WHERE TenantId = N'default')
+IF NOT EXISTS (SELECT 1 FROM dbo.[{{ TableName }}] WHERE [TenantId] = N'default')
 BEGIN
 {{ for r in SeedRows ~}}
-    INSERT INTO dbo.{{ TableName }} (TenantId, {{ for f in Fields }}{{ f.Name }}, {{ end }}CreatedAtUtc)
+    INSERT INTO dbo.[{{ TableName }}] ([TenantId], {{ for f in Fields }}[{{ f.Name }}], {{ end }}[CreatedAtUtc])
     VALUES (N'default', {{ for f in Fields ~}}{{ if f.CSharpType == "string" || f.CSharpType == "string?" }}N'Sample {{ f.Name }} {{ r.Index }}'{{ else if f.CSharpType == "int" || f.CSharpType == "long" || f.CSharpType == "int?" || f.CSharpType == "long?" }}{{ r.IntVal }}{{ else if f.CSharpType == "decimal" || f.CSharpType == "double" || f.CSharpType == "decimal?" || f.CSharpType == "double?" }}{{ r.DecVal }}{{ else if f.CSharpType == "bool" || f.CSharpType == "bool?" }}1{{ else if f.CSharpType == "DateTime" || f.CSharpType == "DateTime?" }}SYSUTCDATETIME(){{ else if f.CSharpType == "Guid" || f.CSharpType == "Guid?" }}NEWID(){{ else }}NULL{{ end }}, {{ end ~}}SYSUTCDATETIME());
 {{ end ~}}
 END

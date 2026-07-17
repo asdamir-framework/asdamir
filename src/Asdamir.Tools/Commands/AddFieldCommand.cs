@@ -306,7 +306,7 @@ public static class AddFieldCommand
             --   Stamp: V{stamp}
             -- </auto-generated>
 
-            ALTER TABLE dbo.{table} ADD {f.Name} {f.SqlType} {nullClause}{defaultClause};
+            ALTER TABLE dbo.[{table}] ADD [{f.Name}] {f.SqlType} {nullClause}{defaultClause};
             GO
 
             """;

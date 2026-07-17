@@ -6,13 +6,33 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.12`** (generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.13`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.13]
+
+### Fixed — reserved-word column names now produce valid SQL (identifier bracket-quoting)
+
+`asdamir new entity` / `new feature` / `add field` now **[bracket]-quote every table and column identifier** in
+the generated DDL, CRUD stored procedures, and sample-seed migration. Before this, a field whose name is a
+T-SQL reserved word — `RowCount`, `Order`, `User`, `Group`, `Key`, `Percent`, … — emitted a bare
+`RowCount INT NOT NULL` column definition, which fails at apply time with *"Incorrect syntax near the keyword
+'RowCount'"* so the `CREATE TABLE` never runs. Bracketing is applied to **all** identifiers (not a reserved-word
+allowlist, which can never be complete); parameters (`@Name`) are intentionally left unquoted — a reserved word
+is valid as an `@`-prefixed parameter name. Verified end to end: a reserved-word entity migration now applies to
+a real SQL Server and round-trips, pinned by a `Category=Scaffold` regression test.
+
+### Changed — generated `run-tests.sh` excludes `Category=Integration`/`E2E` from the fast default run
+
+The scaffolded `run-tests.sh` now runs `dotnet test --filter "Category!=Integration&Category!=E2E"`, so once a
+developer adds Docker-only Integration or real-browser E2E tests to a generated app, the default fast run stays
+Docker-free (run them explicitly with `--filter "Category=Integration"`). A fresh app has no such tests, so the
+filter changes nothing for it.
 
 ## [Tools 1.3.12]
 
