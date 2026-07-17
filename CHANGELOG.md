@@ -6,7 +6,7 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.13`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+**Data/Web `1.2.0`**, **`Asdamir.Payments 1.2.0`**, **Tools `1.3.14`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
@@ -14,7 +14,7 @@ commercial customers.
 
 ## [Unreleased]
 
-## [Tools 1.3.13]
+## [Tools 1.3.14]
 
 ### Fixed — reserved-word column names now produce valid SQL (identifier bracket-quoting)
 
