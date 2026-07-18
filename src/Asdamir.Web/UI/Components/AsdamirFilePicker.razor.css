@@ -1,0 +1,163 @@
+/* AsdamirFilePicker — scoped, theme-aware (reads the global --asd-* tokens, with standalone fallbacks).
+   The drop zone hosts an invisible overlay <InputFile> (.afp-input) covering the whole zone: clicking
+   opens the browse dialog and a native drag & drop lands on the same input — no JS interop. The visual
+   drag-over state comes from the wrapper's drag handlers. */
+
+.asd-filepicker {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.asd-filepicker.disabled {
+    opacity: .55;
+}
+
+.afp-dropzone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    border: 2px dashed var(--asd-border-strong, #cfc7bc);
+    border-radius: 12px;
+    padding: 32px 20px;
+    background: var(--asd-surface, #fff);
+    transition: border-color .15s ease, background .15s ease;
+}
+
+.afp-dropzone:hover,
+.afp-dropzone:focus-within {
+    border-color: var(--asd-accent, #c0552b);
+}
+
+.afp-dropzone.drag-over {
+    border-color: var(--asd-accent, #c0552b);
+    background: var(--asd-accent-soft, color-mix(in srgb, var(--asd-accent, #c0552b) 8%, transparent));
+}
+
+.afp-dropzone.processing {
+    opacity: .6;
+}
+
+.afp-dropzone.invalid {
+    border-color: #d9534f;
+}
+
+/* The overlay input: covers the zone, invisible, receives both click and native drop.
+   ::deep is REQUIRED — <InputFile> is a child component, so its rendered <input> does not carry this
+   component's CSS-isolation scope attribute; without ::deep the selector never matches and the native
+   "Choose File" control renders fully visible inside the zone. */
+.afp-dropzone ::deep .afp-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.afp-dropzone ::deep .afp-input:disabled {
+    cursor: default;
+}
+
+.afp-drop-svg {
+    width: 44px;
+    height: 44px;
+    color: var(--asd-ink-soft, #8a8278);
+}
+
+.afp-dropzone.drag-over .afp-drop-svg {
+    color: var(--asd-accent, #c0552b);
+}
+
+.afp-title {
+    font-size: 1.02rem;
+    font-weight: 600;
+    color: var(--asd-ink, #222);
+}
+
+.afp-hint {
+    font-size: .82rem;
+    color: var(--asd-ink-soft, #8a8278);
+}
+
+.afp-error {
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--asd-danger, #b3261e) 40%, var(--asd-border, #e3ded7));
+    background: color-mix(in srgb, var(--asd-danger, #b3261e) 8%, transparent);
+    color: var(--asd-danger, #b3261e);
+    border-radius: 8px;
+    font-size: .85rem;
+}
+
+/* Selected-file info card (global .asd-card + local layout). */
+.afp-fileinfo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    text-align: left;
+}
+
+.afp-fileinfo-svg {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    color: var(--asd-accent, #c0552b);
+}
+
+.afp-fileinfo-details {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.afp-fileinfo-name {
+    font-weight: 600;
+    color: var(--asd-ink, #222);
+    overflow-wrap: anywhere;
+}
+
+.afp-fileinfo-size {
+    font-size: .78rem;
+    color: var(--asd-ink-soft, #8a8278);
+}
+
+.afp-fileinfo-x {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--asd-ink-soft, #8a8278);
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+    padding: 4px;
+}
+
+.afp-fileinfo-x:hover {
+    color: #d9534f;
+}
+
+/* Indeterminate progress bar shown under the file card while IsProcessing. */
+.afp-progress {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--asd-surface-muted, #f6f3ee);
+    overflow: hidden;
+}
+
+.afp-progress-bar {
+    height: 100%;
+    width: 40%;
+    border-radius: 2px;
+    background: var(--asd-accent, #c0552b);
+    animation: afp-indeterminate 1.1s ease-in-out infinite;
+}
+
+@keyframes afp-indeterminate {
+    from { transform: translateX(-110%); }
+    to   { transform: translateX(280%); }
+}

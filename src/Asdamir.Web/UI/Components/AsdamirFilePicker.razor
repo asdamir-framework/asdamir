@@ -1,0 +1,244 @@
+@using System.Globalization
+@using System.IO
+@using Microsoft.AspNetCore.Components.Forms
+
+@*
+    AsdamirFilePicker — general-purpose, content-agnostic file picker (INSPINIA / .asd-* design system,
+    FluentUI-free, no JS interop).
+
+    Drop-zone technique (proven in production): the raw <InputFile> is an invisible overlay stretched
+    over the styled zone, so click-to-browse AND native drag & drop both land on the same input — real
+    drops work with zero JS. The wrapper's @ondragenter/@ondragleave/@ondrop only drive the visual
+    drag-over state; @ondragover is deliberately NOT bound (it fires continuously and would flood the
+    SignalR circuit).
+
+    The component never reads file content — it hands the selected IBrowserFile to the caller via
+    OnFileSelected; the caller owns streaming/upload. All user-facing texts are parameters with English
+    defaults (a framework component cannot assume DB-seeded localization keys) — pass @L["…"] values in.
+*@
+
+<div class="asd-filepicker @(Disabled ? "disabled" : null)">
+    <div class="afp-dropzone @(_dragOver ? "drag-over" : null) @(IsProcessing ? "processing" : null) @(_error is not null ? "invalid" : null)"
+         @ondragenter="HandleDragEnter"
+         @ondragleave="HandleDragLeave"
+         @ondrop="HandleDrop">
+        <InputFile @key="_inputKey" class="afp-input"
+                   OnChange="HandleFileChangeAsync"
+                   accept="@Accept"
+                   disabled="@(Disabled || IsProcessing)" />
+        <svg class="afp-drop-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+            <path d="M12 15V3" />
+            <path d="m7 8 5-5 5 5" />
+        </svg>
+        <div class="afp-title">@CurrentTitle</div>
+        @if (!string.IsNullOrEmpty(Hint))
+        {
+            <div class="afp-hint">@Hint</div>
+        }
+    </div>
+
+    @if (_error is not null)
+    {
+        <div class="afp-error" role="alert">@_error</div>
+    }
+
+    @if (_file is not null)
+    {
+        <div class="asd-card afp-fileinfo" role="group" aria-label="@_file.Name">
+            <svg class="afp-fileinfo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                <path d="M14 3v5h5" />
+            </svg>
+            <div class="afp-fileinfo-details">
+                <div class="afp-fileinfo-name">@_file.Name</div>
+                <div class="afp-fileinfo-size">@FormatFileSize(_file.Size)</div>
+            </div>
+            @if (!IsProcessing && !Disabled)
+            {
+                <button type="button" class="afp-fileinfo-x" @onclick="RemoveFileAsync"
+                        aria-label="@RemoveFileText" title="@RemoveFileText">×</button>
+            }
+        </div>
+        @if (IsProcessing)
+        {
+            <div class="afp-progress" role="progressbar" aria-label="@ProcessingText">
+                <div class="afp-progress-bar"></div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// Native <c>accept</c> filter for the underlying file input — a comma-separated list of
+    /// extensions (<c>.csv,.xlsx</c>) and/or MIME types (<c>application/json</c>, <c>image/*</c>).
+    /// Also enforced component-side, because a dragged &amp; dropped file bypasses the browser's
+    /// browse-dialog filter. <see langword="null"/> or empty accepts every file.
+    /// </summary>
+    [Parameter] public string? Accept { get; set; }
+
+    /// <summary>
+    /// Maximum accepted file size in bytes. A larger file is rejected with <see cref="FileTooLargeText"/>
+    /// and <see cref="OnFileSelected"/> is not raised. <c>0</c> (the default) means no limit.
+    /// </summary>
+    [Parameter] public long MaxFileSize { get; set; }
+
+    /// <summary>Disables the picker entirely (no browse, no drop, no remove).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Caller-driven busy state: while <see langword="true"/> the input is disabled, the zone shows
+    /// <see cref="ProcessingText"/> and an indeterminate progress bar runs under the file card.
+    /// Set it around your upload/import of the delivered file.
+    /// </summary>
+    [Parameter] public bool IsProcessing { get; set; }
+
+    /// <summary>Idle drop-zone title. Localize by passing your own value (e.g. <c>@L["…"].Value</c>).</summary>
+    [Parameter] public string Title { get; set; } = "Drop a file here or click to browse";
+
+    /// <summary>Optional secondary hint line under the title (e.g. allowed types / size limit).</summary>
+    [Parameter] public string? Hint { get; set; }
+
+    /// <summary>Drop-zone title shown while a drag hovers over the zone.</summary>
+    [Parameter] public string DragOverText { get; set; } = "Release to drop the file";
+
+    /// <summary>Drop-zone title and progress-bar label shown while <see cref="IsProcessing"/> is true.</summary>
+    [Parameter] public string ProcessingText { get; set; } = "Processing…";
+
+    /// <summary>Accessible label / tooltip of the remove (×) button on the selected-file card.</summary>
+    [Parameter] public string RemoveFileText { get; set; } = "Remove file";
+
+    /// <summary>
+    /// Error shown when the file exceeds <see cref="MaxFileSize"/>. A composite format string:
+    /// <c>{0}</c> is the human-readable limit (e.g. <c>10 MB</c>).
+    /// </summary>
+    [Parameter] public string FileTooLargeText { get; set; } = "File exceeds the maximum size of {0}.";
+
+    /// <summary>
+    /// Error shown when the file does not match <see cref="Accept"/>. A composite format string:
+    /// <c>{0}</c> is the rejected file's extension.
+    /// </summary>
+    [Parameter] public string FileTypeNotAllowedText { get; set; } = "File type {0} is not allowed.";
+
+    /// <summary>
+    /// Raised when a file passes the <see cref="Accept"/>/<see cref="MaxFileSize"/> checks, carrying the
+    /// selected <see cref="IBrowserFile"/>. The component does not read the content — the caller streams it.
+    /// </summary>
+    [Parameter] public EventCallback<IBrowserFile> OnFileSelected { get; set; }
+
+    /// <summary>Raised when the user removes the selected file via the card's × button.</summary>
+    [Parameter] public EventCallback OnCleared { get; set; }
+
+    private IBrowserFile? _file;
+    private string? _error;
+    private bool _dragOver;
+    private int _inputKey; // bumped on reset so the native input is recreated (re-selecting the same file fires again).
+
+    private string CurrentTitle
+        => _dragOver ? DragOverText
+         : IsProcessing ? ProcessingText
+         : Title;
+
+    /// <summary>
+    /// Resets the picker from the parent (e.g. after a successful upload): clears the selected file and
+    /// any error, and recreates the native input. Does not raise <see cref="OnCleared"/> — that event is
+    /// reserved for the user-initiated remove.
+    /// </summary>
+    public void Clear()
+    {
+        ResetState();
+        StateHasChanged();
+    }
+
+    private void HandleDragEnter()
+    {
+        if (!Disabled && !IsProcessing) _dragOver = true;
+    }
+
+    private void HandleDragLeave() => _dragOver = false;
+
+    private void HandleDrop() => _dragOver = false; // the file itself lands on the overlay input, not here.
+
+    private async Task HandleFileChangeAsync(InputFileChangeEventArgs e)
+    {
+        _dragOver = false;
+        _error = null;
+
+        var file = e.FileCount > 0 ? e.GetMultipleFiles(e.FileCount)[0] : null;
+        if (file is null) return;
+
+        if (!IsAccepted(file))
+        {
+            _error = string.Format(CultureInfo.CurrentCulture, FileTypeNotAllowedText, Path.GetExtension(file.Name));
+            _file = null;
+            _inputKey++;
+            return;
+        }
+
+        if (MaxFileSize > 0 && file.Size > MaxFileSize)
+        {
+            _error = string.Format(CultureInfo.CurrentCulture, FileTooLargeText, FormatFileSize(MaxFileSize));
+            _file = null;
+            _inputKey++;
+            return;
+        }
+
+        _file = file;
+        await OnFileSelected.InvokeAsync(file);
+    }
+
+    private async Task RemoveFileAsync()
+    {
+        ResetState();
+        await OnCleared.InvokeAsync();
+    }
+
+    private void ResetState()
+    {
+        _file = null;
+        _error = null;
+        _dragOver = false;
+        _inputKey++;
+    }
+
+    private bool IsAccepted(IBrowserFile file)
+    {
+        if (string.IsNullOrWhiteSpace(Accept)) return true;
+
+        var extension = Path.GetExtension(file.Name);
+        foreach (var token in Accept.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (token.StartsWith('.'))
+            {
+                if (string.Equals(token, extension, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            else if (token.EndsWith("/*", StringComparison.Ordinal))
+            {
+                // Wildcard MIME (e.g. image/*): prefix-match including the slash.
+                if (file.ContentType.StartsWith(token[..^1], StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            else if (string.Equals(token, file.ContentType, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:0.##} {sizes[order]}";
+    }
+}

@@ -16,7 +16,7 @@ dotnet tool install -g Asdamir.Tools
 ```
 
 `Asdamir.Tools` is published on **nuget.org** (currently `1.3.14`). Generated apps restore the framework
-**libraries** — `Asdamir.Core` (`1.3.0`) / `.Data` · `.Web` (`1.2.0`) — from nuget.org as well.
+**libraries** — `Asdamir.Core` · `.Web` (`1.3.0`) / `.Data` (`1.2.0`) — from nuget.org as well.
 
 ## Quick start
 

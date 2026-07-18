@@ -34,7 +34,7 @@ In `_Imports.razor`:
 | `BarcodeScanner` | Camera barcode scanning (Quagga) |
 | `OCR` | In-browser OCR (Tesseract) |
 | `SignaturePad` | Captures a signature image |
-| `JsonFilePicker` | Upload + parse JSON files |
+| `FilePicker` | General-purpose file picker: drop zone with native drag & drop (no JS interop), `Accept`/`MaxFileSize` gates, hands the `IBrowserFile` to the caller |
 | `Menu` | Navigation menu bound to the menu service |
 | `ErrorBoundaryEx` | Error boundary with friendly fallback |
 | `AuditTrail`, `ErrorMonitoring`, `Hangfire`, `Outbox`, `PermissionManager`, `Users`, … | Admin building blocks reused by the AdminConsole |
