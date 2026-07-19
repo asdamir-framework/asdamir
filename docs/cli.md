@@ -146,6 +146,21 @@ in again**. This closes a subtle gap: Data Protection keys persist outside the a
 (`~/.aspnet/DataProtection-Keys/`, keyed by `DataProtection:ApplicationName`), so without the registry a
 self-contained cookie would still decrypt after a re-create and land on the dashboard with no login.
 
+**Background-run infrastructure (BOTH modes, default-on, since 1.4.0).** Every generated app scaffolds the
+API-tier [background-run primitive](fundamentals/background-runs.md) — the reusable way to run a heavy
+operation off the request thread (**trigger → run in the background → poll status/progress**), so a long op
+(e.g. a large reconciliation, a bulk import) never blocks a request. `new app` wires it into the Gateway by
+default: `builder.Services.AddBackgroundRuns(builder.Configuration)` in `Program.cs`, a fail-closed
+tenant-scoped **status endpoint** `GET /background-runs/{id}` (`[Authorize]`; another tenant's run id returns
+404, never leaks), and the store migration `db/migrations/V*__background_runs.sql` into the app's **own**
+business DB (applied by `asdamir db apply`). It registers **no job handlers** — the runner idles until you
+add one. To use it, implement `Asdamir.Core.BackgroundRuns.IBackgroundJobHandler` (keyed by a `JobType`
+string; it can wrap an existing engine without changing its signature), register it in `Program.cs` with
+`builder.Services.AddBackgroundJob<MyJobHandler>()`, then enqueue from a controller via
+`IBackgroundRunService.EnqueueAsync(...)` and poll the status endpoint. Single-node today (see the
+[background-run fundamentals page](fundamentals/background-runs.md) for the HA caveat). Generated apps
+therefore pin **Asdamir.Core `1.4.0` / Data `1.3.0`** (the primitive's home).
+
 ### `asdamir new app`: billing
 
 `new app` takes an opt-in **`--billing`** flag (off by default). Without it a generated app is exactly as
@@ -322,6 +337,68 @@ dotnet run --project src/Asdamir.Tools -- audit lint --path AppManagement/src --
 
 Suppressions are deliberate and reviewable; prefer fixing the finding.
 
+## `audit localization` — the localization-completeness gate (AUD015)
+
+A whole class of "raw localization key shows on screen" bugs comes from a `L["X"]` in code whose key was
+never seeded — or seeded in fewer than all three cultures (`tr-TR`/`en-US`/`ru-RU`). It falls through
+silently to the raw key on the UI, and there is no compiler error for it. `audit localization` is the
+**static** gate that closes this (rule **AUD015**): it cross-checks every localization key **used** in
+`.razor`/`.cs` code against every key **seeded** in the tree.
+
+```bash
+dotnet run --project src/Asdamir.Tools -- audit localization --path src --min-severity warning
+dotnet run --project src/Asdamir.Tools -- audit localization --path . --format json
+```
+
+**What it collects.**
+
+- **Used keys** — `L["Key"]` and localizer indexers (`Localizer["Key"]` / `_localizer["Key"]` /
+  `localizer["Key"]`) in `.razor`/`.cs`.
+- **Seeded keys → cultures** — the SQL tuples `(N'Key', N'tr-TR', …)` in every `localize_*` / `register_*` /
+  `seed_*.sql` and any `.sql` under a `db/admin-onboarding/` or `db/migrations/` directory, **plus** the same
+  tuples and in-memory dictionary literals (`["Key"] = "…"`) in localization seed code (files whose path
+  contains `Localization`). An in-memory-seeded key counts as satisfying **all three** cultures — the
+  framework rule requires the in-memory seed to mirror the DB seed.
+
+**What it catches.**
+
+- A used static key with **no** seed anywhere → **ERROR** ("the raw key will render on screen").
+- A used static key seeded in **fewer than all three** cultures → **ERROR** (lists the missing cultures).
+- A **dynamic** key — `L[$"Prefix.{x}"]` or `L[variable]` — → **INFO** (never an error; the runtime
+  value-set can't be resolved statically). For an interpolation, the literal prefix is reported.
+
+Seeded-but-**unused** keys are intentionally *not* flagged (shared chrome like `Common.*` is broad). If the
+scan finds **no** seed sources under `--path` (a code-only folder — seeds live elsewhere), it prints a notice
+and exits `0` rather than reporting every used key as unseeded.
+
+Options mirror `audit lint`: `--path/-p`, `--min-severity/-s` (`info`|`warning`|`error`, default `warning` —
+AUD015 emits Info and Error only), `--format/-f` (`text`|`json`), `--include-tests`. Suppress a usage line
+with `// audit-lint:ignore AUD015`; skip a file with `audit-lint:skip-file`. Exit codes: `0` (clean, or no
+seed sources), `1` (findings), `2` (bad args).
+
+## `localization verify` — live apply-drift
+
+`audit localization` catches keys missing from the **seed files**. It cannot catch a key that *is* in a
+seed file but was **never applied** to the running database (someone forgot to `db apply`) — the seed looks
+correct in the repo, yet the raw key still renders live. `localization verify` closes that gap: it collects
+the `(key, culture)` pairs the tree's SQL seeds **define** (same parser as `audit localization`), queries the
+live `dbo.LocalizationResource` for the app, and **diffs** the two.
+
+```bash
+# Resolve the AppId from the app's Code:
+asdamir localization verify --path . --server localhost --database MyAppDb \
+  --user <login> --password <pwd> --app-code MyApp
+
+# …or pass the AppId directly, and a full connection string:
+asdamir localization verify --path . --connection "<connstr>" --app-id <guid>
+```
+
+Options: `--path/-p` (where the seed files are), the connection flags copied from `db apply`
+(`--connection/-c`, `--server/-S`, `--database/-d`, `--user/-U`, `--password/-P`), one of `--app-code` /
+`--app-id`, and `--format/-f`. A **live connection is required** (never a silent skip), as is one of
+`--app-code`/`--app-id`. It reports **unapplied** pairs (a seeded `(key, culture)` not present live — the
+drift you're hunting; apply the missing migration) and exits non-zero when any are found.
+
 ## `db apply`
 
 A small, **journaled** migration runner. It applies the `*.sql` scripts in a directory in filename
@@ -410,7 +487,7 @@ Options: `<Name>`, `--output`/`-o` (app root), `--gateway-dir`/`--server-dir` (o
 
 ### `rollback app`
 
-The **symmetric inverse of [`new app`](#asdamir-new-app)** — tears down a whole generated app, not just one
+The **symmetric inverse of [`new app`](#asdamir-new-app-free-vs-commercial-mode)** — tears down a whole generated app, not just one
 feature. Like the feature rollback it is **destructive** and **interactive by default**: it shows EXACTLY what
 will be removed (the full directory path + the server/database name + the vault app code) and asks `[y/N]`
 before touching anything. Works in **both** modes (detected from the app).

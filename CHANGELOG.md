@@ -5,14 +5,47 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data `1.2.0` / Web `1.3.0`** (the general-purpose `AsdamirFilePicker`), **`Asdamir.Payments 1.2.0`**, **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
-Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
-fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
+independently. Current published state (nuget.org): **Core `1.4.0`** · **Data `1.3.0`** · **Web `1.3.1`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.0`** (the Gateway background-run primitive + the localization-completeness gate — see the 1.4.0 entry below). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Unreleased]
+## [1.4.0 — Core 1.4.0 · Data 1.3.0 · Web 1.3.1 · Tools 1.4.0] — 2026-07-20
+
+### Added — Gateway background-run / progress primitive (Core 1.4.0 + Data 1.3.0)
+
+The reusable way to run a heavy operation off the request thread: **trigger → run in the background → poll
+status/progress**, so a long op (a large reconciliation, a bulk import) never blocks a request.
+`IBackgroundRunService` (enqueue → RunId; get status = state + progress + result ref + error summary) with an
+app-defined `IBackgroundJobHandler` (keyed by a `JobType` string — it can wrap an existing engine without
+changing its signature). Durable per-run state (survives a restart — a ghost "Running" is recovered to
+`Interrupted` at startup), throttled progress reporting (no per-row DB write), a default reject-duplicate
+concurrency policy, and a single-node HA note. Self-hosted `BackgroundService` + channel (no external broker).
+`AddBackgroundRuns()` + `AddBackgroundJob<T>()`. See [Background Runs](fundamentals/background-runs.md).
+
+### Added — generator wiring for the background-run primitive (Tools 1.4.0)
+
+`asdamir new app` (BOTH modes) now scaffolds the primitive by default: `AddBackgroundRuns` in the Gateway, a
+fail-closed tenant-scoped `GET /background-runs/{id}` status endpoint (another tenant's run id → 404), and the
+store migration into the app's own DB. No job handlers are registered — the runner idles until you add one.
+
+### Added — localization-completeness gate (Tools 1.4.0)
+
+- **`audit localization` (AUD015)** — a static gate that cross-checks every `L["…"]` used in `.razor`/`.cs`
+  against every seeded key; a key that is unseeded or seeded in fewer than all three cultures is a build
+  error (the raw key would otherwise render on screen). Dynamic `L[$"…{x}"]` keys are reported as INFO.
+- **`localization verify`** — diffs the seed files' `(key, culture)` pairs against the live database to catch
+  a key that is seeded but was never applied (apply-drift).
+
+### Changed — `ApiStringLocalizer` missing-key warning deduped (Web 1.3.1)
+
+The "localization key not found" warning now fires once per (cache-generation, culture, key) instead of on
+every resolution, so a missing key surfaces in the logs without flooding them.
+
+### Fixed — FeatureManager value-type fallback (Data 1.3.0, folds in the never-published Data 1.2.1)
+
+The Data `1.2.1` patch (FeatureManager value-type fallback fix) ships inside Data `1.3.0` — it was never
+published as a separate package.
 
 ## [Tools 1.3.15] — 2026-07-19
 
