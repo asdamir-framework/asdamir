@@ -79,6 +79,7 @@ nav:
       - Data Access: fundamentals/data-access.md
       - Configuration & Feature Flags: fundamentals/configuration.md
       - Background Jobs: fundamentals/background-jobs.md
+      - Background Runs: fundamentals/background-runs.md
       - Transactional Outbox: fundamentals/outbox.md
       - Localization: fundamentals/localization.md
       - Audit Logging: fundamentals/audit-logging.md
