@@ -1939,7 +1939,7 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>Asdamir.Tools
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">#   update later:  dotnet tool update -g Asdamir.Tools</span>
 </code></pre></div>
-<p><code>Asdamir.Tools</code> is published on <strong>nuget.org</strong> (currently <code>1.3.14</code>). Generated apps restore the framework
+<p><code>Asdamir.Tools</code> is published on <strong>nuget.org</strong> (currently <code>1.3.15</code>). Generated apps restore the framework
 <strong>libraries</strong> — <code>Asdamir.Core</code> · <code>.Web</code> (<code>1.3.0</code>) / <code>.Data</code> (<code>1.2.0</code>) — from nuget.org as well.</p>
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>Scaffold and run your own app end-to-end. This is the <strong>one canonical flow</strong> — the same everywhere.</p>
@@ -2101,23 +2101,18 @@ creates the database + applies every migration</strong> (reusing the <code>db ap
 <p><code>asdamir db apply</code> isn't going away — it's what you run over the app's lifetime (after <code>new entity</code>, when a
 teammate clones the repo, in CI, in prod). <code>new app</code> just runs it <strong>once</strong> for you at creation.</p>
 </blockquote>
-<p>The starter admin's email + one-time password are printed once by <code>new app</code>. That password is a <strong>bootstrap
-credential</strong>, so the app <strong>forces a change on first sign-in</strong>: the starter admin ships with a
-<code>ForcePasswordChange</code> flag, and login redirects to a <strong>change-password</strong> page instead of the dashboard until
-a new password is set.</p>
-<p><strong>First sign-in — forced password change (free mode).</strong></p>
-<ol>
-<li>Sign in with the starter admin's email + one-time password.</li>
-<li>The app detects the flag and sends you to <code>/change-password</code> (not the dashboard).</li>
-<li>Enter the current password + a new one. The change-password endpoint verifies the current password,
-   stores the new one, <strong>clears <code>ForcePasswordChange</code>, and revokes all existing sessions</strong> (so any other
-   session is signed out).</li>
-<li>You're returned to the sign-in page; sign in again with the <strong>new</strong> password — the flag is now clear, so
-   you land on the dashboard. Subsequent logins are normal (no redirect).</li>
-</ol>
-<p>(This is a free-mode flow — the starter admin lives in the app's own DB. Commercial-mode identity is managed
-in the control plane and is unaffected.) Add features exactly as in commercial mode with <code>asdamir new
-feature …</code> (see the free-mode note under it).</p>
+<p>The starter admin's email + password are printed once by <code>new app</code>. Since <strong>1.3.15</strong> there is <strong>no forced
+first-login change</strong> in any mode (product decision: no app forces it; every app <em>offers</em> it) — sign-in lands
+directly on the dashboard, and the printed starter password stays valid until you change it, so <strong>change it
+promptly</strong> via the profile menu.</p>
+<p><strong>Self-service password change (BOTH modes, since 1.3.15).</strong> Every generated app's top-right <strong>profile
+menu</strong> (avatar/name dropdown; sign-out lives there too) has a <strong>Change Password</strong> item → <code>/change-password</code>:
+current password + new + confirm. The page posts to the app's own Gateway at
+<code>gateway/auth/change-password</code> — <strong>free mode</strong> serves it locally from the app's own DB; <strong>commercial mode</strong>
+proxies it to AppManagement's <code>app-change-password</code> (the credential is central; failures come back as ONE
+opaque localized message so accounts can't be probed). On success <strong>every refresh token is revoked</strong> and the
+user is signed out to re-authenticate with the new password. Add features exactly as in commercial mode with
+<code>asdamir new feature …</code> (see the free-mode note under it).</p>
 <p><strong>Session lifetime — a restart (or a delete + re-create) ends every session.</strong> The generated Server ties
 each auth cookie to a <strong>server-side session registry</strong> (<code>Auth/AppUserSessionStore.cs</code>, an in-memory
 singleton): sign-in registers the session, sign-out removes it, and <code>OnValidatePrincipal</code> rejects any cookie
