@@ -9,4 +9,12 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
 
+  <!-- Targeted NuGet-audit suppression (NOT a blanket NoWarn): AngleSharp < 1.5.0 (transitive of bunit,
+       TEST projects only — never shipped) carries GHSA-pgww-w46g-26qg (mXSS). The patched AngleSharp
+       ≥ 1.5.0 is binary-incompatible with bunit 1.40.0, so this one advisory is suppressed until a bunit
+       v2 upgrade. Remove when bunit is upgraded. -->
+  <ItemGroup>
+    <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-pgww-w46g-26qg" />
+  </ItemGroup>
+
 </Project>

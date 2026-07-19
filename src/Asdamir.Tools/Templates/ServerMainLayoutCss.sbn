@@ -49,11 +49,33 @@
 .ham { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; color: #fff; background: var(--asd-accent); cursor: pointer; box-shadow: 0 4px 12px rgba(91, 110, 225, .35); }
 .ham:hover { background: var(--asd-accent-hover); }
 .spacer { flex: 1; }
-.user { display: flex; align-items: center; gap: 10px; padding-left: 6px; }
+/* ── Profile menu (native details/summary — no JS, keyboard accessible) ──── */
+.user-menu { position: relative; }
+.user-menu > summary { list-style: none; cursor: pointer; }
+.user-menu > summary::-webkit-details-marker { display: none; }
+.user-menu > summary:focus-visible { outline: 2px solid var(--asd-accent); outline-offset: 2px; border-radius: 9px; }
+.user { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 6px; border-radius: 9px; }
+.user:hover, .user-menu[open] .user { background: var(--asd-surface-muted); }
 .user-avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--asd-accent-soft); color: var(--asd-accent); font-weight: 700; font-size: 13px; }
 .user-name { font-weight: 600; font-size: 14px; color: var(--asd-ink); }
-.logout { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; color: var(--asd-ink-soft); }
-.logout:hover { background: var(--asd-surface-muted); color: var(--asd-accent); }
+.user-caret { color: var(--asd-ink-soft); transition: transform .12s ease; }
+.user-menu[open] .user-caret { transform: rotate(180deg); }
+/* The dropdown sits inside the sticky topbar's stacking context (z-index 20), so a modest own z-index
+   paints it above the page content. No select/combobox lives in here — the app.css layering rule for
+   fluent-select (z-index 100) is untouched. */
+.user-dropdown {
+    position: absolute; right: 0; top: calc(100% + 8px); min-width: 210px; z-index: 30;
+    display: flex; flex-direction: column; padding: 6px;
+    background: var(--asd-surface); border: 1px solid var(--asd-border-strong);
+    border-radius: 10px; box-shadow: 0 12px 32px rgba(20, 24, 48, .16);
+}
+.user-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px;
+    color: var(--asd-ink); font-size: 13px; font-weight: 500; text-decoration: none; white-space: nowrap;
+}
+.user-item:hover { background: var(--asd-surface-muted); color: var(--asd-accent); }
+.user-item svg { flex: 0 0 16px; color: var(--asd-ink-soft); }
+.user-item:hover svg { color: var(--asd-accent); }
 
 .page { flex: 1; overflow-y: auto; padding: 24px 26px; background: var(--asd-bg); }
 .foot { padding: 12px 26px; font-size: 12px; color: var(--asd-ink-soft); background: var(--asd-surface); border-top: 1px solid var(--asd-border); }

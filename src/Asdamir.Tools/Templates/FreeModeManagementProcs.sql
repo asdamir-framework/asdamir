@@ -104,18 +104,9 @@ BEGIN
 END
 GO
 
--- First-login / forced password change: read the flag so login can redirect to the change-password page.
-CREATE OR ALTER PROCEDURE [dbo].[User_GetForcePasswordChange]
-    @userId INT
-AS
-BEGIN
-    SET NOCOUNT ON;
-    SELECT ForcePasswordChange FROM dbo.Users WHERE Id = @userId;
-END
-GO
-
--- Change the password AND clear the ForcePasswordChange flag in one statement (the change-password
--- endpoint calls this after verifying the current password). PasswordHash is NVARCHAR(500) in the schema.
+-- Self-service password change (the profile menu's change-password endpoint calls this after verifying
+-- the current password). Also resets the legacy ForcePasswordChange bit — the forced first-login flow is
+-- gone (self-service is always available), but the column keeps a sane value. PasswordHash is NVARCHAR(500).
 CREATE OR ALTER PROCEDURE [dbo].[User_ChangePassword]
     @userId  INT,
     @newHash NVARCHAR(500)

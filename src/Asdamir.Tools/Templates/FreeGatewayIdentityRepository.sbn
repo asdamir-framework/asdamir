@@ -18,7 +18,6 @@ public interface IFreeIdentityRepository
     Task<DateTime?> GetLockedUntilUtcAsync(int userId, CancellationToken ct);
     Task IncrementFailedLoginAsync(int userId, int maxAttempts, int lockoutMinutes, CancellationToken ct);
     Task ResetFailedLoginsAsync(int userId, CancellationToken ct);
-    Task<bool> GetForcePasswordChangeAsync(int userId, CancellationToken ct);
     Task ChangePasswordAsync(int userId, string newHash, CancellationToken ct);
     Task RevokeAllRefreshTokensAsync(int userId, CancellationToken ct);
     Task<IReadOnlyList<string>> GetPermissionsAsync(int userId, CancellationToken ct);
@@ -76,18 +75,10 @@ public sealed class FreeIdentityRepository : IFreeIdentityRepository
             new { userId }, commandType: CommandType.StoredProcedure);
     }
 
-    public async Task<bool> GetForcePasswordChangeAsync(int userId, CancellationToken ct)
-    {
-        using var conn = await _factory.CreateAsync(ct);
-        // Drives the first-login redirect to the change-password page (login reads it on the issued session).
-        return await conn.ExecuteScalarAsync<bool>("dbo.User_GetForcePasswordChange",
-            new { userId }, commandType: CommandType.StoredProcedure);
-    }
-
     public async Task ChangePasswordAsync(int userId, string newHash, CancellationToken ct)
     {
         using var conn = await _factory.CreateAsync(ct);
-        // Sets the new PBKDF2 hash AND clears ForcePasswordChange in one statement.
+        // Sets the new PBKDF2 hash (User_ChangePassword also resets the legacy ForcePasswordChange bit).
         await conn.ExecuteAsync("dbo.User_ChangePassword",
             new { userId, newHash }, commandType: CommandType.StoredProcedure);
     }

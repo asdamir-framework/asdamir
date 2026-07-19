@@ -37,11 +37,12 @@ SELECT @RoleId, p.Id FROM dbo.Permissions p
 
 -- 3) Starter admin user (PBKDF2 hash from the scaffolder). The free login gate is "user exists + active",
 --    so IsActive = 1 is what lets this account sign in (there is no per-app UserAppRoles grant in free).
--- ForcePasswordChange = 1: the printed starter password is a bootstrap credential, so the app forces a
--- change on first sign-in (the change-password endpoint clears the flag). See FreeModeManagementSchema.sql.
+-- ForcePasswordChange = 0: NO forced first-login flow (product decision — no app forces it; every app
+-- offers self-service change-password from the profile menu instead). Trade-off, accepted: the printed
+-- starter password stays valid until the operator changes it — change it promptly after first sign-in.
 IF NOT EXISTS (SELECT 1 FROM dbo.Users WHERE Email = N'{{ AdminEmail }}')
     INSERT INTO dbo.Users (Email, Name, PasswordHash, IsActive, IsTwoFactorEnabled, ForcePasswordChange)
-    VALUES (N'{{ AdminEmail }}', N'Administrator', N'{{ AdminPasswordHash }}', 1, 0, 1);
+    VALUES (N'{{ AdminEmail }}', N'Administrator', N'{{ AdminPasswordHash }}', 1, 0, 0);
 DECLARE @UserId INT = (SELECT Id FROM dbo.Users WHERE Email = N'{{ AdminEmail }}');
 
 -- 4) Link the admin to the Admin role (no UserAppRoles matrix in free — one app, one tenant).
@@ -169,12 +170,9 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'App.ChangePw.Title',           N'tr-TR', N'Şifre değiştir'),
     (N'App.ChangePw.Title',           N'en-US', N'Change password'),
     (N'App.ChangePw.Title',           N'ru-RU', N'Смена пароля'),
-    (N'App.ChangePw.Subtitle',        N'tr-TR', N'Devam etmek için yeni bir şifre belirleyin'),
-    (N'App.ChangePw.Subtitle',        N'en-US', N'Set a new password to continue'),
-    (N'App.ChangePw.Subtitle',        N'ru-RU', N'Задайте новый пароль, чтобы продолжить'),
-    (N'App.ChangePw.ForcedHint',      N'tr-TR', N'İlk girişinizde geçici şifrenizi değiştirmeniz gerekir.'),
-    (N'App.ChangePw.ForcedHint',      N'en-US', N'You must change your temporary password on first sign-in.'),
-    (N'App.ChangePw.ForcedHint',      N'ru-RU', N'При первом входе необходимо сменить временный пароль.'),
+    (N'App.ChangePw.Subtitle',        N'tr-TR', N'Hesabınız için yeni bir şifre belirleyin'),
+    (N'App.ChangePw.Subtitle',        N'en-US', N'Set a new password for your account'),
+    (N'App.ChangePw.Subtitle',        N'ru-RU', N'Задайте новый пароль для вашей учётной записи'),
     (N'App.ChangePw.ShowHide',        N'tr-TR', N'Şifreyi göster / gizle'),
     (N'App.ChangePw.ShowHide',        N'en-US', N'Show / hide password'),
     (N'App.ChangePw.ShowHide',        N'ru-RU', N'Показать / скрыть пароль'),
@@ -199,9 +197,9 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'App.ChangePw.WrongCurrent',    N'tr-TR', N'Mevcut şifre hatalı.'),
     (N'App.ChangePw.WrongCurrent',    N'en-US', N'The current password is incorrect.'),
     (N'App.ChangePw.WrongCurrent',    N'ru-RU', N'Текущий пароль неверен.'),
-    (N'App.ChangePw.Failed',          N'tr-TR', N'Şifre değiştirilemedi. Lütfen tekrar deneyin.'),
-    (N'App.ChangePw.Failed',          N'en-US', N'Could not change the password. Please try again.'),
-    (N'App.ChangePw.Failed',          N'ru-RU', N'Не удалось сменить пароль. Попробуйте снова.'),
+    (N'App.ChangePw.Done',            N'tr-TR', N'Şifreniz değiştirildi. Yeni şifrenizle giriş yapın.'),
+    (N'App.ChangePw.Done',            N'en-US', N'Your password has been changed. Sign in with your new password.'),
+    (N'App.ChangePw.Done',            N'ru-RU', N'Пароль изменён. Войдите с новым паролем.'),
     (N'App.Shell.Menu',               N'tr-TR', N'Menü'),
     (N'App.Shell.Menu',               N'en-US', N'Menu'),
     (N'App.Shell.Menu',               N'ru-RU', N'Меню'),
@@ -211,6 +209,12 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'App.Shell.SignOut',            N'tr-TR', N'Çıkış'),
     (N'App.Shell.SignOut',            N'en-US', N'Sign out'),
     (N'App.Shell.SignOut',            N'ru-RU', N'Выйти'),
+    (N'App.Shell.UserMenu',           N'tr-TR', N'Kullanıcı menüsü'),
+    (N'App.Shell.UserMenu',           N'en-US', N'User menu'),
+    (N'App.Shell.UserMenu',           N'ru-RU', N'Меню пользователя'),
+    (N'App.Shell.ChangePassword',     N'tr-TR', N'Şifre Değiştir'),
+    (N'App.Shell.ChangePassword',     N'en-US', N'Change Password'),
+    (N'App.Shell.ChangePassword',     N'ru-RU', N'Сменить пароль'),
     (N'App.Nav.Dashboard',            N'tr-TR', N'Panel'),
     (N'App.Nav.Dashboard',            N'en-US', N'Dashboard'),
     (N'App.Nav.Dashboard',            N'ru-RU', N'Панель'),

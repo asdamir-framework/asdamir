@@ -57,6 +57,10 @@
         // Kept HERE, in the single nonced inline block, so no page ships its own <script> — the strict CSP
         // (script-src 'self' 'nonce-…') blocks any un-nonced inline script.
         document.addEventListener('click', function (e) {
+            // .pw-toggle (login page) uses the sibling-input toggle — delegated here because the strict
+            // CSP blocks inline onclick= handlers (the old onclick="asdTogglePw(this)" silently no-opped).
+            var t = e.target.closest('.pw-toggle');
+            if (t) { window.asdTogglePw(t); return; }
             var btn = e.target.closest('.pw-eye');
             if (!btn) return;
             var input = document.getElementById(btn.getAttribute('data-pwtoggle'));

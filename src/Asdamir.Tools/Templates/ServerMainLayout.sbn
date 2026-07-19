@@ -28,13 +28,26 @@
                     <DarkModeToggle />
                     <ThemeSelector />
                     <LanguageSelector />
-                    <div class="user">
-                        <div class="user-avatar">@Initials(context.User.Identity?.Name)</div>
-                        <span class="user-name">@context.User.Identity?.Name</span>
-                    </div>
-                    <a class="logout" href="/logout" title="@(L["App.Shell.SignOut"].Value)">
-                        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 17l5-5-5-5M21 12H9M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/></svg>
-                    </a>
+                    @* Profile menu — native <details>/<summary>: no JS, keyboard accessible (Enter/Space
+                       toggles, links tab-navigable), and every item navigation is a full SSR page load,
+                       which closes the menu. Sign-out lives inside the menu (no standalone icon). *@
+                    <details class="user-menu">
+                        <summary class="user" title="@(L["App.Shell.UserMenu"].Value)">
+                            <div class="user-avatar">@Initials(context.User.Identity?.Name)</div>
+                            <span class="user-name">@context.User.Identity?.Name</span>
+                            <svg class="user-caret" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 9l6 6 6-6"/></svg>
+                        </summary>
+                        <nav class="user-dropdown" aria-label="@(L["App.Shell.UserMenu"].Value)">
+                            <a class="user-item change-password" href="/change-password">
+                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.4" fill="currentColor" stroke="none"/></svg>
+                                <span>@L["App.Shell.ChangePassword"]</span>
+                            </a>
+                            <a class="user-item logout" href="/logout">
+                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 17l5-5-5-5M21 12H9M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/></svg>
+                                <span>@L["App.Shell.SignOut"]</span>
+                            </a>
+                        </nav>
+                    </details>
                 </header>
 
                 <main class="page">

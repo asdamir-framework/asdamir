@@ -31,6 +31,11 @@
     background: rgba(217, 83, 79, .1); border: 1px solid rgba(217, 83, 79, .35);
     color: #c44542; border-radius: var(--asd-radius-sm, 8px); padding: 10px 12px; font-size: .85rem;
 }
+/* Success note (e.g. "password changed — sign in with your new password"). */
+.login-ok {
+    background: rgba(92, 184, 92, .12); border: 1px solid rgba(92, 184, 92, .4);
+    color: #3d8b3d; border-radius: var(--asd-radius-sm, 8px); padding: 10px 12px; font-size: .85rem;
+}
 .login-field { display: flex; flex-direction: column; gap: 6px; }
 .login-field label { font-size: .8rem; font-weight: 600; color: var(--asd-ink, #1e2230); }
 .login-field ::deep input {

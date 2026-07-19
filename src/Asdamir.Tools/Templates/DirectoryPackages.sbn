@@ -70,6 +70,9 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.1" />
     <PackageVersion Include="FluentAssertions" Version="7.0.0" />
     <PackageVersion Include="bunit" Version="1.40.0" />
+    <!-- NU1902 note: bunit 1.40.0 pulls AngleSharp < 1.5.0 (GHSA-pgww-w46g-26qg, mXSS — test-only, never
+         shipped). The patched AngleSharp ≥ 1.5.0 breaks bunit 1.x binarily, so the advisory is suppressed
+         via NuGetAuditSuppress in Directory.Build.props until a bunit v2 upgrade. -->
     <PackageVersion Include="coverlet.collector" Version="6.0.2" />
   </ItemGroup>
 

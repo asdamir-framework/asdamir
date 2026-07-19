@@ -6,13 +6,42 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
 independently. Current published state (nuget.org): **Core `1.3.0`** (the `Jwt:ConsoleAudience` boundary),
-**Data `1.2.0` / Web `1.3.0`** (the general-purpose `AsdamirFilePicker`), **`Asdamir.Payments 1.2.0`**, **Tools `1.3.14`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
-Gateway dev user-secrets + creates the DB + applies migrations). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
+**Data `1.2.0` / Web `1.3.0`** (the general-purpose `AsdamirFilePicker`), **`Asdamir.Payments 1.2.0`**, **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). **Pending publish: Data `1.2.1`** (the FeatureManager value-type
 fallback fix; Core stays `1.3.0`, Web/Payments stay `1.2.0`).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
 ## [Unreleased]
+
+## [Tools 1.3.15] — 2026-07-19
+
+### Added — generated apps: profile menu + self-service password change (BOTH modes)
+
+- **Profile menu (topbar):** every generated app's `MainLayout` now renders the avatar/name as a native
+  `<details>/<summary>` dropdown (no JS, keyboard accessible, CSP-clean) with **Change Password**
+  (→ `/change-password`) and **Sign out** (moved inside the menu — no standalone logout icon). New localized
+  keys `App.Shell.UserMenu` / `App.Shell.ChangePassword` seeded in both models (tr/en/ru).
+- **Self-service `/change-password` page in BOTH modes** (previously free-only and forced): a neutral
+  current + new + confirm card rendered inside the app shell (`current-password`/`new-password`
+  autocomplete). Both modes post to the SAME route, **`gateway/auth/change-password`** — the free Gateway
+  serves it locally (unchanged endpoint), the commercial Gateway gains a **new proxy** to AppManagement's
+  `app-change-password` (appCode injected exactly like the login proxy; failures surface the engine's ONE
+  opaque localized ProblemDetails via `ToUserMessageAsync`). On success every refresh token is revoked
+  server-side, so the page signs the user out and returns to login with a localized success note
+  (`App.ChangePw.Done`).
+
+### Removed — the forced first-login password-change flow (free mode)
+
+- Product decision (Orhan): **no app forces a first-login password change; every app offers self-service
+  instead.** The login redirect (`MustChangePassword`), the `AppLoginResponse` flag, the
+  `User_GetForcePasswordChange` proc + repository read and the `ForcedHint` copy are gone; the free seed now
+  creates the starter admin with `ForcePasswordChange = 0` (the column stays, defaulted off, and
+  `User_ChangePassword` still resets it).
+- **Trade-off, accepted:** the printed starter/bootstrap password now stays valid until the operator changes
+  it — change it promptly via the profile menu (the docs say so explicitly).
+- E2E updated: the free-app slice now walks login → **direct dashboard** → profile menu → self-service
+  change → revoked sessions → re-login with the new password.
 
 ## [Web 1.3.0] — 2026-07-18
 

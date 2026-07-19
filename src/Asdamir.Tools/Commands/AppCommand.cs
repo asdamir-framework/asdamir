@@ -319,6 +319,11 @@ public static class AppCommand
             ($"src/{serverProject}/Components/Pages/Login.razor.css",     "ServerLoginPageCss"),
             ($"src/{serverProject}/Components/Pages/ForgotPassword.razor",     "ServerForgotPasswordPage"),
             ($"src/{serverProject}/Components/Pages/ForgotPassword.razor.css", "ServerForgotPasswordPageCss"),
+            // Self-service change-password (profile menu → /change-password), BOTH modes: free posts to
+            // the Gateway's LOCAL endpoint; commercial to the Gateway proxy → AppManagement's
+            // app-change-password. Never forced — there is no first-login redirect in any mode.
+            ($"src/{serverProject}/Components/Pages/ChangePassword.razor",     "ServerChangePasswordPage"),
+            ($"src/{serverProject}/Components/Pages/ChangePassword.razor.css", "ServerChangePasswordPageCss"),
             ($"src/{serverProject}/Components/Pages/AccessDenied.razor",  "ServerAccessDeniedPage"),
             ($"src/{serverProject}/Auth/AuthEndpoints.cs",                "ServerAuthEndpoints"),
             ($"src/{serverProject}/Auth/AppUserSessionStore.cs",          "ServerAppUserSessionStore"),
@@ -396,11 +401,6 @@ public static class AppCommand
             // messages (error.<code>); without it every error falls back to the generic English string.
             written += WriteRendered(appRoot, $"src/{gatewayProject}/Auth/FreeLocalizationService.cs", "FreeGatewayLocalizationService", model);
             written += WriteRendered(appRoot, $"src/{gatewayProject}/Controllers/ClientSettingsController.cs", "FreeGatewayClientSettingsController", model);
-            // First-login / forced change-password page (self-contained auth). Reached via the login redirect
-            // when the user's ForcePasswordChange flag is set; posts to the Gateway's change-password endpoint.
-            // Commercial mode has no local change-password flow (identity is central), so this is free-only.
-            written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/ChangePassword.razor", "ServerChangePasswordPage", model);
-            written += WriteRendered(appRoot, $"src/{serverProject}/Components/Pages/ChangePassword.razor.css", "ServerChangePasswordPageCss", model);
         }
         else
         {

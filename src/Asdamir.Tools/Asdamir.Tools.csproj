@@ -40,8 +40,15 @@
          restart script. Not printed on no-db.
          1.3.14 (PATCH): generated SQL now [bracket]-quotes every table + column identifier, so a field
          named after a T-SQL reserved word (RowCount, Order, User, Group, Key, …) still produces valid SQL;
-         the generated run-tests.sh excludes Category=Integration/E2E from the fast default run. -->
-    <Version>1.3.14</Version>
+         the generated run-tests.sh excludes Category=Integration/E2E from the fast default run.
+         1.3.15 (MINOR): every generated app gets a profile menu (top-right avatar dropdown) with a
+         self-service Change Password page + Sign Out; the change-password page is emitted in BOTH modes
+         (commercial proxies gateway/auth/change-password to AppManagement app-change-password; free is
+         local). The forced first-login password-change flow is REMOVED (no forced flow anywhere). Also:
+         the login eye-toggle inline onclick moved to the delegated nonced listener (the enforced CSP
+         had made it a silent no-op).
+    -->
+    <Version>1.3.15</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

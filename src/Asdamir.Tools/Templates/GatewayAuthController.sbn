@@ -10,6 +10,10 @@ public sealed record LoginRequest([Required, EmailAddress] string Email, [Requir
 public sealed record TwoFactorVerifyRequest([Required] string TwoFactorToken, [Required] string Code);
 public sealed record ForgotPasswordRequest([Required, EmailAddress] string Email);
 public sealed record RefreshRequest([Required] string RefreshToken);
+public sealed record ChangePasswordRequest(
+    [Required, EmailAddress] string Email,
+    [Required] string CurrentPassword,
+    [Required, MinLength(8)] string NewPassword);
 
 /// <summary>
 /// Auth for this app — the login UI is local (no SSO redirect) but identity is CENTRAL:
@@ -57,6 +61,16 @@ public sealed class AuthController : ControllerBase
     public Task<IActionResult> Refresh([FromBody] RefreshRequest req, CancellationToken ct)
         => ProxyAsync("api/admin/auth/app-refresh",
             new { refreshToken = req.RefreshToken, appCode = AppCode }, ct);
+
+    // Self-service password change (the profile menu's page posts here). The credential is CENTRAL, so
+    // this proxies to AppManagement's app-change-password with the appCode injected — the same pattern as
+    // login. Anonymous by design (like app-login: the CURRENT password IS the authentication); failures
+    // come back as ONE opaque localized ProblemDetails (error.auth.change_password_invalid), and success
+    // revokes every refresh token centrally.
+    [HttpPost("change-password")]
+    public Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req, CancellationToken ct)
+        => ProxyAsync("api/admin/auth/app-change-password",
+            new { email = req.Email, currentPassword = req.CurrentPassword, newPassword = req.NewPassword, appCode = AppCode }, ct);
 
     // Identity (and thus password reset) is central — forward to AppManagement, which always answers
     // generically so callers can't probe which emails exist.

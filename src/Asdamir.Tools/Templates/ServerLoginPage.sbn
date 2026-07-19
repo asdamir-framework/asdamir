@@ -24,6 +24,12 @@
             <p class="login-sub">@L["App.Login.Subtitle"]</p>
         </div>
 
+        @if (PasswordChanged == "1")
+        {
+            @* Landed here from the self-service change-password flow: every session was revoked. *@
+            <div class="login-ok" role="status">@L["App.ChangePw.Done"]</div>
+        }
+
         @if (!string.IsNullOrEmpty(_error))
         {
             <div class="login-error" role="alert">@_error</div>
@@ -42,8 +48,7 @@
                     <div class="login-pw">
                         <InputText id="password" type="password" @bind-Value="Credentials!.Password" autocomplete="current-password" />
                         <button type="button" class="pw-toggle" tabindex="-1" aria-pressed="false"
-                                aria-label="@L["App.Login.ShowPassword"]" title="@L["App.Login.ShowPassword"]"
-                                onclick="asdTogglePw(this)">
+                                aria-label="@L["App.Login.ShowPassword"]" title="@L["App.Login.ShowPassword"]">
                             <svg class="ic-eye" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3.2"/></svg>
                             <svg class="ic-eye-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 10.6a3.2 3.2 0 0 0 4.5 4.5M9.9 5.2A10 10 0 0 1 12 5c7 0 10.5 7 10.5 7a18 18 0 0 1-3.3 4.2M6.1 6.1A18 18 0 0 0 1 12s4 7 11 7a10 10 0 0 0 2.1-.2"/></svg>
                         </button>
@@ -77,6 +82,10 @@
 
     [SupplyParameterFromForm(FormName = "twofactor")]
     public TwoFactorModel? TwoFactor { get; set; }
+
+    /// <summary>Set to "1" by the change-password page's redirect — shows the success note once.</summary>
+    [SupplyParameterFromQuery(Name = "changed")]
+    public string? PasswordChanged { get; set; }
 
     private string? _error;
     private bool _awaitingTwoFactor;
@@ -150,11 +159,6 @@
         {
             HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, IsEssential = true, Expires = jwt.ValidTo,
         });
-{{ if IsFreeMode ~}}
-        // Free mode: a first-login / admin-forced password change redirects to the change-password page
-        // instead of the dashboard (the flag is cleared server-side once the new password is set).
-        if (body.MustChangePassword) { Nav.NavigateTo("/change-password", forceLoad: true); return; }
-{{ end ~}}
         Nav.NavigateTo("/", forceLoad: true);
     }
 
@@ -171,5 +175,5 @@
     }
 
     public sealed record TokenPair(string AccessToken, string RefreshToken, DateTime ExpiresAtUtc, DateTime RefreshExpiresAtUtc);
-    public sealed record LoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenPair? Tokens{{ if IsFreeMode }}, bool MustChangePassword = false{{ end }});
+    public sealed record LoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenPair? Tokens);
 }

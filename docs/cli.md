@@ -15,7 +15,7 @@ dotnet tool install -g Asdamir.Tools
 #   update later:  dotnet tool update -g Asdamir.Tools
 ```
 
-`Asdamir.Tools` is published on **nuget.org** (currently `1.3.14`). Generated apps restore the framework
+`Asdamir.Tools` is published on **nuget.org** (currently `1.3.15`). Generated apps restore the framework
 **libraries** — `Asdamir.Core` · `.Web` (`1.3.0`) / `.Data` (`1.2.0`) — from nuget.org as well.
 
 ## Quick start
@@ -123,24 +123,19 @@ cd MyApp && ./restart-myapp.sh             # starts both tiers → open the Serv
 > `asdamir db apply` isn't going away — it's what you run over the app's lifetime (after `new entity`, when a
 > teammate clones the repo, in CI, in prod). `new app` just runs it **once** for you at creation.
 
-The starter admin's email + one-time password are printed once by `new app`. That password is a **bootstrap
-credential**, so the app **forces a change on first sign-in**: the starter admin ships with a
-`ForcePasswordChange` flag, and login redirects to a **change-password** page instead of the dashboard until
-a new password is set.
+The starter admin's email + password are printed once by `new app`. Since **1.3.15** there is **no forced
+first-login change** in any mode (product decision: no app forces it; every app *offers* it) — sign-in lands
+directly on the dashboard, and the printed starter password stays valid until you change it, so **change it
+promptly** via the profile menu.
 
-**First sign-in — forced password change (free mode).**
-
-1. Sign in with the starter admin's email + one-time password.
-2. The app detects the flag and sends you to `/change-password` (not the dashboard).
-3. Enter the current password + a new one. The change-password endpoint verifies the current password,
-   stores the new one, **clears `ForcePasswordChange`, and revokes all existing sessions** (so any other
-   session is signed out).
-4. You're returned to the sign-in page; sign in again with the **new** password — the flag is now clear, so
-   you land on the dashboard. Subsequent logins are normal (no redirect).
-
-(This is a free-mode flow — the starter admin lives in the app's own DB. Commercial-mode identity is managed
-in the control plane and is unaffected.) Add features exactly as in commercial mode with `asdamir new
-feature …` (see the free-mode note under it).
+**Self-service password change (BOTH modes, since 1.3.15).** Every generated app's top-right **profile
+menu** (avatar/name dropdown; sign-out lives there too) has a **Change Password** item → `/change-password`:
+current password + new + confirm. The page posts to the app's own Gateway at
+`gateway/auth/change-password` — **free mode** serves it locally from the app's own DB; **commercial mode**
+proxies it to AppManagement's `app-change-password` (the credential is central; failures come back as ONE
+opaque localized message so accounts can't be probed). On success **every refresh token is revoked** and the
+user is signed out to re-authenticate with the new password. Add features exactly as in commercial mode with
+`asdamir new feature …` (see the free-mode note under it).
 
 **Session lifetime — a restart (or a delete + re-create) ends every session.** The generated Server ties
 each auth cookie to a **server-side session registry** (`Auth/AppUserSessionStore.cs`, an in-memory

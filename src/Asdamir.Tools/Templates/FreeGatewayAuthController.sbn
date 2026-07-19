@@ -26,9 +26,7 @@ public sealed record RefreshRequest([Required] string RefreshToken);
 public sealed record ChangePasswordRequest([Required] string CurrentPassword, [Required, MinLength(8)] string NewPassword);
 
 public sealed record AppProfileDto(int Id, string Email, string Name, string AppCode, IReadOnlyList<string> Permissions);
-// MustChangePassword: true when the signed-in user still carries the first-login/forced flag — the UI
-// redirects to the change-password page instead of the dashboard until they set a new password.
-public sealed record AppLoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenResponseDto? Tokens, AppProfileDto? User, bool MustChangePassword = false);
+public sealed record AppLoginResponse(bool RequiresTwoFactor, string? TwoFactorToken, TokenResponseDto? Tokens, AppProfileDto? User);
 
 /// <summary>
 /// Local auth for this free-mode app. Login verifies credentials against the app's own DB and mints a JWT
@@ -165,10 +163,10 @@ public sealed class AuthController : ControllerBase
         return Ok(new { message = "If an account exists for that email, reset instructions have been sent." });
     }
 
-    // Change the signed-in user's password. NOT [AllowAnonymous] — the Gateway's FallbackPolicy requires an
-    // authenticated caller, so this runs only under the user's own bearer token (the first-login/forced flow
-    // redirects here). Verifies the current password with the SAME audited PBKDF2 primitive as login, writes
-    // the new hash + clears ForcePasswordChange, then revokes every refresh token (invalidates other sessions).
+    // Change the signed-in user's password (self-service — the profile menu's change-password page posts
+    // here). NOT [AllowAnonymous] — the Gateway's FallbackPolicy requires an authenticated caller, so this
+    // runs only under the user's own bearer token. Verifies the current password with the SAME audited
+    // PBKDF2 primitive as login, writes the new hash, then revokes every refresh token (other sessions die).
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest req, CancellationToken ct)
     {
@@ -188,7 +186,7 @@ public sealed class AuthController : ControllerBase
         var newHash = _crypto.HashPassword(req.NewPassword);
         await _identity.ChangePasswordAsync(userId, newHash, ct);
         await _identity.RevokeAllRefreshTokensAsync(userId, ct);
-        _logger.LogInformation("Password changed for user {UserId}; ForcePasswordChange cleared", userId);
+        _logger.LogInformation("Password changed for user {UserId}; all refresh tokens revoked", userId);
         return Ok(new { message = "Password changed" });
     }
 
@@ -206,10 +204,8 @@ public sealed class AuthController : ControllerBase
         await _identity.CreateRefreshTokenAsync(user.Id, HashToken(tokens.RefreshToken), tokens.RefreshExpiresAtUtc, ct);
         _logger.LogInformation("Local login ok: user {UserId} -> app {AppCode}", user.Id, AppCode);
 
-        // First-login / forced flag → the UI redirects to the change-password page instead of the dashboard.
-        var mustChange = await _identity.GetForcePasswordChangeAsync(user.Id, ct);
         return new AppLoginResponse(false, null, tokens,
-            new AppProfileDto(user.Id, user.Email, user.Name, AppCode, perms), mustChange);
+            new AppProfileDto(user.Id, user.Email, user.Name, AppCode, perms));
     }
 
     internal static string HashToken(string token)
