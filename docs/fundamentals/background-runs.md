@@ -63,9 +63,32 @@ public enum BackgroundRunState { Pending, Running, Completed, Failed, Interrupte
 public interface IBackgroundJobHandler   // the app-supplied job BODY
 {
     string JobType { get; }
-    Task<string?> ExecuteAsync(string? payload, IProgressReporter progress, CancellationToken ct);
+    Task<string?> ExecuteAsync(BackgroundRunContext context);   // one context, not loose params
 }
+
+public sealed record BackgroundRunContext(   // everything the runner knows about the run
+    Guid RunId, string TenantId, string? Payload,
+    IProgressReporter Progress, CancellationToken CancellationToken);
 ```
+
+### Run context
+
+The handler receives ONE `BackgroundRunContext` rather than loose parameters, so future fields extend the
+context without another signature break:
+
+| Field | Meaning |
+| ----- | ------- |
+| `RunId` | The store record's run id — **identical** to the value `EnqueueAsync` returned and `GetStatusAsync(runId).RunId` reports. |
+| `TenantId` | The run's tenant; the runner has already re-established ambient tenant scope from it. |
+| `Payload` | The opaque input from `BackgroundRunRequest.Payload` (typically JSON), or `null`. |
+| `Progress` | The cheap, throttled progress sink (call `Report(done, total)` per unit of work). |
+| `CancellationToken` | Cooperative cancellation for shutdown / abort — honour it. |
+
+**`RunId` is the two-way back-link.** Because `context.RunId` is the same id the caller holds, the handler
+can persist it on its own business record (e.g. a domain "run" row) so traceability goes **both ways** — the
+framework's `BackgroundRuns` row points at nothing app-specific, but the app row points back at the run,
+closing the audit / maker-checker loop. A forward-reference-only design (before the context) could not do
+this: the handler never saw its own RunId.
 
 A controller triggers and polls:
 
@@ -143,11 +166,12 @@ public sealed class ReconciliationJobHandler(IReconciliationEngine engine) : IBa
 {
     public string JobType => "reconciliation";
 
-    public async Task<string?> ExecuteAsync(string? payload, IProgressReporter progress, CancellationToken ct)
+    public async Task<string?> ExecuteAsync(BackgroundRunContext context)
     {
-        var req = JsonSerializer.Deserialize<ReconRequest>(payload!)!;             // decode app input
-        var result = await engine.RunAsync(req, onProgress: (done, total) =>       // signature UNCHANGED
-            progress.Report(done, total), ct);                                     // just forward progress
+        var req = JsonSerializer.Deserialize<ReconRequest>(context.Payload!)!;     // decode app input
+        req.BackgroundRunId = context.RunId;                                       // back-link: my record -> the run row
+        var result = await engine.RunAsync(req, onProgress: (done, total) =>       // engine signature UNCHANGED
+            context.Progress.Report(done, total), context.CancellationToken);      // just forward progress
         return result.ReportId.ToString();                                         // stored as ResultRef
     }
 }

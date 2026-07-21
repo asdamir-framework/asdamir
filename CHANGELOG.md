@@ -5,10 +5,36 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.4.0`** · **Data `1.3.0`** · **Web `1.3.1`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.0`** (the Gateway background-run primitive + the localization-completeness gate — see the 1.4.0 entry below). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.5.0`** · **Data `1.3.1`** · **Web `1.3.1`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.0`** (the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [1.5.0 — Core 1.5.0 · Data 1.3.1] — 2026-07-21
+
+### Changed — BREAKING (`Asdamir.Core 1.5.0`): background-run handler takes a run context
+
+`IBackgroundJobHandler.ExecuteAsync` now takes a single **`BackgroundRunContext`** instead of the loose
+`(string? payload, IProgressReporter progress, CancellationToken ct)`:
+
+```csharp
+Task<string?> ExecuteAsync(BackgroundRunContext context);   // was (payload, progress, ct)
+```
+
+`BackgroundRunContext` (`Asdamir.Core.BackgroundRuns`, a `sealed record`) carries everything the runner
+already knows about the run in ONE object — `RunId`, `TenantId`, `Payload`, `Progress`, `CancellationToken` —
+so future additions extend the context without another signature break (no loose-params + context mix).
+
+- **Why:** the old signature gave the handler **no RunId**, so a job body could not write a back-link from
+  its own business record to the framework's `BackgroundRuns` row — two-way audit traceability was
+  impossible. `context.RunId` is now the same value `EnqueueAsync` returned and `GetStatusAsync(runId).RunId`
+  reports.
+- **Migration:** replace `ExecuteAsync(payload, progress, ct)` with `ExecuteAsync(context)` and read
+  `context.Payload` / `context.Progress` / `context.CancellationToken`; use `context.RunId` for the back-link.
+  The API is fresh (published `1.4.0`), so there is **no `[Obsolete]` bridge** — a coordinated bump.
+- **`Asdamir.Data 1.3.1`** (patch): the hosted runner builds the context and calls `ExecuteAsync(context)`;
+  its own public surface is unchanged. Web / Payments / Tools unchanged (the `new app` template emits no
+  handler body, so generated apps are unaffected).
 
 ## [1.4.0 — Core 1.4.0 · Data 1.3.0 · Web 1.3.1 · Tools 1.4.0] — 2026-07-20
 
