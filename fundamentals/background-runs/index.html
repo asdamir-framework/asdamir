@@ -947,6 +947,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The API surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run context
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1623,6 +1640,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="The API surface">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#run-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run context
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1772,9 +1806,51 @@ the <code>BackgroundRuns</code> configuration section (DB-backed <code>AppConfig
 <a id="__codelineno-1-17" name="__codelineno-1-17" href="#__codelineno-1-17"></a><span class="k">public</span><span class="w"> </span><span class="k">interface</span><span class="w"> </span><span class="n">IBackgroundJobHandler</span><span class="w">   </span><span class="c1">// the app-supplied job BODY</span>
 <a id="__codelineno-1-18" name="__codelineno-1-18" href="#__codelineno-1-18"></a><span class="p">{</span>
 <a id="__codelineno-1-19" name="__codelineno-1-19" href="#__codelineno-1-19"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="n">JobType</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">get</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
-<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string?</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ExecuteAsync</span><span class="p">(</span><span class="kt">string?</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">IProgressReporter</span><span class="w"> </span><span class="n">progress</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">ct</span><span class="p">);</span>
+<a id="__codelineno-1-20" name="__codelineno-1-20" href="#__codelineno-1-20"></a><span class="w">    </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string?</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ExecuteAsync</span><span class="p">(</span><span class="n">BackgroundRunContext</span><span class="w"> </span><span class="n">context</span><span class="p">);</span><span class="w">   </span><span class="c1">// one context, not loose params</span>
 <a id="__codelineno-1-21" name="__codelineno-1-21" href="#__codelineno-1-21"></a><span class="p">}</span>
+<a id="__codelineno-1-22" name="__codelineno-1-22" href="#__codelineno-1-22"></a>
+<a id="__codelineno-1-23" name="__codelineno-1-23" href="#__codelineno-1-23"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">record</span><span class="w"> </span><span class="nf">BackgroundRunContext</span><span class="p">(</span><span class="w">   </span><span class="c1">// everything the runner knows about the run</span>
+<a id="__codelineno-1-24" name="__codelineno-1-24" href="#__codelineno-1-24"></a><span class="w">    </span><span class="n">Guid</span><span class="w"> </span><span class="n">RunId</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">TenantId</span><span class="p">,</span><span class="w"> </span><span class="kt">string?</span><span class="w"> </span><span class="n">Payload</span><span class="p">,</span>
+<a id="__codelineno-1-25" name="__codelineno-1-25" href="#__codelineno-1-25"></a><span class="w">    </span><span class="n">IProgressReporter</span><span class="w"> </span><span class="n">Progress</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">CancellationToken</span><span class="p">);</span>
 </code></pre></div>
+<h3 id="run-context">Run context<a class="headerlink" href="#run-context" title="Permanent link">&para;</a></h3>
+<p>The handler receives ONE <code>BackgroundRunContext</code> rather than loose parameters, so future fields extend the
+context without another signature break:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RunId</code></td>
+<td>The store record's run id — <strong>identical</strong> to the value <code>EnqueueAsync</code> returned and <code>GetStatusAsync(runId).RunId</code> reports.</td>
+</tr>
+<tr>
+<td><code>TenantId</code></td>
+<td>The run's tenant; the runner has already re-established ambient tenant scope from it.</td>
+</tr>
+<tr>
+<td><code>Payload</code></td>
+<td>The opaque input from <code>BackgroundRunRequest.Payload</code> (typically JSON), or <code>null</code>.</td>
+</tr>
+<tr>
+<td><code>Progress</code></td>
+<td>The cheap, throttled progress sink (call <code>Report(done, total)</code> per unit of work).</td>
+</tr>
+<tr>
+<td><code>CancellationToken</code></td>
+<td>Cooperative cancellation for shutdown / abort — honour it.</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>RunId</code> is the two-way back-link.</strong> Because <code>context.RunId</code> is the same id the caller holds, the handler
+can persist it on its own business record (e.g. a domain "run" row) so traceability goes <strong>both ways</strong> — the
+framework's <code>BackgroundRuns</code> row points at nothing app-specific, but the app row points back at the run,
+closing the audit / maker-checker loop. A forward-reference-only design (before the context) could not do
+this: the handler never saw its own RunId.</p>
 <p>A controller triggers and polls:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="na">[HttpPost(&quot;reconciliations&quot;)]</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">IActionResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">Start</span><span class="p">([</span><span class="n">FromBody</span><span class="p">]</span><span class="w"> </span><span class="n">StartDto</span><span class="w"> </span><span class="n">dto</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">ct</span><span class="p">)</span>
@@ -1832,14 +1908,15 @@ the lifecycle, the engine owns the work:</p>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="p">{</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="n">JobType</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="s">&quot;reconciliation&quot;</span><span class="p">;</span>
 <a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string?</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ExecuteAsync</span><span class="p">(</span><span class="kt">string?</span><span class="w"> </span><span class="n">payload</span><span class="p">,</span><span class="w"> </span><span class="n">IProgressReporter</span><span class="w"> </span><span class="n">progress</span><span class="p">,</span><span class="w"> </span><span class="n">CancellationToken</span><span class="w"> </span><span class="n">ct</span><span class="p">)</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="kt">string?</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ExecuteAsync</span><span class="p">(</span><span class="n">BackgroundRunContext</span><span class="w"> </span><span class="n">context</span><span class="p">)</span>
 <a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">req</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Deserialize</span><span class="o">&lt;</span><span class="n">ReconRequest</span><span class="o">&gt;</span><span class="p">(</span><span class="n">payload</span><span class="o">!</span><span class="p">)</span><span class="o">!</span><span class="p">;</span><span class="w">             </span><span class="c1">// decode app input</span>
-<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">RunAsync</span><span class="p">(</span><span class="n">req</span><span class="p">,</span><span class="w"> </span><span class="n">onProgress</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="n">done</span><span class="p">,</span><span class="w"> </span><span class="n">total</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w">       </span><span class="c1">// signature UNCHANGED</span>
-<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">            </span><span class="n">progress</span><span class="p">.</span><span class="n">Report</span><span class="p">(</span><span class="n">done</span><span class="p">,</span><span class="w"> </span><span class="n">total</span><span class="p">),</span><span class="w"> </span><span class="n">ct</span><span class="p">);</span><span class="w">                                     </span><span class="c1">// just forward progress</span>
-<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">ReportId</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span><span class="w">                                         </span><span class="c1">// stored as ResultRef</span>
-<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="p">}</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">req</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JsonSerializer</span><span class="p">.</span><span class="n">Deserialize</span><span class="o">&lt;</span><span class="n">ReconRequest</span><span class="o">&gt;</span><span class="p">(</span><span class="n">context</span><span class="p">.</span><span class="n">Payload</span><span class="o">!</span><span class="p">)</span><span class="o">!</span><span class="p">;</span><span class="w">     </span><span class="c1">// decode app input</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">        </span><span class="n">req</span><span class="p">.</span><span class="n">BackgroundRunId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">context</span><span class="p">.</span><span class="n">RunId</span><span class="p">;</span><span class="w">                                       </span><span class="c1">// back-link: my record -&gt; the run row</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="n">engine</span><span class="p">.</span><span class="n">RunAsync</span><span class="p">(</span><span class="n">req</span><span class="p">,</span><span class="w"> </span><span class="n">onProgress</span><span class="p">:</span><span class="w"> </span><span class="p">(</span><span class="n">done</span><span class="p">,</span><span class="w"> </span><span class="n">total</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w">       </span><span class="c1">// engine signature UNCHANGED</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="w">            </span><span class="n">context</span><span class="p">.</span><span class="n">Progress</span><span class="p">.</span><span class="n">Report</span><span class="p">(</span><span class="n">done</span><span class="p">,</span><span class="w"> </span><span class="n">total</span><span class="p">),</span><span class="w"> </span><span class="n">context</span><span class="p">.</span><span class="n">CancellationToken</span><span class="p">);</span><span class="w">      </span><span class="c1">// just forward progress</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">ReportId</span><span class="p">.</span><span class="n">ToString</span><span class="p">();</span><span class="w">                                         </span><span class="c1">// stored as ResultRef</span>
+<a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <table>
