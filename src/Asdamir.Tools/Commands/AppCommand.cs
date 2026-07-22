@@ -52,6 +52,9 @@ public static class AppCommand
             description: "Root namespace. Defaults to the app name.", getDefaultValue: () => "");
         var localFeedOpt = new Option<string>(new[] { "--local-feed" },
             description: "Absolute path to a local NuGet feed for locally-packed Asdamir.* packages.", getDefaultValue: () => "");
+        var frameworkVersionOpt = new Option<string>(new[] { "--framework-version" },
+            description: "Override the Asdamir.Core/Data/Web/Payments pin (single version for all). Defaults to the published baseline. Use with --local-feed to build against a locally-packed pre-release (e.g. the scaffold smoke).",
+            getDefaultValue: () => "");
         var serverNameOpt = new Option<string>(new[] { "--server-name" },
             description: "Blazor (Server) project name. Defaults to '<Name>.Server'. Prompted when omitted.", getDefaultValue: () => "");
         var apiNameOpt = new Option<string>(new[] { "--api-name" },
@@ -85,7 +88,7 @@ public static class AppCommand
 
         var appCmd = new Command("app", "Generate a standalone Asdamir app (Server + Gateway + tests + sln + demo DB) that consumes the framework via DI and is managed from AppManagement.")
         {
-            nameArg, outputOpt, namespaceOpt, localFeedOpt,
+            nameArg, outputOpt, namespaceOpt, localFeedOpt, frameworkVersionOpt,
             serverNameOpt, apiNameOpt, databaseOpt, dbServerOpt, connStringOpt, gatewayUrlOpt,
             adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt, billingOpt, noSecretsOpt, noDbOpt,
         };
@@ -98,6 +101,7 @@ public static class AppCommand
                 Output: r.GetValueForOption(outputOpt)!,
                 NsOverride: r.GetValueForOption(namespaceOpt) ?? "",
                 LocalFeed: r.GetValueForOption(localFeedOpt) ?? "",
+                FrameworkVersion: r.GetValueForOption(frameworkVersionOpt) ?? "",
                 ServerName: r.GetValueForOption(serverNameOpt) ?? "",
                 ApiName: r.GetValueForOption(apiNameOpt) ?? "",
                 Database: r.GetValueForOption(databaseOpt) ?? "",
@@ -116,10 +120,18 @@ public static class AppCommand
     }
 
     private sealed record RawInputs(
-        string Name, DirectoryInfo Output, string NsOverride, string LocalFeed,
+        string Name, DirectoryInfo Output, string NsOverride, string LocalFeed, string FrameworkVersion,
         string ServerName, string ApiName, string Database, string DbServer,
         string ConnString, string GatewayUrl, string AdminEmail, string AdminPassword, bool Yes,
         string Mode, bool Billing, bool NoSecrets, bool NoDb);
+
+    // Published Asdamir.* pins the generated app gets by default (restored from nuget.org). Bump these
+    // in lockstep with the framework's own Directory.Packages.props on each release. --framework-version
+    // overrides ALL of them with one value (used with --local-feed to build against a pre-release pack).
+    private const string PublishedCoreVersion = "1.4.0";
+    private const string PublishedDataVersion = "1.3.0";
+    private const string PublishedWebVersion = "1.2.0";
+    private const string PublishedPaymentsVersion = "1.2.0";
 
     private static async Task Run(RawInputs raw)
     {
@@ -261,8 +273,18 @@ public static class AppCommand
             FreeModeBillingSchemaStamp = now.AddSeconds(3).ToString("yyyyMMddHHmmss"),
             FreeModeBillingProcsStamp = now.AddSeconds(4).ToString("yyyyMMddHHmmss"),
             FreeModeBillingSeedStamp = now.AddSeconds(5).ToString("yyyyMMddHHmmss"),
+            // Background-run store (dbo.BackgroundRuns + guarded state-transition procs) — the app's OWN
+            // operational state, emitted in BOTH modes. Applied last (+6s): the table is standalone (no FK),
+            // so ordering only needs to be unique, and last keeps it out of the way of every other migration.
+            BackgroundRunsStamp = now.AddSeconds(6).ToString("yyyyMMddHHmmss"),
             LocalFeedPath = string.IsNullOrWhiteSpace(raw.LocalFeed) ? "" : raw.LocalFeed.Replace('\\', '/'),
             HasLocalFeed = !string.IsNullOrWhiteSpace(raw.LocalFeed),
+            // Asdamir.* pins. --framework-version overrides all four with one value (smoke uses this to pin the
+            // locally-packed pre-release); otherwise each defaults to its published baseline.
+            CoreVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedCoreVersion : raw.FrameworkVersion,
+            DataVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedDataVersion : raw.FrameworkVersion,
+            WebVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedWebVersion : raw.FrameworkVersion,
+            PaymentsVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedPaymentsVersion : raw.FrameworkVersion,
             DatabaseName = database,
             ConnectionStringForAppsettings = connForAppsettings,
             GatewayBaseUrl = gatewayUrl,
@@ -343,6 +365,10 @@ public static class AppCommand
             ($"src/{gatewayProject}/Controllers/MenuController.cs",       isFreeMode ? "FreeGatewayMenuController" : "GatewayMenuController"),
             ($"src/{gatewayProject}/Controllers/LocalizationController.cs", isFreeMode ? "FreeGatewayLocalizationController" : "GatewayLocalizationController"),
             ($"src/{gatewayProject}/Controllers/DemoItemsController.cs",   "GatewayDemoItemsController"),
+            // Background-run status (poll) endpoint — GET /background-runs/{id}, BOTH modes. Fail-closed
+            // [Authorize] + tenant-scoped via IBackgroundRunService; the enqueue/trigger is job-specific and
+            // left to the app. Pairs with the AddBackgroundRuns wiring in Program.cs.
+            ($"src/{gatewayProject}/Controllers/BackgroundRunsController.cs", "GatewayBackgroundRunsController"),
             // Audit trail: a global filter writes every state-changing request to the app's own dbo.AuditLog;
             // AuditTrailController serves it to AppManagement at gateway/admin/audittrail (both app flavors).
             ($"src/{gatewayProject}/Audit/Audit.cs",                     "GatewayAudit"),
@@ -446,6 +472,12 @@ public static class AppCommand
         // Demo-only schema + seed (this app's OWN business DB — no management tables/data).
         written += WriteAsset(appRoot, $"db/migrations/V{model.SchemaStamp}__schema.sql", "DbSchema.sql");
         written += WriteAsset(appRoot, $"db/migrations/V{model.SeedStamp}__seed.sql", "DbSeed.sql");
+
+        // Background-run store — BOTH modes. dbo.BackgroundRuns + its guarded state-transition procs live in
+        // THIS app's OWN business DB (app-operational state, per the CENTRAL rule). The Gateway registers the
+        // primitive (AddBackgroundRuns) unconditionally; this migration gives it its table. Static DDL, no
+        // per-app token → a verbatim asset. (The C# side is Asdamir.Data.BackgroundRuns — pulled in via the pin.)
+        written += WriteAsset(appRoot, $"db/migrations/V{model.BackgroundRunsStamp}__background_runs.sql", "BackgroundRuns.sql");
 
         Console.WriteLine();
         Console.WriteLine($"Done. {written} files written to '{appRoot}'.");

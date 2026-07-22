@@ -35,6 +35,17 @@ Expect `… files scanned, 0 findings at or above warning.`
   `Style="…"` component parameter (capital `S`). Suppress only for a truly unavoidable case (e.g. a pre-boot
   loading placeholder) with a reason.
 
+## Companion gates (`audit localization`, `audit permissions`)
+`audit lint` has two sibling static gates under `asdamir audit`, run on the same `--path` scopes before a push:
+- **`audit localization` (AUD015)** — localization-completeness: cross-checks every `L["…"]` key **used** in
+  code against the keys the SQL seeds **define** (all 3 cultures). A key rendered but never seeded shows the
+  raw key on the UI with no compiler error. Suppress a line with `// audit-lint:ignore AUD015`.
+- **`audit permissions` (AUD016)** — permission/policy-completeness: cross-checks every `perm` value a Gateway
+  policy **requires** (`RequireClaim("perm","X")` / `HasClaim`) against the permission codes (`dbo.Permissions`)
+  and role codes (`dbo.Roles`/`dbo.UserAppRoles`) the seeds **supply**. A policy requiring a `perm` no seed
+  supplies can never be satisfied → a silent, guaranteed `403`. Point one `--path` at `src`, one at `db`.
+  Any finding **fails the build (exit 1)**. Suppress a policy line with `// audit-lint:ignore AUD016`.
+
 ## DON'T
 - **Don't bulk-suppress** to make the gate green — each suppression is reviewable and needs a reason.
 - **Don't disable a rule globally** to dodge one site — fix the site or `// audit-lint:ignore` it locally.

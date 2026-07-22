@@ -21,34 +21,34 @@
          JWTs). Also: `db apply` resolves the connection from the Gateway user-secret / env when no flags are
          given (passwordless), the onboarding banner is mode-branched, register_<app>.sql is commercial-only,
          sample-seed rows are English, and `rollback` tears down free-mode seeds symmetrically.
-         Backward-compatible: the default is still "commercial", unchanged. Core/Data/Web version is set in
-         Directory.Build.props.
-         1.3.0 (MINOR): a new opt-in billing flag on `asdamir new app` (commercial only) — scaffolds an
-         end-user payment page + a gateway/billing proxy + billing menu/permission/localization/config seeds.
-         Fully conditional: without the flag a generated app is byte-identical to before.
-         1.3.9 (MINOR): new entity/new page/new feature/add field run from the app root (no need to cd into
-         the Gateway project) and apply the generated migration by default (resolving the Gateway
-         user-secret), with a new no-db flag to scaffold files only. Backward-compatible; the old apply flag
-         is a deprecated no-op and db apply is unchanged.
-         1.3.11 (PATCH): generated apps bind the auth cookie to a server-side session registry (an in-memory
-         AppUserSessionStore + OnValidatePrincipal), so a restart or a delete then re-create ends every
-         session instead of a stale cookie landing on the dashboard with no login. Mirrors the AppManagement
-         control plane.
-         1.3.10 (PATCH): after those commands auto-apply a migration, they print a restart reminder
-         (the running app caches its DB-backed menu/localization at startup and registers new controllers at
-         startup, so a freshly-applied page/menu/field only shows after a restart). Names the app's own
-         restart script. Not printed on no-db.
-         1.3.14 (PATCH): generated SQL now [bracket]-quotes every table + column identifier, so a field
-         named after a T-SQL reserved word (RowCount, Order, User, Group, Key, …) still produces valid SQL;
-         the generated run-tests.sh excludes Category=Integration/E2E from the fast default run.
-         1.3.15 (MINOR): every generated app gets a profile menu (top-right avatar dropdown) with a
-         self-service Change Password page + Sign Out; the change-password page is emitted in BOTH modes
-         (commercial proxies gateway/auth/change-password to AppManagement app-change-password; free is
-         local). The forced first-login password-change flow is REMOVED (no forced flow anywhere). Also:
-         the login eye-toggle inline onclick moved to the delegated nonced listener (the enforced CSP
-         had made it a silent no-op).
-    -->
-    <Version>1.3.15</Version>
+         Backward-compatible: the default is still "commercial", unchanged. Core/Data/Web stay at the
+         Directory.Build.props version (1.1.2).
+         1.2.1 (PATCH): free-mode auth hardening — constant-time login (no user-enumeration timing),
+         DB-seed config actually bound at startup, fail-closed at-rest key, and a first-login forced
+         password-change flow. Plus the commercial `new app` banner no longer prints a plaintext DB
+         password (passwordless db apply). Still backward-compatible; default unchanged.
+         1.2.2 (PATCH): the AUD013 audit-lint inline-style gate.
+         1.3.0 (MINOR): a new opt-in billing flag on `asdamir new app` (Model A, commercial only). It
+         scaffolds an end-user payment page (Server) + a gateway/billing proxy (Gateway) + the billing
+         menu/permission + localization + Paddle config seeds (AsdamirVault, AppId-scoped). Fully
+         conditional: without the flag a generated app is byte-identical to before (backward-compatible;
+         default unchanged). Core/Data/Web stay at the Directory.Build.props version. Tools-only.
+         1.3.15 (PATCH): generated apps (BOTH modes) get a topbar profile menu (change password + sign
+         out) and a self-service /change-password page — free serves it locally, commercial proxies to
+         AppManagement's app-change-password. The forced first-login password-change flow is REMOVED
+         (product decision: no app forces it, every app offers it; the starter password now stays valid
+         until changed — change it promptly).
+         1.3.16 (MINOR — folded into 1.4.0, never published separately): the localization-completeness
+         gate — `audit localization` (AUD015, static used-vs-seeded cross-check) + `localization verify`
+         (live apply-drift diff).
+         1.4.0 (MINOR): the localization gate above PLUS generator wiring for the background-run primitive.
+         Every `new app` (BOTH modes) now scaffolds it by default — AddBackgroundRuns in the Gateway
+         Program, a fail-closed tenant-scoped GET /background-runs/{id} status endpoint, and the store
+         migration (V*__background_runs.sql) into the app's OWN business DB. Generated apps pin
+         Asdamir.Core 1.4.0 / Data 1.3.0 (the primitive's home). New framework-version flag overrides the
+         Asdamir.* pin (for building against a locally-packed pre-release). Additive; a non-scaffolded
+         existing app is unaffected. -->
+    <Version>1.4.1</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>
@@ -71,6 +71,12 @@
          so the published dotnet tool stays small — a Core ProjectReference dragged its whole runtime
          graph (libphonenumber ~5 MB, FluentValidation, IdentityModel/Azure, Polly…) into the tool
          package (~8 MB), which stalled the GitHub Packages push. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The templater internals (TemplateParser / Scope) are exercised directly by the test suite so
+         the fail-fast behaviour (unknown member / unsupported parenthesis) stays pinned against regression. -->
+    <InternalsVisibleTo Include="Asdamir.Tools.Tests" />
   </ItemGroup>
 
   <ItemGroup>

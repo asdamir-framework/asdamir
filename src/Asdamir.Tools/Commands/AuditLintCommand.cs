@@ -213,7 +213,12 @@ public static class AuditLintCommand
     /// Multi-line comments (<c>/* */</c>) aren't handled — single-line scanning,
     /// and the audit rules don't currently target patterns hidden in block comments.
     /// </summary>
-    private static string StripLineComments(string line)
+    /// <summary>
+    /// Returns <paramref name="line"/> with any trailing <c>//</c> line comment removed, but ONLY when the
+    /// <c>//</c> is outside a string literal (verbatim <c>@"…"</c> and escaped <c>\"</c> aware). Shared with
+    /// the localization gate (<see cref="LocalizationScan"/>) so a key named in a comment isn't matched.
+    /// </summary>
+    internal static string StripLineComments(string line)
     {
         var inString = false;
         var isVerbatim = false;

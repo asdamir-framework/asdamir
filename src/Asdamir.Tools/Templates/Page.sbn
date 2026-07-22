@@ -248,6 +248,10 @@
         var token = (await AuthState.GetAuthenticationStateAsync()).User.FindFirst("access_token")?.Value;
         if (!string.IsNullOrWhiteSpace(token))
             client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        // Localize Gateway error messages in the user's CURRENT culture: its GlobalExceptionHandling reads
+        // Accept-Language (there's no culture JWT claim), so forward the live UI culture (CultureCircuitHandler).
+        client.DefaultRequestHeaders.AcceptLanguage.Add(
+            new System.Net.Http.Headers.StringWithQualityHeaderValue(System.Globalization.CultureInfo.CurrentUICulture.Name));
         return client;
     }
 }

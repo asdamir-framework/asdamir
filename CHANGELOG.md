@@ -5,10 +5,23 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.5.0`** · **Data `1.3.1`** · **Web `1.3.1`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.0`** (the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.5.0`** · **Data `1.3.1`** · **Web `1.3.1`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.1`** (the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Tools 1.4.1] — 2026-07-22
+
+### Added — (CLI, `Asdamir.Tools`) `asdamir audit permissions` (AUD016) — permission/policy-completeness gate
+
+A static gate that cross-checks every `perm` value a Gateway authorization policy **requires**
+(`RequireClaim("perm","X")` / `HasClaim("perm","X")`, incl. inside `RequireAssertion(ctx => …)`) against the
+codes the tree's SQL seeds **supply** — the `Name`s in `dbo.Permissions` plus the role codes in
+`dbo.Roles` / `dbo.UserAppRoles`. A policy requiring a `perm` that is neither a seeded permission nor a role
+code can never be satisfied (the app-login JWT carries role codes + granted permission codes as `perm`
+claims) → every request silently `403`s, and claim-injecting tests miss it. `--path` is repeatable (point one
+at `src`, one at `db`); **any finding fails the build (exit 1)**. Sibling of the AUD015 localization gate;
+suppress a policy line with `// audit-lint:ignore AUD016`.
 
 ## [1.5.0 — Core 1.5.0 · Data 1.3.1] — 2026-07-21
 

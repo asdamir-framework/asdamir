@@ -44,6 +44,7 @@ public static class Program
             RollbackCommand.Build(),
             BuildAuditCommand(),
             BuildDbCommand(),
+            BuildLocalizationCommand(),
             BuildAppCommand(),
             SecretsCommand.Build(),
         };
@@ -69,7 +70,16 @@ public static class Program
     {
         var auditCmd = new Command("audit", "Static checks against the Asdamir audit pattern set.");
         auditCmd.AddCommand(AuditLintCommand.Build());
+        auditCmd.AddCommand(LocalizationCheckCommand.Build());
+        auditCmd.AddCommand(PermissionPolicyCheckCommand.Build());
         return auditCmd;
+    }
+
+    private static Command BuildLocalizationCommand()
+    {
+        var locCmd = new Command("localization", "Localization-completeness tooling — verify seeded keys against the live vault.");
+        locCmd.AddCommand(LocalizationVerifyCommand.Build());
+        return locCmd;
     }
 
     private static Command BuildNewCommand()

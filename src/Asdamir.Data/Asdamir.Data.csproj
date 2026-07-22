@@ -10,15 +10,20 @@
 
     <!-- NuGet Package Metadata -->
     <PackageId>Asdamir.Data</PackageId>
-    <!-- Per-project version override: Data is on its own 1.2.x line (patch over the published 1.2.0 -
-         the FeatureManager value-type fallback fix), independent of the shared Directory.Build.props
-         <Version> (Core's line). Bump this, not the global, for a Data-only release. -->
-    <Version>1.2.1</Version>
+    <!-- Per-project version override, independent of the shared Directory.Build.props <Version>.
+         PATCH bump 1.3.0 -> 1.3.1: the hosted runner (BackgroundRunProcessor) now builds a
+         BackgroundRunContext and calls handler.ExecuteAsync(context) — coupled to Core's 1.5.0
+         handler change. The runner's OWN public surface is unchanged (it just fills the new context),
+         so a PATCH, not a MINOR; it must ship in lockstep with Core 1.5.0. Bump this, not the global,
+         for a Data release. -->
+    <Version>1.3.1</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Data + background processing for Asdamir: Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox (mail/SMS dispatch).</Description>
     <PackageTags>dapper;outbox;hangfire;sql-server;oracle;postgresql;mail;sms;background-jobs</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <!-- Public XML-doc gate ON: every public member is documented; CS1591 is an error (TreatWarningsAsErrors). -->
+    <!-- Public XML-doc gate: generate the doc file AND treat missing public docs (CS1591) as an error
+         (TreatWarningsAsErrors is on). Every public member must carry a meaningful ///. The gate is now ON
+         for ALL of open core — Asdamir.Core + Asdamir.Web enforce it too (see docs/ROADMAP.md). -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -53,5 +58,11 @@
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ship the background-run schema/procs as an embedded resource so a host (or a test) can apply
+         it programmatically; the template follow-up also emits it as a journaled app migration. -->
+    <EmbeddedResource Include="BackgroundRuns/BackgroundRuns.sql" />
   </ItemGroup>
 </Project>

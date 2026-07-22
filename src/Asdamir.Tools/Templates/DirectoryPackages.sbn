@@ -47,20 +47,21 @@
   <!--
     Framework.* packages are this app's link to Asdamir modules. Pinned to a PUBLISHED
     release on nuget.org (`dotnet add package Asdamir.Core` resolves it) so the app restores
-    on any machine and free-mode apps get JwtService (local JWT issuance). Bump this one set on
-    each framework upgrade (`add-field` / `new entity` never edit it).
+    on any machine and free-mode apps get JwtService (local JWT issuance). Core/Data carry the
+    background-run primitive (Asdamir.*.BackgroundRuns). Bump these on each framework upgrade
+    (the add-field / new-entity commands never edit them); the new-app framework-version flag overrides them.
   -->
   <ItemGroup Label="Asdamir (NuGet feed)">
     <!-- The framework ships FOUR packages; an app references Core/Data/Web (Tools is the CLI).
          Contracts/Validation/ErrorHandling/Security/Localization/Configuration are NAMESPACES
          inside Asdamir.Core, not separate packages. -->
-    <PackageVersion Include="Asdamir.Core" Version="1.2.0" />
-    <PackageVersion Include="Asdamir.Data" Version="1.2.0" />
-    <PackageVersion Include="Asdamir.Web" Version="1.2.0" />
+    <PackageVersion Include="Asdamir.Core" Version="{{ CoreVersion }}" />
+    <PackageVersion Include="Asdamir.Data" Version="{{ DataVersion }}" />
+    <PackageVersion Include="Asdamir.Web" Version="{{ WebVersion }}" />
 {{ if HasLocalBilling ~}}
     <!-- Free-mode (Model B) billing only: the app-local billing store + payment rails.
          Referenced by the Gateway when scaffolded in free mode with the billing option. -->
-    <PackageVersion Include="Asdamir.Payments" Version="1.2.0" />
+    <PackageVersion Include="Asdamir.Payments" Version="{{ PaymentsVersion }}" />
 {{ end ~}}
   </ItemGroup>
 

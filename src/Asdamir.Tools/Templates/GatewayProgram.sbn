@@ -5,6 +5,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
 using Asdamir.Core.ErrorHandling.Extensions;
 using Asdamir.Data.DataAccess;
+using Asdamir.Data.BackgroundRuns;
 using Asdamir.Core.MultiTenancy;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -208,6 +209,16 @@ builder.Services.AddDataAccess(dbConnString ?? string.Empty);
 
 // Multi-tenancy: the generated repositories inject ITenantContext to scope every query by TenantId.
 builder.Services.AddMultiTenancy();
+
+// Background-run primitive (Asdamir.Core/Data.BackgroundRuns) — the API-tier long-running-operation
+// engine: trigger → run in the background → poll status/progress. Registered by DEFAULT (it is cheap:
+// the hosted runner + restart-recovery idle with no work until a handler exists) so any app can enqueue
+// a long op without re-plumbing. It needs AddDataAccess + AddMultiTenancy above (the store injects
+// IDbConnectionFactory + ITenantContext); its table ships as the V*__background_runs.sql migration.
+// Add ONE handler per job type when you have a long-running op:
+//     builder.Services.AddBackgroundJob<MyReconciliationJobHandler>();
+// (a handler implements Asdamir.Core.BackgroundRuns.IBackgroundJobHandler; see docs/fundamentals/background-runs.md).
+builder.Services.AddBackgroundRuns(builder.Configuration);
 
 // Audit-trail store (Dapper over dbo.AuditLog_* procs). Its interface is IAuditLogStore (not I…Repository /
 // I…Service), so the convention scan below doesn't pick it up — wire it explicitly.

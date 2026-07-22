@@ -10,10 +10,23 @@
 
     <!-- NuGet Package Metadata -->
     <PackageId>Asdamir.Core</PackageId>
+    <!-- Per-project version override: MINOR bump 1.4.0 -> 1.5.0 for the BREAKING BackgroundRuns
+         handler-signature change — IBackgroundJobHandler.ExecuteAsync now takes a single
+         BackgroundRunContext (RunId/TenantId/Payload/Progress/CancellationToken) instead of loose
+         params, giving the handler the RunId for a two-way back-link. The API is fresh (published
+         1.4.0, sole consumer Recon), so it is a coordinated bump, not an [Obsolete] bridge. A MINOR
+         (not MAJOR) bump because pre-1.0-mature open core versions its coherent 1.x set by feature
+         cohort; the CHANGELOG flags it BREAKING explicitly. Overriding here (not the shared
+         Directory.Build.props <Version> 1.3.0) keeps Web/Payments — which did NOT change — pinned. -->
+    <Version>1.5.0</Version>
     <Description>Core foundation for Asdamir: shared models, abstractions, modules, error handling, and Serilog/Polly wiring.</Description>
     <PackageTags>blazor;fluentui;shared;models;dtos;constants;utilities;abstractions;error-handling;modules</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <!-- Public XML-doc gate ON: every public member is documented; CS1591 is an error (TreatWarningsAsErrors). -->
+    <!-- Public XML-doc gate ON (regression guard). The namespace-sliced doc campaign is COMPLETE — every
+         public member of Asdamir.Core is documented (Contracts, Dtos, Validation, ErrorHandling, Models,
+         Services, Helpers, Authorization, Configuration, Http, MultiTenancy, Modules, Serialization). With
+         doc-gen on and CS1591 no longer suppressed, TreatWarningsAsErrors makes a new undocumented public
+         member FAIL the build — the same gate Asdamir.Data already enforces. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
@@ -21,6 +34,11 @@
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="../../LICENSE" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Framework unit tests may construct internal impl types (e.g. ValidationContext) directly. -->
+    <InternalsVisibleTo Include="Asdamir.Core.Tests" />
   </ItemGroup>
 
   <ItemGroup>

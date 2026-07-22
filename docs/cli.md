@@ -376,6 +376,47 @@ AUD015 emits Info and Error only), `--format/-f` (`text`|`json`), `--include-tes
 with `// audit-lint:ignore AUD015`; skip a file with `audit-lint:skip-file`. Exit codes: `0` (clean, or no
 seed sources), `1` (findings), `2` (bad args).
 
+## `audit permissions` — the permission/policy-completeness gate (AUD016)
+
+A Gateway defines authorization policies like `RequireClaim("perm", "reconciliation.run")`. The app-login
+JWT carries the signed-in user's **role codes** (e.g. `Admin`) **plus** the fine-grained **permission
+codes** their roles grant (e.g. `reconciliation.run`), one per `perm` claim. A policy that requires a
+`perm` value which is **neither a seeded permission code nor a role code** can never be satisfied → every
+request `403`s, **silently** — and tests that inject claims directly never notice. `audit permissions` is
+the **static** gate that closes this (rule **AUD016**): it cross-checks every `perm` value **required** by
+a policy in `.cs` code (`RequireClaim("perm", "X")` / `HasClaim("perm", "X")`, including inside a
+`RequireAssertion(ctx => …)`) against the codes the tree's SQL seeds **supply** — the `Name`s inserted into
+`dbo.Permissions` plus the role codes in `dbo.Roles` / `dbo.UserAppRoles`.
+
+```bash
+# Point one --path at the policies (src) and one at the seeds (db):
+dotnet run --project src/Asdamir.Tools -- audit permissions --path src --path db
+asdamir audit permissions --path . --format json
+```
+
+A required `perm` found in **neither** the supplied permission codes nor the role codes is an **AUD016
+error**:
+
+```
+[ERROR] AUD016: permission/policy completeness
+    src/App.Gateway/Program.cs:128
+      Gateway policy requires perm 'reconciliation.typo-run' but no seed defines it as a permission or
+      role code — the app-login token can never carry it (guaranteed 403). Seed it in dbo.Permissions
+      (+ grant it to a role) or fix the policy.
+```
+
+`--path/-p` is **repeatable** — pass it once per tree so the policies (`src`) and the seeds (`db`) both
+fall under the scan; the supplied codes are unioned across all paths. The SQL scan is deliberately
+**tolerant/over-collecting** (it recognizes the `MERGE … USING (VALUES …)` / `INSERT … VALUES` / table-var
+shapes by collecting every literal in a file that mentions the table) — a false *supplied* only ever makes
+a perm look OK, never wrongly fails one. Options: `--format/-f` (`text`|`json`), `--include-tests`.
+Suppress a policy line with `// audit-lint:ignore AUD016` (leave a comment why); skip a file with
+`audit-lint:skip-file`.
+
+Exit codes: `0` (no findings — the gate is green; every required perm is supplied), `1` (at least one
+AUD016 finding — this **fails the build**), `2` (bad args). Run it alongside `audit lint` and
+`audit localization` before a push.
+
 ## `localization verify` — live apply-drift
 
 `audit localization` catches keys missing from the **seed files**. It cannot catch a key that *is* in a

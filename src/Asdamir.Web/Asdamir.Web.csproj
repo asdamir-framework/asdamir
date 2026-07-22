@@ -13,11 +13,19 @@
 
     <!-- NuGet Package Metadata -->
     <PackageId>Asdamir.Web</PackageId>
+    <!-- Per-project version override: Web is on its own 1.3.x line (patch over the published 1.3.0 —
+         the ApiStringLocalizer missing-key warning is now deduped per (cache-gen, culture, key), so a
+         missing key rendered every frame logs ONCE instead of flooding — part of the localization gate).
+         Independent of the shared Directory.Build.props <Version> (1.3.0, Core's line); Core/Payments stay
+         1.3.0. Bump this, not the global, for a Web-only release. -->
+    <Version>1.3.2</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Web/UI for Asdamir: Blazor + FluentUI component library (DataGrid, dialogs, layout), API-backed localization (3 cultures), and admin pool security (JWT + DataProtection + cookie/bearer handler).</Description>
     <PackageTags>blazor;fluentui;localization;authorization;jwt;data-protection;ui-components</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <!-- Public XML-doc gate ON: every public member is documented; CS1591 is an error (TreatWarningsAsErrors). -->
+    <!-- Public XML-doc gate ON (regression guard). Every public member of Asdamir.Web is documented
+         (UI, Security, Localization). With doc-gen on and CS1591 no longer suppressed, TreatWarningsAsErrors
+         makes a new undocumented public member FAIL the build — the same gate Asdamir.Core/Data enforce. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 

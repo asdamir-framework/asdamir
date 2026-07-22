@@ -53,6 +53,14 @@ public sealed class ApiStringLocalizer : IStringLocalizer
     private static readonly ConcurrentDictionary<string, Dictionary<string, string>> WarmedMaps =
         new(StringComparer.Ordinal);
 
+    // Missing-key warnings are deduped per (cache-generation, culture, key). A page that renders a
+    // missing key on every frame would otherwise flood the log (the raw key silently falls through to
+    // the UI — the "raw key on screen" bug class); this warns ONCE so the gap surfaces in Serilog's DB
+    // sink → ErrorMonitoring without noise. The cache-generation is part of the key so a post-reseed
+    // re-warm re-surfaces a key that is *still* missing.
+    private static readonly ConcurrentDictionary<string, byte> WarnedMissingKeys =
+        new(StringComparer.Ordinal);
+
     /// <summary>
     /// Initializes the localizer with the resource source, cache-generation tracker and optional tenant scope.
     /// </summary>
@@ -122,8 +130,18 @@ public sealed class ApiStringLocalizer : IStringLocalizer
             return new LocalizedString(name, formatted, resourceNotFound: false);
         }
 
-        _logger?.LogWarning("Localization key not found: {Key} for culture {Culture}", name, culture.Name);
+        WarnMissingKeyOnce(name, culture);
         return new LocalizedString(name, name, resourceNotFound: true);
+    }
+
+    // Logs a "key not found" warning at most once per (cache-generation, culture, key) so a missing key
+    // rendered every frame doesn't flood the log. See <see cref="WarnedMissingKeys"/>.
+    private void WarnMissingKeyOnce(string name, CultureInfo culture)
+    {
+        if (_logger is null) return;
+        var dedupKey = $"{_cacheGeneration.Current}␟{culture.Name}␟{name}";
+        if (WarnedMissingKeys.TryAdd(dedupKey, 0))
+            _logger.LogWarning("Localization key not found: {Key} for culture {Culture}", name, culture.Name);
     }
 
     /// <inheritdoc/>
