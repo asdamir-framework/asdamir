@@ -360,6 +360,14 @@ dotnet run --project src/Asdamir.Tools -- audit localization --path . --format j
   contains `Localization`). An in-memory-seeded key counts as satisfying **all three** cultures — the
   framework rule requires the in-memory seed to mirror the DB seed.
 
+**Seed auto-discovery (since Tools `1.4.2`).** A central-model app keeps its seeds under
+`db/admin-onboarding/*.sql` at the **repo root** — *outside* a `--path src` scope — so scanning only `src`
+would report every central key as "never seeded". Seed sources are therefore also discovered from the
+**repo root** (the nearest `.git` ancestor of `--path`; skipped when there is none, so an unrelated parent
+tree is never scanned) IN ADDITION to `--path`. The **usage** scan stays `--path`-scoped — only seed
+*discovery* widens, and it's **visible**: the summary prints `N seed source(s) (+M auto-discovered outside
+--path)`. So `--path src` and `--path .` agree — no phantom "never seeded" errors on central keys.
+
 **What it catches.**
 
 - A used static key with **no** seed anywhere → **ERROR** ("the raw key will render on screen").
@@ -368,8 +376,9 @@ dotnet run --project src/Asdamir.Tools -- audit localization --path . --format j
   value-set can't be resolved statically). For an interpolation, the literal prefix is reported.
 
 Seeded-but-**unused** keys are intentionally *not* flagged (shared chrome like `Common.*` is broad). If the
-scan finds **no** seed sources under `--path` (a code-only folder — seeds live elsewhere), it prints a notice
-and exits `0` rather than reporting every used key as unseeded.
+scan finds **no** seed sources under `--path` **nor auto-discovered from the repo root** (a code-only folder
+outside any git repo — seeds live elsewhere), it prints a notice and exits `0` rather than reporting every
+used key as unseeded.
 
 Options mirror `audit lint`: `--path/-p`, `--min-severity/-s` (`info`|`warning`|`error`, default `warning` —
 AUD015 emits Info and Error only), `--format/-f` (`text`|`json`), `--include-tests`. Suppress a usage line
