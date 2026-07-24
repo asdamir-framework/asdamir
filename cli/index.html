@@ -2480,6 +2480,13 @@ silently to the raw key on the UI, and there is no compiler error for it. <code>
   contains <code>Localization</code>). An in-memory-seeded key counts as satisfying <strong>all three</strong> cultures — the
   framework rule requires the in-memory seed to mirror the DB seed.</li>
 </ul>
+<p><strong>Seed auto-discovery (since Tools <code>1.4.2</code>).</strong> A central-model app keeps its seeds under
+<code>db/admin-onboarding/*.sql</code> at the <strong>repo root</strong> — <em>outside</em> a <code>--path src</code> scope — so scanning only <code>src</code>
+would report every central key as "never seeded". Seed sources are therefore also discovered from the
+<strong>repo root</strong> (the nearest <code>.git</code> ancestor of <code>--path</code>; skipped when there is none, so an unrelated parent
+tree is never scanned) IN ADDITION to <code>--path</code>. The <strong>usage</strong> scan stays <code>--path</code>-scoped — only seed
+<em>discovery</em> widens, and it's <strong>visible</strong>: the summary prints <code>N seed source(s) (+M auto-discovered outside
+--path)</code>. So <code>--path src</code> and <code>--path .</code> agree — no phantom "never seeded" errors on central keys.</p>
 <p><strong>What it catches.</strong></p>
 <ul>
 <li>A used static key with <strong>no</strong> seed anywhere → <strong>ERROR</strong> ("the raw key will render on screen").</li>
@@ -2488,8 +2495,9 @@ silently to the raw key on the UI, and there is no compiler error for it. <code>
   value-set can't be resolved statically). For an interpolation, the literal prefix is reported.</li>
 </ul>
 <p>Seeded-but-<strong>unused</strong> keys are intentionally <em>not</em> flagged (shared chrome like <code>Common.*</code> is broad). If the
-scan finds <strong>no</strong> seed sources under <code>--path</code> (a code-only folder — seeds live elsewhere), it prints a notice
-and exits <code>0</code> rather than reporting every used key as unseeded.</p>
+scan finds <strong>no</strong> seed sources under <code>--path</code> <strong>nor auto-discovered from the repo root</strong> (a code-only folder
+outside any git repo — seeds live elsewhere), it prints a notice and exits <code>0</code> rather than reporting every
+used key as unseeded.</p>
 <p>Options mirror <code>audit lint</code>: <code>--path/-p</code>, <code>--min-severity/-s</code> (<code>info</code>|<code>warning</code>|<code>error</code>, default <code>warning</code> —
 AUD015 emits Info and Error only), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>. Suppress a usage line
 with <code>// audit-lint:ignore AUD015</code>; skip a file with <code>audit-lint:skip-file</code>. Exit codes: <code>0</code> (clean, or no
