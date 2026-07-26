@@ -31,10 +31,12 @@ git diff --name-only origin/main...HEAD | grep -qE '^(src/|Directory\.Packages\.
 ```
 Then:
 ```bash
-# SCAFFOLD=0  → fast (~seconds), skips the slow test:
-dotnet test Asdamir.sln -c Release --filter "Category!=Scaffold"
-# SCAFFOLD=1  → full suite incl. the scaffold test (~15-22 min, restores NuGet for a generated app):
-dotnet test Asdamir.sln -c Release
+# SCAFFOLD=0  → fast (~seconds): ./run-tests.sh prints one PASS/FAIL line per test (clean) and already
+#              EXCLUDES the slow Scaffold + Integration tests (tests.runsettings).
+./run-tests.sh
+# SCAFFOLD=1  → also run the scaffold smoke test (~15-22 min). The runsettings filter ANDs with --filter,
+#              so clear it to run the excluded category:
+dotnet test Asdamir.sln -c Release -p:RunSettingsFilePath= --filter "Category=Scaffold"
 ```
 All assemblies must report `Passed!`.
 
@@ -75,6 +77,8 @@ Write the bilingual EN+TR memory entry (project rule) — use the `asdamir-sessi
 ## DON'T
 - **Don't push with build warnings** — they're errors here.
 - **Don't run the ~15-min scaffold test** when you only touched docs / CI-config / AppManagement / tests
-  (use `--filter "Category!=Scaffold"`).
+  — the default `dotnet test` already excludes it (tests.runsettings); only opt in with
+  `-p:RunSettingsFilePath= --filter "Category=Scaffold"` when you changed templates/framework src.
+- **Don't add `-tl:off`** to test commands — it suppresses ALL test output in a real terminal.
 - **Don't re-add `.github/workflows/*`** to "get CI back" unless the user explicitly asks (it bills).
 - **Don't open a PR / wait for CI** — there is none; commit and push to `main` directly.

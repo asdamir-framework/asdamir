@@ -51,7 +51,7 @@ and serves the cached copy when offline (`FromCache` flag).
 **Localization — `MobileLocalizationService`** (`MobileLocalizationService.sbn`). Loads
 `gateway/localization/all?culture=…` and caches in-process; `SupportedCultures` = `tr-TR`/`en-US`/`ru-RU`,
 default **`tr-TR`**; missing key → returns the key; load failure → empty map. **DB-backed via the Gateway,
-no `.resx`** (same model as the web's `DatabaseDynamicResourceStore`). UI calls `Ui.T("key")`.
+no `.resx`** (same model as the web's `LocalizationHttpClient`). UI calls `Ui.T("key")`.
 
 **Offline cache — `ICacheStore`/`SqliteCacheStore`** (`MobileDataCacheStore.sbn`). JSON key/value over local
 SQLite under `FileSystem.AppDataDirectory` (`<app>-cache.db3`), so screens render last-known data offline.

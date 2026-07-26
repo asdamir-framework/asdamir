@@ -34,17 +34,25 @@ Expect `… files scanned, 0 findings at or above warning.`
   the CSS-variable pattern `style="--x:@value"` (per-item dynamic value into scoped CSS) and a FluentUI
   `Style="…"` component parameter (capital `S`). Suppress only for a truly unavoidable case (e.g. a pre-boot
   loading placeholder) with a reason.
-
-## Companion gates (`audit localization`, `audit permissions`)
-`audit lint` has two sibling static gates under `asdamir audit`, run on the same `--path` scopes before a push:
-- **`audit localization` (AUD015)** — localization-completeness: cross-checks every `L["…"]` key **used** in
-  code against the keys the SQL seeds **define** (all 3 cultures). A key rendered but never seeded shows the
-  raw key on the UI with no compiler error. Suppress a line with `// audit-lint:ignore AUD015`.
-- **`audit permissions` (AUD016)** — permission/policy-completeness: cross-checks every `perm` value a Gateway
-  policy **requires** (`RequireClaim("perm","X")` / `HasClaim`) against the permission codes (`dbo.Permissions`)
-  and role codes (`dbo.Roles`/`dbo.UserAppRoles`) the seeds **supply**. A policy requiring a `perm` no seed
-  supplies can never be satisfied → a silent, guaranteed `403`. Point one `--path` at `src`, one at `db`.
-  Any finding **fails the build (exit 1)**. Suppress a policy line with `// audit-lint:ignore AUD016`.
+- **AUD015 — localization-completeness** (a **separate command**, `audit localization`, not a regex rule in
+  `AuditRules.cs` — it's a cross-file check: `LocalizationScan.cs` + `LocalizationCheckCommand.cs`): a
+  `L["Key"]`/`Localizer["Key"]` used in code whose key is **never seeded** (no `localize_*`/`register_*`/`seed_*`
+  entry, no in-memory seed) or **seeded in <3 cultures** (tr-TR/en-US/ru-RU) → ERROR (the raw key would render
+  on screen — the exact `Common.Detail`/`Batch.Status.Cancelled` bug class). A **dynamic** `L[$"Prefix.{x}"]` /
+  `L[variable]` → INFO (the runtime value-set can't be checked statically — verify the set is fully seeded, or
+  `// audit-lint:ignore AUD015`). Run it as a companion gate:
+  `dotnet run --project src/Asdamir.Tools -- audit localization --path src --min-severity warning`. Its sibling
+  `localization verify --vault-connection … --app-code …` catches the *apply-drift* case (key IS in the seed
+  file but never applied to the live vault — a static gate can't see that).
+- **AUD016 — permission/policy-completeness** (a **separate command**, `audit permissions`, not a regex rule —
+  `PermissionPolicyScan.cs` + `PermissionPolicyCheckCommand.cs`): a Gateway policy that requires a `perm`
+  value (`RequireClaim("perm", "X")` / `HasClaim("perm", "X")`, incl. inside `RequireAssertion`) which is
+  **neither a seeded permission code** (`dbo.Permissions.Name`) **nor a role code** (`dbo.Roles`/`dbo.UserAppRoles`)
+  → ERROR (the app-login token can never carry it → guaranteed silent 403; claim-injecting tests miss it). The
+  app-login JWT carries role codes AND granted permission codes as `perm` claims, so a policy keyed on either is
+  satisfiable. `--path` is repeatable — point one at `src` (policies) and one at `db` (seeds). Any finding
+  **fails the build** (exit 1). Suppress a policy line with `// audit-lint:ignore AUD016`. Run it as a companion
+  gate: `dotnet run --project src/Asdamir.Tools -- audit permissions --path src --path db`.
 
 ## DON'T
 - **Don't bulk-suppress** to make the gate green — each suppression is reviewable and needs a reason.
