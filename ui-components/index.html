@@ -1250,6 +1250,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#framework-ui-components-fluentui-isolation-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Framework UI Components (FluentUI-isolation inputs)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Framework UI Components (FluentUI-isolation inputs)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#asdamirtextinput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AsdamirTextInput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#asdamirnumberinputtvalue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AsdamirNumberInput&lt;TValue&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#theming" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1605,6 +1644,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#framework-ui-components-fluentui-isolation-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Framework UI Components (FluentUI-isolation inputs)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Framework UI Components (FluentUI-isolation inputs)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#asdamirtextinput" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AsdamirTextInput
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#asdamirnumberinputtvalue" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AsdamirNumberInput&lt;TValue&gt;
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#theming" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1712,6 +1790,14 @@
 <td>General-purpose file picker: drop zone with native drag &amp; drop (no JS interop), <code>Accept</code>/<code>MaxFileSize</code> gates, hands the <code>IBrowserFile</code> to the caller</td>
 </tr>
 <tr>
+<td><code>AsdamirTextInput</code></td>
+<td><strong>Isolation</strong> text field — native <code>&lt;input&gt;</code> + design tokens, no FluentUI dependency; <code>InputBase&lt;string?&gt;</code> form integration, typing/paste character filter, <code>MaxLength</code>, <code>InputType</code></td>
+</tr>
+<tr>
+<td><code>AsdamirNumberInput&lt;T&gt;</code></td>
+<td><strong>Isolation</strong> numeric field — culture-aware <code>type="text"</code> entry (<code>decimal</code>/<code>int</code>/<code>long</code>), no FluentUI dependency; <code>ToEven</code> rounding, <code>Min</code>/<code>Max</code>, wheel-safe</td>
+</tr>
+<tr>
 <td><code>Menu</code></td>
 <td>Navigation menu bound to the menu service</td>
 </tr>
@@ -1739,6 +1825,156 @@
 <a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="n">Notify</span><span class="p">.</span><span class="n">ShowLoading</span><span class="p">(</span><span class="s">&quot;Importing…&quot;</span><span class="p">);</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="n">Notify</span><span class="p">.</span><span class="n">HideLoading</span><span class="p">();</span>
 </code></pre></div>
 <p>The host is FluentUI-free, so it works inside a Blazor Web App interactive island and the MAUI Blazor-Hybrid app. <strong>Without a host rendered, <code>ConfirmAsync</code>/<code>ConfirmDangerAsync</code> return <code>false</code></strong> (deny) — a destructive action never proceeds un-confirmed.</p>
+<h2 id="framework-ui-components-fluentui-isolation-inputs">Framework UI Components (FluentUI-isolation inputs)<a class="headerlink" href="#framework-ui-components-fluentui-isolation-inputs" title="Permanent link">&para;</a></h2>
+<p><code>AsdamirTextInput</code> and <code>AsdamirNumberInput&lt;T&gt;</code> are <strong>isolation</strong> form fields: a native <code>&lt;input&gt;</code> styled with the shared design tokens, deliberately <strong>not</strong> wrapping any FluentUI component. Binding to them keeps consumer code free of a <code>Microsoft.FluentUI.*</code> dependency while staying visually consistent (same tokens, focus/hover/disabled, error display, label alignment) with the FluentUI fields alongside. Both derive from Blazor's <code>InputBase&lt;TValue&gt;</code>, so <code>Value</code> / <code>ValueChanged</code> / <code>ValueExpression</code> flow through the ambient <code>EditContext</code> and DataAnnotations validation works with zero extra wiring (put a <code>&lt;DataAnnotationsValidator/&gt;</code> in your <code>EditForm</code>). No JS interop is used anywhere in either component.</p>
+<p>All user-facing text (<code>Label</code>, <code>Placeholder</code>) is an <strong>English-defaulted parameter</strong> — a framework component cannot assume a DB-seeded localization key exists, so the caller passes <code>@L["…"]</code> values in. On a validation error the field sets <code>aria-invalid="true"</code>, links <code>aria-describedby</code> to a <code>role="alert"</code> message, and renders the message below; the <code>&lt;label for&gt;</code> associates the label to the input for full keyboard/screen-reader use.</p>
+<h3 id="asdamirtextinput"><code>AsdamirTextInput</code><a class="headerlink" href="#asdamirtextinput" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code> / <code>ValueChanged</code> / <code>ValueExpression</code></td>
+<td><code>string?</code></td>
+<td>—</td>
+<td>Two-way binding (<code>@bind-Value</code>); <code>ValueExpression</code> drives EditContext/DataAnnotations</td>
+</tr>
+<tr>
+<td><code>MaxLength</code></td>
+<td><code>int</code></td>
+<td><code>0</code> (none)</td>
+<td>Max characters — enforced by the native <code>maxlength</code> <strong>and</strong> re-clamped component-side (a paste can exceed the attribute)</td>
+</tr>
+<tr>
+<td><code>AllowedCharacter</code></td>
+<td><code>Func&lt;char,bool&gt;?</code></td>
+<td><code>null</code> (all)</td>
+<td>Caller-supplied per-character predicate; the component runs it over <strong>typing AND paste/IME</strong> runs. The caller owns the RULE, the component owns the plumbing — no format regex is baked into the framework</td>
+</tr>
+<tr>
+<td><code>InputType</code></td>
+<td><code>string</code></td>
+<td><code>text</code></td>
+<td><code>text</code> / <code>password</code> / <code>email</code> / <code>tel</code> / <code>search</code> / <code>url</code>; a non-text type throws (numbers → <code>AsdamirNumberInput</code>)</td>
+</tr>
+<tr>
+<td><code>Disabled</code> / <code>ReadOnly</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Disabled = greyed + inert; ReadOnly = value shown, not editable</td>
+</tr>
+<tr>
+<td><code>Label</code> / <code>Placeholder</code></td>
+<td><code>string?</code></td>
+<td><code>null</code></td>
+<td>Localized text passed by the caller</td>
+</tr>
+<tr>
+<td><code>Immediate</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td><code>true</code> commits each keystroke; <code>false</code> commits on change/blur</td>
+</tr>
+<tr>
+<td><code>@attributes</code></td>
+<td>—</td>
+<td>—</td>
+<td>Additional attributes (e.g. <code>autocomplete</code>) splat onto the <code>&lt;input&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>&lt;AsdamirTextInput @bind-Value=&quot;model.Code&quot;
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>                  Label=&quot;@L[&quot;Field.Order.Code&quot;]&quot;
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>                  MaxLength=&quot;12&quot;
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>                  AllowedCharacter=&quot;ch =&gt; char.IsLetterOrDigit(ch)&quot;
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>                  autocomplete=&quot;off&quot; /&gt;
+</code></pre></div>
+<h3 id="asdamirnumberinputtvalue"><code>AsdamirNumberInput&lt;TValue&gt;</code><a class="headerlink" href="#asdamirnumberinputtvalue" title="Permanent link">&para;</a></h3>
+<p><code>TValue</code> is constrained to <code>decimal</code> / <code>int</code> / <code>long</code> (nullable variants allowed). <strong><code>double</code>/<code>float</code> are rejected at runtime</strong> with a clear <code>NotSupportedException</code> — binary floating point cannot represent decimal money exactly, and exact decimal capture is the whole point of a numeric entry field.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Value</code> / <code>ValueChanged</code> / <code>ValueExpression</code></td>
+<td><code>TValue</code></td>
+<td>—</td>
+<td>Two-way binding (<code>@bind-Value</code>); drives EditContext/DataAnnotations</td>
+</tr>
+<tr>
+<td><code>Decimals</code></td>
+<td><code>int</code></td>
+<td><code>2</code></td>
+<td>Fraction digits shown/rounded to, using <code>MidpointRounding.ToEven</code> (banker's rounding)</td>
+</tr>
+<tr>
+<td><code>Min</code> / <code>Max</code></td>
+<td><code>decimal?</code></td>
+<td><code>null</code></td>
+<td>Inclusive bounds; a committed value is clamped into range</td>
+</tr>
+<tr>
+<td><code>AllowNegative</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>When <code>false</code>, a leading minus is stripped</td>
+</tr>
+<tr>
+<td><code>MaxIntegerDigits</code></td>
+<td><code>int</code></td>
+<td><code>0</code> (none)</td>
+<td>Caps digits before the separator as the user types</td>
+</tr>
+<tr>
+<td><code>ShowGroupSeparator</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Show the thousands separator in the committed display (always tolerated on parse)</td>
+</tr>
+<tr>
+<td><code>Disabled</code> / <code>ReadOnly</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>As above</td>
+</tr>
+<tr>
+<td><code>Label</code> / <code>Placeholder</code></td>
+<td><code>string?</code></td>
+<td><code>null</code></td>
+<td>Localized text passed by the caller</td>
+</tr>
+<tr>
+<td><code>Immediate</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Commit on keystroke vs. change/blur (re-formatting only ever happens on commit, so the caret is stable while typing)</td>
+</tr>
+<tr>
+<td><code>@attributes</code></td>
+<td>—</td>
+<td>—</td>
+<td>Additional attributes splat onto the <code>&lt;input&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>&lt;AsdamirNumberInput TValue=&quot;decimal&quot; @bind-Value=&quot;model.UnitPrice&quot;
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>                    Label=&quot;@L[&quot;Field.OrderItem.UnitPrice&quot;]&quot;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>                    Decimals=&quot;2&quot; Min=&quot;0&quot; MaxIntegerDigits=&quot;9&quot; /&gt;
+</code></pre></div>
+<p><strong>Why <code>type="text"</code> + <code>inputmode="decimal"</code>, NOT <code>type="number"</code>.</strong> A native <code>type="number"</code> input (1) reinterprets the decimal separator per the <strong>browser's</strong> locale, not the app culture — a <code>tr-TR</code> user typing <code>1234,56</code> against an <code>en-US</code> browser silently loses the fraction; (2) ignores <code>maxlength</code>; (3) lets the <strong>mouse wheel</strong> change the value; (4) accepts <code>e</code>/<code>+</code>/<code>-</code> and scientific notation. <code>AsdamirNumberInput</code> instead uses <code>type="text"</code> + <code>inputmode="decimal"</code> (mobile numeric keypad) and a controlled, <strong>culture-aware</strong> parse/format we own: the decimal separator comes from <code>CultureInfo.CurrentCulture.NumberFormat</code>, the group separator is tolerated on parse, and the wheel is neutralized with Blazor's <code>@onwheel:preventDefault</code> (an attribute directive, not inline JS — no CSP concern). Filtering covers <strong>both</strong> typing and paste/IME so a pasted <code>$1,299.99</code> (or an IME commit) is sanitized the same as keystrokes.</p>
+<p><strong>Why these are not FluentUI wrappers (isolation).</strong> Both components carry <strong>zero</strong> <code>Microsoft.FluentUI.*</code> references — they render a native <code>&lt;input&gt;</code> and read only the shared <code>--asd-*</code> / Fluent-2 design tokens. The goal is to let consumer code (generated apps, AppManagement pages) bind to a framework field <strong>without</strong> taking a dependency on the FluentUI component API, so the FluentUI surface can evolve (or be swapped) behind the framework boundary without touching every page. Visually they sit alongside the FluentUI fields unchanged: same tokens, same focus ring/hover, same error treatment, same label alignment.</p>
 <h2 id="theming">Theming<a class="headerlink" href="#theming" title="Permanent link">&para;</a></h2>
 <p>Themes ship as CSS (<code>light</code>, <code>dark</code>, <code>high-contrast</code>) with design tokens; <code>ThemeService</code> switches them at runtime. Static assets are served as <strong>static web assets</strong> (no embedded-resource manifest needed).</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
