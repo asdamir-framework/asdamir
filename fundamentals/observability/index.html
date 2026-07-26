@@ -1090,6 +1090,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#central-error-visibility-for-generated-apps-the-forward-sink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Central error visibility for generated apps (the forward sink)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#distributed-tracing-metrics-opentelemetry" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1599,6 +1610,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#central-error-visibility-for-generated-apps-the-forward-sink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Central error visibility for generated apps (the forward sink)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#distributed-tracing-metrics-opentelemetry" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1692,6 +1714,23 @@
 </code></pre></div>
 <h2 id="database-log-sink-app-log-service">Database log sink &amp; app log service<a class="headerlink" href="#database-log-sink-app-log-service" title="Permanent link">&para;</a></h2>
 <p><code>IAppLogService</code> writes application log entries to the database (with a Serilog fallback), powering the AdminConsole's log views without scraping files.</p>
+<h2 id="central-error-visibility-for-generated-apps-the-forward-sink">Central error visibility for generated apps (the forward sink)<a class="headerlink" href="#central-error-visibility-for-generated-apps-the-forward-sink" title="Permanent link">&para;</a></h2>
+<p>Every tier writes <strong>three Serilog sinks: Console + File + a central <code>dbo.AppLog</code></strong> — but <em>how</em> the central sink is reached differs by tier, because a generated app must never write to the control-plane database directly (the layered / central-data rule):</p>
+<ul>
+<li><strong>The control plane</strong> (AppManagement's API) owns the log database, so its third sink writes <strong>directly</strong> to <code>dbo.AppLog</code>.</li>
+<li><strong>A generated app's Gateway</strong> cannot touch that database. Its third sink is <strong><code>AppLogForwardSink</code></strong> (in <code>Asdamir.Data.Logging</code>): it forwards <strong>Warning and above</strong> to the control plane's authenticated ingest endpoint (<code>POST api/admin/applogs/ingest</code>) over HTTP. The endpoint resolves <em>which</em> app the row belongs to <strong>from the Gateway's <code>app-log</code> service token — never from the request body</strong> — so one app can only write into its own log slice, and a forged app id is impossible.</li>
+</ul>
+<p>The forward sink is built to never get in the app's way:</p>
+<ul>
+<li><strong>Fail-safe, not fail-open.</strong> If the control plane is down or slow, the sink swallows the error and keeps writing Console + File. A dropped log line is acceptable; a blocked or crashed app is not.</li>
+<li><strong>No feedback loop.</strong> It never forwards its <em>own</em> HTTP-transport log events, so a failing forward can't create a log storm.</li>
+<li><strong>Batched and bounded.</strong> Events go through an in-memory queue (async <code>System.Threading.Channels</code>) and are posted in batches; when the queue is full the oldest entry is dropped (with a one-time warning) rather than blocking the caller.</li>
+</ul>
+<p><strong>Configuration.</strong> The forward is on by default and opt-out per app:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// appsettings.json — generated Gateway
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>&quot;AppLog&quot;: { &quot;ForwardToCentral&quot;: true }   // set false to keep logs local only
+</code></pre></div>
+<p><strong>Free mode (self-contained apps)</strong> has no control plane to forward to, so only <strong>Console + File</strong> are wired — there is no forward sink.</p>
 <h2 id="distributed-tracing-metrics-opentelemetry">Distributed tracing &amp; metrics (OpenTelemetry)<a class="headerlink" href="#distributed-tracing-metrics-opentelemetry" title="Permanent link">&para;</a></h2>
 <p>Serilog owns <strong>logs</strong>; OpenTelemetry adds <strong>traces</strong> and <strong>metrics</strong>. The API tiers — AppManagement's API and every generated app's Gateway — emit:</p>
 <ul>
@@ -1701,11 +1740,11 @@
 <p>Everything is exported over <strong>OTLP</strong> to any collector (OpenTelemetry Collector, Jaeger, Tempo, Prometheus via the collector, Grafana, Azure Monitor, …).</p>
 <h3 id="enabling-it-opt-in">Enabling it (opt-in)<a class="headerlink" href="#enabling-it-opt-in" title="Permanent link">&para;</a></h3>
 <p>Tracing/metrics turn on <strong>only when an OTLP endpoint is configured</strong>, so local/dev/test runs without a collector stay quiet:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>// appsettings.json (or env)
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>&quot;OpenTelemetry&quot;: {
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  &quot;ServiceName&quot;: &quot;my-app-gateway&quot;,        // optional; defaults to the assembly/project name
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>  &quot;Otlp&quot;: { &quot;Endpoint&quot;: &quot;http://otel-collector:4317&quot; }
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>// appsettings.json (or env)
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>&quot;OpenTelemetry&quot;: {
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>  &quot;ServiceName&quot;: &quot;my-app-gateway&quot;,        // optional; defaults to the assembly/project name
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>  &quot;Otlp&quot;: { &quot;Endpoint&quot;: &quot;http://otel-collector:4317&quot; }
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>}
 </code></pre></div>
 <p>The standard <code>OTEL_EXPORTER_OTLP_ENDPOINT</code> environment variable is honoured too (handy for k8s sidecar/collector injection) — set either one. Empty/unset = OpenTelemetry is not registered (Serilog logging is unaffected).</p>
 <h3 id="whats-wired">What's wired<a class="headerlink" href="#whats-wired" title="Permanent link">&para;</a></h3>
