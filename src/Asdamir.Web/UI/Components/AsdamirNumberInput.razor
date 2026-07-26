@@ -1,0 +1,345 @@
+@using System.Globalization
+@using System.Numerics
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms
+@typeparam TValue
+@inherits InputBase<TValue>
+
+@*
+    AsdamirNumberInput<TValue> — the framework's ISOLATION numeric field. It does NOT wrap any FluentUI
+    component: a native <input> styled with the .asd-* / Fluent-2 tokens, so consumer code carries no
+    FluentUI dependency.
+
+    WHY NOT type="number" (deliberate): a native number input (1) reinterprets the decimal separator per the
+    browser's OWN locale, not the app culture — a tr-TR user typing "1234,56" against an en-US browser loses
+    the fraction; (2) ignores maxlength; (3) lets the mouse WHEEL silently change the value; (4) accepts
+    "e"/"+"/"-" and scientific notation. So this uses type="text" + inputmode="decimal" + a controlled,
+    culture-aware parse/format that WE own.
+
+    TVALUE is constrained to decimal / int / long. double / float are REJECTED (runtime, in OnParametersSet
+    with a clear exception) because binary floating point cannot represent decimal money exactly — the whole
+    point of a numeric ENTRY field is exact decimal capture. The generic `where TValue : struct` constraint
+    below cannot express "decimal|int|long", so the final gate is the runtime type check (proven by a test).
+
+    Culture: the decimal separator comes from CultureInfo.CurrentCulture.NumberFormat; the group separator is
+    optional in DISPLAY and tolerated (stripped) on PARSE. Rounding is MidpointRounding.ToEven at `Decimals`
+    (default 2). Cursor stability: while TYPING (@oninput) we only FILTER — we never re-format, so the caret
+    never jumps; the value is re-formatted only on COMMIT (@onchange/blur). The mouse wheel is neutralized
+    with Blazor's built-in @onwheel:preventDefault (an attribute, not inline JS — no CSP/AUD concern), so no
+    JS interop is needed anywhere in this component.
+
+    Label / Placeholder are English-defaulted parameters; the caller passes @L["…"] in.
+*@
+
+<div class="asd-numinput @(Disabled ? "disabled" : null)">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="asd-ni-label" for="@_inputId">@Label</label>
+    }
+    <input @ref="_inputRef"
+           id="@_inputId"
+           class="asd-ni-input @(_hasError ? "invalid" : null)"
+           type="text"
+           inputmode="decimal"
+           value="@_displayText"
+           @oninput="OnInputAsync"
+           @onchange="OnCommitAsync"
+           @onpaste="OnPasteAsync"
+           @onwheel:preventDefault
+           placeholder="@Placeholder"
+           disabled="@Disabled"
+           readonly="@ReadOnly"
+           aria-invalid="@(_hasError ? "true" : null)"
+           aria-describedby="@(_hasError ? _errorId : null)"
+           @attributes="AdditionalAttributes" />
+    @if (_hasError)
+    {
+        <div id="@_errorId" class="asd-ni-error" role="alert">@CurrentFieldError</div>
+    }
+</div>
+
+@code {
+    private readonly string _inputId = $"asd-ni-{Guid.NewGuid():N}";
+    private readonly string _errorId = $"asd-ni-err-{Guid.NewGuid():N}";
+    private ElementReference _inputRef;
+    private string _displayText = string.Empty;
+
+    /// <summary>Number of fraction digits shown/rounded to (<see cref="MidpointRounding.ToEven"/>). Default <c>2</c>.</summary>
+    [Parameter] public int Decimals { get; set; } = 2;
+
+    /// <summary>Optional inclusive minimum. A committed value below it is clamped up to <see cref="Min"/>.</summary>
+    [Parameter] public decimal? Min { get; set; }
+
+    /// <summary>Optional inclusive maximum. A committed value above it is clamped down to <see cref="Max"/>.</summary>
+    [Parameter] public decimal? Max { get; set; }
+
+    /// <summary>Whether a leading minus sign is accepted. When <see langword="false"/> (default), negatives are stripped.</summary>
+    [Parameter] public bool AllowNegative { get; set; }
+
+    /// <summary>
+    /// Maximum digits before the decimal separator. Extra integer digits are dropped as they are typed.
+    /// <c>0</c> (default) means no cap.
+    /// </summary>
+    [Parameter] public int MaxIntegerDigits { get; set; }
+
+    /// <summary>When <see langword="true"/>, show the group (thousands) separator in the committed display. Default <see langword="false"/>.</summary>
+    [Parameter] public bool ShowGroupSeparator { get; set; }
+
+    /// <summary>Disables the field entirely.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Renders the field read-only (value shown, not editable).</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Field label rendered above the input and associated via <c>for</c>. Pass a localized value.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Placeholder shown when the field is empty. Pass a localized value.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, the bound value updates on every keystroke; when <see langword="false"/>
+    /// (default) it commits on change/blur. Regardless, re-formatting only ever happens on commit, so the
+    /// caret is stable while typing.
+    /// </summary>
+    [Parameter] public bool Immediate { get; set; }
+
+    private bool _hasError => !string.IsNullOrEmpty(CurrentFieldError);
+
+    private string? CurrentFieldError =>
+        EditContext is not null && FieldIdentifier.FieldName is not null
+            ? EditContext.GetValidationMessages(FieldIdentifier).FirstOrDefault()
+            : null;
+
+    private static readonly HashSet<Type> SupportedTypes = new()
+    {
+        typeof(decimal), typeof(decimal?),
+        typeof(int), typeof(int?),
+        typeof(long), typeof(long?),
+    };
+
+    /// <inheritdoc />
+    public override Task SetParametersAsync(ParameterView parameters)
+    {
+        // Gate the type BEFORE InputBase runs — so an unsupported TValue (double/float) fails with our clear
+        // NotSupportedException, not InputBase's ValueExpression complaint, and never reaches parse/format.
+        var t = typeof(TValue);
+        if (!SupportedTypes.Contains(t))
+        {
+            throw new NotSupportedException(
+                $"AsdamirNumberInput<{t.Name}> is not supported. Use decimal, int or long (nullable variants " +
+                "allowed). double/float are rejected because binary floating point cannot represent decimal " +
+                "values exactly — use decimal for money and other exact-decimal entry.");
+        }
+        return base.SetParametersAsync(parameters);
+    }
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        _displayText = FormatValue(Value);
+        base.OnParametersSet();
+    }
+
+    /// <inheritdoc />
+    protected override string FormatValueAsString(TValue? value) => FormatValue(value);
+
+    /// <inheritdoc />
+    protected override bool TryParseValueFromString(string? value, out TValue result, out string validationErrorMessage)
+    {
+        validationErrorMessage = string.Empty;
+        var culture = CultureInfo.CurrentCulture;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            // Empty → default (0 for value types; null handled below for nullable).
+            if (Nullable.GetUnderlyingType(typeof(TValue)) is not null)
+            {
+                result = default!;
+                return true;
+            }
+            result = (TValue)ConvertFromDecimal(0m);
+            return true;
+        }
+
+        var normalized = NormalizeForParse(value, culture);
+        if (!decimal.TryParse(normalized, NumberStyles.Number, culture, out var parsed))
+        {
+            result = default!;
+            validationErrorMessage = "The field must be a number.";
+            return false;
+        }
+
+        parsed = ApplyBounds(RoundTo(parsed));
+        result = (TValue)ConvertFromDecimal(parsed);
+        return true;
+    }
+
+    private async Task OnInputAsync(ChangeEventArgs e)
+    {
+        // TYPING PATH — filter only, never re-format (so the caret stays put). We DO reconcile the element
+        // if a disallowed char was typed, otherwise the rejected char would linger.
+        var raw = e.Value?.ToString() ?? string.Empty;
+        var filtered = FilterRaw(raw, CultureInfo.CurrentCulture);
+
+        if (!string.Equals(filtered, raw, StringComparison.Ordinal))
+        {
+            _displayText = filtered;
+            StateHasChanged();   // re-render with the cleaned text
+        }
+        else
+        {
+            _displayText = filtered;
+        }
+
+        if (Immediate && TryParseValueFromString(filtered, out var v, out _))
+        {
+            // Commit the value but do NOT touch _displayText — keep the raw typed text to preserve the caret.
+            await SetCurrentValueSilentlyAsync(v);
+        }
+    }
+
+    private void OnCommitAsync(ChangeEventArgs e)
+    {
+        // COMMIT PATH (change/blur) — parse, clamp, round, then RE-FORMAT the display. The caret has already
+        // left the field, so re-formatting here is safe.
+        var raw = e.Value?.ToString() ?? string.Empty;
+        if (TryParseValueFromString(raw, out var v, out var err) && string.IsNullOrEmpty(err))
+        {
+            CurrentValue = v;           // through InputBase → ValueChanged + validation
+            _displayText = FormatValue(v);
+        }
+        else
+        {
+            CurrentValueAsString = raw; // let InputBase surface the parse error via validation
+            _displayText = raw;
+        }
+        StateHasChanged();
+    }
+
+    private void OnPasteAsync(ClipboardEventArgs e)
+    {
+        // @oninput fires right after a paste with the merged text, so FilterRaw there already cleans it;
+        // this handler is a no-op hook kept for symmetry/clarity (paste is a covered path, not a gap).
+    }
+
+    private async Task SetCurrentValueSilentlyAsync(TValue value)
+    {
+        CurrentValue = value;
+        await Task.CompletedTask;
+    }
+
+    // Keeps only: an optional single leading '-', digits, and a single decimal separator; enforces
+    // MaxIntegerDigits and Decimals as the user types. Group separators are stripped (re-added only on
+    // commit if ShowGroupSeparator).
+    private string FilterRaw(string raw, CultureInfo culture)
+    {
+        var dec = culture.NumberFormat.NumberDecimalSeparator;
+        var decChar = dec.Length == 1 ? dec[0] : '.';
+
+        var sb = new StringBuilder(raw.Length);
+        var seenDecimal = false;
+        var intDigits = 0;
+        var fracDigits = 0;
+        var negative = false;
+
+        for (var i = 0; i < raw.Length; i++)
+        {
+            var ch = raw[i];
+
+            if (ch == '-')
+            {
+                // Only a single leading minus, only when allowed.
+                if (AllowNegative && sb.Length == 0 && !negative) { negative = true; sb.Append('-'); }
+                continue;
+            }
+
+            // Accept ONLY the culture's decimal separator as the fraction point. A non-culture '.'/','
+            // (i.e. the culture's GROUP separator, e.g. the ',' in "1,299" under en-US) is dropped here —
+            // group separators belong to display, not entry — so a pasted "1,299.99" keeps "1299.99".
+            if (ch == decChar)
+            {
+                if (Decimals <= 0) continue;       // integer-only field: no separator
+                if (seenDecimal) continue;         // only one
+                seenDecimal = true;
+                sb.Append(decChar);
+                continue;
+            }
+            if (ch == '.' || ch == ',')
+            {
+                // A separator char that is NOT the culture decimal separator = the group separator → drop it.
+                continue;
+            }
+
+            if (char.IsDigit(ch))
+            {
+                if (!seenDecimal)
+                {
+                    if (MaxIntegerDigits > 0 && intDigits >= MaxIntegerDigits) continue;
+                    intDigits++;
+                    sb.Append(ch);
+                }
+                else
+                {
+                    if (fracDigits >= Decimals) continue;
+                    fracDigits++;
+                    sb.Append(ch);
+                }
+            }
+            // everything else (letters, e, +, spaces from IME, etc.) dropped
+        }
+
+        return sb.ToString();
+    }
+
+    private static string NormalizeForParse(string value, CultureInfo culture)
+    {
+        // Strip group separators and whitespace, keep the decimal separator + sign + digits.
+        var group = culture.NumberFormat.NumberGroupSeparator;
+        var sb = new StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            if (char.IsWhiteSpace(ch)) continue;
+            if (group.Length == 1 && ch == group[0]) continue;
+            sb.Append(ch);
+        }
+        return sb.ToString();
+    }
+
+    private decimal RoundTo(decimal value) =>
+        Decimals >= 0 ? Math.Round(value, Decimals, MidpointRounding.ToEven) : value;
+
+    private decimal ApplyBounds(decimal value)
+    {
+        if (!AllowNegative && value < 0) value = 0;
+        if (Min.HasValue && value < Min.Value) value = Min.Value;
+        if (Max.HasValue && value > Max.Value) value = Max.Value;
+        return value;
+    }
+
+    private string FormatValue(TValue? value)
+    {
+        if (value is null) return string.Empty;
+        var d = ConvertToDecimal(value);
+        var culture = CultureInfo.CurrentCulture;
+        var fmt = (ShowGroupSeparator ? "N" : "F") + Math.Max(0, Decimals).ToString(CultureInfo.InvariantCulture);
+        return d.ToString(fmt, culture);
+    }
+
+    private static decimal ConvertToDecimal(TValue value) => value switch
+    {
+        decimal m => m,
+        int i => i,
+        long l => l,
+        _ => Convert.ToDecimal(value, CultureInfo.InvariantCulture),
+    };
+
+    private static object ConvertFromDecimal(decimal value)
+    {
+        var t = Nullable.GetUnderlyingType(typeof(TValue)) ?? typeof(TValue);
+        if (t == typeof(decimal)) return value;
+        if (t == typeof(int)) return (int)Math.Round(value, MidpointRounding.ToEven);
+        if (t == typeof(long)) return (long)Math.Round(value, MidpointRounding.ToEven);
+        return Convert.ChangeType(value, t, CultureInfo.InvariantCulture);
+    }
+}

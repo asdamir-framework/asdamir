@@ -1,0 +1,75 @@
+/* AsdamirTextInput — scoped, theme-aware. Reads the global --asd-* / Fluent-2 tokens (with standalone
+   fallbacks) so the field is skin-aware automatically: the 12 html[data-skin] blocks override --asd-accent,
+   which drives the focus ring/hover below. No FluentUI, no JS: styling is entirely native + scoped CSS.
+   The <input> carries this component's scope attribute directly (it is NOT a child component), so ::deep
+   is NOT needed — the AsdamirFilePicker ::deep trap (needed there because <InputFile> is a child) does not
+   apply here. */
+
+.asd-textinput {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.asd-textinput.disabled {
+    opacity: .6;
+}
+
+.asd-ti-label {
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--asd-ink-soft, #7a7f99);
+}
+
+.asd-ti-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 11px;
+    font-size: .9rem;
+    line-height: 1.4;
+    color: var(--asd-ink, #222);
+    background: var(--asd-surface, #fff);
+    border: 1px solid var(--asd-border-strong, #cfc7bc);
+    border-radius: var(--asd-radius-sm, 8px);
+    transition: border-color .15s ease, box-shadow .15s ease;
+    outline: none;
+}
+
+.asd-ti-input::placeholder {
+    color: var(--asd-ink-soft, #8a8278);
+    opacity: .8;
+}
+
+.asd-ti-input:hover:not(:disabled):not([readonly]) {
+    border-color: var(--asd-accent, #c0552b);
+}
+
+.asd-ti-input:focus-visible {
+    border-color: var(--asd-accent, #c0552b);
+    box-shadow: 0 0 0 3px var(--asd-accent-soft, color-mix(in srgb, var(--asd-accent, #c0552b) 22%, transparent));
+}
+
+.asd-ti-input:disabled {
+    cursor: not-allowed;
+    background: var(--asd-surface-muted, #f6f3ee);
+}
+
+.asd-ti-input[readonly] {
+    background: var(--asd-surface-muted, #f6f3ee);
+    cursor: default;
+}
+
+/* Error state: red border + a ring, plus the message below (role="alert"). */
+.asd-ti-input.invalid,
+.asd-ti-input.invalid:hover {
+    border-color: var(--asd-danger, #b3261e);
+}
+
+.asd-ti-input.invalid:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--asd-danger, #b3261e) 22%, transparent);
+}
+
+.asd-ti-error {
+    font-size: .8rem;
+    color: var(--asd-danger, #b3261e);
+}

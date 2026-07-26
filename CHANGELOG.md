@@ -5,10 +5,39 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `1.5.3`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (central error visibility for generated apps — the `AppLogForwardSink`; see the top entry below. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `1.6.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (Web `1.6.0`: the FluentUI-isolation input components `AsdamirTextInput` + `AsdamirNumberInput<T>` — see the top entry below. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Web 1.6.0] — 2026-07-26
+
+### FluentUI-isolation input components — `AsdamirTextInput` + `AsdamirNumberInput<T>`
+
+Two new framework UI components in `Asdamir.Web/UI/Components`, the first of the FluentUI-**isolation**
+front: a native `<input>` styled with the shared `--asd-*` / Fluent-2 design tokens, with **zero**
+`Microsoft.FluentUI.*` dependency. Consumer code (generated apps, AppManagement) can bind to a framework
+field without taking a dependency on the FluentUI component API, so the FluentUI surface can evolve behind
+the framework boundary. Both derive from `InputBase<TValue>`, so `Value`/`ValueChanged`/`ValueExpression`
+flow through the ambient `EditContext` and DataAnnotations validation works with no extra wiring. No JS
+interop.
+
+- **`AsdamirTextInput`** — `MaxLength` (native + component clamp), a caller-supplied `AllowedCharacter`
+  predicate applied to **typing AND paste/IME**, `InputType` (text/password/email/tel/search/url; a non-text
+  type throws), `Disabled`/`ReadOnly`, `Immediate`, `@attributes` splat.
+- **`AsdamirNumberInput<TValue>`** — `TValue` constrained to `decimal`/`int`/`long` (`double`/`float`
+  rejected at runtime, since binary floating point can't represent decimal money exactly). Uses
+  `type="text"` + `inputmode="decimal"` (NOT `type="number"`, which reinterprets the separator per browser
+  locale, ignores `maxlength`, and lets the wheel change the value) with a **culture-aware** parse/format
+  (decimal separator from `CultureInfo.CurrentCulture`, group separator tolerated on parse),
+  `MidpointRounding.ToEven`, `Decimals`/`Min`/`Max`/`AllowNegative`/`MaxIntegerDigits`, wheel neutralized via
+  `@onwheel:preventDefault`, caret stable while typing (re-format only on commit).
+
+Accessibility: `<label for>`, `aria-invalid` + `aria-describedby` → a `role="alert"` message. User-facing
+text (`Label`/`Placeholder`) is an English-defaulted parameter — the caller passes `@L["…"]` in. 29 new
+bUnit tests (value binding, EditContext/DataAnnotations, typing + paste filters, tr-TR↔en-US culture
+round-trip, ToEven rounding, bounds, wheel-safety, `double`/`float` rejection). No new business rule; existing
+`FluentTextField`/`FluentNumberField` usages are not migrated (a later increment).
 
 ## [Core 1.6.0 · Data 1.4.0 · Tools 1.4.5] — 2026-07-26
 

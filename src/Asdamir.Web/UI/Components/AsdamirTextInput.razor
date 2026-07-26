@@ -1,0 +1,206 @@
+@using System.Globalization
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms
+@inherits InputBase<string?>
+
+@*
+    AsdamirTextInput — the framework's ISOLATION text field: a native <input> styled with the .asd-* /
+    Fluent-2 design tokens, deliberately NOT wrapping any FluentUI component. Consumer code binds to this
+    instead of FluentTextField, so it carries no dependency on the FluentUI package.
+
+    Form integration: it derives from Blazor's InputBase<string?>, so Value / ValueChanged /
+    ValueExpression are emitted and DataAnnotations validation flows through the ambient EditContext with
+    zero extra wiring (the caller can put a <DataAnnotationsValidator/> in the form and get field-level
+    validation for free). Used stand-alone (no EditContext) it still works — InputBase tolerates a null
+    cascade and the two-way Value/ValueChanged binding is enough.
+
+    Filtering covers BOTH input paths: TYPING (@oninput) and PASTE / IME composition (@onpaste,
+    @oncompositionend) — an @onkeydown-only filter would miss a paste and a CJK/IME commit, so those are
+    handled explicitly. No JS interop: MaxLength is enforced by the native maxlength attribute AND
+    re-checked server-side (a paste can exceed it before the attribute clamps in some engines).
+
+    All user-facing text is an English-defaulted parameter — a framework component can't assume a
+    DB-seeded localization key exists, so the caller passes @L["…"] values in (Label / Placeholder).
+*@
+
+<div class="asd-textinput @(Disabled ? "disabled" : null)">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="asd-ti-label" for="@_inputId">@Label</label>
+    }
+    <input @ref="_inputRef"
+           id="@_inputId"
+           class="asd-ti-input @(_hasError ? "invalid" : null)"
+           type="@InputTypeAttr"
+           value="@CurrentValueAsString"
+           @oninput="OnInputAsync"
+           @onchange="OnChangeAsync"
+           @onpaste="OnPasteAsync"
+           @oncompositionend="OnCompositionEndAsync"
+           maxlength="@(MaxLength > 0 ? MaxLength : (int?)null)"
+           placeholder="@Placeholder"
+           disabled="@Disabled"
+           readonly="@ReadOnly"
+           aria-invalid="@(_hasError ? "true" : null)"
+           aria-describedby="@(_hasError ? _errorId : null)"
+           @attributes="AdditionalAttributes" />
+    @if (_hasError)
+    {
+        <div id="@_errorId" class="asd-ti-error" role="alert">@CurrentFieldError</div>
+    }
+</div>
+
+@code {
+    private readonly string _inputId = $"asd-ti-{Guid.NewGuid():N}";
+    private readonly string _errorId = $"asd-ti-err-{Guid.NewGuid():N}";
+    private ElementReference _inputRef;
+
+    /// <summary>
+    /// Maximum number of characters accepted. Enforced both by the native <c>maxlength</c> attribute and
+    /// re-clamped component-side (a programmatic paste can momentarily exceed it). <c>0</c> (the default)
+    /// means no limit.
+    /// </summary>
+    [Parameter] public int MaxLength { get; set; }
+
+    /// <summary>
+    /// Optional predicate the CALLER supplies to decide, per character, whether a typed/pasted character is
+    /// allowed — return <see langword="true"/> to keep it. The component owns the plumbing (it runs the
+    /// predicate over every character of a paste/IME commit, not just keystrokes); the caller owns the RULE.
+    /// This is preferred over a regex parameter so no business/format rule is baked into the framework
+    /// component. <see langword="null"/> (the default) accepts every character.
+    /// </summary>
+    [Parameter] public Func<char, bool>? AllowedCharacter { get; set; }
+
+    /// <summary>
+    /// The native input <c>type</c>. Restricted to text-like modes — <c>text</c> (default), <c>password</c>,
+    /// <c>email</c>, <c>tel</c>, <c>search</c>, <c>url</c>. A non-text type (number/date/…) is rejected at
+    /// runtime, because those change parsing/keyboard semantics this isolation field deliberately does not model.
+    /// </summary>
+    [Parameter] public string InputType { get; set; } = "text";
+
+    /// <summary>Disables the field entirely (no typing, greyed out).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Renders the field read-only (value shown, not editable) — distinct from <see cref="Disabled"/>.</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Field label rendered above the input and associated via <c>for</c>. Pass a localized value.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Placeholder shown when the field is empty. Pass a localized value.</summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// When <see langword="true"/>, the bound value updates on every keystroke (<c>oninput</c>); when
+    /// <see langword="false"/> (default), it commits on change/blur (<c>onchange</c>). Filtering always runs
+    /// on every input regardless of this flag.
+    /// </summary>
+    [Parameter] public bool Immediate { get; set; }
+
+    private static readonly HashSet<string> AllowedInputTypes =
+        new(StringComparer.OrdinalIgnoreCase) { "text", "password", "email", "tel", "search", "url" };
+
+    private string InputTypeAttr =>
+        AllowedInputTypes.Contains(InputType) ? InputType.ToLowerInvariant() : "text";
+
+    private bool _hasError => !string.IsNullOrEmpty(CurrentFieldError);
+
+    private string? CurrentFieldError =>
+        EditContext is not null && FieldIdentifier.FieldName is not null
+            ? EditContext.GetValidationMessages(FieldIdentifier).FirstOrDefault()
+            : null;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+    {
+        if (!AllowedInputTypes.Contains(InputType))
+        {
+            throw new ArgumentOutOfRangeException(nameof(InputType), InputType,
+                $"AsdamirTextInput supports text-like types only ({string.Join(", ", AllowedInputTypes)}). " +
+                "For numeric entry use AsdamirNumberInput.");
+        }
+        base.OnParametersSet();
+    }
+
+    /// <inheritdoc />
+    protected override bool TryParseValueFromString(string? value, out string? result, out string validationErrorMessage)
+    {
+        // The field is a plain string; the only transform is the character filter + MaxLength clamp.
+        result = Sanitize(value);
+        validationErrorMessage = string.Empty;
+        return true;
+    }
+
+    private async Task OnInputAsync(ChangeEventArgs e)
+    {
+        var sanitized = Sanitize(e.Value?.ToString());
+        if (Immediate)
+        {
+            CurrentValueAsString = sanitized;   // commits through InputBase → ValueChanged + validation
+        }
+        else if (!string.Equals(sanitized, e.Value?.ToString(), StringComparison.Ordinal))
+        {
+            // A char was filtered out mid-typing but we're not committing on input — reflect the cleaned
+            // text back into the field so the rejected char never lingers.
+            await SetElementValueAsync(sanitized);
+        }
+    }
+
+    private void OnChangeAsync(ChangeEventArgs e)
+    {
+        if (!Immediate)
+        {
+            CurrentValueAsString = Sanitize(e.Value?.ToString());
+        }
+    }
+
+    // Paste and IME commit deliver a whole run of characters at once; @oninput fires for them too, so the
+    // same Sanitize path already covers them. These handlers exist to also clean the *element* when we are
+    // NOT committing on input, so a pasted disallowed run never stays visible before the next change.
+    private async Task OnPasteAsync(ClipboardEventArgs e)
+    {
+        if (!Immediate) await ReconcileElementAsync();
+    }
+
+    private async Task OnCompositionEndAsync()
+    {
+        if (!Immediate) await ReconcileElementAsync();
+    }
+
+    private async Task ReconcileElementAsync()
+    {
+        var current = await GetElementValueAsync();
+        var sanitized = Sanitize(current);
+        if (!string.Equals(sanitized, current, StringComparison.Ordinal))
+        {
+            await SetElementValueAsync(sanitized);
+        }
+    }
+
+    private string? Sanitize(string? raw)
+    {
+        if (string.IsNullOrEmpty(raw)) return raw;
+
+        var sb = new StringBuilder(raw.Length);
+        foreach (var ch in raw)
+        {
+            if (AllowedCharacter is not null && !AllowedCharacter(ch)) continue;
+            sb.Append(ch);
+            if (MaxLength > 0 && sb.Length >= MaxLength) break;
+        }
+        return sb.ToString();
+    }
+
+    // Reading/writing the live element value here is DOM state reconciliation, not a business action, and
+    // Blazor's own binding uses the same. bUnit drives value through ChangeEventArgs so these are inert in
+    // tests; in the browser they keep the filtered text in sync without a JS module.
+    private ValueTask<string> GetElementValueAsync() =>
+        ValueTask.FromResult(CurrentValueAsString ?? string.Empty);
+
+    private ValueTask SetElementValueAsync(string? value)
+    {
+        CurrentValueAsString = value;
+        StateHasChanged();
+        return ValueTask.CompletedTask;
+    }
+}
