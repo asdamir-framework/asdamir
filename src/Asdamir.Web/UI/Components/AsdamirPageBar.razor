@@ -1,0 +1,64 @@
+@* AsdamirPageBar — the shared page header: a title + a breadcrumb trail. Renders the theme's `.asd-pagebar`
+   / `.asd-pagebar-title` / `.asd-crumbs`, so every page stops repeating that boilerplate and the separators.
+
+     <AsdamirPageBar Title="@L["Page.Reporting.Title"]" Crumbs="_crumbs" />
+     …
+     private readonly List<AsdamirCrumb> _crumbs = new()
+     {
+         new(L["App.Nav.Dashboard"], "/"),
+         new(L["Page.Reporting.Title"]),   // last = current (no href), rendered as .cur
+     };
+
+   The last crumb is the current page (`.cur`, no link); the rest link via their `Href`. Separators (›) are
+   inserted automatically. Styled by the shared theme, so it follows the active skin. No inline styles. *@
+
+<div class="asd-pagebar">
+    @if (Subtitle is not null)
+    {
+        <div>
+            <h1 class="asd-pagebar-title">@Title</h1>
+            <p class="asd-pagebar-sub">@Subtitle</p>
+        </div>
+    }
+    else
+    {
+        <h1 class="asd-pagebar-title">@Title</h1>
+    }
+    @if (Crumbs is { Count: > 0 })
+    {
+        <ol class="asd-crumbs">
+            @for (var i = 0; i < Crumbs.Count; i++)
+            {
+                var crumb = Crumbs[i];
+                var isLast = i == Crumbs.Count - 1;
+                @if (i > 0)
+                {
+                    <li class="sep">›</li>
+                }
+                <li class="@(isLast ? "cur" : null)">
+                    @if (!isLast && !string.IsNullOrEmpty(crumb.Href))
+                    {
+                        <a href="@crumb.Href">@crumb.Label</a>
+                    }
+                    else
+                    {
+                        @crumb.Label
+                    }
+                </li>
+            }
+        </ol>
+    }
+</div>
+
+@code {
+    /// <summary>The page title (rendered in <c>.asd-pagebar-title</c>).</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Optional subtitle (rendered as <c>.asd-pagebar-sub</c> beneath the title); omitted when null.
+    /// When set, the title + subtitle are wrapped in a div (matching the AppManagement pagebar layout).</summary>
+    [Parameter] public string? Subtitle { get; set; }
+
+    /// <summary>The breadcrumb trail, root → current. The last entry is the current page (no link); earlier
+    /// entries link via <see cref="AsdamirCrumb.Href"/>. Null/empty → no breadcrumbs.</summary>
+    [Parameter] public IReadOnlyList<AsdamirCrumb>? Crumbs { get; set; }
+}

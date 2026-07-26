@@ -5,10 +5,35 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.5.0`** · **Data `1.3.1`** · **Web `1.3.1`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.1`** (the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `1.5.3`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (central error visibility for generated apps — the `AppLogForwardSink`; see the top entry below. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Core 1.6.0 · Data 1.4.0 · Tools 1.4.5] — 2026-07-26
+
+### Added — central error visibility for generated apps (the AppLog forward sink)
+
+A scaffolded Gateway now wires **three Serilog sinks** — Console + File (local) + a new **`AppLogForwardSink`**
+(`Asdamir.Data.Logging`) that forwards **Warning+** events to the control plane's authenticated ingest
+endpoint (`POST api/admin/applogs/ingest`). Before this, a generated Gateway had **no Serilog at all** — no
+local file log and nothing central, so every Gateway `500` was invisible in central error monitoring.
+
+- The ingest endpoint resolves the app's id **from the Gateway's `app-log` service token — never from the
+  request body**, so one app can only write its own log slice (a forged app id is rejected).
+- The sink is **fail-safe** (a down/slow ingest never blocks or crashes the app — it keeps Console+File),
+  **no-loop** (never forwards its own HTTP-transport logs), and **batched + bounded** (async `Channel`,
+  drop-oldest when full).
+- **Opt-out** via config `AppLog:ForwardToCentral` (default `true`). **Free mode** has no control plane, so
+  only Console + File are wired.
+- New public API: `Asdamir.Core.ErrorHandling.Logging.AppLogServiceToken` (**Core `1.6.0`**);
+  `Asdamir.Data.Logging.AppLogForwardSink` + `AppLogForwardOptions` (**Data `1.4.0`**);
+  `GatewayProgram.sbn` emits the 3-sink wiring (**Tools `1.4.5`**). `SerilogBootstrap.UseWithDatabase` is now
+  `[Obsolete]` (direct-DB sink — use the forward sink in a generated app).
+
+**Existing generated apps:** an app from an earlier CLI has no Serilog — add the 3-sink
+`builder.Host.UseSerilog(…)` block to your Gateway `Program.cs` (or regenerate), and bump
+`Asdamir.Core`/`Data` to `1.6.0`/`1.4.0`.
 
 ## [Tools 1.4.1] — 2026-07-22
 

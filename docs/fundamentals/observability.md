@@ -41,6 +41,28 @@ public sealed class MyService(ICorrelationIdAccessor correlation)
 
 `IAppLogService` writes application log entries to the database (with a Serilog fallback), powering the AdminConsole's log views without scraping files.
 
+## Central error visibility for generated apps (the forward sink)
+
+Every tier writes **three Serilog sinks: Console + File + a central `dbo.AppLog`** — but *how* the central sink is reached differs by tier, because a generated app must never write to the control-plane database directly (the layered / central-data rule):
+
+- **The control plane** (AppManagement's API) owns the log database, so its third sink writes **directly** to `dbo.AppLog`.
+- **A generated app's Gateway** cannot touch that database. Its third sink is **`AppLogForwardSink`** (in `Asdamir.Data.Logging`): it forwards **Warning and above** to the control plane's authenticated ingest endpoint (`POST api/admin/applogs/ingest`) over HTTP. The endpoint resolves *which* app the row belongs to **from the Gateway's `app-log` service token — never from the request body** — so one app can only write into its own log slice, and a forged app id is impossible.
+
+The forward sink is built to never get in the app's way:
+
+- **Fail-safe, not fail-open.** If the control plane is down or slow, the sink swallows the error and keeps writing Console + File. A dropped log line is acceptable; a blocked or crashed app is not.
+- **No feedback loop.** It never forwards its *own* HTTP-transport log events, so a failing forward can't create a log storm.
+- **Batched and bounded.** Events go through an in-memory queue (async `System.Threading.Channels`) and are posted in batches; when the queue is full the oldest entry is dropped (with a one-time warning) rather than blocking the caller.
+
+**Configuration.** The forward is on by default and opt-out per app:
+
+```jsonc
+// appsettings.json — generated Gateway
+"AppLog": { "ForwardToCentral": true }   // set false to keep logs local only
+```
+
+**Free mode (self-contained apps)** has no control plane to forward to, so only **Console + File** are wired — there is no forward sink.
+
 ## Distributed tracing & metrics (OpenTelemetry)
 
 Serilog owns **logs**; OpenTelemetry adds **traces** and **metrics**. The API tiers — AppManagement's API and every generated app's Gateway — emit:

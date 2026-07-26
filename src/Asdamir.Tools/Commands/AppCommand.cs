@@ -128,9 +128,9 @@ public static class AppCommand
     // Published Asdamir.* pins the generated app gets by default (restored from nuget.org). Bump these
     // in lockstep with the framework's own Directory.Packages.props on each release. --framework-version
     // overrides ALL of them with one value (used with --local-feed to build against a pre-release pack).
-    private const string PublishedCoreVersion = "1.4.0";
-    private const string PublishedDataVersion = "1.3.0";
-    private const string PublishedWebVersion = "1.2.0";
+    private const string PublishedCoreVersion = "1.6.0";
+    private const string PublishedDataVersion = "1.4.0";
+    private const string PublishedWebVersion = "1.5.3";
     private const string PublishedPaymentsVersion = "1.2.0";
 
     private static async Task Run(RawInputs raw)

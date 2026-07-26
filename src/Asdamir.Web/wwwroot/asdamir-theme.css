@@ -1,0 +1,861 @@
+/* Self-hosted Inter (variable) — replaces the Google Fonts @import for a strict CSP
+   (no fonts.googleapis/gstatic; served from wwwroot so font-src/style-src stay 'self').
+   Subsets: latin, latin-ext (tr), cyrillic, cyrillic-ext (ru). Variable weight axis 100–900. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* ───────────────────────────────────────────────────────────────────────────
+   Asdamir SHARED THEME (INSPINIA "Pixel"-inspired: indigo accent, soft surfaces,
+   light content + dark sidebar) — the ONE source of truth for every Asdamir app.
+   Shipped by the Asdamir.Web package and served as a static web asset at
+   `_content/Asdamir.Web/asdamir-theme.css`; AppManagement AND every generated app
+   LINK this file — they do NOT copy it. Only global concerns live here
+   (palette/tokens, html/body, global FluentUI element theming, the `.asd-*`
+   design system, the `html[data-skin]` skins). Component layout/structure styles
+   live in scoped <Component>.razor.css; app-specific accents (if any) go in the
+   app's own thin `app.css` linked AFTER this file. No inline styles.
+   ──────────────────────────────────────────────────────────────────────────── */
+:root {
+    /* INSPINIA v5.0 "Pixel" theme — exact source values. */
+    --asd-bg: #f5f6fa;
+    --asd-surface: #ffffff;
+    --asd-surface-muted: #f4f5f9;      /* Pixel topbar search bg */
+    --asd-border: #edf2f9;
+    --asd-border-strong: #e3e8f1;
+    --asd-tab-line: rgba(60, 70, 100, .26);   /* visible tab outline on any skin */
+
+    /* Pixel sidebar (data-menu-color="gradient" = muted blue→purple) */
+    --asd-sidebar-1: #625997;
+    --asd-sidebar-2: #465a85;
+    --asd-sidebar-fg: #afb1db;
+    --asd-sidebar-fg-dim: #9092c0;
+    --asd-sidebar-hover-bg: rgba(219, 236, 255, .05);
+    --asd-sidebar-hover-fg: #d6d8ff;
+    --asd-sidebar-active-bg: rgba(219, 236, 255, .12);
+    --asd-sidebar-active-fg: #d6d8ff;
+
+    --asd-accent: #8e7fe0;             /* Pixel primary */
+    --asd-accent-hover: #786bbe;
+    --asd-accent-soft: #f0edfc;
+
+    /* Semantic status palette — the single source for success/warning/danger across pills, the retry
+       monitor, the notification toasts, etc. (they used to hardcode slightly-different shades and drift). */
+    --asd-success: #2e9e54;
+    --asd-warning: #cc8a00;
+    --asd-danger:  #d9534f;
+
+    --asd-ink: #1e2230;          /* INSPINIA-vivid: a touch blacker for crisp, lively text */
+    --asd-ink-soft: #7a7f99;
+    --asd-scrollbar: #b3b9c8;          /* themed scrollbar thumb (light) */
+    --asd-radius: 12px;
+    --asd-radius-sm: 8px;
+    --asd-shadow: 0 1px 9px rgba(34, 7, 31, .05);
+
+    --asd-font: 'Inter', 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+    --body-font: var(--asd-font);   /* FluentUI components read --body-font → unified font */
+
+    /* FluentUI accent → Pixel primary */
+    --accent-base-color: #8e7fe0;
+    --accent-fill-rest: #8e7fe0;
+    --accent-fill-hover: #786bbe;
+    --accent-fill-active: #6a5db0;
+    --accent-foreground-rest: #786bbe;
+    --accent-foreground-hover: #6a5db0;
+
+    /* Framework UI component tokens (Asdamir.Web.UI DataGrid etc.) mapped to the --asd theme so the
+       components render themed in light AND dark (their design-tokens.css isn't served here). */
+    --ui-bg-surface: var(--asd-surface);
+    --ui-bg-surface-secondary: var(--asd-surface-muted);
+    --ui-bg-hover: var(--asd-surface-muted);
+    --ui-border-default: var(--asd-border-strong);
+    --ui-text-primary: var(--asd-ink);
+    --ui-shadow-sm: var(--asd-shadow);
+    --ui-shadow-lg: 0 8px 24px rgba(34, 7, 31, .14);
+    --ui-border-radius-lg: var(--asd-radius);
+    --ui-space-1: 4px;  --ui-space-2: 8px;  --ui-space-3: 12px; --ui-space-4: 16px;
+    --ui-space-6: 24px; --ui-space-10: 40px; --ui-space-12: 48px;
+    --ui-z-fullscreen: 1035; --ui-z-popover: 1060;
+}
+
+/* ── Selectable INSPINIA themes (accent + body-bg + sidebar). :root above = Pixel
+   (default). Each html[data-skin] overrides the palette; the topbar Theme picker
+   sets data-skin via the asd_skin cookie. Values from INSPINIA v5.0 source. ───── */
+html[data-skin="modern"] {
+    --asd-accent: #5e6cc1; --asd-accent-hover: #4f5cb0; --asd-accent-soft: #eef0fb;
+    --asd-bg: #f7f6f7;
+    --asd-sidebar-1: #5e6cc1; --asd-sidebar-2: #46529e; --asd-sidebar-fg: #d6d9ef;
+    --accent-base-color: #5e6cc1; --accent-fill-rest: #5e6cc1; --accent-fill-hover: #4f5cb0; --accent-fill-active: #46529e; --accent-foreground-rest: #4f5cb0; --accent-foreground-hover: #46529e;
+}
+html[data-skin="material"] {
+    --asd-accent: #3c7de1; --asd-accent-hover: #2f6ac4; --asd-accent-soft: #eaf2fc;
+    --asd-bg: #f3f3f4;
+    --asd-sidebar-1: #3c7de1; --asd-sidebar-2: #295ba8; --asd-sidebar-fg: #d3e3f7;
+    --accent-base-color: #3c7de1; --accent-fill-rest: #3c7de1; --accent-fill-hover: #2f6ac4; --accent-fill-active: #295ba8; --accent-foreground-rest: #2f6ac4; --accent-foreground-hover: #295ba8;
+}
+html[data-skin="saas"] {
+    --asd-accent: #7754f6; --asd-accent-hover: #6443d0; --asd-accent-soft: #f0ecfe;
+    --asd-bg: #f9fbfd;
+    --asd-sidebar-1: #7754f6; --asd-sidebar-2: #5736bd; --asd-sidebar-fg: #ddd3fb;
+    --accent-base-color: #7754f6; --accent-fill-rest: #7754f6; --accent-fill-hover: #6443d0; --accent-fill-active: #5736bd; --accent-foreground-rest: #6443d0; --accent-foreground-hover: #5736bd;
+}
+/* Galaxy — cool cosmic skin: periwinkle content bg so the page-title strip reads distinctly against
+   the white topbar (INSPINIA's #fdfdfd was too white → info strip blended in). */
+html[data-skin="galaxy"] {
+    --asd-accent: #6575f5; --asd-accent-hover: #5462d0; --asd-accent-soft: #e8ebfb;
+    --asd-bg: #eceffb; --asd-border: #e0e4f5; --asd-border-strong: #d3d9ef;
+    --asd-sidebar-1: #193146; --asd-sidebar-2: #1e5262; --asd-sidebar-fg: #c5c8de;
+    --accent-base-color: #6575f5; --accent-fill-rest: #6575f5; --accent-fill-hover: #5462d0; --accent-fill-active: #4a56bd; --accent-foreground-rest: #5462d0; --accent-foreground-hover: #4a56bd;
+}
+/* Luxe — faint mint/green tinted surfaces (like Retro's subtle warm tint), matching its teal accent. */
+html[data-skin="luxe"] {
+    --asd-accent: #1c9390; --asd-accent-hover: #167673; --asd-accent-soft: #e6f4f3;
+    --asd-bg: #dcefe4; --asd-surface: #f6fcf8; --asd-border: #cfe6da; --asd-border-strong: #bcdccb;
+    --asd-sidebar-1: #2e2e40; --asd-sidebar-2: #3d395e; --asd-sidebar-fg: #c5c8de;
+    --accent-base-color: #1c9390; --accent-fill-rest: #1c9390; --accent-fill-hover: #167673; --accent-fill-active: #115c5a; --accent-foreground-rest: #167673; --accent-foreground-hover: #115c5a;
+}
+html[data-skin="neon"] {
+    --asd-accent: #3f5098; --asd-accent-hover: #34427e; --asd-accent-soft: #ebedf5;
+    --asd-bg: #f2f2f7;
+    --asd-sidebar-1: #195274; --asd-sidebar-2: #3b215c; --asd-sidebar-fg: #c5c8de;
+    --accent-base-color: #3f5098; --accent-fill-rest: #3f5098; --accent-fill-hover: #34427e; --accent-fill-active: #2b3768; --accent-foreground-rest: #34427e; --accent-foreground-hover: #2b3768;
+}
+/* Retro — custom warm skin (preferred over INSPINIA's blue): terracotta accent + sepia surfaces. */
+html[data-skin="retro"] {
+    --asd-accent: #c0552b; --asd-accent-hover: #a8471f; --asd-accent-soft: #f7ece6;
+    --asd-bg: #f3efe7; --asd-surface: #fffdf9; --asd-border: #ece4d7; --asd-border-strong: #ddd2bf;
+    --asd-sidebar-1: #3a2f28; --asd-sidebar-2: #54453a; --asd-sidebar-fg: #d8cabd;
+    --accent-base-color: #c0552b; --accent-fill-rest: #c0552b; --accent-fill-hover: #a8471f; --accent-fill-active: #8f3b18; --accent-foreground-rest: #a8471f; --accent-foreground-hover: #8f3b18;
+}
+/* Dark — a FULL dark theme (dark bg + surfaces + sidebar), not just a dark sidebar. Mirrors the
+   dark-mode palette; AppTheme also flips FluentUI to Dark mode for this skin. */
+html[data-skin="dark"] {
+    --asd-accent: #8e7fe0; --asd-accent-hover: #786bbe;
+    --asd-accent-soft: color-mix(in srgb, var(--asd-accent) 22%, transparent);
+    --asd-bg: #17181e; --asd-surface: #1b1c22; --asd-surface-muted: #252630;
+    --asd-border: #2c2d38; --asd-border-strong: #343541;
+    --asd-tab-line: rgba(255, 255, 255, .18);
+    --asd-ink: #e3e5ea; --asd-ink-soft: #9aa0aa;
+    --asd-shadow: 0 0 30px rgba(0, 0, 0, .3);
+    --asd-sidebar-1: #1e1f27; --asd-sidebar-2: #1e1f27; --asd-sidebar-fg: #8495ab;
+    color-scheme: dark;
+    --accent-base-color: #8e7fe0; --accent-fill-rest: #8e7fe0; --accent-fill-hover: #786bbe; --accent-fill-active: #6a5db0; --accent-foreground-rest: #786bbe; --accent-foreground-hover: #6a5db0;
+}
+
+/* ── Dark mode (data-bs-theme="dark") — INSPINIA dark surfaces. Accent + sidebar
+   come from the selected skin; here we darken content surfaces + the sidebar. ─── */
+html[data-bs-theme="dark"] {
+    --asd-bg: #17181e;
+    --asd-surface: #1b1c22;
+    --asd-surface-muted: #252630;
+    --asd-border: #2c2d38;
+    --asd-border-strong: #343541;
+    --asd-tab-line: rgba(255, 255, 255, .18);                         /* visible tab outline on dark */
+    --asd-accent-soft: color-mix(in srgb, var(--asd-accent) 22%, transparent);  /* dark-safe accent tint */
+    --asd-ink: #e3e5ea;
+    --asd-ink-soft: #9aa0aa;
+    --asd-scrollbar: #4a4e5e;          /* themed scrollbar thumb (dark) */
+    --asd-shadow: 0 0 30px rgba(0, 0, 0, .3);
+    --asd-sidebar-1: #1e1f27;
+    --asd-sidebar-2: #1e1f27;
+    --asd-sidebar-fg: #8495ab;
+    color-scheme: dark;
+}
+
+html, body {
+    font-family: var(--asd-font);
+    font-size: 14px;
+    line-height: 1.55;
+    font-weight: 400;
+    background-color: var(--asd-bg);
+    color: var(--asd-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+}
+
+/* Unify the font across FluentUI components (they honour --body-font, but pin it too). */
+fluent-card, fluent-button, fluent-text-field, fluent-select, fluent-search,
+fluent-data-grid, fluent-data-grid-cell, fluent-nav-link, fluent-label,
+fluent-badge, fluent-switch, fluent-checkbox, fluent-tab, fluent-tabs,
+.fluent-typography, [class*="fluent-"] {
+    font-family: var(--asd-font) !important;
+}
+
+/* Secondary / hint text reads as a calm muted grey everywhere. */
+.text-muted, small, .hint { color: var(--asd-ink-soft); }
+
+a, .btn-link { color: var(--asd-accent); text-decoration: none; }
+a:hover { color: var(--asd-accent-hover); }
+
+/* Refined heading scale (FluentLabel Typo=H1..H6 renders these elements). FluentUI's
+   default ramp is oversized for an admin UI; tame to INSPINIA-like sizes. */
+h1, h2, h3, h4, h5, h6 {
+    font-family: inherit;
+    color: var(--asd-ink);
+    letter-spacing: -.01em;
+    line-height: 1.3;
+    margin: 0 0 .35em;
+}
+h1 { font-size: 1.5rem !important; font-weight: 600 !important; }
+h2 { font-size: 1.25rem !important; font-weight: 600 !important; }
+h3 { font-size: 1.125rem !important; font-weight: 600 !important; }
+h4 { font-size: 1rem !important; font-weight: 600 !important; }
+h5 { font-size: .9rem !important; font-weight: 600 !important; }
+h6 { font-size: .8rem !important; font-weight: 600 !important; }
+
+/* Subtle, modern, theme-aware scrollbars (brand thumb, accent on hover; adapts to dark mode). */
+* { scrollbar-width: thin; scrollbar-color: var(--asd-scrollbar) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--asd-scrollbar); border-radius: 8px; border: 2.5px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--asd-accent); background-clip: content-box; }
+
+/* ── Global FluentUI element theming (applies app-wide) ─────────────────── */
+fluent-card {
+    --card-corner-radius: var(--asd-radius);
+    background: var(--asd-surface) !important;
+    border: 1px solid var(--asd-border) !important;
+    border-radius: var(--asd-radius) !important;
+    box-shadow: var(--asd-shadow) !important;
+    padding: 8px !important;
+    overflow: visible !important;   /* don't clip Select/Combobox popups that overflow the card */
+    contain: none !important;       /* FluentCard's containment clips popups even with overflow:visible */
+}
+/* ════════════════════════════════════════════════════════════════════════════════════════
+   COMBOBOX DROPDOWN LAYERING — GLOBAL, SINGLE SOURCE OF TRUTH. DO NOT override per-page.
+   FluentSelect/Combobox render their dropdown INSIDE the component (no portal/overlay), so it is
+   confined to the stacking + overflow context of its ancestors. Two rules make every dropdown on
+   every page float above following cards:
+     1) the select host is positioned with a HIGH z-index (here), so its open listbox wins paint order;
+     2) card-like ancestors set `overflow: visible` + `contain: none` and must NOT set their own
+        z-index — a positioned ancestor with a lower z-index would TRAP this z-index and re-break it.
+   ⛔ NEVER add `z-index` to filter/toolbar/card wrappers (.asd-filter/.asd-toolbar/fluent-card).
+      See CLAUDE.md "Combobox dropdown layering". This regressed once when .asd-filter had z-index:5.
+   ════════════════════════════════════════════════════════════════════════════════════════ */
+fluent-select, fluent-combobox { position: relative; z-index: 100; }
+fluent-option { background: var(--asd-surface); }
+fluent-card fluent-card {
+    background: var(--asd-surface-muted) !important;
+    border-color: var(--asd-border) !important;
+    box-shadow: none !important;
+}
+
+/* Buttons */
+fluent-button::part(control) { border-radius: 9px; font-weight: 500; }
+
+/* Data grids / tables */
+fluent-data-grid { background: transparent; }
+fluent-data-grid-row { border-bottom: 1px solid var(--asd-border); }
+fluent-data-grid-row[row-type="header"] {
+    background: var(--asd-surface-muted);
+    text-transform: none;
+}
+fluent-data-grid-cell { font-size: 14px; }
+
+/* Badges */
+fluent-badge::part(control) { border-radius: 999px; font-weight: 600; }
+
+/* Inputs use the app's own surface/border tokens so they harmonize with cards in light AND dark
+   (FluentUI's neutral palette is a different tone than the --asd surfaces). */
+fluent-text-field::part(root),
+fluent-select::part(control),
+fluent-search::part(root),
+fluent-number-field::part(root) {
+    border-radius: 9px;
+    background: var(--asd-surface) !important;   /* same tone as the card; the border defines the field */
+    border: 1px solid var(--asd-border-strong) !important;
+    color: var(--asd-ink) !important;
+}
+/* placeholder + value text follow the theme ink */
+fluent-text-field::part(control),
+fluent-number-field::part(control),
+fluent-search::part(control) { color: var(--asd-ink); }
+
+/* ── Page layout design system (one shape for every page; mirrored by the CLI scaffold) ──
+   Usage:
+     <div class="asd-page">
+       <header class="asd-page-header"><h1 class="asd-page-title">…</h1><p class="asd-page-subtitle">…</p></header>
+       <nav class="asd-tabs">…<button class="asd-tab active">…</button></nav>     (optional)
+       <div class="asd-toolbar">…filters…<div class="asd-toolbar-actions">…</div></div>  (optional)
+       <fluent-card>…content…</fluent-card>
+     </div>                                                                                */
+.asd-page { display: flex; flex-direction: column; gap: 20px; }
+.asd-page-header { display: flex; flex-direction: column; gap: 4px; }
+.asd-page-title { font-size: 1.5rem; font-weight: 700; line-height: 1.2; margin: 0; color: var(--asd-ink); }
+.asd-page-subtitle { margin: 0; font-size: .9rem; color: var(--asd-ink-soft); max-width: 90ch; }
+/* Header bar: title on the left, actions on the right (CRUD list pages) */
+.asd-page-bar { display: flex; align-items: center; gap: 12px; }
+.asd-page-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
+/* Tabs — classic boxed/folder tabs (Windows-style): raised active tab merges into the panel below.
+   Borders use a clearly-visible rgba so the tab outline reads on any skin (light or dark). */
+.asd-tabs {
+    display: flex; gap: 4px; padding: 0 0 0 6px;
+    border-bottom: 2px solid var(--asd-tab-line);
+}
+.asd-tab {
+    appearance: none; cursor: pointer; font: inherit; font-weight: 500;
+    color: var(--asd-ink-soft);
+    padding: 11px 24px;
+    background: var(--asd-surface-muted);
+    border: 1.5px solid var(--asd-tab-line);
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    margin-bottom: -2px;                 /* sit over the 2px bottom border line */
+    transition: background .12s, color .12s;
+}
+.asd-tab:hover { color: var(--asd-ink); background: var(--asd-surface); }
+.asd-tab:focus-visible { outline: 2px solid var(--asd-accent); outline-offset: -2px; }
+.asd-tab.active {
+    background: var(--asd-surface);
+    color: var(--asd-accent);
+    font-weight: 600;
+    border-bottom: 2px solid var(--asd-surface);   /* erase the panel line under the active tab */
+    box-shadow: inset 0 3px 0 0 var(--asd-accent);  /* accent strip marks the active tab */
+}
+
+/* Info / callout card — explanatory text presented as a card (accent left rule) */
+.asd-info-card {
+    width: 100%;
+    display: flex; align-items: flex-start; gap: 12px;
+    background: var(--asd-surface); border: 1px solid var(--asd-border);
+    border-left: 3px solid var(--asd-accent);
+    border-radius: var(--asd-radius); box-shadow: var(--asd-shadow); padding: 16px 18px;
+    color: var(--asd-ink-soft); font-size: .9rem; line-height: 1.55;
+}
+.asd-info-card .asd-info-icon { color: var(--asd-accent); flex-shrink: 0; margin-top: 2px; }
+.asd-info-card .asd-info-icon svg { width: 18px; height: 18px; display: block; }
+.asd-info-title { font-weight: 700; font-size: 1.15rem; color: var(--asd-ink); margin-bottom: 4px; }
+.asd-info-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; align-self: center; }
+
+/* Filter — a clearly-delineated card with a header + body (replaces the thin toolbar) */
+.asd-filter {
+    width: 100%;
+    background: var(--asd-surface); border: 1px solid var(--asd-border);
+    border-radius: var(--asd-radius); box-shadow: var(--asd-shadow);
+    overflow: visible;   /* NO z-index here — see the combobox layering note above */
+}
+.asd-filter-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 18px; border-bottom: 1px solid var(--asd-border);
+    font-weight: 600; font-size: .9rem; color: var(--asd-ink);
+}
+.asd-filter-head svg { width: 16px; height: 16px; color: var(--asd-accent); }
+.asd-filter-body {
+    display: flex; align-items: flex-end; flex-wrap: wrap; gap: 18px; padding: 20px;
+}
+.asd-filter-body fluent-select,
+.asd-filter-body fluent-number-field,
+.asd-filter-body fluent-text-field,
+.asd-filter-body fluent-search,
+.asd-filter-body fluent-date-picker { min-width: 160px; }
+.asd-filter-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
+/* Legacy thin toolbar — kept for pages not yet migrated to .asd-filter */
+.asd-toolbar {
+    display: flex; align-items: flex-end; flex-wrap: wrap; gap: 16px;
+    padding: 16px 20px;
+    background: var(--asd-surface); border: 1px solid var(--asd-border);
+    border-radius: var(--asd-radius); box-shadow: var(--asd-shadow);
+    overflow: visible;   /* NO z-index here — see the combobox layering note above */
+}
+.asd-toolbar fluent-select,
+.asd-toolbar fluent-number-field,
+.asd-toolbar fluent-text-field,
+.asd-toolbar fluent-search { min-width: 150px; }
+.asd-toolbar-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
+/* Read-only "active app" context shown in place of a redundant per-page app filter
+   (the app is chosen in the top bar). */
+.asd-context { display: flex; align-items: baseline; gap: 10px; }
+.asd-context-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; color: var(--asd-ink-soft); font-weight: 600; }
+.asd-context-value { font-size: 1rem; font-weight: 700; color: var(--asd-ink); }
+.asd-context-meta { font-size: .8rem; color: var(--asd-ink-soft); }
+
+/* Centered empty/loading state inside a content card */
+.asd-state { padding: 48px 24px; text-align: center; color: var(--asd-ink-soft); }
+
+/* Rich empty state — icon bubble + title + hint (use inside a content card) */
+.asd-empty {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    padding: 64px 24px; text-align: center;
+}
+.asd-empty-icon {
+    width: 64px; height: 64px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--asd-accent-soft); color: var(--asd-accent);
+    margin-bottom: 4px;
+}
+.asd-empty-icon svg { width: 30px; height: 30px; }
+.asd-empty-title { font-weight: 600; font-size: 1.02rem; color: var(--asd-ink); }
+.asd-empty-text { color: var(--asd-ink-soft); font-size: .9rem; max-width: 44ch; line-height: 1.5; }
+
+/* Card header bar — title (+ optional meta/actions) atop a content card */
+.asd-card-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 18px; border-bottom: 1px solid var(--asd-border);
+}
+.asd-card-title { font-weight: 600; font-size: .95rem; color: var(--asd-ink); }
+.asd-card-meta { color: var(--asd-ink-soft); font-size: .82rem; }
+.asd-card-head-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
+/* Horizontal scroll wrapper for wide data grids */
+.asd-grid-scroll { overflow-x: auto; }
+.asd-grid-foot {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 18px; color: var(--asd-ink-soft); font-size: 13px;
+    border-top: 1px solid var(--asd-border);
+}
+
+/* ── Forms / validation ─────────────────────────────────────────────────── */
+.btn:focus, .btn:active:focus, .form-control:focus, .form-check-input:focus {
+    box-shadow: 0 0 0 .1rem #fff, 0 0 0 .25rem rgba(91, 110, 225, .5);
+}
+h1:focus { outline: none; }
+.valid.modified:not([type=checkbox]) { outline: 1px solid #26b050; }
+.invalid { outline: 1px solid #e50000; }
+.validation-message { color: #e50000; }
+
+.blazor-error-boundary {
+    background: #b32121; padding: 1rem 1.25rem; color: #fff; border-radius: 10px;
+}
+.blazor-error-boundary::after { content: "Bir hata oluştu."; }
+
+/* ── Utility classes — replace inline style= (CLAUDE.md: no inline styles) ─────────────────
+   Spacing/text/layout helpers + a few composite patterns reused across the admin pages. Dynamic
+   per-item values (chart bar widths, theme swatch colors) pass through a CSS var: style="--x:…". */
+.u-muted { color: var(--asd-ink-soft); }
+.u-muted-sm { color: var(--asd-ink-soft); font-size: 12px; }
+.u-muted-13 { color: var(--asd-ink-soft); font-size: 13px; }
+.u-error { color: var(--error); }
+.u-error-sm { color: var(--error); font-size: 13px; }
+.u-error-12 { color: var(--error); font-size: 12px; }
+.u-error-pre { color: var(--error); white-space: pre-wrap; }
+.u-center { text-align: center; }
+.u-right { text-align: right; }
+.u-right-600 { text-align: right; font-weight: 600; }
+.u-bold { font-weight: 600; }
+.u-selectall { user-select: all; }
+.u-prewrap { white-space: pre-wrap; }
+.u-fs-11 { font-size: 11px; }
+.u-fs-12 { font-size: 12px; }
+.u-fs-13 { font-size: 13px; }
+.u-p-12 { padding: 12px; }
+.u-p-16 { padding: 16px; }
+.u-p-24 { padding: 24px; }
+.u-mt-4 { margin-top: 4px; }
+.u-mt-6 { margin-top: 6px; }
+.u-mt-8 { margin-top: 8px; }
+.u-mt-12 { margin-top: 12px; }
+.u-mt-16 { margin-top: 16px; }
+.u-ml-8 { margin-left: 8px; }
+.u-scroll-x { overflow-x: auto; }
+.u-w-full { width: 100%; }
+.u-w-30 { width: 30%; }
+.u-w-90 { width: 90px; }
+.asd-state p { margin-top: 16px; color: var(--asd-ink-soft); }
+
+/* Centered empty/info panel inside a content card (loading/empty placeholders) */
+.u-panel-center { padding: 48px 24px; text-align: center; color: var(--asd-ink-soft); }
+
+/* Label→value form grid (dialogs / compose) and a denser detail grid */
+.u-form-grid { display: grid; grid-template-columns: 120px 1fr; gap: 8px 12px; margin-top: 12px; }
+.u-detail-grid { display: grid; grid-template-columns: 120px 1fr; gap: 8px 16px; margin-top: 12px; font-size: 14px; }
+
+/* Preformatted code/body blocks */
+.u-code-block { background: var(--asd-surface-muted); padding: 12px; max-height: 400px; overflow: auto; white-space: pre-wrap; border-radius: 8px; }
+.u-code-block-sm { background: var(--asd-surface-muted); padding: 12px; max-height: 300px; overflow: auto; font-size: 12px; border-radius: 8px; }
+
+/* Bordered config box */
+.u-box { border: 1px solid var(--asd-border-strong); border-radius: 6px; padding: 12px; }
+
+/* Dynamic value carriers (the only place a style= remains — runtime values via CSS var) */
+.u-barfill { width: var(--w, 0%); }
+.u-swatch { background: var(--sw, transparent); }
+
+/* width helpers (fixed px for filter fields; % for table columns) */
+.u-w-120 { width: 120px; } .u-w-130 { width: 130px; } .u-w-160 { width: 160px; }
+.u-w-180 { width: 180px; } .u-w-200 { width: 200px; } .u-w-220 { width: 220px; }
+.u-w-240 { width: 240px; } .u-w-260 { width: 260px; } .u-w-280 { width: 280px; } .u-w-320 { width: 320px; }
+.u-minw-520 { min-width: 520px; } .u-maxw-480 { max-width: 480px; }
+.u-flex-1 { flex: 1; } .u-flex-2 { flex: 2; }
+/* gap helpers (FluentStack rows etc.) */
+.u-gap-4 { gap: 4px; } .u-gap-6 { gap: 6px; } .u-gap-8 { gap: 8px; }
+.u-gap-12 { gap: 12px; } .u-gap-16 { gap: 16px; } .u-gap-24 { gap: 24px; }
+.u-flexwrap { flex-wrap: wrap; } .u-align-center { align-items: center; } .u-ml-auto { margin-left: auto; }
+.u-mb-12 { margin-bottom: 12px; } .u-ml-4 { margin-left: 4px; } .u-ml-16 { margin-left: 16px; } .u-my-16 { margin: 16px 0; }
+.u-mono { font-family: var(--monospace-font-family, monospace); font-size: 12px; }
+.u-pad-card { padding: 24px; }
+/* old-style toolbar row (FluentStack) until a page moves to .asd-filter */
+.u-toolbar-row { padding: 16px; gap: 12px; flex-wrap: wrap; }
+.u-summary { cursor: pointer; color: var(--asd-ink-soft); font-size: 13px; }
+.u-list { margin: 8px 0 0 16px; }
+.u-legend-row { display: flex; gap: 16px; margin-top: 8px; font-size: 12px; }
+.u-pad-8-4 { padding: 8px 4px; } .u-p-32 { padding: 32px; }
+.u-iframe { width: 100%; min-height: 300px; border: 1px solid var(--asd-border-strong); margin-top: 8px; }
+.u-th { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--asd-border-strong); }
+.u-td { padding: 8px 12px; border-bottom: 1px solid var(--asd-border); font-size: 13px; }
+.u-fullcenter { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.u-table { border-collapse: collapse; width: 100%; }
+.u-mono-area { font-family: var(--monospace-font-family, monospace); }
+
+/* Content panel — same surface/border/radius as .asd-filter so cards match exactly (FluentCard's
+   internal neutral-layer renders a subtly different shade than --asd-surface in dark mode). */
+.asd-card {
+    width: 100%;
+    background: var(--asd-surface); border: 1px solid var(--asd-border);
+    border-radius: var(--asd-radius); box-shadow: var(--asd-shadow); overflow: visible;
+}
+
+/* ════════════════ INSPINIA-style page layout (breadcrumb head, flat panels, plain tables) ════════════════ */
+/* Page head — title + small subtitle on the left, breadcrumb on the right (sits under the topbar). */
+.asd-pagehead { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 2px 0 2px; }
+.asd-pagehead-l { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.asd-pagehead-title { font-size: 1.18rem; font-weight: 600; line-height: 1.25; margin: 0; color: var(--asd-ink); }
+.asd-pagehead-sub { margin: 0; font-size: .82rem; color: var(--asd-ink-soft); }
+.asd-pagehead-r { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.asd-crumbs { display: flex; align-items: center; gap: 6px; list-style: none; margin: 0; padding: 0; font-size: .78rem; color: var(--asd-ink-soft); }
+.asd-crumbs a { color: var(--asd-ink-soft); text-decoration: none; }
+.asd-crumbs a:hover { color: var(--asd-accent); }
+.asd-crumbs .sep { opacity: .45; }
+.asd-crumbs .cur { color: var(--asd-ink); font-weight: 500; }
+
+/* Flat content panel (subtle INSPINIA card) with optional head/foot */
+.asd-panel { background: var(--asd-surface); border: 1px solid var(--asd-border); border-radius: var(--asd-radius); box-shadow: 0 1px 2px rgba(34, 7, 31, .04); overflow: visible; }
+.asd-panel-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--asd-border); }
+.asd-panel-head .grow { flex: 1 1 auto; }
+.asd-panel-foot { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--asd-border); font-size: .82rem; color: var(--asd-ink-soft); }
+
+/* INSPINIA-style data table */
+/* overflow:visible (not auto/scroll) so an action icon's UPWARD tooltip on the FIRST row isn't clipped
+   by the wrap's top edge — CSS ::after tooltips can't escape an overflow:auto ancestor. The page scrolls
+   instead of the table; the sticky header still sticks (to the page). Rows are paginated so height stays
+   bounded. Wide tables fall back to the page's horizontal scroll. */
+.asd-tablewrap { overflow: visible; }
+.asd-table { width: 100%; border-collapse: collapse; font-size: .85rem; white-space: nowrap; }
+.asd-table thead th { position: sticky; top: 0; z-index: 1; text-align: left; padding: 12px 16px; font-size: .7rem; text-transform: uppercase; letter-spacing: .4px; font-weight: 700; color: color-mix(in srgb, var(--asd-ink) 78%, var(--asd-ink-soft)); background: var(--asd-surface); border-bottom: 1px solid var(--asd-border-strong); }
+.asd-table tbody td { padding: 10px 16px; border-bottom: 1px solid var(--asd-border); color: var(--asd-ink); font-weight: 500; vertical-align: middle; }
+.asd-table tbody td.muted { color: var(--asd-ink-soft); font-weight: 400; }
+.asd-table tbody tr:hover { background: var(--asd-surface-muted); }
+.asd-table tbody tr:last-child td { border-bottom: none; }
+/* The row for the app currently selected in the top-bar — accent tint + left bar so it's obvious
+   which app every "add/delete is scoped to" action will target. */
+.asd-table tbody tr.asd-row-selected { background: var(--asd-accent-soft); box-shadow: inset 3px 0 0 0 var(--asd-accent); }
+.asd-table tbody tr.asd-row-selected:hover { background: var(--asd-accent-soft); }
+.asd-table tbody tr.asd-row-selected td:first-child { font-weight: 700; }
+.asd-sel-pill { margin-left: 8px; vertical-align: middle; }
+.asd-table td.wrap { white-space: normal; }
+.asd-table td.muted { color: var(--asd-ink-soft); }
+.asd-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.asd-table code { background: var(--asd-surface-muted); padding: 1px 6px; border-radius: 4px; font-size: .8rem; }
+
+/* status pill (theme-agnostic; works light + dark) */
+.asd-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; line-height: 1.5; }
+.asd-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: 0 0 6px; }
+.asd-pill.ok      { color: var(--asd-success); background: color-mix(in srgb, var(--asd-success) 14%, transparent); }
+.asd-pill.err     { color: var(--asd-danger);  background: color-mix(in srgb, var(--asd-danger) 14%, transparent); }
+.asd-pill.warn    { color: var(--asd-warning); background: color-mix(in srgb, var(--asd-warning) 16%, transparent); }
+.asd-pill.info    { color: var(--asd-accent); background: var(--asd-accent-soft); }
+.asd-pill.neutral { color: var(--asd-ink-soft); background: var(--asd-surface-muted); }
+
+/* compact empty/loading state inside a panel */
+.asd-tnote { padding: 40px 16px; text-align: center; color: var(--asd-ink-soft); font-size: .9rem; }
+.asd-tnote-err { color: #d9534f; }
+
+/* AsdamirGrid chrome (reusable grid component — web + MAUI). Plain elements, no FluentUI. */
+.asd-grid-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 16px; border-bottom: 1px solid var(--asd-border); }
+.asd-grid-toolbar .grow { flex: 1 1 auto; }
+.asd-grid-search {
+    width: 260px; max-width: 100%; height: 38px; padding: 0 12px 0 34px;
+    border: 1px solid var(--asd-border-strong); border-radius: 9px;
+    background: var(--asd-surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%237a7f99' stroke-width='1.8' stroke-linecap='round'><circle cx='7' cy='7' r='5'/><path d='M11 11l3 3'/></svg>") no-repeat 10px center;
+    color: var(--asd-ink); font: inherit; font-size: .85rem; outline: none;
+}
+.asd-grid-search:focus { border-color: var(--asd-accent); }
+.asd-grid-search::placeholder { color: var(--asd-ink-soft); }
+.asd-pagebtn {
+    min-width: 30px; height: 30px; padding: 0 8px;
+    border: 1px solid var(--asd-border-strong); background: var(--asd-surface);
+    border-radius: 7px; color: var(--asd-ink); cursor: pointer; font: inherit; font-size: .8rem;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.asd-pagebtn:hover:not(:disabled) { border-color: var(--asd-accent); color: var(--asd-accent); }
+.asd-pagebtn.active { background: var(--asd-accent); border-color: var(--asd-accent); color: #fff; }
+.asd-pagebtn:disabled { opacity: .45; cursor: default; }
+/* pager: first/prev/numbers/next/last + jump-to-page box */
+.asd-pager { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.asd-pager-jump { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; color: var(--asd-ink-soft); }
+.asd-pager-input {
+    width: 54px; height: 30px; padding: 0 6px; text-align: center;
+    border: 1px solid var(--asd-border-strong); background: var(--asd-surface);
+    border-radius: 7px; color: var(--asd-ink); font: inherit; font-size: .8rem;
+}
+.asd-pager-input:focus { outline: none; border-color: var(--asd-accent); }
+.asd-pager-total { font-size: .8rem; white-space: nowrap; }
+/* sortable column header + sort indicator */
+.asd-table th.asd-th-sort { cursor: pointer; user-select: none; }
+.asd-th-sortinner { display: inline-flex; align-items: center; gap: 6px; }
+.asd-table th.asd-th-sort:hover { color: var(--asd-accent); }
+.asd-sort-ind { font-size: .72rem; opacity: .35; line-height: 1; }
+.asd-sort-ind.active { opacity: 1; color: var(--asd-accent); }
+/* grid export dropdown — theme accent button + popup menu.
+   bg/border/color use !important (like .asd-btn-primary) because the base .asd-btn rules are
+   declared later in this file and would otherwise win on source order. */
+.asd-export { position: relative; display: inline-block; }
+.asd-export-btn, a.asd-export-btn { display: inline-flex; align-items: center; gap: 7px;
+    background: var(--asd-accent) !important; border-color: var(--asd-accent) !important; color: #fff !important; }
+.asd-export-btn:hover:not(:disabled) { background: var(--asd-accent-hover) !important; border-color: var(--asd-accent-hover) !important; color: #fff !important; }
+.asd-export-btn:disabled { opacity: .6; }
+.asd-export-caret { opacity: .85; transition: transform .15s ease; }
+.asd-export-btn.open .asd-export-caret { transform: rotate(180deg); }
+.asd-export-backdrop { position: fixed; inset: 0; z-index: 200; }
+/* menu opens below the button, right-aligned (export sits at the toolbar's right edge) */
+.asd-export-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 201;
+    min-width: 160px; background: var(--asd-surface); border: 1px solid var(--asd-border);
+    border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.16); padding: 6px; }
+.asd-export-menu button { display: block; width: 100%; text-align: left; background: none;
+    border: 0; border-radius: 7px; padding: 8px 12px; font: inherit; font-size: .85rem;
+    color: var(--asd-ink); cursor: pointer; }
+.asd-export-menu button:hover { background: var(--asd-accent-soft, rgba(192,85,43,.12)); color: var(--asd-accent); }
+/* grid primary action — link/ghost accent (distinct from the solid Export button) */
+.asd-grid-primary { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    box-sizing: border-box; min-height: 38px; line-height: 1.2; padding: 8px 12px;
+    background: transparent; border: 1px solid transparent; border-radius: var(--asd-radius-sm);
+    color: var(--asd-accent); font: inherit; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.asd-grid-primary:hover:not(:disabled) { background: var(--asd-accent-soft); color: var(--asd-accent); }
+.asd-grid-primary:disabled { opacity: .5; cursor: default; }
+/* grid refresh icon button (neutral, sits left of the accent export button) */
+.asd-grid-refresh { padding: 8px 10px; }
+.asd-grid-refresh:hover:not(:disabled) { border-color: var(--asd-accent); color: var(--asd-accent); }
+.asd-grid-refresh .asd-spin { animation: asd-reconnect-spin .8s linear infinite; }
+/* grid search box (right-aligned, INSPINIA-style label + input) */
+.asd-grid-searchwrap { display: inline-flex; align-items: center; gap: 8px; }
+.asd-grid-searchlbl { font-size: .85rem; color: var(--asd-ink-soft); white-space: nowrap; }
+
+/* custom Blazor reconnection UI — hidden by default; only the "reconnecting" (show) state is
+   visible. The failed/rejected states are handled in JS (auto-reload), so they never render. */
+.asd-reconnect { display: none; position: fixed; inset: 0; z-index: 3000;
+    background: rgba(20, 18, 16, .45); align-items: flex-start; justify-content: center; }
+.asd-reconnect.components-reconnect-show { display: flex; }
+.asd-reconnect-card { margin-top: 18vh; display: inline-flex; align-items: center; gap: 12px;
+    background: var(--asd-surface, #fff); color: var(--asd-ink, #222);
+    border: 1px solid var(--asd-border, #e3ded7); border-radius: 12px;
+    padding: 16px 22px; font-size: .9rem; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
+.asd-reconnect-spin { width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--asd-border-strong, #c9c2b8); border-top-color: var(--asd-accent, #c0552b);
+    animation: asd-reconnect-spin .8s linear infinite; }
+@keyframes asd-reconnect-spin { to { transform: rotate(360deg); } }
+/* round icon action button (INSPINIA eye/edit/trash style) */
+.asd-iconbtn {
+    position: relative;
+    width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer;
+    display: inline-grid; place-items: center; color: var(--asd-ink-soft);
+    background: var(--asd-surface-muted); transition: background .12s, color .12s;
+}
+.asd-iconbtn:hover { background: var(--asd-accent-soft); color: var(--asd-accent); }
+.asd-iconbtn svg { width: 16px; height: 16px; }
+.asd-iconbtn.danger:hover { background: rgba(217,83,79,.14); color: #d9534f; }
+
+/* Styled hover hint for action icons — single, instant, theme-consistent. Driven by aria-label
+   (NOT title) so the slow/duplicate native browser tooltip never appears; aria-label also keeps
+   the control accessible. Used by every action-column icon across all pages. */
+.asd-iconbtn[aria-label]::after {
+    content: attr(aria-label);
+    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+    background: var(--asd-accent); color: #fff; font-size: .72rem; font-weight: 500; line-height: 1;
+    white-space: nowrap; padding: 6px 9px; border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .2); opacity: 0; pointer-events: none;
+    transition: opacity .12s ease; z-index: 300;
+}
+.asd-iconbtn[aria-label]:hover::after,
+.asd-iconbtn[aria-label]:focus-visible::after { opacity: 1; }
+/* Row-action hints keep the default UPWARD, accent-colored tooltip. Only the rightmost (last) action's
+   hint is right-anchored, so a long label (e.g. "Tümünü sil (kalıcı)" or the self-app deactivate note)
+   grows leftward instead of overflowing the viewport's right edge. */
+.asd-rowactions .asd-iconbtn:last-child[aria-label]::after {
+    left: auto; right: 0; transform: none; max-width: 80vw;
+}
+/* A row action that is intentionally not available (e.g. the self-app can't be deactivated): looks
+   muted + not-allowed, but stays hoverable so its explanatory tooltip still shows. */
+/* Dim ONLY the glyph, not the whole button — `opacity` on the button would also fade its ::after
+   tooltip (opacity groups the element + pseudo-children), making the hint look disabled too. */
+.asd-iconbtn.is-disabled { cursor: not-allowed; color: var(--asd-ink-soft); }
+.asd-iconbtn.is-disabled svg { opacity: .4; }
+.asd-iconbtn.is-disabled:hover { background: transparent; color: var(--asd-ink-soft); }
+/* The modal close (X) is self-evident — never show a hover hint on it. aria-label stays for screen
+   readers; this just suppresses the visual ::after tooltip (placed after the rule above to win on
+   equal specificity). Applies to every AsdamirModal. */
+.asd-modal-head .asd-iconbtn[aria-label]::after { content: none; }
+
+/* Topbar icon tooltips — one consistent, instant, brand-accent hint for EVERY topbar control, opening
+   DOWNWARD (top icons; an upward tooltip would clip under the browser chrome). Driven by data-tip;
+   aria-label keeps the control named. Add `asd-toptip` (+ `asd-toptip-left` for the far-left icon). */
+.asd-toptip { position: relative; }
+.asd-toptip[data-tip]::after {
+    content: attr(data-tip);
+    position: absolute; top: calc(100% + 7px); right: 0;
+    background: var(--asd-accent); color: #fff; font-size: .72rem; font-weight: 500; line-height: 1;
+    white-space: nowrap; padding: 6px 9px; border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .2); opacity: 0; pointer-events: none;
+    transition: opacity .12s ease; z-index: 300;
+}
+.asd-toptip[data-tip]:hover::after,
+.asd-toptip[data-tip]:focus-visible::after { opacity: 1; }
+.asd-toptip-left[data-tip]::after { right: auto; left: 0; }
+
+/* INSPINIA page-title bar — flush under the topbar, full width. Rendered as the page's first element;
+   negative margins cancel .page's padding (24px 26px) so it spans edge-to-edge under the topbar. */
+.asd-pagebar {
+    margin: -24px -26px 20px -26px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 8px 26px;   /* slim INSPINIA page-title strip */
+    /* a tone BETWEEN the white topbar and the gray content (INSPINIA page-title strip). */
+    background: color-mix(in srgb, var(--asd-surface) 55%, var(--asd-bg));
+    border-bottom: 1px solid var(--asd-border-strong);
+}
+/* small + uppercase like INSPINIA "ROLES"; !important beats the global h1 scale (1.5rem). */
+.asd-pagebar-title { margin: 0; font-size: .8rem !important; font-weight: 600 !important; letter-spacing: .4px; text-transform: uppercase; color: var(--asd-ink); }
+/* Optional one-line description under a page title (normal case, muted) — e.g. Apps explaining that
+   actions apply to the app selected in the top-bar. */
+.asd-pagebar-sub { margin: 3px 0 0; font-size: .76rem; font-weight: 400; line-height: 1.3; letter-spacing: 0; text-transform: none; color: var(--asd-ink-soft); }
+/* Lift the action group into its own stacking context ABOVE the sticky header (thead th is z-index:1).
+   Without this, a first-row icon's UPWARD tooltip paints UNDER the header band. z-index here > 1 makes
+   the whole group (and its tooltips) win over the header, so the top row's hint shows on top like every
+   other row's. */
+.asd-rowactions { display: inline-flex; gap: 6px; align-items: center; position: relative; z-index: 20; }
+
+/* table <code> (e.g. error Source) — consistent vivid ink, subtle mono; not the pink default */
+.asd-table code { color: var(--asd-ink); background: transparent; padding: 0; font-size: .82rem; font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* reusable AsdamirModal */
+.asd-modal-overlay { position: fixed; inset: 0; background: rgba(15,18,28,.46); display: grid; place-items: center; z-index: 1000; padding: 24px; }
+.asd-modal { width: min(580px, 100%); max-height: 82vh; display: flex; flex-direction: column; background: var(--asd-surface); border: 1px solid var(--asd-border-strong); border-radius: var(--asd-radius); box-shadow: 0 18px 50px rgba(0,0,0,.28); overflow: hidden; }
+.asd-modal-head { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--asd-border); }
+.asd-modal-title { flex: 1; font-weight: 600; font-size: .98rem; color: var(--asd-ink); }
+.asd-modal-body { padding: 18px; overflow: auto; color: var(--asd-ink); font-size: .88rem; line-height: 1.6; }
+.asd-modal-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--asd-border); }
+
+/* key/value detail block + long message */
+.asd-kv { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin: 0; }
+.asd-kv dt { color: var(--asd-ink-soft); font-weight: 600; }
+.asd-kv dd { margin: 0; color: var(--asd-ink); word-break: break-word; }
+.asd-detail-msg { margin-top: 14px; padding: 12px; background: var(--asd-surface-muted); border-radius: var(--asd-radius-sm); white-space: pre-wrap; word-break: break-word; font-size: .83rem; line-height: 1.55; }
+
+/* reusable AsdamirToaster */
+.asd-toaster { position: fixed; right: 18px; bottom: 18px; display: flex; flex-direction: column; gap: 10px; z-index: 1100; }
+.asd-toast { display: flex; align-items: center; gap: 12px; min-width: 260px; max-width: 380px; padding: 12px 14px; border-radius: var(--asd-radius-sm); background: var(--asd-surface); border: 1px solid var(--asd-border-strong); border-left: 3px solid var(--asd-ink-soft); box-shadow: 0 8px 24px rgba(0,0,0,.18); color: var(--asd-ink); font-size: .86rem; animation: asd-toast-in .18s ease-out; }
+.asd-toast.ok { border-left-color: #2faf6b; }
+.asd-toast.err { border-left-color: #d9534f; }
+.asd-toast.info { border-left-color: var(--asd-accent); }
+.asd-toast-msg { flex: 1; }
+.asd-toast-x { border: none; background: transparent; cursor: pointer; color: var(--asd-ink-soft); font-size: .95rem; line-height: 1; padding: 0; }
+.asd-toast-x:hover { color: var(--asd-ink); }
+@keyframes asd-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+/* reusable buttons (modal footers, inline actions) */
+/* box-sizing + a shared min-height so EVERY button is the same height regardless of content — an icon-only
+   button (short content) and a text button (taller line-box) both settle at min-height, so a Refresh icon
+   button lines up with a text/Export button next to it. line-height keeps the text content under the floor. */
+.asd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 38px; line-height: 1.2; padding: 8px 16px; border-radius: var(--asd-radius-sm); border: 1px solid var(--asd-border-strong); background: var(--asd-surface); color: var(--asd-ink); font-size: .85rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .12s, border-color .12s; }
+.asd-btn:hover, a.asd-btn:hover { background: var(--asd-surface-muted); color: var(--asd-ink); text-decoration: none; }
+/* color set on both states (and !important) so a global a:hover can't blank out the label on anchor-buttons */
+/* !important on bg + color: the anchor-button variant (a.asd-btn:hover, 0,1,1) otherwise out-specifies
+   .asd-btn-primary:hover (0,1,0) and washed the solid fill out to a light bg with white text. */
+.asd-btn-primary, .asd-btn-primary:hover, a.asd-btn-primary, a.asd-btn-primary:hover { color: #fff !important; }
+.asd-btn-primary { background: var(--asd-accent) !important; border-color: var(--asd-accent) !important; }
+.asd-btn-primary:hover { background: var(--asd-accent-hover) !important; border-color: var(--asd-accent-hover) !important; }
+.asd-btn-ghost { background: transparent; }
+.asd-btn-ghost:hover { background: var(--asd-surface-muted); }
+.asd-btn-sm { padding: 4px 10px; font-size: .78rem; min-height: 30px; }
+/* Secondary — soft accent fill (a clear middle between the solid primary and the plain default). Uses the
+   skin's own --asd-accent tokens so it follows every html[data-skin]; the hover dims via brightness (no
+   hardcoded shade). !important for the same anchor-variant specificity reason as .asd-btn-primary. */
+.asd-btn-secondary, .asd-btn-secondary:hover, a.asd-btn-secondary, a.asd-btn-secondary:hover { color: var(--asd-accent) !important; }
+.asd-btn-secondary { background: var(--asd-accent-soft) !important; border-color: var(--asd-accent-soft) !important; }
+.asd-btn-secondary:hover { filter: brightness(.97); }
+/* Danger — destructive actions. Promoted from the notification host so it works on ANY page (it used to be
+   scoped to AsdamirNotificationHost, so `.asd-btn-danger` on a page rendered as a bare .asd-btn). Uses the
+   --asd-danger token; hover dims via brightness so it stays skin-agnostic. */
+.asd-btn-danger, .asd-btn-danger:hover, a.asd-btn-danger, a.asd-btn-danger:hover { color: #fff !important; }
+.asd-btn-danger { background: var(--asd-danger, #d9534f) !important; border-color: var(--asd-danger, #d9534f) !important; }
+.asd-btn-danger:hover { filter: brightness(.92); }
+
+/* Plain native controls used inside data tables (e.g. per-row override editing). */
+.asd-input { padding: 5px 8px; border: 1px solid var(--asd-border-strong); border-radius: var(--asd-radius-sm);
+    background: var(--asd-surface); color: var(--asd-ink); font-size: .82rem; }
+.asd-chk { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; font-size: .8rem; color: var(--asd-ink); }
+.asd-confirm-body { color: var(--asd-ink); font-size: .9rem; line-height: 1.6; }
+
+/* editor form layout (AsdamirModal body) */
+.asd-form-grid { display: flex; flex-direction: column; gap: 14px; }
+.asd-form-grid .asd-form-w { width: 100%; }
+.asd-form-err { color: #d9534f; font-size: .85rem; }
+.asd-section-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--asd-ink-soft); margin: 18px 2px 8px; }
+.asd-section-label:first-child { margin-top: 0; }
+.asd-panel-foot .grow { flex: 1 1 auto; }
+.u-row-end { display: flex; justify-content: flex-end; align-items: center; }
+.asd-pagebar-actions { display: flex; align-items: center; gap: 12px; }
+.asd-dash { display: flex; flex-direction: column; gap: 20px; }
+.asd-link { color: var(--asd-accent); text-decoration: none; font-size: .85rem; font-weight: 500; white-space: nowrap; }
+.asd-link:hover { text-decoration: underline; }
+.asd-empty2 { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 26px 16px; text-align: center; color: var(--asd-ink-soft); font-size: .9rem; }
+.asd-empty2 > svg { width: 34px; height: 34px; opacity: .45; }
+
+/* ── Disabled button state — dim + not-allowed, and neutralize hover. Without this a disabled
+   .asd-btn-primary keeps its solid fill and looks clickable. Generic — belongs in the shared theme. */
+.asd-btn:disabled, .asd-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.asd-btn:disabled:hover, .asd-btn[disabled]:hover { background: var(--asd-surface); }
+.asd-btn-primary:disabled, .asd-btn-primary[disabled],
+.asd-btn-primary:disabled:hover, .asd-btn-primary[disabled]:hover { background: var(--asd-accent) !important; opacity: .45; }
+
+/* ── Custom ALWAYS-VISIBLE vertical scrollbar primitive — macOS overlay bars can't be forced persistent
+   via CSS (Chrome ignores ::-webkit-scrollbar in overlay mode), so JS (window.asdScrollbar) draws this bar.
+   A `.asd-vscroll-feed` (native bar hidden) is followed by a `.asd-vscroll-track`, both inside a
+   `.asd-vscroll-wrap` (position: relative). The CSS is inert without the JS, so it is safe for any app;
+   AppManagement + generated apps that ship the asdScrollbar IIFE activate it. Also auto-attaches to every
+   `.asd-modal-body` (native bar hidden here). Shared so no app has to re-port it (was an entframework gap). */
+.asd-modal { position: relative; }
+.asd-modal-body { scrollbar-width: none; }
+.asd-modal-body::-webkit-scrollbar { width: 0; height: 0; }
+.asd-vscroll-feed { scrollbar-width: none; }
+.asd-vscroll-feed::-webkit-scrollbar { width: 0; height: 0; }
+.asd-vscroll-wrap { position: relative; }
+.asd-vscroll-track {
+    position: absolute; top: 6px; right: 2px; width: 6px; height: calc(100% - 12px);
+    background: var(--asd-surface-muted); border-radius: 8px; z-index: 6; display: none;
+}
+.asd-vscroll-thumb {
+    position: absolute; top: 0; left: 0; width: 100%; min-height: 30px;
+    background: #b3b9c8; border-radius: 8px; cursor: grab; transition: background .12s;
+}
+.asd-vscroll-thumb:hover { background: var(--asd-accent); }
+.asd-vscroll-thumb:active { background: var(--asd-accent); cursor: grabbing; }

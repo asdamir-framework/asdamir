@@ -1,0 +1,37 @@
+@* AsdamirToolbar — the shared action/filter bar. Renders the theme's `.asd-toolbar`; the optional `Actions`
+   slot is wrapped in `.asd-toolbar-actions` (the right-aligned button group), so pages stop repeating the
+   `<div class="asd-toolbar"><div class="asd-toolbar-actions">…</div></div>` boilerplate.
+
+     <AsdamirToolbar>
+         …filters (ChildContent)…
+         <Actions>
+             <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" OnClick="New">@L["Common.New"]</AsdamirButton>
+         </Actions>
+     </AsdamirToolbar>
+
+   `Class` appends a modifier; other attributes splat onto the outer <div>. Styled by the shared theme, so it
+   follows the active skin. No inline styles. *@
+
+<div class="@CssClass" @attributes="AdditionalAttributes">
+    @ChildContent
+    @if (Actions is not null)
+    {
+        <div class="asd-toolbar-actions">@Actions</div>
+    }
+</div>
+
+@code {
+    /// <summary>The toolbar's left/main content (e.g. filters, a title).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Optional action group (<c>.asd-toolbar-actions</c>), typically buttons; omitted when null.</summary>
+    [Parameter] public RenderFragment? Actions { get; set; }
+
+    /// <summary>Extra CSS class(es) appended after <c>asd-toolbar</c>.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute splatted onto the outer div.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass => $"asd-toolbar{(string.IsNullOrWhiteSpace(Class) ? string.Empty : " " + Class)}";
+}

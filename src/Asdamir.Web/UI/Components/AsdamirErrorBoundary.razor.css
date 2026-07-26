@@ -17,7 +17,7 @@
     width: 100%;
     background: var(--neutral-layer-1);
     border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--asd-shadow, 0 4px 16px rgba(0, 0, 0, 0.1));
     padding: 2rem;
     text-align: center;
 }

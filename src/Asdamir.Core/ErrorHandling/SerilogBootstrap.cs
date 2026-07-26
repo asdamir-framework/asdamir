@@ -86,7 +86,19 @@ public static class SerilogBootstrap
     /// <c>LOG_TARGET</c> is <c>database</c>/<c>all</c>, adds the batched MSSQL <c>dbo.AppLog</c> sink — the
     /// third operator sink that persists Information+ events with Source/ErrorKey/UserLanguage columns.
     /// </summary>
+    /// <remarks>
+    /// <b>Do NOT use this in a CLI-generated app.</b> This is the DIRECT-DB path: it opens a SQL connection
+    /// straight to whatever <c>LOG_DB_CONNECTION</c> names. A generated app must never connect to AsdamirVault
+    /// directly (layered / CENTRAL rule) — pointing this at the central DB is a layer violation, and pointing
+    /// it at the app's own business DB writes into a table that isn't there. A generated app forwards its logs
+    /// to AppManagement's ingest endpoint via <c>Asdamir.Data.Logging.AppLogForwardSink</c> instead (the
+    /// GatewayProgram template wires it as the third sink). This helper remains only for a SELF-HOSTED
+    /// component that legitimately owns its <c>dbo.AppLog</c> table (AppManagement-style).
+    /// </remarks>
     /// <param name="customize">Optional hook to extend the configuration before it is built.</param>
+    [Obsolete("Direct-DB AppLog sink — NOT for generated apps (layer violation). Generated apps use " +
+              "Asdamir.Data.Logging.AppLogForwardSink to forward to AppManagement's ingest endpoint. This " +
+              "remains only for a self-hosted component that owns its own dbo.AppLog.")]
     public static void UseWithDatabase(Action<LoggerConfiguration>? customize = null)
     {
         var config = BuildBaseConfig(LogEventLevel.Information);

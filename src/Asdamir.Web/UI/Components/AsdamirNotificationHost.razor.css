@@ -4,46 +4,12 @@
 .asd-confirm-msg {
     margin: 0;
     line-height: 1.5;
-    color: var(--asd-text, #2b2b3c);
+    color: var(--asd-ink);
 }
 
-/* Buttons rendered in the modal footer + action toasts. Authored here, so CSS isolation scopes them
-   even though the footer DOM is owned by AsdamirModal. */
-.asd-btn {
-    appearance: none;
-    border: 1px solid var(--asd-border, #d8d8e2);
-    background: var(--asd-surface, #fff);
-    color: var(--asd-text, #2b2b3c);
-    border-radius: 8px;
-    padding: 0.5rem 1rem;
-    font: inherit;
-    cursor: pointer;
-    transition: background-color .12s ease, border-color .12s ease, opacity .12s ease;
-}
-
-.asd-btn:hover {
-    background: var(--asd-surface-2, #f4f4f9);
-}
-
-.asd-btn-primary {
-    background: var(--asd-accent, #8e7fe0);
-    border-color: var(--asd-accent, #8e7fe0);
-    color: #fff;
-}
-
-.asd-btn-primary:hover {
-    background: var(--asd-accent-strong, #7a6bd0);
-}
-
-.asd-btn-danger {
-    background: var(--asd-danger, #d9534f);
-    border-color: var(--asd-danger, #d9534f);
-    color: #fff;
-}
-
-.asd-btn-danger:hover {
-    opacity: .9;
-}
+/* Confirm/action buttons are styled by the SHARED theme's global `.asd-btn` / `.asd-btn-primary` /
+   `.asd-btn-danger` (in _content/Asdamir.Web/asdamir-theme.css) — no local copy here, so they never drift
+   from the rest of the app and follow the active skin. */
 
 /* Loading overlay — covers the viewport, dims, centres a spinner + message. */
 .asd-loading-overlay {
@@ -64,7 +30,7 @@
     padding: 1rem 1.25rem;
     border-radius: 12px;
     background: var(--asd-surface, #fff);
-    color: var(--asd-text, #2b2b3c);
+    color: var(--asd-ink);
     box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
 }
 
@@ -100,7 +66,7 @@
     padding: .75rem 1rem;
     border-radius: 10px;
     background: var(--asd-surface, #fff);
-    color: var(--asd-text, #2b2b3c);
+    color: var(--asd-ink);
     border-left: 4px solid var(--asd-accent, #8e7fe0);
     box-shadow: 0 6px 20px rgba(0, 0, 0, .18);
 }
@@ -125,7 +91,7 @@
     appearance: none;
     border: none;
     background: transparent;
-    color: var(--asd-text-muted, #8a8a9a);
+    color: var(--asd-ink-soft);
     cursor: pointer;
     font-size: 1rem;
     line-height: 1;

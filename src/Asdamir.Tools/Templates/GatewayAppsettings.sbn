@@ -10,6 +10,10 @@
     "_comment": "This app's registered code in AppManagement (Apps.Code). Login is scoped to it.",
     "Code": "{{ AppName }}"
   },
+  "AppLog": {
+    "_comment": "Forward this app's Warning+ Serilog events to AppManagement's central AppLog (a 3rd sink beside Console+File) so an operator's ErrorMonitoring sees this app's failures. Fail-safe: central being down never blocks a request; the local logs/ file keeps every line. Set false to keep logs local-only. Commercial mode only (free mode has no control plane).",
+    "ForwardToCentral": true
+  },
   "ConnectionStrings": {
     "_comment": "This app's OWN (business) DB. Left empty on purpose — set it via user-secrets / env (cross-platform SQL auth, never committed). The generator's next steps print the exact 'dotnet user-secrets set ConnectionStrings:Default' command.",
     "Default": "{{ ConnectionStringForAppsettings }}"

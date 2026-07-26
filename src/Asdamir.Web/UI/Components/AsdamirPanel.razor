@@ -1,0 +1,43 @@
+@* AsdamirPanel — the shared card/panel container. Renders the theme's `.asd-panel` (the ubiquitous surface
+   wrapper) with optional head/foot regions, so pages stop repeating `<div class="asd-panel">`.
+
+     <AsdamirPanel>
+         <Head>@L["Page.Title"]</Head>
+         …body…
+         <Foot>…pager…</Foot>
+     </AsdamirPanel>
+
+   Head/Foot are optional (omitted → no region). `Class` appends a modifier; other attributes splat onto the
+   outer <div>. Styling comes from the shared theme (`.asd-panel`, `.asd-panel-head`, `.asd-panel-foot`),
+   so it follows the active skin. No inline styles. *@
+
+<div class="@CssClass" @attributes="AdditionalAttributes">
+    @if (Head is not null)
+    {
+        <div class="asd-panel-head">@Head</div>
+    }
+    @ChildContent
+    @if (Foot is not null)
+    {
+        <div class="asd-panel-foot">@Foot</div>
+    }
+</div>
+
+@code {
+    /// <summary>The panel body.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Optional header region (<c>.asd-panel-head</c>); omitted when null.</summary>
+    [Parameter] public RenderFragment? Head { get; set; }
+
+    /// <summary>Optional footer region (<c>.asd-panel-foot</c>), e.g. a pager; omitted when null.</summary>
+    [Parameter] public RenderFragment? Foot { get; set; }
+
+    /// <summary>Extra CSS class(es) appended after <c>asd-panel</c>.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute splatted onto the outer div.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass => $"asd-panel{(string.IsNullOrWhiteSpace(Class) ? string.Empty : " " + Class)}";
+}

@@ -10,8 +10,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google" content="notranslate" />
     <base href="/" />
-    <!-- Fingerprinted (@Assets) so rebuilds bust the browser cache. app.css = global tokens;
+    <!-- Fingerprinted (@Assets) so rebuilds bust the browser cache.
+         asdamir-theme.css = the SHARED INSPINIA "Pixel" theme, shipped ONCE by the Asdamir.Web package and
+           served as a static web asset — every Asdamir app links it; it is NEVER copied per app.
+         app.css = this app's THIN overrides only (accent/brand) — NOT the design system.
          {{ ServerProject }}.styles.css = the component-scoped bundle (login card, shell, dashboard). -->
+    <link rel="stylesheet" href="@Assets["_content/Asdamir.Web/asdamir-theme.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["{{ ServerProject }}.styles.css"]" />
     <HeadOutlet />

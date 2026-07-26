@@ -1,0 +1,83 @@
+@* AsdamirButton — the shared chrome button for every Asdamir app.
+   Renders the INSPINIA "Pixel" `.asd-btn` design-system markup (styled by the shared
+   `_content/Asdamir.Web/asdamir-theme.css`), so a button looks identical across AppManagement and every
+   generated app — instead of each page hand-writing `<button class="asd-btn asd-btn-primary">`.
+
+     <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" OnClick="SaveAsync">@L["Common.Save"]</AsdamirButton>
+     <AsdamirButton Variant="AsdamirButton.ButtonVariant.Ghost" Class="rse-btn-xs" Disabled="@_busy">…</AsdamirButton>
+
+   Variant → `.asd-btn-{variant}`; Size → `.asd-btn-sm`. Page-specific classes go via `Class`; any other
+   attribute (autocomplete, title, aria-*, data-*) splats straight onto the <button>. No inline styles. *@
+
+<button type="@Type"
+        class="@CssClass"
+        disabled="@Disabled"
+        @onclick="OnClick"
+        @attributes="AdditionalAttributes">
+    @ChildContent
+</button>
+
+@code {
+    /// <summary>The button's visual variant — maps to the shared theme's <c>.asd-btn-{variant}</c> class.</summary>
+    public enum ButtonVariant
+    {
+        /// <summary>Neutral outline button (bare <c>.asd-btn</c>) — the default.</summary>
+        Default,
+        /// <summary>Solid accent — the primary call to action.</summary>
+        Primary,
+        /// <summary>Soft accent fill — a secondary action, between Primary and Default.</summary>
+        Secondary,
+        /// <summary>Transparent — a low-emphasis inline action.</summary>
+        Ghost,
+        /// <summary>Solid red — a destructive action.</summary>
+        Danger,
+    }
+
+    /// <summary>The button size — maps to <c>.asd-btn-sm</c> for <see cref="ButtonSize.Small"/>.</summary>
+    public enum ButtonSize
+    {
+        /// <summary>Standard size.</summary>
+        Normal,
+        /// <summary>Compact size (<c>.asd-btn-sm</c>).</summary>
+        Small,
+    }
+
+    /// <summary>The button's content (label, icon, …).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The visual variant. Defaults to <see cref="ButtonVariant.Default"/>.</summary>
+    [Parameter] public ButtonVariant Variant { get; set; } = ButtonVariant.Default;
+
+    /// <summary>The size. Defaults to <see cref="ButtonSize.Normal"/>.</summary>
+    [Parameter] public ButtonSize Size { get; set; } = ButtonSize.Normal;
+
+    /// <summary>The native button <c>type</c> (<c>button</c> | <c>submit</c> | <c>reset</c>). Defaults to <c>button</c>.</summary>
+    [Parameter] public string Type { get; set; } = "button";
+
+    /// <summary>When true, renders the disabled state (dim + not-allowed) and blocks the click.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Extra CSS class(es) appended after the design-system classes (e.g. a page-scoped modifier).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>The click handler.</summary>
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>Any other attribute (<c>autocomplete</c>, <c>title</c>, <c>aria-*</c>, <c>data-*</c>, …) splatted onto the button.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // Full class list: the base .asd-btn design-system class + the variant + the size + any caller extras.
+    private string CssClass =>
+        $"asd-btn{VariantClass}{SizeClass}{(string.IsNullOrWhiteSpace(Class) ? string.Empty : " " + Class)}";
+
+    private string VariantClass => Variant switch
+    {
+        ButtonVariant.Primary => " asd-btn-primary",
+        ButtonVariant.Secondary => " asd-btn-secondary",
+        ButtonVariant.Ghost => " asd-btn-ghost",
+        ButtonVariant.Danger => " asd-btn-danger",
+        _ => string.Empty,
+    };
+
+    private string SizeClass => Size == ButtonSize.Small ? " asd-btn-sm" : string.Empty;
+}

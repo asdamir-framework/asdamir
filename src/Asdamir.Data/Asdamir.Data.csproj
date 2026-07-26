@@ -16,7 +16,7 @@
          handler change. The runner's OWN public surface is unchanged (it just fills the new context),
          so a PATCH, not a MINOR; it must ship in lockstep with Core 1.5.0. Bump this, not the global,
          for a Data release. -->
-    <Version>1.3.1</Version>
+    <Version>1.4.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Data + background processing for Asdamir: Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox (mail/SMS dispatch).</Description>
     <PackageTags>dapper;outbox;hangfire;sql-server;oracle;postgresql;mail;sms;background-jobs</PackageTags>
@@ -45,6 +45,8 @@
     <!-- HTTP client + resilience for outbound calls -->
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <!-- Serilog: the AppLogForwardSink (central error visibility for generated apps) is an ILogEventSink. -->
+    <PackageReference Include="Serilog" />
     <!-- DI primitives + options binding -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Options" />

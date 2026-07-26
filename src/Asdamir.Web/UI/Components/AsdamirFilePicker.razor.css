@@ -42,7 +42,7 @@
 }
 
 .afp-dropzone.invalid {
-    border-color: #d9534f;
+    border-color: var(--asd-danger);
 }
 
 /* The overlay input: covers the zone, invisible, receives both click and native drop.
@@ -138,7 +138,7 @@
 }
 
 .afp-fileinfo-x:hover {
-    color: #d9534f;
+    color: var(--asd-danger);
 }
 
 /* Indeterminate progress bar shown under the file card while IsProcessing. */

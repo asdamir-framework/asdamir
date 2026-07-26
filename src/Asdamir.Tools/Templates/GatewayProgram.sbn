@@ -4,9 +4,13 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Data.SqlClient;
 using Microsoft.IdentityModel.Tokens;
 using Asdamir.Core.ErrorHandling.Extensions;
+using Asdamir.Core.ErrorHandling.Logging;
 using Asdamir.Data.DataAccess;
 using Asdamir.Data.BackgroundRuns;
+using Asdamir.Data.Logging;
 using Asdamir.Core.MultiTenancy;
+using Serilog;
+using Serilog.Events;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -18,6 +22,38 @@ using Asdamir.Payments;
 {{ end ~}}
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Serilog — THREE sinks. Console + File are the local operator log (every level); the third sink forwards
+// Warning+ to AppManagement's central AppLog so an operator's ErrorMonitoring finally SEES this app's
+// failures. The Gateway can't write AsdamirVault directly (layered/CENTRAL rule), so it forwards over HTTP,
+// authenticated by a short-lived app-log token it mints with the shared Jwt:Key; AppManagement resolves the
+// AppId from that token (never the payload). The forward is FAIL-SAFE (down/slow central never blocks a
+// request; the local File keeps every line) and opt-out via AppLog:ForwardToCentral (default on).
+builder.Host.UseSerilog((ctx, services, lc) =>
+{
+    lc.MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        .MinimumLevel.Override("System", LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .Enrich.With(new SecretRedactionEnricher())
+        .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+        .WriteTo.File("logs/{{ AppNameLower }}-gateway-.log", rollingInterval: RollingInterval.Day, retainedFileCountLimit: 7);
+{{ if IsFreeMode ~}}
+    // Free mode: no control plane to forward to — Console + File only.
+{{ else ~}}
+    // Third sink (commercial): forward Warning+ to AppManagement's central AppLog.
+    if (ctx.Configuration.GetValue("AppLog:ForwardToCentral", true))
+    {
+        lc.WriteTo.Sink(new AppLogForwardSink(new AppLogForwardOptions
+        {
+            SigningKey = ctx.Configuration["Jwt:Key"] ?? string.Empty,
+            Issuer = ctx.Configuration["Jwt:Issuer"],
+            Audience = ctx.Configuration["Jwt:Audience"],
+            AppCode = ctx.Configuration["App:Code"] ?? "{{ AppName }}",
+        }, services.GetRequiredService<IHttpClientFactory>()));
+    }
+{{ end ~}}
+});
 
 // Audit: a global filter records every state-changing request (POST/PUT/PATCH/DELETE) to this app's own
 // audit trail (dbo.AuditLog) — who did what, with what outcome. Endpoints opt out with [SkipAudit]; the
@@ -189,6 +225,21 @@ builder.Services.AddRateLimiter(rl =>
 var adminConsoleApi = builder.Configuration["AdminConsole:BaseUrl"]
     ?? throw new InvalidOperationException("AdminConsole:BaseUrl is required (points at AppManagement's API).");
 builder.Services.AddHttpClient("appmgmt", c => c.BaseAddress = new Uri(adminConsoleApi))
+    .ConfigurePrimaryHttpMessageHandler(() =>
+    {
+        var h = new HttpClientHandler();
+        if (builder.Environment.IsDevelopment())
+            h.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+        return h;
+    });
+
+// The AppLogForwardSink's dedicated client (short timeout so central-log slowness never delays the app; a
+// failed/slow POST is swallowed and the local File keeps the line). Points at the same AppManagement API.
+builder.Services.AddHttpClient(AppLogForwardSink.HttpClientName, c =>
+    {
+        c.BaseAddress = new Uri(adminConsoleApi);
+        c.Timeout = TimeSpan.FromSeconds(5);
+    })
     .ConfigurePrimaryHttpMessageHandler(() =>
     {
         var h = new HttpClientHandler();

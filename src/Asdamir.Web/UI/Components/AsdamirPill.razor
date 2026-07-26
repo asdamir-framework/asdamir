@@ -1,0 +1,51 @@
+@* AsdamirPill — the shared status badge. Renders the theme's `.asd-pill` markup (a dot + label), so
+   statuses look identical across every Asdamir app instead of each page writing `<span class="asd-pill ok">`.
+
+     <AsdamirPill Tone="AsdamirPill.PillTone.Ok">@L["Reporting.Status.Closed"]</AsdamirPill>
+
+   Tone → `.asd-pill {tone}`. Semantic tones (Ok/Err/Warn) are intentionally fixed status colors;
+   Info/Neutral follow the active skin via `--asd-accent`/`--asd-ink-soft`. `Class` appends a modifier;
+   other attributes (title, aria-*) splat onto the <span>. No inline styles. *@
+
+<span class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</span>
+
+@code {
+    /// <summary>The badge tone — maps to the shared theme's <c>.asd-pill {tone}</c> color class.</summary>
+    public enum PillTone
+    {
+        /// <summary>Neutral grey (uses <c>--asd-ink-soft</c>) — the default.</summary>
+        Neutral,
+        /// <summary>Success / green.</summary>
+        Ok,
+        /// <summary>Error / red.</summary>
+        Err,
+        /// <summary>Warning / amber.</summary>
+        Warn,
+        /// <summary>Informational / accent (follows the active skin).</summary>
+        Info,
+    }
+
+    /// <summary>The badge content (the status label).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The tone. Defaults to <see cref="PillTone.Neutral"/>.</summary>
+    [Parameter] public PillTone Tone { get; set; } = PillTone.Neutral;
+
+    /// <summary>Extra CSS class(es) appended after the pill classes.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute (<c>title</c>, <c>aria-*</c>, <c>data-*</c>, …) splatted onto the span.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        $"asd-pill {ToneClass}{(string.IsNullOrWhiteSpace(Class) ? string.Empty : " " + Class)}";
+
+    private string ToneClass => Tone switch
+    {
+        PillTone.Ok => "ok",
+        PillTone.Err => "err",
+        PillTone.Warn => "warn",
+        PillTone.Info => "info",
+        _ => "neutral",
+    };
+}

@@ -3,10 +3,10 @@
   width: 100% !important;
   max-width: 100% !important;
   min-width: 0 !important;
-  background: var(--ui-bg-surface, #fff);
-  border: 1px solid var(--ui-border-default, #e5e7eb);
-  border-radius: var(--ui-border-radius-lg, 8px);
-  box-shadow: var(--ui-shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+  background: var(--asd-surface);
+  border: 1px solid var(--asd-border);
+  border-radius: var(--asd-radius);
+  box-shadow: var(--asd-shadow);
   overflow: visible; /* kritik: dropdownların kırpılmasını engeller */
   box-sizing: border-box !important;
 }
@@ -18,8 +18,8 @@
 
 .content-card-header {
   padding: 16px;
-  border-bottom: 1px solid var(--ui-border-default, #e5e7eb);
-  background: var(--ui-bg-surface, transparent);
+  border-bottom: 1px solid var(--asd-border);
+  background: var(--asd-surface);
 }
 
 .content-card-body {
@@ -36,8 +36,8 @@
 
 .content-card-footer {
   padding: 12px 16px;
-  border-top: 1px solid var(--ui-border-default, #e5e7eb);
-  background: var(--ui-bg-surface-secondary, transparent);
+  border-top: 1px solid var(--asd-border);
+  background: var(--asd-surface-muted);
 }
 
 /* Grid Card - for DataGrid wrapper */
@@ -150,7 +150,7 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .content-card {
-    border-radius: var(--ui-border-radius-md, 6px);
+    border-radius: var(--asd-radius-sm);
   }
 
   .content-card-header,
