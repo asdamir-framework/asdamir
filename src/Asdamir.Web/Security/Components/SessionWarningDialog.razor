@@ -25,9 +25,9 @@
         </div>
     </div>
 
-    <FluentButton Appearance="Appearance.Accent" Style="width: 100%;" @onclick="OnExtendSession">
+    <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" Class="swd-btn-full" OnClick="OnExtendSession">
         @GetLocalizedString("Session.Warning.ExtendButton")
-    </FluentButton>
+    </AsdamirButton>
 
 </FluentDialog>
 
@@ -46,9 +46,9 @@
         </div>
     </div>
 
-    <FluentButton Appearance="Appearance.Accent" Style="width: 100%;" @onclick="@(async () => await OnReturnToLogin())">
+    <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" Class="swd-btn-full" OnClick="@(async () => await OnReturnToLogin())">
         @GetLocalizedString("Session.Timeout.LoginButton")
-    </FluentButton>
+    </AsdamirButton>
 
 </FluentDialog>
 

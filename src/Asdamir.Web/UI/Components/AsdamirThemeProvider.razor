@@ -1,0 +1,69 @@
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IJSRuntime JS
+
+@*
+    AsdamirThemeProvider — the design-theme facade.
+
+    Drives the underlying design system's tokens (accent palette + light/dark luminance) from the
+    active skin/mode that App.razor stamps on <html> (data-skin / data-bs-theme), so the components
+    recolour with the theme — not just the shell CSS. Callers render exactly:
+
+        <AsdamirThemeProvider />
+
+    and never see the underlying design-system component (today FluentUI's FluentDesignTheme; in a
+    future major it changes INSIDE this facade only). The skin→accent map + the JS attribute read live
+    here once, instead of being copy-pasted into every app's AppTheme.razor / the generator template.
+*@
+<FluentDesignTheme Mode="_mode" CustomColor="@_accent" />
+
+@code {
+    /// <summary>
+    /// The accent hex used before the first client read, and the fallback when the active skin has no
+    /// entry in <see cref="Accents"/>. Defaults to the Pixel accent (<c>#8e7fe0</c>).
+    /// </summary>
+    [Parameter] public string DefaultAccent { get; set; } = "#8e7fe0";
+
+    /// <summary>
+    /// Optional override of the skin→accent-hex map. When <see langword="null"/> (the default) the
+    /// built-in map (the same skins as the topbar Theme picker / <c>app.css</c>) is used. Keys are
+    /// matched case-insensitively.
+    /// </summary>
+    [Parameter] public IReadOnlyDictionary<string, string>? SkinAccents { get; set; }
+
+    private DesignThemeModes _mode = DesignThemeModes.Light;
+    private string _accent = "#8e7fe0";
+
+    // Same accent map as the topbar Theme picker / app.css skins — single source for every app.
+    private static readonly Dictionary<string, string> Accents = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["pixel"] = "#8e7fe0", ["modern"] = "#5e6cc1", ["material"] = "#3c7de1", ["saas"] = "#7754f6",
+        ["galaxy"] = "#6575f5", ["luxe"] = "#1c9390", ["neon"] = "#3f5098", ["retro"] = "#c0552b", ["dark"] = "#8e7fe0",
+    };
+
+    /// <inheritdoc/>
+    protected override void OnParametersSet() => _accent = DefaultAccent;
+
+    /// <inheritdoc/>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        var map = SkinAccents ?? Accents;
+        var skin = await JS.InvokeAsync<string?>("asdGetAttr", "data-skin") ?? "pixel";
+        var theme = await JS.InvokeAsync<string?>("asdGetAttr", "data-bs-theme") ?? "light";
+
+        var accent = map.TryGetValue(skin, out var a) ? a : DefaultAccent;
+        // The "dark" SKIN is itself a full dark theme, so flip to Dark mode for it too (not only when
+        // the explicit dark-mode toggle / data-bs-theme is set).
+        var isDark = string.Equals(theme, "dark", StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(skin, "dark", StringComparison.OrdinalIgnoreCase);
+        var mode = isDark ? DesignThemeModes.Dark : DesignThemeModes.Light;
+
+        if (accent != _accent || mode != _mode)
+        {
+            _accent = accent;
+            _mode = mode;
+            StateHasChanged();
+        }
+    }
+}

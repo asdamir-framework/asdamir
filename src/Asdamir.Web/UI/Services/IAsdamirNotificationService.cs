@@ -16,7 +16,7 @@ namespace Asdamir.Web.UI.Services;
 /// component (e.g. <c>AsdamirNotificationHost</c>) renders them. Messages are localization keys that
 /// the implementation resolves against the DB-backed localizer, so callers pass keys, not literals.
 /// </summary>
-public interface INotificationService
+public interface IAsdamirNotificationService
 {
     /// <summary>
     /// Raised when a plain toast is requested (the <c>Success</c>/<c>Info</c>/<c>Warning</c>/
@@ -124,7 +124,7 @@ public interface INotificationService
 }
 
 /// <summary>
-/// Full configuration for a notification passed to <see cref="INotificationService.Show"/>. Bundles
+/// Full configuration for a notification passed to <see cref="IAsdamirNotificationService.Show"/>. Bundles
 /// every knob the convenience methods leave at defaults — severity, title, timing, persistence,
 /// dismissibility, actions, position, sound, icon, and a correlation id for log tie-back.
 /// </summary>
@@ -241,7 +241,7 @@ public enum NotificationActionStyle
 }
 
 /// <summary>
-/// Immutable payload carried by <see cref="INotificationService.NotificationRequested"/> — the
+/// Immutable payload carried by <see cref="IAsdamirNotificationService.NotificationRequested"/> — the
 /// already-resolved toast the host component renders.
 /// </summary>
 /// <param name="Severity">Severity driving the toast's color and icon.</param>
@@ -258,7 +258,7 @@ public sealed record NotificationRequest(
 
 /// <summary>
 /// A confirmation prompt awaiting a yes/no answer. The host completes <see cref="Completion"/> with the
-/// user's choice; <see cref="INotificationService.ConfirmAsync"/> awaits that task.
+/// user's choice; <see cref="IAsdamirNotificationService.ConfirmAsync"/> awaits that task.
 /// </summary>
 /// <param name="Message">The resolved dialog body text.</param>
 /// <param name="Title">Optional resolved dialog title.</param>

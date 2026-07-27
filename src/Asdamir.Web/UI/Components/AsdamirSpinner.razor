@@ -1,0 +1,22 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@*
+    AsdamirSpinner — the indeterminate loading-spinner facade over FluentUI's FluentProgressRing.
+    Callers render:
+
+        <AsdamirSpinner />
+
+    and never reference Microsoft.FluentUI.*. The underlying component (and a FluentUI major that
+    renames FluentProgressRing → Spinner) lives inside this one file. Any extra attribute (aria-label,
+    class, …) splats straight onto the underlying ring, so the appearance is identical to the raw
+    parameterless <FluentProgressRing /> that every page used before.
+*@
+<FluentProgressRing @attributes="AdditionalAttributes" />
+
+@code {
+    /// <summary>
+    /// Any attribute (<c>aria-label</c>, <c>class</c>, <c>title</c>, …) splatted onto the underlying
+    /// spinner. None are required — the default render matches the former parameterless spinner.
+    /// </summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+}

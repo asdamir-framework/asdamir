@@ -5,10 +5,51 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `1.6.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (Web `1.6.0`: the FluentUI-isolation input components `AsdamirTextInput` + `AsdamirNumberInput<T>` — see the top entry below. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `2.0.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the top entry below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Web 2.0.0] — 2026-07-27
+
+### FluentUI isolation facades — callers no longer reference `Microsoft.FluentUI.*`
+
+New `Asdamir.Web/UI/Components` facades wrap FluentUI so calling code (AppManagement pages/layouts and
+every generated app) stays off `Microsoft.FluentUI.*`. When FluentUI ships a breaking major, the change
+is a handful of facade files, not the whole tree.
+
+- **`AsdamirThemeProvider`** — wraps `FluentDesignTheme` (skin→accent map + light/dark). `AppTheme.razor`
+  + `ServerAppTheme.sbn` now just render `<AsdamirThemeProvider />`.
+- **`AsdamirAppProviders`** — the four overlay providers (toast/dialog/tooltip/message-bar) behind one
+  opt-out-per-provider component.
+- **`IAsdamirToastService` / `IAsdamirDialogService`** — Asdamir-owned toast/dialog services over FluentUI's
+  `IToastService` / `IDialogService` (registered by `AddUIServices()`).
+- **`AsdamirSpinner`** — wraps `FluentProgressRing`; all 25 loading placeholders migrated.
+- **`AsdamirButton`** is now the only button — the last 19 raw `<FluentButton>` usages migrated; it gained a
+  `Loading` parameter mirroring `FluentButton.Loading`.
+- **`FluentSearch`** (removed in v5) — the single generated-CRUD-page search box (`Page.sbn`) is now a native
+  `<input type="search" class="asd-input">` (a facade would be overkill for one call site); the generated
+  CRUD page is now FluentUI-free (its `@using Microsoft.FluentUI` dropped).
+
+### ⚠️ BREAKING — notification service renamed
+
+`Asdamir.Web.UI.Services.INotificationService` / `NotificationService` are renamed to
+**`IAsdamirNotificationService`** / **`AsdamirNotificationService`**. This resolves the `CS0104` ambiguity
+with FluentUI v5's same-named `INotificationService`, and is why this is a **MAJOR** bump (Web `1.5.3` → `2.0.0`).
+
+**Migration:** rename every `@inject` / DI registration / type reference:
+
+```diff
+- @inject Asdamir.Web.UI.Services.INotificationService Notify
++ @inject Asdamir.Web.UI.Services.IAsdamirNotificationService Notify
+
+- services.AddScoped<INotificationService, NotificationService>();   // (AddUIServices already does this)
++ services.AddScoped<IAsdamirNotificationService, AsdamirNotificationService>();
+```
+
+The API surface (methods, events, `NotificationOptions`, the `Notification*Request` records, the enums) is
+otherwise unchanged — only the interface + implementation-class names changed. `<AsdamirNotificationHost />`
+and `AddUIServices()` are updated internally; apps that only use the host + `@inject` need just the rename.
 
 ## [Web 1.6.0] — 2026-07-26
 

@@ -11,9 +11,14 @@
 
 <button type="@Type"
         class="@CssClass"
-        disabled="@Disabled"
+        disabled="@(Disabled || Loading)"
+        aria-busy="@(Loading ? "true" : null)"
         @onclick="OnClick"
         @attributes="AdditionalAttributes">
+    @if (Loading)
+    {
+        <span class="asd-btn-spinner" aria-hidden="true"></span>
+    }
     @ChildContent
 </button>
 
@@ -56,6 +61,12 @@
 
     /// <summary>When true, renders the disabled state (dim + not-allowed) and blocks the click.</summary>
     [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// When true, shows an inline spinner before the content and disables the button (a busy submit
+    /// state). Mirrors FluentUI's <c>FluentButton.Loading</c> — loading implies disabled.
+    /// </summary>
+    [Parameter] public bool Loading { get; set; }
 
     /// <summary>Extra CSS class(es) appended after the design-system classes (e.g. a page-scoped modifier).</summary>
     [Parameter] public string? Class { get; set; }

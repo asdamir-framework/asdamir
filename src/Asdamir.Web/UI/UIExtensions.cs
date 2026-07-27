@@ -32,7 +32,7 @@ public static class UIExtensions
     /// Register Asdamir.Web.UI services including enterprise notification system
     /// 
     /// Services registered:
-    /// - INotificationService: ⭐ Enterprise notification service with localization (PREFERRED)
+    /// - IAsdamirNotificationService: ⭐ Enterprise notification service with localization (PREFERRED)
     /// - IGlobalSearchService: ⭐ Global search across all modules
     /// - IExportService: Multi-format export (Excel, PDF, CSV)
     /// - IDialogService: Modal dialogs and confirmations
@@ -41,7 +41,7 @@ public static class UIExtensions
     /// - IDataService: Data operations
     /// 
     /// Usage in Razor components:
-    /// @inject Asdamir.Web.UI.Services.INotificationService Notifications
+    /// @inject Asdamir.Web.UI.Services.IAsdamirNotificationService Notifications
     /// @inject Asdamir.Web.UI.Services.IGlobalSearchService GlobalSearch
     /// @inject Asdamir.Web.UI.Services.IExportService ExportService
     /// @inject Asdamir.Web.UI.Services.IDialogService Dialogs
@@ -55,7 +55,7 @@ public static class UIExtensions
         services.AddScoped<Services.IErrorMessageService, Services.ErrorMessageService>();
         
         // ⭐ Enterprise notification service (unified - supports both simple and localized messages)
-        services.AddScoped<Services.INotificationService, Services.NotificationService>();
+        services.AddScoped<Services.IAsdamirNotificationService, Services.AsdamirNotificationService>();
         
         // ⭐ Global search service - Enterprise-wide search across all modules
         services.AddScoped<Services.IGlobalSearchService, Services.GlobalSearchService>();
@@ -65,6 +65,11 @@ public static class UIExtensions
         
         // Theme service - Dark/light mode management
         services.AddScoped<Services.IThemeService, Services.ThemeService>();
+
+        // Toast / dialog FACADES over FluentUI's IToastService / IDialogService, so callers inject the
+        // Asdamir-owned interfaces and never reference Microsoft.FluentUI.* (isolates the FluentUI major).
+        services.AddScoped<Services.IAsdamirToastService, Services.AsdamirToastService>();
+        services.AddScoped<Services.IAsdamirDialogService, Services.AsdamirDialogService>();
         
         // HTTP client for API calls
         services.AddHttpClient();

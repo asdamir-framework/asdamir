@@ -1,7 +1,7 @@
 @implements IDisposable
-@inject INotificationService Notify
+@inject IAsdamirNotificationService Notify
 @*
-    AsdamirNotificationHost — drop-in host that wires INotificationService to UI. Render ONE instance in
+    AsdamirNotificationHost — drop-in host that wires IAsdamirNotificationService to UI. Render ONE instance in
     a layout to enable toasts, confirmation dialogs, the loading overlay and action notifications app-wide:
 
         <AsdamirNotificationHost />

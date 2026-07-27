@@ -9,7 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.FluentUI.AspNetCore.Components;
+using Asdamir.Web.UI.Services;
 
 namespace Asdamir.Web.Security.Components;
 
@@ -18,7 +18,7 @@ namespace Asdamir.Web.Security.Components;
 /// </summary>
 public class RouteAuthorizationHandler : ComponentBase
 {
-    [Inject] private IDialogService DialogService { get; set; } = default!;
+    [Inject] private IAsdamirDialogService DialogService { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     [Inject] private AuthenticationStateProvider AuthStateProvider { get; set; } = default!;
     [Inject] private ILogger<RouteAuthorizationHandler> Logger { get; set; } = default!;
@@ -79,10 +79,8 @@ public class RouteAuthorizationHandler : ComponentBase
 
     private async Task ShowUnauthorizedDialog()
     {
-        var dialog = await DialogService.ShowInfoAsync("Yetkisiz Erişim", 
+        await DialogService.ShowInfoAsync("Yetkisiz Erişim",
             "Bu sayfaya erişim yetkiniz bulunmamaktadır.");
-        
-        var result = await dialog.Result;
         NavigationManager.NavigateTo("/", forceLoad: true);
     }
 }

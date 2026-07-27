@@ -1,0 +1,44 @@
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@*
+    AsdamirAppProviders — the single facade for the app-wide overlay providers (toast, dialog, tooltip,
+    message bar). Render ONE instance near the end of a layout instead of listing the individual
+    FluentUI provider components:
+
+        <AsdamirAppProviders />                                 (all four)
+        <AsdamirAppProviders Tooltip="false" Dialog="false" />  (auth screen: toast + message bar only)
+
+    Callers never reference Microsoft.FluentUI.* — the providers (and the FluentUI major that removes/
+    renames them) live inside this one facade. Each provider is opt-out via a boolean parameter so a
+    layout keeps its exact former set (an unused provider is a harmless empty overlay region either way).
+*@
+@if (Toast)
+{
+    <FluentToastProvider />
+}
+@if (Dialog)
+{
+    <FluentDialogProvider />
+}
+@if (Tooltip)
+{
+    <FluentTooltipProvider />
+}
+@if (MessageBar)
+{
+    <FluentMessageBarProvider />
+}
+
+@code {
+    /// <summary>Render the toast provider. Default <see langword="true"/>.</summary>
+    [Parameter] public bool Toast { get; set; } = true;
+
+    /// <summary>Render the dialog provider. Default <see langword="true"/>.</summary>
+    [Parameter] public bool Dialog { get; set; } = true;
+
+    /// <summary>Render the tooltip provider. Default <see langword="true"/>.</summary>
+    [Parameter] public bool Tooltip { get; set; } = true;
+
+    /// <summary>Render the message-bar provider. Default <see langword="true"/>.</summary>
+    [Parameter] public bool MessageBar { get; set; } = true;
+}

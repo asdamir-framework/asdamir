@@ -64,11 +64,9 @@
     </NotAuthorized>
 </AuthorizeView>
 
-<FluentToastProvider />
-<FluentDialogProvider />
-<FluentTooltipProvider />
+<AsdamirAppProviders MessageBar="false" />
 
-@* Backs INotificationService: toasts, ConfirmAsync/ConfirmDangerAsync dialogs, ShowLoading overlay,
+@* Backs IAsdamirNotificationService: toasts, ConfirmAsync/ConfirmDangerAsync dialogs, ShowLoading overlay,
    and action toasts. Dependency-light (works in interactive islands). Pass CancelText/ConfirmText
    localized strings (e.g. CancelText="@(L["Common.Cancel"].Value)") once you seed those keys. *@
 <AsdamirNotificationHost />

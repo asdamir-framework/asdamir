@@ -35,7 +35,7 @@
 <div class="asd-page">
     @if (_loading)
     {
-        <div class="asd-panel"><div class="asd-tnote"><FluentProgressRing /></div></div>
+        <div class="asd-panel"><div class="asd-tnote"><AsdamirSpinner /></div></div>
     }
     else
     {
@@ -52,9 +52,9 @@
                     <span class="pay-current-plan">@_current.PlanName</span>
                     <span class="asd-pill @(_current.Status == "active" || _current.Status == "trialing" ? "ok" : "neutral")">@_current.Status</span>
                 </div>
-                <FluentButton Appearance="Appearance.Stealth" OnClick="CancelAsync" Disabled="@_busy">
+                <AsdamirButton Variant="AsdamirButton.ButtonVariant.Ghost" OnClick="CancelAsync" Disabled="@_busy">
                     @L["Billing.Page.Cancel"]
-                </FluentButton>
+                </AsdamirButton>
             </div>
         }
 
@@ -82,15 +82,15 @@
                             }
                             else if (p.Price <= 0)
                             {
-                                <FluentButton Appearance="Appearance.Neutral" OnClick="@(() => SubscribeAsync(p.Code))" Disabled="@_busy">
+                                <AsdamirButton OnClick="@(() => SubscribeAsync(p.Code))" Disabled="@_busy">
                                     @L["Billing.Page.Choose"]
-                                </FluentButton>
+                                </AsdamirButton>
                             }
                             else
                             {
-                                <FluentButton Appearance="Appearance.Accent" OnClick="@(() => CheckoutAsync(p.Code))" Disabled="@_busy">
+                                <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" OnClick="@(() => CheckoutAsync(p.Code))" Disabled="@_busy">
                                     @L["Billing.Page.Checkout"]
-                                </FluentButton>
+                                </AsdamirButton>
                             }
                         </div>
                     </div>

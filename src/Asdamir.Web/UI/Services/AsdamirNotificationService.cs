@@ -15,7 +15,7 @@ namespace Asdamir.Web.UI.Services;
 /// <summary>
 /// Enterprise notification service implementation with event-based notification bar
 /// </summary>
-public sealed class NotificationService : INotificationService
+public sealed class AsdamirNotificationService : IAsdamirNotificationService
 {
     /// <inheritdoc/>
     public event EventHandler<NotificationRequest>? NotificationRequested;
@@ -34,7 +34,7 @@ public sealed class NotificationService : INotificationService
     /// (falling back to the raw key when the resource is missing); when <c>null</c>, keys are used verbatim.
     /// </summary>
     /// <param name="localizer">The localizer used to resolve message keys, or <c>null</c> for no localization.</param>
-    public NotificationService(IStringLocalizer? localizer = null)
+    public AsdamirNotificationService(IStringLocalizer? localizer = null)
     {
         _localizer = localizer;
     }
@@ -42,7 +42,7 @@ public sealed class NotificationService : INotificationService
     /// <summary>
     /// Creates the service without a localizer (backward-compatible overload); message keys are shown verbatim.
     /// </summary>
-    public NotificationService() : this((IStringLocalizer?)null)
+    public AsdamirNotificationService() : this((IStringLocalizer?)null)
     {
     }
 

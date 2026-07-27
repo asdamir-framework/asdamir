@@ -1,0 +1,19 @@
+/* AsdamirButton — the inline loading spinner shown while Loading="true".
+   Scoped to the component; the button chrome itself comes from the shared design-system .asd-btn
+   classes in _content/Asdamir.Web/asdamir-theme.css. */
+
+.asd-btn-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: asd-btn-spin 0.7s linear infinite;
+    /* the .asd-btn flex layout already applies the gap between this and the label */
+    flex: 0 0 auto;
+}
+
+@keyframes asd-btn-spin {
+    to { transform: rotate(360deg); }
+}

@@ -30,3 +30,7 @@
 
 .session-warning-content .dialog-subtext,
 .session-timeout-content .dialog-subtext { margin: 8px 0; font-size: 13px; color: var(--neutral-foreground-hint); }
+
+/* Full-width action button. ::deep because the <button> is rendered inside the AsdamirButton
+   child component, not in this component's own scope. */
+::deep .swd-btn-full { width: 100%; }

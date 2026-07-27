@@ -3,7 +3,6 @@
 @rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using System.Net.Http.Json
 @using Microsoft.AspNetCore.Authorization
-@using Microsoft.FluentUI.AspNetCore.Components
 @using Asdamir.Web.UI.Components
 @using Asdamir.Web.Http
 @using Microsoft.AspNetCore.Components.Authorization
@@ -28,7 +27,8 @@
 
 <div class="asd-page">
     <div class="asd-toolbar">
-        <FluentSearch @bind-Value="_search" Placeholder="@L["Common.Search"].Value" Label="@L["Common.Search"].Value" Class="u-w-260" />
+        <input type="search" class="asd-input u-w-260" @bind="_search" @bind:event="oninput"
+               placeholder="@L["Common.Search"].Value" aria-label="@L["Common.Search"].Value" autocomplete="off" />
         <div class="asd-toolbar-actions">
             <button type="button" class="asd-btn asd-btn-primary" @onclick="OnNewAsync" disabled="@_isLoading">@L["Common.New"]</button>
             <button type="button" class="asd-btn" @onclick="ReloadAsync" disabled="@_isLoading">@L["Common.Refresh"]</button>
@@ -37,7 +37,7 @@
 
     @if (_isLoading)
     {
-        <div class="asd-panel"><div class="asd-tnote"><FluentProgressRing /></div></div>
+        <div class="asd-panel"><div class="asd-tnote"><AsdamirSpinner /></div></div>
     }
     else if (_loadError is not null)
     {
