@@ -19,7 +19,12 @@ input-components work had merged) — a regression against `1.6.0`. `2.0.1` brin
 has **both** the FluentUI-isolation facades (2.0.0) **and** the input components (1.6.0). Consumers on
 `2.0.0` should move to `2.0.1`; no API change beyond the components reappearing.
 
-## [Web 2.0.0] — 2026-07-27
+## [Web 2.0.0] — 2026-07-27 — ⚠️ DEFECTIVE, superseded by 2.0.1
+
+> **Do not use `2.0.0`.** It shipped **without** the `AsdamirTextInput` / `AsdamirNumberInput<T>` input
+> components that `1.6.0` had added, so a consumer moving `1.6.0 → 2.0.0` silently **lost** them (the DLL
+> of the published `2.0.0` has the facades but not the input types; `2.0.1` has both). Use **`2.0.1`** or
+> later. `2.0.0` is being unlisted on nuget.org.
 
 ### FluentUI isolation facades — callers no longer reference `Microsoft.FluentUI.*`
 
