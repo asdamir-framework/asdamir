@@ -15,11 +15,13 @@
     <PackageId>Asdamir.Web</PackageId>
     <!-- Per-project version override: Web is on its own line, independent of the shared
          Directory.Build.props <Version> (Core's line); bump THIS, not the global, for a Web-only release.
-         2.0.0 is a MAJOR bump — BREAKING: the notification abstraction INotificationService /
+         2.0.0 was a MAJOR bump — BREAKING: the notification abstraction INotificationService /
          NotificationService was renamed to IAsdamirNotificationService / AsdamirNotificationService
          (resolves the CS0104 clash with FluentUI v5's same-named INotificationService). Consumers that
-         @inject or register the old names must rename them — see CHANGELOG. -->
-    <Version>2.0.0</Version>
+         @inject or register the old names must rename them — see CHANGELOG.
+         2.0.1 RESTORES the FluentUI-isolation input components AsdamirTextInput + AsdamirNumberInput<T>
+         (shipped in 1.6.0) that were accidentally dropped when 2.0.0 branched off before the 1.6.0 merge. -->
+    <Version>2.0.1</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Web/UI for Asdamir: Blazor + FluentUI component library (DataGrid, dialogs, layout), API-backed localization (3 cultures), and admin pool security (JWT + DataProtection + cookie/bearer handler).</Description>
     <PackageTags>blazor;fluentui;localization;authorization;jwt;data-protection;ui-components</PackageTags>

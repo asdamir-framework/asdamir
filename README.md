@@ -29,7 +29,7 @@ Asdamir gives you two things at once:
 
 📚 **Docs:** [docs.asdamir.com](https://docs.asdamir.com) · 🧩 **Offline & AI-free** — the CLI needs no cloud and no AI; an optional [Claude Code](https://docs.asdamir.com) skill/agent layer is there if you want it.
 
-> Status: stable. Open-core packages on nuget.org — `Asdamir.Core` `1.6.0`, `Asdamir.Data` `1.4.0`, `Asdamir.Web` `2.0.0`, `Asdamir.Payments` `1.2.0`, `Asdamir.Tools` `1.4.5`. Production-ready; semantic versioning — breaking changes bump the major. The production-readiness features below are in place.
+> Status: stable. Open-core packages on nuget.org — `Asdamir.Core` `1.6.0`, `Asdamir.Data` `1.4.0`, `Asdamir.Web` `2.0.1`, `Asdamir.Payments` `1.2.0`, `Asdamir.Tools` `1.4.5`. Production-ready; semantic versioning — breaking changes bump the major. The production-readiness features below are in place.
 
 ---
 
