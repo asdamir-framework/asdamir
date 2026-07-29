@@ -21,6 +21,13 @@
     color: var(--asd-ink-soft, #7a7f99);
 }
 
+/* Required marker: a red asterisk after the label, matching the FluentUI field it replaces. */
+.asd-ti-label.required::after {
+    content: " *";
+    color: var(--asd-danger, #b3261e);
+    font-weight: 700;
+}
+
 .asd-ti-input {
     width: 100%;
     box-sizing: border-box;

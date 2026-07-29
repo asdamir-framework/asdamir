@@ -297,7 +297,8 @@ public static class PageCommand
         bool IsNullable,
         bool IsRequired,
         string InputKind,   // "text" | "number" | "bool" | "date" | "guid"
-        string DefaultExpr) // e.g. "string.Empty", "0", "false", "DateTime.UtcNow", "Guid.Empty"
+        string DefaultExpr, // e.g. "string.Empty", "0", "false", "DateTime.UtcNow", "Guid.Empty"
+        int NumberDecimals) // fraction digits for AsdamirNumberInput: 0 for int/long, 2 for decimal/double
     {
         public FieldView(FieldSpec f) : this(
             f.Name,
@@ -306,7 +307,8 @@ public static class PageCommand
             f.IsNullable,
             f.IsRequired,
             ResolveInputKind(f.CSharpType),
-            ResolveDefault(f.CSharpType, f.IsNullable))
+            ResolveDefault(f.CSharpType, f.IsNullable),
+            ResolveNumberDecimals(f.CSharpType))
         { }
 
         private static string ResolveInputKind(string cs) => cs.TrimEnd('?') switch
@@ -317,6 +319,17 @@ public static class PageCommand
             "DateTime" => "date",
             "Guid" => "guid",
             _ => "text",
+        };
+
+        // AsdamirNumberInput takes decimal/int/long (nullable variants); Decimals controls the display.
+        // Integer types show 0 fraction digits (matching FluentNumberField); decimal defaults to 2.
+        // NOTE: double/float are NOT bindable to AsdamirNumberInput (it rejects them at runtime because
+        // binary floating point can't hold exact decimals) — a double field is a framework edge that
+        // should use decimal instead; the value here (2) is only a display default if that changes.
+        private static int ResolveNumberDecimals(string cs) => cs.TrimEnd('?') switch
+        {
+            "int" or "long" => 0,
+            _ => 2,
         };
 
         private static string ResolveDefault(string cs, bool nullable)

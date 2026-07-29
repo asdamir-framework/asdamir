@@ -1,0 +1,97 @@
+@typeparam TOption
+
+@*
+    AsdamirSelect — the framework's ISOLATION drop-down: a native <select> styled with the shared .asd-* /
+    Fluent-2 design tokens, deliberately NOT wrapping FluentUI's FluentSelect. Consumer code binds to this
+    instead, so it carries no dependency on the FluentUI package.
+
+    The bound value is ALWAYS a string (OptionValue projects each option to a string, the same shape the
+    migrated FluentSelect usages had), while TOption stays generic so an arbitrary option type can supply the
+    label/value projections. Two-way binding works through Value + ValueChanged, so @bind-Value (and the
+    @bind-Value:after modifier that several call sites rely on) behaves exactly as it did with FluentSelect.
+
+    All user-facing text (Label / Placeholder) is an English-defaulted parameter — a framework component
+    can't assume a DB-seeded localization key exists, so the caller passes @L["…"] values in. No JS interop.
+*@
+
+<div class="asd-select-wrap @Class">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="asd-select-label" for="@_selectId">@Label</label>
+    }
+    <select id="@_selectId"
+            class="asd-input asd-select"
+            value="@Value"
+            disabled="@Disabled"
+            autocomplete="off"
+            @onchange="OnChangeAsync"
+            @attributes="AdditionalAttributes">
+        @if (!string.IsNullOrEmpty(Placeholder))
+        {
+            <option value="" selected="@string.IsNullOrEmpty(Value)">@Placeholder</option>
+        }
+        @if (Items is not null)
+        {
+            @foreach (var option in Items)
+            {
+                var optionValue = OptionValueOrDefault(option);
+                <option value="@optionValue" selected="@(optionValue == Value)">@OptionText(option)</option>
+            }
+        }
+    </select>
+</div>
+
+@code {
+    private readonly string _selectId = $"asd-sel-{Guid.NewGuid():N}";
+
+    /// <summary>The options rendered as <c>&lt;option&gt;</c> elements. <see langword="null"/> renders an empty list.</summary>
+    [Parameter] public IEnumerable<TOption>? Items { get; set; }
+
+    /// <summary>
+    /// Projects an option to its DISPLAY text (the visible <c>&lt;option&gt;</c> label). Required — pass a
+    /// localized projection where appropriate (e.g. <c>o =&gt; L[o.Key]</c>).
+    /// </summary>
+    [Parameter, EditorRequired] public Func<TOption, string> OptionText { get; set; } = static _ => string.Empty;
+
+    /// <summary>
+    /// Projects an option to its underlying string VALUE (the one bound to <see cref="Value"/>). Defaults to
+    /// <c>o?.ToString()</c>, matching how the migrated FluentSelect call sites projected each option.
+    /// </summary>
+    [Parameter] public Func<TOption, string> OptionValue { get; set; } = static o => o?.ToString() ?? string.Empty;
+
+    /// <summary>The selected value (always a string). Supports two-way binding via <c>@bind-Value</c>.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>Raised when the selection changes — carries the newly selected option value. Enables <c>@bind-Value</c>.</summary>
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>Optional label rendered above the control and associated via <c>for</c>. Pass a localized value.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>
+    /// Optional placeholder rendered as a leading empty-value option (shown while <see cref="Value"/> is
+    /// empty). When omitted no empty option is emitted, matching a FluentSelect without a blank entry.
+    /// </summary>
+    [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>Disables the control entirely (no selection, greyed out).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Extra CSS class(es) applied to the control's ROOT wrapper (the <c>.asd-select-wrap</c> element), so a
+    /// layout/width class (e.g. <c>asd-form-w</c>, <c>u-w-180</c>) sizes the whole field. Attributes splatted
+    /// via <c>@attributes</c> land on the inner <c>&lt;select&gt;</c>; this parameter is the field-level hook.
+    /// </summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any additional attributes (e.g. <c>aria-*</c>, <c>name</c>) splatted onto the inner <c>&lt;select&gt;</c>.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string OptionValueOrDefault(TOption option) => OptionValue(option) ?? string.Empty;
+
+    private async Task OnChangeAsync(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

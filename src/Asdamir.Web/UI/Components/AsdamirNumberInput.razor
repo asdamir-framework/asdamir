@@ -31,10 +31,10 @@
     Label / Placeholder are English-defaulted parameters; the caller passes @L["…"] in.
 *@
 
-<div class="asd-numinput @(Disabled ? "disabled" : null)">
+<div class="asd-numinput @(Disabled ? "disabled" : null) @Class">
     @if (!string.IsNullOrEmpty(Label))
     {
-        <label class="asd-ni-label" for="@_inputId">@Label</label>
+        <label class="asd-ni-label @(Required ? "required" : null)" for="@_inputId">@Label</label>
     }
     <input @ref="_inputRef"
            id="@_inputId"
@@ -49,6 +49,8 @@
            placeholder="@Placeholder"
            disabled="@Disabled"
            readonly="@ReadOnly"
+           required="@Required"
+           aria-required="@(Required ? "true" : null)"
            aria-invalid="@(_hasError ? "true" : null)"
            aria-describedby="@(_hasError ? _errorId : null)"
            @attributes="AdditionalAttributes" />
@@ -96,6 +98,20 @@
 
     /// <summary>Placeholder shown when the field is empty. Pass a localized value.</summary>
     [Parameter] public string? Placeholder { get; set; }
+
+    /// <summary>
+    /// Marks the field as required: renders the visual asterisk on the label and sets the native
+    /// <c>required</c> / <c>aria-required</c> attributes. Cosmetic + native only — actual enforcement (if
+    /// wanted) comes from a DataAnnotations <c>[Required]</c> validated via the ambient <c>EditContext</c>.
+    /// </summary>
+    [Parameter] public bool Required { get; set; }
+
+    /// <summary>
+    /// Extra CSS class(es) applied to the field's ROOT wrapper (the <c>.asd-numinput</c> element), so a
+    /// layout/width class (e.g. <c>u-w-120</c>, <c>u-w-160</c>) sizes the whole field. Attributes splatted
+    /// via <c>@attributes</c> land on the inner <c>&lt;input&gt;</c>; this parameter is the field-level hook.
+    /// </summary>
+    [Parameter] public string? Class { get; set; }
 
     /// <summary>
     /// When <see langword="true"/>, the bound value updates on every keystroke; when <see langword="false"/>

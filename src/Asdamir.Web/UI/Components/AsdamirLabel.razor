@@ -1,0 +1,110 @@
+@*
+    AsdamirLabel — the framework's ISOLATION typographic label: a native semantic element (h1..h6 / p / span)
+    styled with the shared `.asd-label-*` theme classes, deliberately NOT wrapping FluentUI's FluentLabel.
+    Consumer code uses this instead, so it carries no dependency on the FluentUI package.
+
+    The `Typo` parameter mirrors FluentLabel's `Typography`: H1..H6 render the matching heading element (so a
+    heading stays a real, accessible heading), Body renders a <p>, Subject a <span> — each with the matching
+    `.asd-label-*` size class. Optional `Weight` (Normal/Bold) overrides the class default. No inline `style=`.
+*@
+
+@switch (Typo)
+{
+    case LabelTypo.H1:
+        <h1 class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</h1>
+        break;
+    case LabelTypo.H2:
+        <h2 class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</h2>
+        break;
+    case LabelTypo.H3:
+        <h3 class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</h3>
+        break;
+    case LabelTypo.H4:
+        <h4 class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</h4>
+        break;
+    case LabelTypo.H5:
+        <h5 class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</h5>
+        break;
+    case LabelTypo.H6:
+        <h6 class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</h6>
+        break;
+    case LabelTypo.Body:
+        <p class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</p>
+        break;
+    default: // Subject
+        <span class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</span>
+        break;
+}
+
+@code {
+    /// <summary>The typographic role — maps to a semantic element + an <c>.asd-label-*</c> size class, mirroring FluentLabel's <c>Typography</c>.</summary>
+    public enum LabelTypo
+    {
+        /// <summary>Top-level heading (<c>&lt;h1&gt;</c>).</summary>
+        H1,
+        /// <summary>Section heading (<c>&lt;h2&gt;</c>).</summary>
+        H2,
+        /// <summary>Sub-section heading (<c>&lt;h3&gt;</c>).</summary>
+        H3,
+        /// <summary>Panel/card heading (<c>&lt;h4&gt;</c>).</summary>
+        H4,
+        /// <summary>Minor heading (<c>&lt;h5&gt;</c>).</summary>
+        H5,
+        /// <summary>Smallest heading (<c>&lt;h6&gt;</c>).</summary>
+        H6,
+        /// <summary>Body / paragraph text (<c>&lt;p&gt;</c>) — the FluentLabel default.</summary>
+        Body,
+        /// <summary>Inline subject/emphasis text (<c>&lt;span&gt;</c>).</summary>
+        Subject,
+    }
+
+    /// <summary>Optional font-weight override.</summary>
+    public enum LabelWeight
+    {
+        /// <summary>Use the typo class's default weight.</summary>
+        Default,
+        /// <summary>Force a normal weight.</summary>
+        Normal,
+        /// <summary>Force a bold weight.</summary>
+        Bold,
+    }
+
+    /// <summary>The label content.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The typographic role. Defaults to <see cref="LabelTypo.Body"/> (the FluentLabel default).</summary>
+    [Parameter] public LabelTypo Typo { get; set; } = LabelTypo.Body;
+
+    /// <summary>Optional weight override. Defaults to <see cref="LabelWeight.Default"/> (the typo class's own weight).</summary>
+    [Parameter] public LabelWeight Weight { get; set; } = LabelWeight.Default;
+
+    /// <summary>Extra CSS class(es) appended after the label classes (e.g. <c>u-muted</c>).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute (<c>id</c>, <c>title</c>, <c>aria-*</c>, …) splatted onto the element.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass
+    {
+        get
+        {
+            var cls = "asd-label asd-label-" + TypoToken;
+            if (Weight == LabelWeight.Bold) cls += " u-bold";
+            else if (Weight == LabelWeight.Normal) cls += " asd-label-normal";
+            if (!string.IsNullOrWhiteSpace(Class)) cls += " " + Class;
+            return cls;
+        }
+    }
+
+    private string TypoToken => Typo switch
+    {
+        LabelTypo.H1 => "h1",
+        LabelTypo.H2 => "h2",
+        LabelTypo.H3 => "h3",
+        LabelTypo.H4 => "h4",
+        LabelTypo.H5 => "h5",
+        LabelTypo.H6 => "h6",
+        LabelTypo.Subject => "subject",
+        _ => "body",
+    };
+}

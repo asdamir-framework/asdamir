@@ -1,57 +1,32 @@
 @page "/access-denied"
-@using Microsoft.FluentUI.AspNetCore.Components
+@using Asdamir.Web.UI.Components
 
 <div class="access-denied-container">
-    <FluentCard Class="access-denied-card">
-        <FluentStack Orientation="Orientation.Vertical" 
-                   HorizontalAlignment="HorizontalAlignment.Center"
-                   VerticalGap="20">
-            
+    <div class="access-denied-card asd-card">
+        <AsdamirStack Orientation="AsdamirStack.StackOrientation.Vertical"
+                      HorizontalAlignment="AsdamirStack.StackHorizontalAlignment.Center"
+                      VerticalGap="20px">
+
             <!-- Error Icon -->
             <div class="icon-warning">⚠️</div>
 
-            <FluentLabel Typo="Typography.H4">Erişim Reddedildi</FluentLabel>            <FluentLabel Typo="Typography.Body" Class="text-center">
+            <AsdamirLabel Typo="AsdamirLabel.LabelTypo.H4">Erişim Reddedildi</AsdamirLabel>
+            <AsdamirLabel Typo="AsdamirLabel.LabelTypo.Body" Class="text-center">
                 Bu sayfaya erişim yetkiniz bulunmamaktadır. Gerekli izinlere sahip olmadığınız için bu işlemi gerçekleştiremezsiniz.
-            </FluentLabel>
-            
-            <FluentStack Orientation="Orientation.Horizontal" HorizontalGap="12">
+            </AsdamirLabel>
+
+            <AsdamirStack Orientation="AsdamirStack.StackOrientation.Horizontal" HorizontalGap="12px">
                 <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" OnClick="GoToDashboard">
                     Ana Sayfaya Dön
                 </AsdamirButton>
                 <AsdamirButton OnClick="GoBack">
                     Geri Dön
                 </AsdamirButton>
-            </FluentStack>
-            
-        </FluentStack>
-    </FluentCard>
+            </AsdamirStack>
+
+        </AsdamirStack>
+    </div>
 </div>
-
-<style>
-    .access-denied-container {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 80vh;
-        padding: 20px;
-    }
-
-    .access-denied-card {
-        max-width: 500px;
-        width: 100%;
-        padding: 40px;
-        text-align: center;
-    }
-
-    .text-center {
-        text-align: center;
-    }
-
-    .icon-warning {
-        font-size: 48px;
-        color: red;
-    }
-</style>
 
 @code {
     [Inject] private NavigationManager Navigation { get; set; } = default!;

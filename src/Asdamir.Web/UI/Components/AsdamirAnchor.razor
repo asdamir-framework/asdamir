@@ -1,0 +1,41 @@
+@*
+    AsdamirAnchor — the framework's ISOLATION link-button: a native <a class="asd-btn"> styled with the shared
+    `.asd-btn` design system, deliberately NOT wrapping FluentUI's FluentAnchor. Consumer code uses this
+    instead, so it carries no dependency on the FluentUI package.
+
+    The parameter set mirrors the FluentAnchor usages it replaces: Href (the link target) + Appearance mapped
+    to a button variant — Accent → the accent-filled `.asd-btn-primary`, Neutral → the outline `.asd-btn`. The
+    `.asd-btn` design system already styles `a.asd-btn`, so the link looks identical to a button and follows
+    the active skin. No inline `style=`.
+*@
+
+<a href="@Href" class="@CssClass" @attributes="AdditionalAttributes">@ChildContent</a>
+
+@code {
+    /// <summary>The link-button appearance — maps to a shared <c>.asd-btn</c> variant, mirroring FluentAnchor's <c>Appearance</c>.</summary>
+    public enum AnchorAppearance
+    {
+        /// <summary>Neutral outline link-button (bare <c>.asd-btn</c>) — the default.</summary>
+        Neutral,
+        /// <summary>Accent-filled link-button (<c>.asd-btn-primary</c>).</summary>
+        Accent,
+    }
+
+    /// <summary>The link content (label).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The link target (the <c>href</c> attribute).</summary>
+    [Parameter] public string? Href { get; set; }
+
+    /// <summary>The appearance. Defaults to <see cref="AnchorAppearance.Neutral"/>.</summary>
+    [Parameter] public AnchorAppearance Appearance { get; set; } = AnchorAppearance.Neutral;
+
+    /// <summary>Extra CSS class(es) appended after the button classes.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute (<c>target</c>, <c>rel</c>, <c>title</c>, <c>aria-*</c>, …) splatted onto the anchor.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string CssClass =>
+        $"asd-btn{(Appearance == AnchorAppearance.Accent ? " asd-btn-primary" : string.Empty)}{(string.IsNullOrWhiteSpace(Class) ? string.Empty : " " + Class)}";
+}

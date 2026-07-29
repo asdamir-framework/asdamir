@@ -21,7 +21,7 @@
          @inject or register the old names must rename them — see CHANGELOG.
          2.0.1 RESTORES the FluentUI-isolation input components AsdamirTextInput + AsdamirNumberInput<T>
          (shipped in 1.6.0) that were accidentally dropped when 2.0.0 branched off before the 1.6.0 merge. -->
-    <Version>2.0.1</Version>
+    <Version>2.1.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Web/UI for Asdamir: Blazor + FluentUI component library (DataGrid, dialogs, layout), API-backed localization (3 cultures), and admin pool security (JWT + DataProtection + cookie/bearer handler).</Description>
     <PackageTags>blazor;fluentui;localization;authorization;jwt;data-protection;ui-components</PackageTags>

@@ -1,0 +1,79 @@
+@using System.Globalization
+
+@*
+    AsdamirDatePicker — the framework's ISOLATION date field: a native <input type="date"> styled with the
+    shared .asd-* / Fluent-2 design tokens, deliberately NOT wrapping FluentUI's FluentDatePicker. Consumer
+    code binds to this instead, so it carries no dependency on the FluentUI package.
+
+    Binding is a plain DateTime? via Value + ValueChanged, so BOTH migrated shapes work unchanged:
+    @bind-Value AND @bind-Value:after (the after-modifier several filter toolbars rely on — the modifier is
+    plumbed automatically because Value + ValueChanged are emitted). A cleared/empty input becomes null.
+
+    An <input type="date"> ALWAYS exchanges its value as an ISO 8601 date string (yyyy-MM-dd) regardless of
+    the browser locale — the locale only affects how the picker DISPLAYS the date. So the format/parse here is
+    fixed to InvariantCulture yyyy-MM-dd, matching what FluentDatePicker fed the DateTime? underneath. No JS
+    interop; the label uses the same wrapper shape as AsdamirSelect so a picker and a select line up.
+*@
+
+<div class="asd-datepicker-wrap @Class">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="asd-datepicker-label" for="@_inputId">@Label</label>
+    }
+    <input id="@_inputId"
+           type="date"
+           class="asd-input asd-datepicker"
+           value="@ToIso(Value)"
+           min="@ToIso(Min)"
+           max="@ToIso(Max)"
+           disabled="@Disabled"
+           @onchange="OnChangeAsync"
+           @attributes="AdditionalAttributes" />
+</div>
+
+@code {
+    private readonly string _inputId = $"asd-dp-{Guid.NewGuid():N}";
+
+    /// <summary>The selected date (date-only; time is not modelled). Supports two-way binding via <c>@bind-Value</c> (and <c>@bind-Value:after</c>). A cleared field yields <see langword="null"/>.</summary>
+    [Parameter] public DateTime? Value { get; set; }
+
+    /// <summary>Raised when the date changes — carries the newly picked <see cref="DateTime"/> (or <see langword="null"/> when cleared). Enables <c>@bind-Value</c>.</summary>
+    [Parameter] public EventCallback<DateTime?> ValueChanged { get; set; }
+
+    /// <summary>Optional label rendered above the control and associated via <c>for</c>. Pass a localized value.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Optional earliest selectable date, emitted as the native <c>min</c> attribute (ISO <c>yyyy-MM-dd</c>).</summary>
+    [Parameter] public DateTime? Min { get; set; }
+
+    /// <summary>Optional latest selectable date, emitted as the native <c>max</c> attribute (ISO <c>yyyy-MM-dd</c>).</summary>
+    [Parameter] public DateTime? Max { get; set; }
+
+    /// <summary>Disables the control entirely (no picking, greyed out).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>
+    /// Extra CSS class(es) applied to the control's ROOT wrapper (the <c>.asd-datepicker-wrap</c> element), so a
+    /// layout/width class sizes the whole field. Attributes splatted via <c>@attributes</c> land on the inner
+    /// <c>&lt;input&gt;</c>; this parameter is the field-level hook.
+    /// </summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any additional attributes (e.g. <c>autocomplete</c>, <c>aria-*</c>) splatted onto the inner <c>&lt;input&gt;</c>.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // <input type="date"> speaks ISO yyyy-MM-dd on the wire in every locale (InvariantCulture, date-only).
+    private static string? ToIso(DateTime? value) => value?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private async Task OnChangeAsync(ChangeEventArgs e)
+    {
+        var raw = e.Value?.ToString();
+        DateTime? parsed = string.IsNullOrWhiteSpace(raw)
+            ? null
+            : DateTime.TryParseExact(raw, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var d)
+                ? d
+                : null;
+        Value = parsed;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

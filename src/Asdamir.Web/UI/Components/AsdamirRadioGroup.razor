@@ -1,0 +1,60 @@
+@*
+    AsdamirRadioGroup — the framework's ISOLATION radio group: a native row of <input type="radio"> children
+    sharing one group name, styled with the shared .asd-* / Fluent-2 tokens, deliberately NOT wrapping
+    FluentUI's FluentRadioGroup. Consumer code binds to this instead, so it carries no dependency on the
+    FluentUI package.
+
+    It cascades a small context (the shared radio NAME, the selected value, and the change callback) down to
+    its <AsdamirRadio> children; each child renders its own native radio and reports selection back up. The
+    bound value is a plain string via Value + ValueChanged, so BOTH migrated shapes work unchanged:
+    @bind-Value (AdminOutboxList's compose kind) AND the explicit Value + ValueChanged pair (Home's error
+    distribution). Name defaults to an auto-generated guid so two groups on a page never collide; a caller may
+    still pass an explicit Name (matching the FluentRadioGroup usages that named theirs). No JS interop.
+*@
+
+<div class="asd-radiogroup @Class" role="radiogroup">
+    <CascadingValue Value="_context" IsFixed="false">
+        @ChildContent
+    </CascadingValue>
+</div>
+
+@code {
+    private readonly string _autoName = $"asd-rg-{Guid.NewGuid():N}";
+
+    /// <summary>The selected value (always a string). Supports two-way binding via <c>@bind-Value</c>.</summary>
+    [Parameter] public string? Value { get; set; }
+
+    /// <summary>Raised when the selection changes — carries the newly selected radio value. Enables <c>@bind-Value</c>.</summary>
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>
+    /// The shared HTML <c>name</c> tying the group's radios together. Defaults to an auto-generated unique
+    /// value so two groups on one page never interfere; pass an explicit name if you need a stable one.
+    /// </summary>
+    [Parameter] public string? Name { get; set; }
+
+    /// <summary>The <see cref="AsdamirRadio"/> children that make up the group.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Disables the whole group (every child radio is greyed out and non-interactive).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Extra CSS class(es) applied to the group's <c>.asd-radiogroup</c> wrapper (e.g. a layout modifier).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private AsdamirRadioGroupContext _context = default!;
+
+    /// <inheritdoc />
+    protected override void OnParametersSet()
+        => _context = new AsdamirRadioGroupContext(
+            string.IsNullOrEmpty(Name) ? _autoName : Name,
+            Value,
+            Disabled,
+            OnChildSelectedAsync);
+
+    private async Task OnChildSelectedAsync(string? value)
+    {
+        Value = value;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

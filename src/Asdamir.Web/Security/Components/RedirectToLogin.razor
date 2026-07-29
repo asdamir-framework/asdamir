@@ -1,25 +1,28 @@
+@using Asdamir.Web.UI.Components
 @inject NavigationManager Nav
 
-<FluentStack VerticalAlignment="VerticalAlignment.Center" 
-            HorizontalAlignment="HorizontalAlignment.Center"
-            Style="min-height: 100vh;">
+@* Orientation left at the default Horizontal to match the prior FluentStack (which also defaulted to
+   Horizontal — spinner + label in a centered row). *@
+<AsdamirStack VerticalAlignment="AsdamirStack.StackVerticalAlignment.Center"
+              HorizontalAlignment="AsdamirStack.StackHorizontalAlignment.Center"
+              Class="redirect-login-stack">
     <AsdamirSpinner />
-    <FluentLabel Typo="Typography.Body" Style="margin-top: 16px;">
+    <AsdamirLabel Typo="AsdamirLabel.LabelTypo.Body" Class="redirect-login-text">
         Redirecting to login...
-    </FluentLabel>
-</FluentStack>
+    </AsdamirLabel>
+</AsdamirStack>
 
 @code {
     protected override void OnInitialized()
     {
         var returnUrl = Nav.ToAbsoluteUri(Nav.Uri).PathAndQuery;
-        
+
         // Don't redirect if already on login page (prevent loop)
         if (returnUrl.StartsWith("/login", StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
-        
+
         // Redirect to login with return URL
         Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(returnUrl)}", forceLoad: true);
     }

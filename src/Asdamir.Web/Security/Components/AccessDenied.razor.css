@@ -1,0 +1,25 @@
+/* Scoped styles (migrated out of the former inline <style> block when FluentCard/FluentStack/FluentLabel
+   were replaced by the .asd-card surface + AsdamirStack/AsdamirLabel). */
+.access-denied-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    padding: 20px;
+}
+
+.access-denied-card {
+    max-width: 500px;
+    width: 100%;
+    padding: 40px;
+    text-align: center;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.icon-warning {
+    font-size: 48px;
+    color: red;
+}

@@ -1,0 +1,9 @@
+/* Scoped styles (replaced the two inline Style= attributes on FluentStack/FluentLabel when they
+   became AsdamirStack/AsdamirLabel — clears two AUD013 inline styles). */
+.redirect-login-stack {
+    min-height: 100vh;
+}
+
+.redirect-login-text {
+    margin-top: 16px;
+}

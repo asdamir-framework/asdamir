@@ -6,8 +6,6 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Web
-@using Microsoft.FluentUI.AspNetCore.Components
-@using Microsoft.FluentUI.AspNetCore.Components.Icons
 @using Asdamir.Web.UI.Components
 @using Microsoft.JSInterop
 @using {{ ServerNamespace }}

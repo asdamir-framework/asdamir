@@ -477,6 +477,7 @@ h1:focus { outline: none; }
 .u-mt-8 { margin-top: 8px; }
 .u-mt-12 { margin-top: 12px; }
 .u-mt-16 { margin-top: 16px; }
+.u-mt-96 { margin-top: 96px; }
 .u-ml-8 { margin-left: 8px; }
 .u-scroll-x { overflow-x: auto; }
 .u-w-full { width: 100%; }
@@ -527,6 +528,83 @@ h1:focus { outline: none; }
 .u-fullcenter { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
 .u-table { border-collapse: collapse; width: 100%; }
 .u-mono-area { font-family: var(--monospace-font-family, monospace); }
+
+/* ════════════════ AsdamirStack — FluentUI-free flex stack (replaces FluentStack) ════════════════
+   `.asd-stack` is a flex container. Orientation → flex-direction; the default 10px gap mirrors
+   FluentStack's default HorizontalGap/VerticalGap (call sites that override it pass a gap util or a
+   HorizontalGap/VerticalGap param → a CSS var). Alignment maps to the main/cross axis exactly as
+   FluentStack does: in a horizontal stack HorizontalAlignment is main-axis (justify-content) and
+   VerticalAlignment cross-axis (align-items); in a vertical stack the two swap. Width defaults to 100%
+   like FluentStack. Modifier classes carry the mapped enum value so no inline style is needed. */
+.asd-stack {
+    display: flex;
+    box-sizing: border-box;
+    gap: var(--asd-stack-gap, 10px);
+    width: var(--asd-stack-w, 100%);
+}
+.asd-stack-h { flex-direction: row; }
+.asd-stack-v { flex-direction: column; }
+.asd-stack-rev.asd-stack-h { flex-direction: row-reverse; }
+.asd-stack-rev.asd-stack-v { flex-direction: column-reverse; }
+.asd-stack-wrap { flex-wrap: wrap; }
+/* main-axis alignment (justify-content) */
+.asd-stack-main-start   { justify-content: flex-start; }
+.asd-stack-main-center  { justify-content: center; }
+.asd-stack-main-end     { justify-content: flex-end; }
+.asd-stack-main-between { justify-content: space-between; }
+.asd-stack-main-stretch { justify-content: stretch; }
+.asd-stack-main-baseline{ justify-content: baseline; }
+/* cross-axis alignment (align-items) */
+.asd-stack-cross-start   { align-items: flex-start; }
+.asd-stack-cross-center  { align-items: center; }
+.asd-stack-cross-end     { align-items: flex-end; }
+.asd-stack-cross-stretch { align-items: stretch; }
+.asd-stack-cross-baseline{ align-items: baseline; }
+
+/* ════════════════ AsdamirMessageBar — FluentUI-free status bar (replaces FluentMessageBar) ════════════════
+   A rounded surface with an intent-colored left rail + soft tint, an optional bold Title, the message body,
+   and an optional dismiss (×) button. Intent → a semantic `--asd-*` token (success/warning/danger/accent). */
+.asd-messagebar {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; border-radius: var(--asd-radius);
+    border: 1px solid var(--asd-mb-color, var(--asd-accent));
+    border-left-width: 4px;
+    background: color-mix(in srgb, var(--asd-mb-color, var(--asd-accent)) 10%, var(--asd-surface));
+    color: var(--asd-ink); font-size: 13px; line-height: 1.4;
+}
+.asd-messagebar-info    { --asd-mb-color: var(--asd-accent); }
+.asd-messagebar-success { --asd-mb-color: var(--asd-success); }
+.asd-messagebar-warning { --asd-mb-color: var(--asd-warning); }
+.asd-messagebar-error   { --asd-mb-color: var(--asd-danger); }
+.asd-messagebar-ico { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; color: var(--asd-mb-color); }
+.asd-messagebar-main { flex: 1; min-width: 0; }
+.asd-messagebar-title { font-weight: 600; display: block; margin-bottom: 2px; }
+.asd-messagebar-dismiss {
+    flex-shrink: 0; border: none; background: transparent; cursor: pointer;
+    color: var(--asd-ink-soft); line-height: 1; padding: 2px; border-radius: 4px;
+    font-size: 15px;
+}
+.asd-messagebar-dismiss:hover { color: var(--asd-ink); background: color-mix(in srgb, var(--asd-mb-color) 15%, transparent); }
+
+/* ════════════════ AsdamirLabel — FluentUI-free typographic label (replaces FluentLabel) ════════════════
+   Maps FluentLabel's `Typo` to a semantic element (h1..h6 / p / span) + an `.asd-label-*` size class, so a
+   heading stays a real heading (accessible) while looking identical. Colors follow the theme ink tokens. */
+.asd-label { color: var(--asd-ink); margin: 0; }
+.asd-label-h1 { font-size: 1.6rem;  font-weight: 700; line-height: 1.2; }
+.asd-label-h2 { font-size: 1.4rem;  font-weight: 700; line-height: 1.2; }
+.asd-label-h3 { font-size: 1.2rem;  font-weight: 600; line-height: 1.25; }
+.asd-label-h4 { font-size: 1.05rem; font-weight: 600; line-height: 1.3; }
+.asd-label-h5 { font-size: .95rem;  font-weight: 600; line-height: 1.3; }
+.asd-label-h6 { font-size: .85rem;  font-weight: 600; line-height: 1.3; }
+.asd-label-subject { font-size: .95rem; font-weight: 600; }
+.asd-label-body { font-size: .875rem; font-weight: 400; line-height: 1.45; }
+.asd-label-normal { font-weight: 400; }
+
+/* ════════════════ AsdamirSpacer — FluentUI-free flex spacer (replaces FluentSpacer) ════════════════
+   A flexible gap that pushes siblings apart inside a flex row/column (flex: 1). A fixed Width overrides the
+   grow via the `--asd-spacer-w` CSS var (falls back to auto → the flexible default). */
+.asd-spacer { flex: 1 1 auto; width: var(--asd-spacer-w, auto); }
+.asd-spacer-fixed { flex: 0 0 auto; }
 
 /* Content panel — same surface/border/radius as .asd-filter so cards match exactly (FluentCard's
    internal neutral-layer renders a subtly different shade than --asd-surface in dark mode). */
@@ -812,6 +890,53 @@ h1:focus { outline: none; }
 /* Plain native controls used inside data tables (e.g. per-row override editing). */
 .asd-input { padding: 5px 8px; border: 1px solid var(--asd-border-strong); border-radius: var(--asd-radius-sm);
     background: var(--asd-surface); color: var(--asd-ink); font-size: .82rem; }
+
+/* AsdamirTextArea — isolation multi-line field primitive. A native <textarea> styled to match the
+   .asd-input tokens; the label wrapper mirrors .asd-select-wrap so a TextArea and a Select line up. */
+.asd-textarea-wrap { display: flex; flex-direction: column; gap: 4px; }
+.asd-textarea-label { font-size: .72rem; font-weight: 600; color: var(--asd-ink-soft); }
+.asd-textarea { width: 100%; resize: vertical; line-height: 1.4; font-family: inherit; }
+.asd-textarea:disabled { opacity: .45; cursor: not-allowed; }
+
+/* AsdamirSwitch — isolation toggle primitive. An accessible checkbox (role=switch) drawn as a sliding
+   track+knob, styled with the .asd-* tokens; no FluentUI. The native checkbox is visually hidden but
+   keeps focus/keyboard semantics. */
+.asd-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: .8rem; color: var(--asd-ink); user-select: none; }
+.asd-switch.disabled { opacity: .45; cursor: not-allowed; }
+.asd-switch > input { position: absolute; opacity: 0; width: 0; height: 0; }
+.asd-switch-track { position: relative; flex: 0 0 auto; width: 34px; height: 18px; border-radius: 999px;
+    background: var(--asd-border-strong); transition: background .15s; }
+.asd-switch-track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px;
+    border-radius: 50%; background: #fff; transition: transform .15s; }
+.asd-switch > input:checked + .asd-switch-track { background: var(--asd-accent); }
+.asd-switch > input:checked + .asd-switch-track::after { transform: translateX(16px); }
+.asd-switch > input:focus-visible + .asd-switch-track { outline: 2px solid var(--asd-accent); outline-offset: 2px; }
+
+/* AsdamirCheckbox / AsdamirRadio — isolation selection primitives. Native input styled with the accent
+   token; the label sits beside it. No FluentUI. */
+.asd-check, .asd-radio { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-size: .8rem; color: var(--asd-ink); user-select: none; }
+.asd-check.disabled, .asd-radio.disabled { opacity: .45; cursor: not-allowed; }
+.asd-check > input, .asd-radio > input { accent-color: var(--asd-accent); cursor: inherit; margin: 0; }
+
+/* AsdamirRadioGroup — inline row of radios, matching FluentRadioGroup's default horizontal layout. */
+.asd-radiogroup { display: inline-flex; align-items: center; gap: 14px; }
+
+/* AsdamirDatePicker — isolation date-field primitive. A native <input type="date"> styled to match the
+   .asd-input tokens; the label wrapper mirrors .asd-select-wrap so a picker and a select line up. No FluentUI. */
+.asd-datepicker-wrap { display: flex; flex-direction: column; gap: 4px; }
+.asd-datepicker-label { font-size: .72rem; font-weight: 600; color: var(--asd-ink-soft); }
+.asd-datepicker { line-height: 1.4; }
+.asd-datepicker:disabled { opacity: .45; cursor: not-allowed; }
+
+/* AsdamirSelect — isolation drop-down primitive. A native <select> styled to match the .asd-input tokens,
+   with its own caret (native appearance stripped) so it looks consistent across skins without FluentUI. */
+.asd-select-wrap { display: flex; flex-direction: column; gap: 4px; }
+.asd-select-label { font-size: .72rem; font-weight: 600; color: var(--asd-ink-soft); }
+.asd-select { -webkit-appearance: none; -moz-appearance: none; appearance: none;
+    padding-right: 26px; cursor: pointer; line-height: 1.4;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23888' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center; }
+.asd-select:disabled { opacity: .45; cursor: not-allowed; }
 .asd-chk { display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; font-size: .8rem; color: var(--asd-ink); }
 .asd-confirm-body { color: var(--asd-ink); font-size: .9rem; line-height: 1.6; }
 

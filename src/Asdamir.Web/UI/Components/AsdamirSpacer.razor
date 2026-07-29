@@ -1,0 +1,29 @@
+@*
+    AsdamirSpacer — the framework's ISOLATION flex spacer: a native <div class="asd-spacer"> that fills the
+    available space inside a flex container, deliberately NOT wrapping FluentUI's FluentSpacer. Consumer code
+    uses this instead, so it carries no dependency on the FluentUI package.
+
+    With no Width it grows to push its siblings apart (flex: 1), exactly like FluentSpacer. A Width makes it a
+    FIXED gap of that CSS length (the value rides the AUD013-exempt `style="--x:…"` CSS var; no inline style).
+*@
+
+<div class="@CssClass" style="--asd-spacer-w:@WidthVar" @attributes="AdditionalAttributes"></div>
+
+@code {
+    /// <summary>Optional fixed width as a CSS length (e.g. <c>"24px"</c>). When null the spacer grows flexibly, like FluentSpacer.</summary>
+    [Parameter] public string? Width { get; set; }
+
+    /// <summary>Extra CSS class(es) appended after the spacer class.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute (<c>aria-*</c>, <c>data-*</c>, …) splatted onto the div.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool HasFixedWidth => !string.IsNullOrWhiteSpace(Width);
+
+    // A fixed Width also flips off the flex-grow (`.asd-spacer-fixed`) so the width is honored exactly.
+    private string CssClass =>
+        $"asd-spacer{(HasFixedWidth ? " asd-spacer-fixed" : string.Empty)}{(string.IsNullOrWhiteSpace(Class) ? string.Empty : " " + Class)}";
+
+    private string WidthVar => HasFixedWidth ? Width! : "auto";
+}

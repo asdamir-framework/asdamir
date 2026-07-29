@@ -1,7 +1,7 @@
 @namespace Asdamir.Web.Security.Components
-@using Microsoft.FluentUI.AspNetCore.Components
 @using Microsoft.JSInterop
 @using Asdamir.Web.Security.Services
+@using Asdamir.Web.UI.Components
 @using Microsoft.Extensions.Localization
 @implements IDisposable
 @inject AutoLogoutService AutoLogout
@@ -11,46 +11,48 @@
 @inject IStringLocalizer<SessionWarningDialog> Localizer
 
 <!-- Warning Dialog - Before Timeout -->
-<FluentDialog @bind-Hidden="@hideWarning" Modal="true" Title="@GetLocalizedString("Session.Warning.Title")" Class="app-dialog-medium">
-
-    <div class="session-warning-content">
-        <span class="dialog-icon dialog-icon--warning">⚠️</span>
-        <div>
-            <p class="dialog-text">
-                @GetLocalizedString("Session.Warning.Message") <strong>@timeRemaining</strong>
-            </p>
-            <p class="dialog-subtext">
-                @GetLocalizedString("Session.Warning.Action")
-            </p>
+<AsdamirModal Open="@(!hideWarning)" OpenChanged="OnWarningOpenChanged" Title="@GetLocalizedString("Session.Warning.Title")">
+    <ChildContent>
+        <div class="session-warning-content">
+            <span class="dialog-icon dialog-icon--warning">⚠️</span>
+            <div>
+                <p class="dialog-text">
+                    @GetLocalizedString("Session.Warning.Message") <strong>@timeRemaining</strong>
+                </p>
+                <p class="dialog-subtext">
+                    @GetLocalizedString("Session.Warning.Action")
+                </p>
+            </div>
         </div>
-    </div>
-
-    <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" Class="swd-btn-full" OnClick="OnExtendSession">
-        @GetLocalizedString("Session.Warning.ExtendButton")
-    </AsdamirButton>
-
-</FluentDialog>
+    </ChildContent>
+    <Footer>
+        <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" Class="swd-btn-full" OnClick="OnExtendSession">
+            @GetLocalizedString("Session.Warning.ExtendButton")
+        </AsdamirButton>
+    </Footer>
+</AsdamirModal>
 
 <!-- Timeout Dialog - After Timeout -->
-<FluentDialog @bind-Hidden="@hideTimeout" Modal="true" Title="@GetLocalizedString("Session.Timeout.Title")" Class="app-dialog-medium">
-
-    <div class="session-timeout-content">
-        <span class="dialog-icon dialog-icon--error">🔒</span>
-        <div>
-            <p class="dialog-text dialog-text--bold">
-                @GetLocalizedString("Session.Timeout.Message")
-            </p>
-            <p class="dialog-subtext">
-                @GetLocalizedString("Session.Timeout.Reason")
-            </p>
+<AsdamirModal Open="@(!hideTimeout)" OpenChanged="OnTimeoutOpenChanged" Title="@GetLocalizedString("Session.Timeout.Title")">
+    <ChildContent>
+        <div class="session-timeout-content">
+            <span class="dialog-icon dialog-icon--error">🔒</span>
+            <div>
+                <p class="dialog-text dialog-text--bold">
+                    @GetLocalizedString("Session.Timeout.Message")
+                </p>
+                <p class="dialog-subtext">
+                    @GetLocalizedString("Session.Timeout.Reason")
+                </p>
+            </div>
         </div>
-    </div>
-
-    <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" Class="swd-btn-full" OnClick="@(async () => await OnReturnToLogin())">
-        @GetLocalizedString("Session.Timeout.LoginButton")
-    </AsdamirButton>
-
-</FluentDialog>
+    </ChildContent>
+    <Footer>
+        <AsdamirButton Variant="AsdamirButton.ButtonVariant.Primary" Class="swd-btn-full" OnClick="@(async () => await OnReturnToLogin())">
+            @GetLocalizedString("Session.Timeout.LoginButton")
+        </AsdamirButton>
+    </Footer>
+</AsdamirModal>
 
 @code {
     private bool hideWarning = true;
@@ -139,6 +141,25 @@
     {
         var localizedString = Localizer[key];
         return localizedString.ResourceNotFound ? key : localizedString.Value;
+    }
+
+    // Overlay/X on the warning popup is a benign dismiss: hide it and stop the countdown, WITHOUT
+    // extending the session (AutoLogout's own logout timer still governs the real timeout). This mirrors
+    // the prior behavior of the field simply being hidden.
+    private void OnWarningOpenChanged(bool open)
+    {
+        if (open) return;
+        hideWarning = true;
+        var t = Interlocked.Exchange(ref countdownTimer, null);
+        t?.Dispose();
+        StateHasChanged();
+    }
+
+    // Overlay/X on the hard-timeout popup routes to the same return-to-login as its only button — the
+    // session is already gone, so dismissing it must still land on /login.
+    private void OnTimeoutOpenChanged(bool open)
+    {
+        if (!open) _ = OnReturnToLogin();
     }
 
     private void OnExtendSession()

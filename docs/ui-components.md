@@ -35,6 +35,19 @@ In `_Imports.razor`:
 | `OCR` | In-browser OCR (Tesseract) |
 | `SignaturePad` | Captures a signature image |
 | `FilePicker` | General-purpose file picker: drop zone with native drag & drop (no JS interop), `Accept`/`MaxFileSize` gates, hands the `IBrowserFile` to the caller |
+| `AsdamirTextInput` | **Isolation** text field — native `<input>` + design tokens, no FluentUI dependency; `InputBase<string?>` form integration, typing/paste character filter, `MaxLength`, `InputType` |
+| `AsdamirNumberInput<T>` | **Isolation** numeric field — culture-aware `type="text"` entry (`decimal`/`int`/`long`), no FluentUI dependency; `ToEven` rounding, `Min`/`Max`, wheel-safe |
+| `AsdamirSelect<TOption>` | **Isolation** drop-down — native `<select>` + design tokens, no FluentUI dependency; generic `TOption` with `OptionText`/`OptionValue` projections, string `@bind-Value` (works with `@bind-Value:after`), `Placeholder`, `Disabled`, attribute splat |
+| `AsdamirTextArea` | **Isolation** multi-line field (replaces `FluentTextArea`) — native `<textarea>` + design tokens, no FluentUI dependency; `InputBase<string?>` form integration (`@bind-Value`), `Rows`, `MaxLength`, `Label`/`Placeholder`, `Disabled`/`ReadOnly`, attribute splat |
+| `AsdamirSwitch` | **Isolation** toggle (replaces `FluentSwitch`) — accessible native checkbox `role="switch"` drawn as a track+knob + design tokens, no FluentUI dependency; bool `@bind-Value` (works with `@bind-Value:after`), `Label` **or** `ChildContent` caption, `Disabled` |
+| `AsdamirCheckbox` | **Isolation** checkbox (replaces `FluentCheckbox`) — native `<input type="checkbox">` + design tokens, no FluentUI dependency; bool `@bind-Value` **or** explicit `Value`/`ValueChanged` (works with `@bind-Value:after`), `Label` **or** `ChildContent` caption, `Indeterminate`, `Disabled` |
+| `AsdamirDatePicker` | **Isolation** date field (replaces `FluentDatePicker`) — native `<input type="date">` + design tokens, no FluentUI dependency; `DateTime?` `@bind-Value` (works with `@bind-Value:after`; cleared → `null`), fixed ISO `yyyy-MM-dd` on the wire (locale only affects display), `Label`, `Min`/`Max`, `Disabled`, attribute splat |
+| `AsdamirRadioGroup` + `AsdamirRadio` | **Isolation** radio group (replaces `FluentRadioGroup`/`FluentRadio`) — native `<input type="radio">` children sharing one group `name` (auto-guid, or explicit `Name`) via a cascading context, no FluentUI dependency; group takes string `@bind-Value` **or** explicit `Value`/`ValueChanged`, `Disabled`, `Class`; each `AsdamirRadio` has a required `Value`, `ChildContent` label, own `Disabled` |
+| `AsdamirStack` | **Isolation** flex layout (replaces `FluentStack`) — native `<div class="asd-stack">`, no FluentUI dependency; `Orientation`, axis-aware `HorizontalAlignment`/`VerticalAlignment`, `HorizontalGap`/`VerticalGap`, `Wrap`, `Reversed`, `Width` (all mapped to `.asd-stack-*` classes + CSS vars, no inline style) |
+| `AsdamirMessageBar` | **Isolation** status bar (replaces `FluentMessageBar`) — native `<div class="asd-messagebar">`, no FluentUI dependency; `Intent` (Info/Success/Warning/Error → color rail + tint + icon), plain-text `Title`, `AllowDismiss` (default true) with a `Dismissed` callback |
+| `AsdamirLabel` | **Isolation** typographic label (replaces `FluentLabel`) — semantic `h1..h6`/`p`/`span` element + `.asd-label-*` class, no FluentUI dependency; `Typo` (H1–H6/Body/Subject → the matching element so a heading stays a real heading), optional `Weight` |
+| `AsdamirSpacer` | **Isolation** flex spacer (replaces `FluentSpacer`) — native `<div class="asd-spacer">`, no FluentUI dependency; grows to push flex siblings apart (`flex: 1`), or a fixed gap when `Width` is set |
+| `AsdamirAnchor` | **Isolation** link-button (replaces `FluentAnchor`) — native `<a class="asd-btn">`, no FluentUI dependency; `Href` + `Appearance` (Accent → `.asd-btn-primary`, Neutral → outline `.asd-btn`) |
 | `Menu` | Navigation menu bound to the menu service |
 | `ErrorBoundaryEx` | Error boundary with friendly fallback |
 | `AsdamirThemeProvider` | Design-theme facade — drives the design system's accent + light/dark tokens from the active skin; callers never see FluentUI (see below) |
@@ -149,6 +162,64 @@ Notify.ShowLoading("Importing…"); /* … */ Notify.HideLoading();
 ```
 
 The host is FluentUI-free, so it works inside a Blazor Web App interactive island and the MAUI Blazor-Hybrid app. **Without a host rendered, `ConfirmAsync`/`ConfirmDangerAsync` return `false`** (deny) — a destructive action never proceeds un-confirmed.
+
+## Framework UI Components (FluentUI-isolation inputs)
+
+`AsdamirTextInput` and `AsdamirNumberInput<T>` are **isolation** form fields: a native `<input>` styled with the shared design tokens, deliberately **not** wrapping any FluentUI component. Binding to them keeps consumer code free of a `Microsoft.FluentUI.*` dependency while staying visually consistent (same tokens, focus/hover/disabled, error display, label alignment) with the FluentUI fields alongside. Both derive from Blazor's `InputBase<TValue>`, so `Value` / `ValueChanged` / `ValueExpression` flow through the ambient `EditContext` and DataAnnotations validation works with zero extra wiring (put a `<DataAnnotationsValidator/>` in your `EditForm`). No JS interop is used anywhere in either component.
+
+All user-facing text (`Label`, `Placeholder`) is an **English-defaulted parameter** — a framework component cannot assume a DB-seeded localization key exists, so the caller passes `@L["…"]` values in. On a validation error the field sets `aria-invalid="true"`, links `aria-describedby` to a `role="alert"` message, and renders the message below; the `<label for>` associates the label to the input for full keyboard/screen-reader use.
+
+### `AsdamirTextInput`
+
+| Parameter | Type | Default | Purpose |
+|---|---|---|---|
+| `Value` / `ValueChanged` / `ValueExpression` | `string?` | — | Two-way binding (`@bind-Value`); `ValueExpression` drives EditContext/DataAnnotations |
+| `MaxLength` | `int` | `0` (none) | Max characters — enforced by the native `maxlength` **and** re-clamped component-side (a paste can exceed the attribute) |
+| `AllowedCharacter` | `Func<char,bool>?` | `null` (all) | Caller-supplied per-character predicate; the component runs it over **typing AND paste/IME** runs. The caller owns the RULE, the component owns the plumbing — no format regex is baked into the framework |
+| `InputType` | `string` | `text` | `text` / `password` / `email` / `tel` / `search` / `url`; a non-text type throws (numbers → `AsdamirNumberInput`) |
+| `Disabled` / `ReadOnly` | `bool` | `false` | Disabled = greyed + inert; ReadOnly = value shown, not editable |
+| `Required` | `bool` | `false` | Renders the label asterisk + native `required`/`aria-required`; cosmetic + native (enforcement via a DataAnnotations `[Required]`) |
+| `Class` | `string?` | `null` | Extra class(es) on the **root wrapper** (`.asd-textinput`) so a width/layout class (`asd-form-w`, `u-w-160`) sizes the whole field |
+| `Label` / `Placeholder` | `string?` | `null` | Localized text passed by the caller |
+| `Immediate` | `bool` | `false` | `true` commits each keystroke; `false` commits on change/blur |
+| `@attributes` | — | — | Additional attributes (e.g. `autocomplete`) splat onto the `<input>` |
+
+```razor
+<AsdamirTextInput @bind-Value="model.Code"
+                  Label="@L["Field.Order.Code"]"
+                  MaxLength="12"
+                  AllowedCharacter="ch => char.IsLetterOrDigit(ch)"
+                  autocomplete="off" />
+```
+
+### `AsdamirNumberInput<TValue>`
+
+`TValue` is constrained to `decimal` / `int` / `long` (nullable variants allowed). **`double`/`float` are rejected at runtime** with a clear `NotSupportedException` — binary floating point cannot represent decimal money exactly, and exact decimal capture is the whole point of a numeric entry field.
+
+| Parameter | Type | Default | Purpose |
+|---|---|---|---|
+| `Value` / `ValueChanged` / `ValueExpression` | `TValue` | — | Two-way binding (`@bind-Value`); drives EditContext/DataAnnotations |
+| `Decimals` | `int` | `2` | Fraction digits shown/rounded to, using `MidpointRounding.ToEven` (banker's rounding) |
+| `Min` / `Max` | `decimal?` | `null` | Inclusive bounds; a committed value is clamped into range |
+| `AllowNegative` | `bool` | `false` | When `false`, a leading minus is stripped |
+| `MaxIntegerDigits` | `int` | `0` (none) | Caps digits before the separator as the user types |
+| `ShowGroupSeparator` | `bool` | `false` | Show the thousands separator in the committed display (always tolerated on parse) |
+| `Disabled` / `ReadOnly` | `bool` | `false` | As above |
+| `Required` | `bool` | `false` | Renders the label asterisk + native `required`/`aria-required` |
+| `Class` | `string?` | `null` | Extra class(es) on the **root wrapper** (`.asd-numinput`) so a width class (`u-w-120`, `u-w-160`) sizes the whole field |
+| `Label` / `Placeholder` | `string?` | `null` | Localized text passed by the caller |
+| `Immediate` | `bool` | `false` | Commit on keystroke vs. change/blur (re-formatting only ever happens on commit, so the caret is stable while typing) |
+| `@attributes` | — | — | Additional attributes splat onto the `<input>` |
+
+```razor
+<AsdamirNumberInput TValue="decimal" @bind-Value="model.UnitPrice"
+                    Label="@L["Field.OrderItem.UnitPrice"]"
+                    Decimals="2" Min="0" MaxIntegerDigits="9" />
+```
+
+**Why `type="text"` + `inputmode="decimal"`, NOT `type="number"`.** A native `type="number"` input (1) reinterprets the decimal separator per the **browser's** locale, not the app culture — a `tr-TR` user typing `1234,56` against an `en-US` browser silently loses the fraction; (2) ignores `maxlength`; (3) lets the **mouse wheel** change the value; (4) accepts `e`/`+`/`-` and scientific notation. `AsdamirNumberInput` instead uses `type="text"` + `inputmode="decimal"` (mobile numeric keypad) and a controlled, **culture-aware** parse/format we own: the decimal separator comes from `CultureInfo.CurrentCulture.NumberFormat`, the group separator is tolerated on parse, and the wheel is neutralized with Blazor's `@onwheel:preventDefault` (an attribute directive, not inline JS — no CSP concern). Filtering covers **both** typing and paste/IME so a pasted `$1,299.99` (or an IME commit) is sanitized the same as keystrokes.
+
+**Why these are not FluentUI wrappers (isolation).** Both components carry **zero** `Microsoft.FluentUI.*` references — they render a native `<input>` and read only the shared `--asd-*` / Fluent-2 design tokens. The goal is to let consumer code (generated apps, AppManagement pages) bind to a framework field **without** taking a dependency on the FluentUI component API, so the FluentUI surface can evolve (or be swapped) behind the framework boundary without touching every page. Visually they sit alongside the FluentUI fields unchanged: same tokens, same focus ring/hover, same error treatment, same label alignment.
 
 ## Theming
 

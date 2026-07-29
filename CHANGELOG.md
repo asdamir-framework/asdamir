@@ -5,10 +5,45 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `2.0.1`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the top entry below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `2.1.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (Web `2.1.0`: the FluentUI-**isolation facades, batch 2** — 11 more components (`AsdamirSelect`/`Stack`/`TextArea`/`Switch`/`Checkbox`/`DatePicker`/`RadioGroup`+`Radio`/`MessageBar`/`Label`/`Spacer`/`Anchor`) so caller-side raw `<Fluent*>` component usage is now 0. Web `2.0.2`: additive `Required`+`Class` on the input components. Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the entries below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Web 2.1.0] — 2026-07-28
+
+### FluentUI-isolation facades, batch 2 — caller-side component isolation is closed (11 new components)
+
+Follows the batch-1 facades (theme/providers/spinner/button/notification/search + the `AsdamirTextInput` /
+`AsdamirNumberInput<T>` inputs). This batch puts **every remaining FluentUI component the calling code used**
+behind an Asdamir facade, so a future FluentUI major is a handful of facade files, not a whole-tree edit.
+All additive (no removals); pure refactor on the v4 tree — the rendered behaviour is byte-for-byte the former
+FluentUI behaviour. New components (native HTML + the shared `.asd-*` design tokens, **zero** FluentUI
+dependency in the calling code):
+
+- **`AsdamirSelect<TOption>`** — native `<select>` (replaces `FluentSelect`); generic item type but a **fixed
+  `string` `Value` surface** so v5's now-generic Select API can't leak; `OptionText`/`OptionValue`, `@bind-Value`.
+- **`AsdamirTextArea`** — native `<textarea>` (`InputBase<string?>`, `Rows`, `MaxLength`).
+- **`AsdamirSwitch`** — accessible `role="switch"` toggle; **`AsdamirCheckbox`** — native checkbox (`Indeterminate`).
+- **`AsdamirDatePicker`** — native `<input type="date">`; `DateTime?` `@bind-Value`, fixed ISO on the wire.
+- **`AsdamirRadioGroup` + `AsdamirRadio`** — native radios sharing one group `name` via a cascading context.
+- **`AsdamirStack`** — flex layout with its own orientation/alignment enums (no FluentUI enum leak);
+  **`AsdamirMessageBar`** (`Intent`), **`AsdamirLabel`** (`Typo` → semantic `h1..h6`/`p`/`span`),
+  **`AsdamirSpacer`**, **`AsdamirAnchor`** (`Appearance` → `.asd-btn` variants).
+
+The framework's own security dialogs (forgot/reset-password, session-warning, access-denied) moved to
+`AsdamirModal` + inline-SVG icons, and the consuming pages shed their now-dead `@using Microsoft.FluentUI`.
+**Caller-side raw `<Fluent*>` component usage is now 0** (100% component isolation); the only remaining
+FluentUI reference is the required `AddFluentUIComponents()` DI + package the facade toast/dialog services wrap.
+
+## [Web 2.0.2] — 2026-07-27
+
+### Additive — `Required` + `Class` on `AsdamirTextInput` / `AsdamirNumberInput<T>`
+
+Two additive parameters bringing the isolation inputs to full parity with the `FluentTextField` /
+`FluentNumberField` fields they replace: **`Required`** (renders the label asterisk + native
+`required`/`aria-required`) and **`Class`** (extra CSS class on the field root, for width/layout). No breaking
+change — existing bindings are unaffected.
 
 ## [Web 2.0.1] — 2026-07-27
 

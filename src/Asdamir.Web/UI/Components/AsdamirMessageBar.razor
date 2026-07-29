@@ -1,0 +1,95 @@
+@*
+    AsdamirMessageBar — the framework's ISOLATION status bar: a native <div class="asd-messagebar"> styled with
+    the shared .asd-* theme, deliberately NOT wrapping FluentUI's FluentMessageBar. Consumer code uses this
+    instead, so it carries no dependency on the FluentUI package.
+
+    The parameter set mirrors FluentMessageBar: Intent (Info/Success/Warning/Error → a semantic color rail +
+    tint + icon), an optional plain-text Title, the message body (ChildContent), and dismissal (AllowDismiss —
+    defaults to true, like FluentMessageBar — with a Dismissed callback). When dismissed it stops rendering.
+    No inline `style=` and no JS interop.
+*@
+
+@if (_visible)
+{
+    <div class="@CssClass" role="@Role" @attributes="AdditionalAttributes">
+        <span class="asd-messagebar-ico">@IntentIcon</span>
+        <div class="asd-messagebar-main">
+            @if (!string.IsNullOrEmpty(Title))
+            {
+                <span class="asd-messagebar-title">@Title</span>
+            }
+            @ChildContent
+        </div>
+        @if (AllowDismiss)
+        {
+            <button type="button" class="asd-messagebar-dismiss" aria-label="Dismiss" @onclick="DismissAsync">×</button>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>The message-bar intent — drives the color rail, soft tint and leading icon.</summary>
+    public enum BarIntent
+    {
+        /// <summary>Informational / accent (the FluentMessageBar default).</summary>
+        Info,
+        /// <summary>Success / green.</summary>
+        Success,
+        /// <summary>Warning / amber.</summary>
+        Warning,
+        /// <summary>Error / red.</summary>
+        Error,
+    }
+
+    private bool _visible = true;
+
+    /// <summary>The message body (rich content).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The intent. Defaults to <see cref="BarIntent.Info"/> (the FluentMessageBar default).</summary>
+    [Parameter] public BarIntent Intent { get; set; } = BarIntent.Info;
+
+    /// <summary>Optional bold plain-text title rendered above the body.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Whether the bar shows a dismiss (×) button. Defaults to <see langword="true"/>, like FluentMessageBar.</summary>
+    [Parameter] public bool AllowDismiss { get; set; } = true;
+
+    /// <summary>Raised when the user dismisses the bar (after it hides itself).</summary>
+    [Parameter] public EventCallback Dismissed { get; set; }
+
+    /// <summary>Extra CSS class(es) appended after the message-bar classes.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute (<c>id</c>, <c>aria-*</c>, <c>data-*</c>, …) splatted onto the root div.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // Error/Warning are announced assertively; Info/Success politely — mirrors FluentMessageBar's aria-live intent.
+    private string Role => Intent is BarIntent.Error or BarIntent.Warning ? "alert" : "status";
+
+    private string CssClass =>
+        $"asd-messagebar asd-messagebar-{IntentToken}{(string.IsNullOrWhiteSpace(Class) ? string.Empty : " " + Class)}";
+
+    private string IntentToken => Intent switch
+    {
+        BarIntent.Success => "success",
+        BarIntent.Warning => "warning",
+        BarIntent.Error => "error",
+        _ => "info",
+    };
+
+    // A simple glyph per intent (no external icon font — keeps the component FluentUI-free and self-contained).
+    private string IntentIcon => Intent switch
+    {
+        BarIntent.Success => "✓",
+        BarIntent.Warning => "⚠",
+        BarIntent.Error => "⚠",
+        _ => "ℹ",
+    };
+
+    private async Task DismissAsync()
+    {
+        _visible = false;
+        await Dismissed.InvokeAsync();
+    }
+}

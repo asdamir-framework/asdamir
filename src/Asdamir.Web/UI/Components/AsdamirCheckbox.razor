@@ -1,0 +1,55 @@
+@*
+    AsdamirCheckbox — the framework's ISOLATION checkbox: a native <input type="checkbox"> styled with the
+    shared .asd-* / Fluent-2 tokens, deliberately NOT wrapping FluentUI's FluentCheckbox. Consumer code
+    binds to this instead, so it carries no dependency on the FluentUI package.
+
+    Two-way binding is a plain bool via Value + ValueChanged, so BOTH migrated shapes work unchanged:
+    @bind-Value (with the @bind-Value:after modifier MenuEditorDialog uses) AND the explicit
+    Value + ValueChanged pair (RoleEditorDialog / UserRoleAssignmentDialog toggle a set). The caption comes
+    from either the Label parameter OR ChildContent. No JS interop.
+*@
+
+<label class="asd-check @(Disabled ? "disabled" : null) @Class">
+    <input type="checkbox"
+           checked="@Value"
+           disabled="@Disabled"
+           indeterminate="@(Indeterminate ? "true" : null)"
+           @onchange="OnChangeAsync" />
+    @if (ChildContent is not null)
+    {
+        <span>@ChildContent</span>
+    }
+    else if (!string.IsNullOrEmpty(Label))
+    {
+        <span>@Label</span>
+    }
+</label>
+
+@code {
+    /// <summary>The checked state. Supports two-way binding via <c>@bind-Value</c> (and <c>@bind-Value:after</c>).</summary>
+    [Parameter] public bool Value { get; set; }
+
+    /// <summary>Raised when the checkbox toggles — carries the new <see cref="bool"/> state. Enables <c>@bind-Value</c>.</summary>
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+
+    /// <summary>The caption shown beside the box. Pass a localized value. Ignored when <see cref="ChildContent"/> is set.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary>Optional caption as markup, an alternative to <see cref="Label"/> (matches the child-content FluentCheckbox usage).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Renders the tri-state (dash) indeterminate visual via the native <c>indeterminate</c> attribute.</summary>
+    [Parameter] public bool Indeterminate { get; set; }
+
+    /// <summary>Disables the checkbox entirely (no interaction, greyed out).</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>Extra CSS class(es) applied to the checkbox's <c>&lt;label&gt;</c> wrapper (e.g. a layout modifier).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    private async Task OnChangeAsync(ChangeEventArgs e)
+    {
+        Value = e.Value is bool b ? b : bool.TryParse(e.Value?.ToString(), out var parsed) && parsed;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

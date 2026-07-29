@@ -1,0 +1,157 @@
+@*
+    AsdamirStack — the framework's ISOLATION flex layout: a native <div class="asd-stack"> styled with the
+    shared .asd-* theme, deliberately NOT wrapping FluentUI's FluentStack. Consumer code uses this instead,
+    so it carries no dependency on the FluentUI package.
+
+    The parameter set mirrors FluentStack 1:1 so a call site migrates without a behavior change:
+    Orientation (row/column), HorizontalAlignment / VerticalAlignment (mapped to the main / cross axis exactly
+    as FluentStack does — in a horizontal stack HorizontalAlignment is the main axis and VerticalAlignment the
+    cross axis; in a vertical stack the two swap), HorizontalGap / VerticalGap (the inter-item gap; the default
+    10px matches FluentStack), Wrap, Reversed and Width (defaults to 100%, like FluentStack). All layout is
+    expressed through mapped `.asd-stack-*` classes + two CSS custom properties (gap / width) — no inline
+    `style=` and no JS interop.
+*@
+
+@* The gap/width DYNAMIC values ride two CSS custom properties (the `style="--x:…"` form is the endorsed,
+   AUD013-exempt technique for per-instance values); the primitive's `.asd-stack` supplies the fallbacks. *@
+<div class="@CssClass" style="--asd-stack-gap:@GapVar;--asd-stack-w:@WidthVar" @attributes="AdditionalAttributes">@ChildContent</div>
+
+@code {
+    /// <summary>The stacking direction — horizontal (row) or vertical (column).</summary>
+    public enum StackOrientation
+    {
+        /// <summary>Children are laid out in a row (the FluentStack default).</summary>
+        Horizontal,
+        /// <summary>Children are laid out in a column.</summary>
+        Vertical,
+    }
+
+    /// <summary>Alignment of children along the horizontal direction (maps to the main axis in a horizontal stack, the cross axis in a vertical one).</summary>
+    public enum StackHorizontalAlignment
+    {
+        /// <summary>Packed to the left/start (the FluentStack default).</summary>
+        Left,
+        /// <summary>Packed to the start.</summary>
+        Start,
+        /// <summary>Centered.</summary>
+        Center,
+        /// <summary>Packed to the right/end.</summary>
+        Right,
+        /// <summary>Packed to the end.</summary>
+        End,
+        /// <summary>Stretched to fill.</summary>
+        Stretch,
+        /// <summary>Evenly distributed along the main axis.</summary>
+        SpaceBetween,
+        /// <summary>Aligned on the baseline.</summary>
+        Baseline,
+    }
+
+    /// <summary>Alignment of children along the vertical direction (maps to the cross axis in a horizontal stack, the main axis in a vertical one).</summary>
+    public enum StackVerticalAlignment
+    {
+        /// <summary>Packed to the top (the FluentStack default).</summary>
+        Top,
+        /// <summary>Centered.</summary>
+        Center,
+        /// <summary>Packed to the bottom.</summary>
+        Bottom,
+        /// <summary>Stretched to fill.</summary>
+        Stretch,
+        /// <summary>Evenly distributed along the main axis.</summary>
+        SpaceBetween,
+    }
+
+    /// <summary>The stack content.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The stacking direction. Defaults to <see cref="StackOrientation.Horizontal"/> (the FluentStack default).</summary>
+    [Parameter] public StackOrientation Orientation { get; set; } = StackOrientation.Horizontal;
+
+    /// <summary>Horizontal alignment of the children. Defaults to <see cref="StackHorizontalAlignment.Left"/>.</summary>
+    [Parameter] public StackHorizontalAlignment HorizontalAlignment { get; set; } = StackHorizontalAlignment.Left;
+
+    /// <summary>Vertical alignment of the children. Defaults to <see cref="StackVerticalAlignment.Top"/>.</summary>
+    [Parameter] public StackVerticalAlignment VerticalAlignment { get; set; } = StackVerticalAlignment.Top;
+
+    /// <summary>Gap between horizontally stacked items (e.g. <c>"12px"</c>). When null the default 10px applies, like FluentStack.</summary>
+    [Parameter] public string? HorizontalGap { get; set; }
+
+    /// <summary>Gap between vertically stacked items (e.g. <c>"16px"</c>). When null the default 10px applies, like FluentStack.</summary>
+    [Parameter] public string? VerticalGap { get; set; }
+
+    /// <summary>Whether the stack wraps its items (flex-wrap). Defaults to <see langword="false"/>.</summary>
+    [Parameter] public bool Wrap { get; set; }
+
+    /// <summary>Whether the stacking order is reversed (row-reverse / column-reverse). Defaults to <see langword="false"/>.</summary>
+    [Parameter] public bool Reversed { get; set; }
+
+    /// <summary>The stack width as a CSS length (e.g. <c>"auto"</c>, <c>"320px"</c>). Defaults to 100%, like FluentStack.</summary>
+    [Parameter] public string? Width { get; set; }
+
+    /// <summary>Extra CSS class(es) appended after the mapped stack classes (e.g. a spacing util like <c>u-mb-12</c>).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any other attribute (<c>id</c>, <c>aria-*</c>, <c>data-*</c>, …) splatted onto the root div.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool IsHorizontal => Orientation == StackOrientation.Horizontal;
+
+    // The gap that applies depends on the direction (FluentStack: HorizontalGap for a row, VerticalGap for a column).
+    private string? EffectiveGap => IsHorizontal ? HorizontalGap : VerticalGap;
+
+    private string CssClass
+    {
+        get
+        {
+            // In a horizontal stack HorizontalAlignment drives the main axis; in a vertical one it drives the cross axis.
+            var horizontalToken = HorizontalAxisToken(IsHorizontal);
+            var verticalToken = VerticalAxisToken(!IsHorizontal);
+            var cls = new List<string>
+            {
+                "asd-stack",
+                IsHorizontal ? "asd-stack-h" : "asd-stack-v",
+                horizontalToken,
+                verticalToken,
+            };
+            if (Wrap) cls.Add("asd-stack-wrap");
+            if (Reversed) cls.Add("asd-stack-rev");
+            if (!string.IsNullOrWhiteSpace(Class)) cls.Add(Class);
+            return string.Join(' ', cls);
+        }
+    }
+
+    // CSS var values (gap / width) with the FluentStack defaults baked in, so the `style="--x:…"` carrier is
+    // always well-formed — the primitive's `.asd-stack` fallbacks are identical, so behavior is unchanged.
+    private string GapVar => string.IsNullOrWhiteSpace(EffectiveGap) ? "10px" : EffectiveGap!;
+    private string WidthVar => string.IsNullOrWhiteSpace(Width) ? "100%" : Width!;
+
+    // The HorizontalAlignment enum → a main- or cross-axis modifier class (depending on orientation).
+    private string HorizontalAxisToken(bool mainAxis)
+    {
+        var prefix = mainAxis ? "asd-stack-main-" : "asd-stack-cross-";
+        return prefix + HorizontalAlignment switch
+        {
+            StackHorizontalAlignment.Center => "center",
+            StackHorizontalAlignment.Right or StackHorizontalAlignment.End => "end",
+            StackHorizontalAlignment.Stretch => "stretch",
+            StackHorizontalAlignment.SpaceBetween => mainAxis ? "between" : "stretch",
+            StackHorizontalAlignment.Baseline => "baseline",
+            _ => "start", // Left / Start
+        };
+    }
+
+    // The VerticalAlignment enum → a main- or cross-axis modifier class (depending on orientation).
+    private string VerticalAxisToken(bool mainAxis)
+    {
+        var prefix = mainAxis ? "asd-stack-main-" : "asd-stack-cross-";
+        return prefix + VerticalAlignment switch
+        {
+            StackVerticalAlignment.Center => "center",
+            StackVerticalAlignment.Bottom => "end",
+            StackVerticalAlignment.Stretch => "stretch",
+            StackVerticalAlignment.SpaceBetween => mainAxis ? "between" : "stretch",
+            _ => "start", // Top
+        };
+    }
+}
