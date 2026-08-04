@@ -16,7 +16,9 @@
          handler change. The runner's OWN public surface is unchanged (it just fills the new context),
          so a PATCH, not a MINOR; it must ship in lockstep with Core 1.5.0. Bump this, not the global,
          for a Data release. -->
-    <Version>1.4.0</Version>
+    <!-- MINOR bump 1.4.0 -> 1.5.0: the agent-audit client sink + AddAgentAudit, co-versioned with
+         Asdamir.Core 1.7.0 which carries the contracts it implements. Additive only. -->
+    <Version>1.5.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Data + background processing for Asdamir: Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox (mail/SMS dispatch).</Description>
     <PackageTags>dapper;outbox;hangfire;sql-server;oracle;postgresql;mail;sms;background-jobs</PackageTags>
@@ -29,6 +31,14 @@
 
   <ItemGroup>
     <ProjectReference Include="../Asdamir.Core/Asdamir.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The agent-audit sink is internal (the public surface is IAgentActionAuditor + AddAgentAudit), but its
+         failure policy is the part that most needs testing: what is dead-lettered, what is retried, and that an
+         UNKNOWN per-item status is treated as transient rather than discarded. Those can only be asserted
+         against the sink directly. -->
+    <InternalsVisibleTo Include="Asdamir.Data.Tests" />
   </ItemGroup>
 
   <ItemGroup>

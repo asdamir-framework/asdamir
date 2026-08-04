@@ -10,6 +10,67 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
+## [Core 1.7.0 · Data 1.5.0] — 2026-08-02 — *pending publish*
+
+### Added — agent-audit primitives: recording what an AI agent did, in a checkable form
+
+Ordinary audit logging answers *"what happened?"*. This answers *"can you show that this record has not
+changed since it was written?"* — every record joins a SHA-256 hash chain, so changing, deleting, reordering
+or inserting a row breaks the chain from that point on and verification reports the exact position.
+
+- **`Asdamir.Core.AgentAudit`** (Core `1.6.0 → 1.7.0`, additive): `IAgentActionAuditor`, `AgentActionRecord`,
+  `AgentAuthorityKind`, `AgentActionDecision`, `AgentActionOutcome`, `AgentAuditOptions` (with a nested
+  `SinkFailureMode`) and `AgentAuditServiceToken`. The canonicalizer and the record validator are deliberately
+  **internal** — the byte layout they produce is a frozen hash contract, not an API to program against.
+- **`Asdamir.Data.AgentAudit.AgentAuditServiceCollectionExtensions.AddAgentAudit(...)`** (Data
+  `1.4.0 → 1.5.0`, additive): the client sink — bounded queue, batched delivery, exponential backoff, and a
+  **spool** so a control plane that is down does not silently lose records. A **permanent** rejection is moved
+  to a separate dead-letter file with a persistent (not warn-once) alarm rather than retried forever; an
+  **unknown** delivery status is treated as transient and only dead-lettered after the retry cap, because
+  discarding what a newer server considered retryable is a silent audit gap.
+- **The specification is published, not just the code**:
+  [Canonicalization v1](docs/fundamentals/agent-audit-canonicalization-v1.md) — the frozen wire format (field
+  order, byte encodings, the hash chain, the tombstone exception, the verification algorithm) plus
+  [golden vectors](docs/fundamentals/agent-audit-golden-vectors-v1.json), so **anyone can write an independent
+  verifier** in any language, offline. That is deliberate: if the only thing that can verify the ledger is the
+  closed component being audited, the assurance collapses to *"trust the vendor"*.
+- **Be precise about the guarantee.** Tamper-**evident**, not tamper-proof: a database owner can disable a
+  trigger and edit a row — what they cannot do is make the chain agree afterwards. And it does **not** prove
+  *who* acted: `AgentId` / `OnBehalfOfUserId` are the application's assertion, recorded immutably. The assurance
+  level is *"application assertion + tamper-evident record"*, not *"the agent cryptographically proved its own
+  identity"*. Per-agent cryptographic identity is a later phase; the signature columns are reserved and stay
+  `NULL`.
+- Verification is **two-layer and only one layer is authoritative**: the in-database check is PARTIAL by
+  construction (it can only re-hash the body it stored), and the canonical verifier — which re-derives each
+  record from its own columns — is the authority. The verdict is three-valued: `Valid` / `Degraded` / `Broken`,
+  and **`Degraded` is never rendered as success**.
+- The ledger itself, its verification/fold procedures and the operator screen are part of the **commercial
+  control plane**, not of the open core; the open core is the contract, the client sink and the published spec.
+
+## [Tools 1.4.6] — 2026-08-01 — *pending publish*
+
+### Fixed — three ways a gate could be GREEN while the thing it guards was broken
+
+The audit gates read SQL as **text**, so each new spelling blinded them. Two real blind spots were found and
+fixed, and a third rule was added to stop the pattern repeating by constraining the input instead of forever
+teaching the scanner.
+
+- **AUD016 could be silently green.** Seeded permission codes were extracted with a plain string-literal regex
+  over the raw file, so **one unpaired apostrophe in a comment** (`catalogue's`) shifted literal pairing for the
+  rest of the file. The loud half is a false positive; the dangerous half is that comment prose could parse as a
+  seeded permission, letting a policy that no seed satisfies pass the gate — a guaranteed 403 on a green build.
+  Now lexed properly (comments stripped, `''` treated as an escape).
+- **AUD015 was blind to every seed written through an upsert procedure** — 276 seeded keys across 20 migrations
+  were read as "never seeded". All three procedure spellings are now recognised.
+- **AUD019 (new)** — *an in-memory mirror does not substitute for a SQL seed*: a key mirrored into the
+  in-memory seed but missing from the SQL migration (or short a culture) used to pass while production rendered
+  the raw key. Its honest scope: **statically resolved keys only**.
+- **AUD018 (new)** — a localization seed has exactly **one** approved spelling; **AUD017 (new)** — a permission
+  grant must be an explicit name list, never a `LIKE` pattern (a wildcard grant is unlistable in principle: it
+  confers whatever the catalogue happens to hold, and grants nothing to codes that do not match). Both are
+  enforced by `asdamir audit seeds`, with a reviewed, commented grandfather allowlist instead of an inline
+  suppression.
+
 ## [Web 2.1.0] — 2026-07-28
 
 ### FluentUI-isolation facades, batch 2 — caller-side component isolation is closed (11 new components)

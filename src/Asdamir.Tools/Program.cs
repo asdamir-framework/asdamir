@@ -72,6 +72,7 @@ public static class Program
         auditCmd.AddCommand(AuditLintCommand.Build());
         auditCmd.AddCommand(LocalizationCheckCommand.Build());
         auditCmd.AddCommand(PermissionPolicyCheckCommand.Build());
+        auditCmd.AddCommand(SeedFormCheckCommand.Build());
         return auditCmd;
     }
 

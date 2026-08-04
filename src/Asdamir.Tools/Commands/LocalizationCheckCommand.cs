@@ -16,12 +16,22 @@ namespace Asdamir.Tools.Commands;
 /// <summary>
 /// <c>asdamir audit localization [--path dir] [--min-severity info|warning|error] [--format text|json] [--include-tests]</c>
 ///
-/// Layer A of the localization-completeness gate (AUD015). Cross-checks every localization key USED in
-/// <c>.razor</c>/<c>.cs</c> code (<c>L["Key"]</c> / localizer indexers) against the keys SEEDED in the
-/// tree's SQL seeds (<c>localize_*/register_*/seed_*.sql</c>, anything under <c>db/admin-onboarding/</c>
-/// or <c>db/migrations/</c>) and localization seed code (files whose path contains <c>Localization</c>).
-/// A used key with no seed — or seeded in fewer than all three cultures — falls through to the raw key on
-/// screen; this catches that class of bug before a commit.
+/// Layer A of the localization gate. Cross-checks every localization key USED in <c>.razor</c>/<c>.cs</c>
+/// code (<c>L["Key"]</c> / localizer indexers) against the keys SEEDED in the tree's SQL seeds
+/// (<c>localize_*/register_*/seed_*.sql</c>, anything under <c>db/admin-onboarding/</c> or
+/// <c>db/migrations/</c>) and localization seed code (files whose path contains <c>Localization</c>).
+/// It runs TWO rules over the same scan:
+///
+/// <list type="bullet">
+///   <item><description><b>AUD015 — completeness.</b> A used key with no seed anywhere, or seeded in fewer
+///   than all three cultures, falls through to the raw key on screen.</description></item>
+///   <item><description><b>AUD019 — SQL backing.</b> The seed a used key relies on must be a <b>SQL</b> seed,
+///   in all three cultures. An in-memory seed (the <c>Persistence:UseInMemory</c> mirror, e.g.
+///   <c>UiLocalization.cs</c>) is NOT what <c>db apply</c> runs, so a key that exists only there passes
+///   AUD015 and still renders raw against a live database. The in-memory mirror is required IN ADDITION to
+///   the SQL seed, never INSTEAD of it. The two rules never both fire on one key: a key seeded nowhere is
+///   AUD015's, a key seeded only in memory is AUD019's.</description></item>
+/// </list>
 ///
 /// <para><b>Seed auto-discovery.</b> A Model-A (central-model) app keeps its seeds under
 /// <c>db/admin-onboarding/*.sql</c> at the repo ROOT — <b>outside</b> a <c>--path src</c> scope — so a
@@ -37,8 +47,11 @@ namespace Asdamir.Tools.Commands;
 ///   2  invalid arguments
 ///
 /// Suppression: <c>// audit-lint:ignore AUD015</c> on the usage line, <c>audit-lint:skip-file</c> per file.
-/// Dynamic keys (<c>L[$"Prefix.{x}"]</c> / <c>L[variable]</c>) are reported as INFO — never an error,
-/// because the runtime value-set can't be resolved statically.
+/// Those drop the line from the USAGE corpus entirely, so they apply to both rules; <b>AUD019 has no
+/// suppression of its own and no allowlist</b> — the offending set is empty, and a new key has no legitimate
+/// reason to live only in the in-memory mirror.
+/// Dynamic keys (<c>L[$"Prefix.{x}"]</c> / <c>L[variable]</c>) are reported as INFO by AUD015 — never an
+/// error, because the runtime value-set can't be resolved statically — and are skipped by AUD019.
 /// </summary>
 public static class LocalizationCheckCommand
 {
@@ -75,7 +88,8 @@ public static class LocalizationCheckCommand
             description: "Also scan `tests/` and `test/` directories. Off by default.",
             getDefaultValue: () => false);
 
-        var cmd = new Command("localization", "Cross-check used localization keys against the tree's seeds (AUD015).")
+        var cmd = new Command("localization",
+            "Cross-check used localization keys against the tree's seeds (AUD015 completeness, AUD019 SQL backing).")
         {
             pathOpt, severityOpt, formatOpt, includeTestsOpt,
         };
@@ -112,8 +126,8 @@ public static class LocalizationCheckCommand
             return 2;
         }
 
-        // AUD015 emits Info and Error only (never Warning). `warning` (the default) therefore surfaces
-        // exactly the Error findings — the same threshold audit-lint uses to gate a commit.
+        // AUD015 emits Info and Error, AUD019 Error only — neither emits Warning. `warning` (the default)
+        // therefore surfaces exactly the Error findings — the same threshold audit-lint uses to gate a commit.
         if (!Enum.TryParse<AuditSeverity>(severityRaw, ignoreCase: true, out var minSeverity))
         {
             err.WriteLine($"Invalid --min-severity '{severityRaw}'. Use: info, warning, error.");
@@ -127,13 +141,17 @@ public static class LocalizationCheckCommand
             return 2;
         }
 
-        // Pass 1: collect the merged seed map from UNDER --path (SQL seeds + in-memory localization code).
-        var seeded = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        // Pass 1: collect the seed corpus from UNDER --path. The SQL seeds and the in-memory mirror are kept
+        // in SEPARATE maps — merging them (as this used to) makes an in-memory-only key indistinguishable
+        // from a really-seeded one, which is exactly the hole AUD019 closes. AUD015 compares against the
+        // union; AUD019 compares against `sqlSeeded` alone.
+        var sqlSeeded = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        var inMemorySeeded = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
         var seenSeedFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase); // absolute paths already merged
         var seedSources = 0;
 
         foreach (var file in EnumerateFiles(path.FullName, includeTests, "*.sql", "*.sbn", "*.cs", "*.razor"))
-            if (TryMergeSeedFile(file, seeded, seenSeedFiles))
+            if (TryMergeSeedFile(file, sqlSeeded, inMemorySeeded, seenSeedFiles))
                 seedSources++;
 
         // Pass 1b: SEED AUTO-DISCOVERY from the repo root. A Model-A app's central seeds live at the repo
@@ -146,7 +164,7 @@ public static class LocalizationCheckCommand
         if (repoRoot is not null && !PathsEqual(repoRoot, path.FullName))
         {
             foreach (var file in EnumerateFiles(repoRoot, includeTests, "*.sql", "*.sbn", "*.cs", "*.razor"))
-                if (TryMergeSeedFile(file, seeded, seenSeedFiles))
+                if (TryMergeSeedFile(file, sqlSeeded, inMemorySeeded, seenSeedFiles))
                     autoDiscovered++;
         }
 
@@ -160,7 +178,13 @@ public static class LocalizationCheckCommand
             return 0;
         }
 
-        // Pass 2: collect used keys from code UNDER --path and compare against the (widened) seed map.
+        // The union of both corpora — what AUD015 has always compared against.
+        var seeded = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        LocalizationScan.MergeSeeds(seeded, sqlSeeded);
+        LocalizationScan.MergeSeeds(seeded, inMemorySeeded);
+
+        // Pass 2: collect used keys from code UNDER --path and compare against the (widened) seed maps —
+        // AUD015 against the union, AUD019 against the SQL corpus alone.
         var findings = new List<LocalizationScan.LocalizationFinding>();
         var filesScanned = 0;
         foreach (var file in EnumerateFiles(path.FullName, includeTests, "*.cs", "*.razor"))
@@ -171,6 +195,7 @@ public static class LocalizationCheckCommand
             var used = LocalizationScan.ExtractUsedKeys(text);
             if (used.Count == 0) continue;
             findings.AddRange(LocalizationScan.Compare(file, used, seeded));
+            findings.AddRange(LocalizationScan.CompareSqlBacking(file, used, sqlSeeded, seeded));
         }
 
         // Filter by min severity after scanning so JSON output is filtered too. Info < warning ≤ Error.
@@ -185,12 +210,20 @@ public static class LocalizationCheckCommand
         return findings.Count == 0 ? 0 : 1;
     }
 
-    // Merges one file's seeds into `seeded` if it is a seed source not already merged (deduped by absolute
-    // path so a file reachable from both --path and the repo root is counted once). Returns true when it
-    // contributed a NEW seed source. Mirrors the original per-extension rule: a *.sql seed file yields SQL
-    // tuples; a Localization *.sbn/*.cs yields SQL tuples (inside the template) AND in-memory `["K"]="…"`.
+    // Merges one file's seeds if it is a seed source not already merged (deduped by absolute path so a file
+    // reachable from both --path and the repo root is counted once). Returns true when it contributed a NEW
+    // seed source. Per-extension rule: a *.sql seed file yields SQL tuples/EXECs; a Localization *.sbn/*.cs
+    // yields SQL tuples/EXECs (inside the template, which renders into a real seed file) AND in-memory
+    // `["K"]="…"` literals.
+    //
+    // The two kinds go into SEPARATE maps on purpose: a SQL tuple inside a `.sbn` template is a real seed
+    // (it becomes SQL that `db apply` runs), whereas a `["K"]="…"` dictionary literal is only the
+    // `Persistence:UseInMemory` mirror. AUD019 can only tell them apart if they are never conflated here.
     private static bool TryMergeSeedFile(
-        string file, Dictionary<string, HashSet<string>> seeded, HashSet<string> seen)
+        string file,
+        Dictionary<string, HashSet<string>> sqlSeeded,
+        Dictionary<string, HashSet<string>> inMemorySeeded,
+        HashSet<string> seen)
     {
         var ext = Path.GetExtension(file).ToLowerInvariant();
         var isSeed = (ext == ".sql" && LocalizationScan.IsSeedSqlFile(file))
@@ -204,9 +237,9 @@ public static class LocalizationCheckCommand
         if (text is null) return false;
 
         seen.Add(full);
-        LocalizationScan.MergeSeeds(seeded, LocalizationScan.ExtractSeededKeys(text));
+        LocalizationScan.MergeSeeds(sqlSeeded, LocalizationScan.ExtractSeededKeys(text));
         if (ext != ".sql")
-            LocalizationScan.MergeSeeds(seeded, LocalizationScan.ExtractInMemorySeededKeys(text));
+            LocalizationScan.MergeSeeds(inMemorySeeded, LocalizationScan.ExtractInMemorySeededKeys(text));
         return true;
     }
 
@@ -280,27 +313,40 @@ public static class LocalizationCheckCommand
         var errors = findings.Count(f => f.Severity == LocalizationScan.FindingSeverity.Error);
         var infos = findings.Count(f => f.Severity == LocalizationScan.FindingSeverity.Info);
 
-        // Errors first, then infos — each ordered by file/line.
-        foreach (var group in new[] { LocalizationScan.FindingSeverity.Error, LocalizationScan.FindingSeverity.Info })
+        // Grouped by RULE then severity — AUD015 (completeness) before AUD019 (SQL backing), errors before
+        // infos, each ordered by file/line. Keeping the rules in separate blocks matters: they have different
+        // fixes (seed the key at all vs. move/extend the seed into SQL), so a mixed list would read as noise.
+        foreach (var rule in new[] { LocalizationScan.Aud015, LocalizationScan.Aud019 })
         {
-            var inGroup = findings.Where(f => f.Severity == group)
-                .OrderBy(f => f.File, StringComparer.Ordinal).ThenBy(f => f.Line).ToList();
-            if (inGroup.Count == 0) continue;
-            @out.WriteLine();
-            @out.WriteLine($"[{group.ToString().ToUpperInvariant()}] AUD015: localization key completeness");
-            foreach (var f in inGroup)
+            foreach (var group in new[] { LocalizationScan.FindingSeverity.Error, LocalizationScan.FindingSeverity.Info })
             {
-                var rel = TryRelativize(rootPath, f.File);
-                @out.WriteLine($"    {rel}:{f.Line}");
-                @out.WriteLine($"      {f.Message}");
+                var inGroup = findings.Where(f => f.RuleId == rule && f.Severity == group)
+                    .OrderBy(f => f.File, StringComparer.Ordinal).ThenBy(f => f.Line).ToList();
+                if (inGroup.Count == 0) continue;
+                @out.WriteLine();
+                @out.WriteLine($"[{group.ToString().ToUpperInvariant()}] {rule}: {RuleTitle(rule)}");
+                foreach (var f in inGroup)
+                {
+                    var rel = TryRelativize(rootPath, f.File);
+                    @out.WriteLine($"    {rel}:{f.Line}");
+                    @out.WriteLine($"      {f.Message}");
+                }
             }
         }
 
         @out.WriteLine();
         @out.WriteLine($"audit localization: {filesScanned} code file(s) scanned against {corpus} — " +
                        $"{errors} error(s), {infos} info(s) at or above {minSeverity.ToString().ToLowerInvariant()}.");
-        @out.WriteLine("  (Suppress a usage line with `// audit-lint:ignore AUD015` — please leave a comment explaining why.)");
+        if (findings.Any(f => f.RuleId == LocalizationScan.Aud015))
+            @out.WriteLine("  (Suppress an AUD015 usage line with `// audit-lint:ignore AUD015` — please leave a comment explaining why.)");
+        if (findings.Any(f => f.RuleId == LocalizationScan.Aud019))
+            @out.WriteLine("  (AUD019 has no suppression: an in-memory mirror does not substitute for a SQL seed. Add the SQL seed.)");
     }
+
+    // One-line description per rule, used as the block header in text output.
+    private static string RuleTitle(string ruleId) => ruleId == LocalizationScan.Aud019
+        ? "localization key SQL backing (an in-memory mirror is not a SQL seed)"
+        : "localization key completeness";
 
     private static void EmitJson(
         TextWriter @out, List<LocalizationScan.LocalizationFinding> findings, int filesScanned,
@@ -317,7 +363,7 @@ public static class LocalizationCheckCommand
             if (i > 0) sb.Append(',');
             var f = findings[i];
             sb.Append('{');
-            sb.Append("\"ruleId\":\"AUD015\",");
+            sb.Append("\"ruleId\":\"").Append(JsonEscape(f.RuleId)).Append("\",");
             sb.Append("\"severity\":\"").Append(f.Severity.ToString().ToLowerInvariant()).Append("\",");
             sb.Append("\"key\":\"").Append(JsonEscape(f.Key)).Append("\",");
             sb.Append("\"file\":\"").Append(JsonEscape(f.File)).Append("\",");

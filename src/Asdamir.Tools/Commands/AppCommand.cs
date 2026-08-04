@@ -126,8 +126,12 @@ public static class AppCommand
         string Mode, bool Billing, bool NoSecrets, bool NoDb);
 
     // Published Asdamir.* pins the generated app gets by default (restored from nuget.org). Bump these
-    // in lockstep with the framework's own Directory.Packages.props on each release. --framework-version
-    // overrides ALL of them with one value (used with --local-feed to build against a pre-release pack).
+    // ATOMICALLY WITH THE NUGET PUBLISH — never with the csproj <Version>. A pin ahead of nuget.org makes
+    // every fresh `asdamir new app` unrestorable (NU1102/NU1109), which is why Core/Data sit at the
+    // PUBLISHED 1.6.0/1.4.0 while their csproj already says 1.7.0/1.5.0: TemplatePinFreshnessTests is
+    // RED BY DESIGN in that window (same signal as the Web 2.1.0 release), and it turns green when the
+    // packages actually ship. --framework-version overrides ALL of them with one value (used with
+    // --local-feed to build against a pre-release pack).
     private const string PublishedCoreVersion = "1.6.0";
     private const string PublishedDataVersion = "1.4.0";
     private const string PublishedWebVersion = "2.1.0";

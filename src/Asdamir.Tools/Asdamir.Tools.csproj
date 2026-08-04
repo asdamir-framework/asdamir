@@ -48,7 +48,7 @@
          Asdamir.Core 1.4.0 / Data 1.3.0 (the primitive's home). New framework-version flag overrides the
          Asdamir.* pin (for building against a locally-packed pre-release). Additive; a non-scaffolded
          existing app is unaffected. -->
-    <Version>1.4.5</Version>
+    <Version>1.4.6</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>

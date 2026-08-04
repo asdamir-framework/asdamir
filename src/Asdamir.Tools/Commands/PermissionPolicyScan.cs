@@ -41,13 +41,16 @@ public static class PermissionPolicyScan
     // sitting somewhere after the token `Permissions`. We collect codes from any file that mentions
     // dbo.Permissions (see ExtractSuppliedPermissionCodes) — the shape zoo (MERGE … USING (VALUES …),
     // INSERT … VALUES, a @Perms table var + cursor) all funnels through N'…' / '…' string literals.
-    private static readonly Regex SqlStringLiteralRegex = new(
-        @"N?'((?:[^']|'')*)'",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    //
+    // NOT a regex — see SqlTextScanner. A literal-matching regex applied to the RAW file has no notion of
+    // comments, so ONE unpaired apostrophe in a comment (`catalogue's`, `it's`) shifts literal pairing for
+    // the whole rest of the file: real seeded codes vanish AND comment prose gets collected as a "seeded
+    // code" (the silent, dangerous direction — a policy no seed backs would then pass this gate).
+    // Comments are stripped first; literals are then lexed with `''` consumed as an escaped apostrophe.
 
     // A role code seeded into dbo.Roles (Name) or dbo.UserAppRoles (RoleCode). Same literal shape; we scope
     // the collection to files/statements that mention those tables (see ExtractSuppliedRoleCodes).
-    // (Shares SqlStringLiteralRegex for the literal itself.)
+    // (Shares the same SqlTextScanner lexing for the literal itself.)
 
     /// <summary>Severity of a <see cref="PermissionFinding"/>, mirroring <see cref="AuditSeverity"/>.</summary>
     public enum FindingSeverity
@@ -111,6 +114,11 @@ public static class PermissionPolicyScan
     /// all, every SQL string literal in it is collected as a candidate code. Per the v1 policy — a false
     /// "OK" is safer than a false failure — this deliberately OVER-collects (it may pick up a description or
     /// a role name too), which can only make a required perm look supplied, never wrongly fail one.
+    ///
+    /// <para>COMMENT-AWARE: <c>--</c> and (nested) <c>/* … */</c> comments are stripped before anything is
+    /// read, and literals are then lexed with <c>''</c> consumed as an escaped apostrophe — so neither an
+    /// apostrophe in prose (<c>catalogue's</c>) nor a doubled apostrophe inside a real literal can shift
+    /// literal pairing. See <see cref="SqlTextScanner"/> for the failure mode this replaces.</para>
     /// </summary>
     public static IReadOnlyCollection<string> ExtractSuppliedPermissionCodes(string sqlContent)
         => ExtractLiteralsIfMentions(sqlContent, "Permissions");
@@ -118,7 +126,8 @@ public static class PermissionPolicyScan
     /// <summary>
     /// Extracts SUPPLIED role codes from a single SQL file's <paramref name="sqlContent"/> — the role
     /// <c>Name</c>s seeded into <c>dbo.Roles</c> and the <c>RoleCode</c>s into <c>dbo.UserAppRoles</c>. Same
-    /// tolerant, over-collecting approach as <see cref="ExtractSuppliedPermissionCodes"/>.
+    /// tolerant, over-collecting — and equally comment-aware — approach as
+    /// <see cref="ExtractSuppliedPermissionCodes"/>.
     /// </summary>
     public static IReadOnlyCollection<string> ExtractSuppliedRoleCodes(string sqlContent)
     {
@@ -171,14 +180,20 @@ public static class PermissionPolicyScan
     // Collects every SQL string literal in `sql`, but ONLY when the file mentions `table` (e.g. "Permissions"
     // / "Roles" / "UserAppRoles") — so a file that never touches the table contributes nothing. Over-collects
     // by design (see the callers' remarks): a false-supplied is safe, a false-unsupplied would wrongly fail.
+    //
+    // COMMENTS ARE STRIPPED FIRST — both for the literal scan and for the `mentions` test. Stripping before
+    // the mention test matters on its own: a file that merely NAMES dbo.Permissions in a header comment used
+    // to donate every literal in it to the supplied set, which is the over-collection that can wrongly green
+    // a policy. After stripping, only a file whose actual CODE touches the table contributes.
     private static IReadOnlyCollection<string> ExtractLiteralsIfMentions(string sql, string table)
     {
-        if (sql.IndexOf(table, StringComparison.OrdinalIgnoreCase) < 0)
+        var code = SqlTextScanner.StripComments(sql);
+        if (code.IndexOf(table, StringComparison.OrdinalIgnoreCase) < 0)
             return Array.Empty<string>();
 
         var set = new HashSet<string>(StringComparer.Ordinal);
-        foreach (Match m in SqlStringLiteralRegex.Matches(sql))
-            set.Add(m.Groups[1].Value.Replace("''", "'"));
+        foreach (var literal in SqlTextScanner.ExtractStringLiterals(code))
+            set.Add(literal);
         return set;
     }
 

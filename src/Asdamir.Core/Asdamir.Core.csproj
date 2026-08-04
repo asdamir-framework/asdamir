@@ -18,7 +18,11 @@
          (not MAJOR) bump because pre-1.0-mature open core versions its coherent 1.x set by feature
          cohort; the CHANGELOG flags it BREAKING explicitly. Overriding here (not the shared
          Directory.Build.props <Version> 1.3.0) keeps Web/Payments — which did NOT change — pinned. -->
-    <Version>1.6.0</Version>
+    <!-- MINOR bump 1.6.0 -> 1.7.0: agent-audit primitives (Faz 1) add the IAgentActionAuditor contract,
+         AgentActionRecord + its three enums, AgentAuditOptions and AgentAuditServiceToken. Purely ADDITIVE —
+         no existing public type is removed or renamed — and co-versioned with Asdamir.Data 1.5.0, which
+         carries the client sink that consumes them. -->
+    <Version>1.7.0</Version>
     <Description>Core foundation for Asdamir: shared models, abstractions, modules, error handling, and Serilog/Polly wiring.</Description>
     <PackageTags>blazor;fluentui;shared;models;dtos;constants;utilities;abstractions;error-handling;modules</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -39,6 +43,22 @@
   <ItemGroup>
     <!-- Framework unit tests may construct internal impl types (e.g. ValidationContext) directly. -->
     <InternalsVisibleTo Include="Asdamir.Core.Tests" />
+    <!-- The agent-audit canonicalizer + record validator are INTERNAL on purpose: the byte layout they produce
+         is a frozen hash contract, not an API surface to program against, and the §7 public list is closed.
+         They must nonetheless run in the CONTROL PLANE rather than in the calling application, because field 2
+         of the canonical prefix is the AppId and the AppId is resolved from the ingest service token, never
+         from the payload — so the client is structurally unable to build its own prefix. AppManagement is
+         therefore the one consumer that needs to see them (to canonicalize on ingest and to run the
+         authoritative canonical verification). This works over a PackageReference too: neither assembly is
+         strong-named. -->
+    <InternalsVisibleTo Include="Asdamir.AdminConsole.Api" />
+    <InternalsVisibleTo Include="Asdamir.AdminConsole.Api.Tests" />
+    <!-- The agent-audit E2E fixtures build ledger STATE (a clean chain, a folded chain, a tampered chain) by
+         calling the real stored procedures, and every write path — _Append and _Fold alike — requires a
+         canonical prefix. Seeding through the production canonicalizer is the point: a fixture that built its
+         own prefixes would be testing the browser against rows the real system would never have written, and a
+         "Valid" verdict over them would prove nothing. -->
+    <InternalsVisibleTo Include="Asdamir.E2E.Tests" />
   </ItemGroup>
 
   <ItemGroup>

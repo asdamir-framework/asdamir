@@ -15,8 +15,9 @@ dotnet tool install -g Asdamir.Tools
 #   update later:  dotnet tool update -g Asdamir.Tools
 ```
 
-`Asdamir.Tools` is published on **nuget.org** (currently `1.3.15`). Generated apps restore the framework
-**libraries** — `Asdamir.Core` · `.Web` (`1.3.0`) / `.Data` (`1.2.0`) — from nuget.org as well.
+`Asdamir.Tools` is published on **nuget.org** (currently `1.4.5`). Generated apps restore the framework
+**libraries** — `Asdamir.Core` (`1.6.0`) · `.Data` (`1.4.0`) · `.Web` (`2.1.0`) · `.Payments` (`1.2.0`) — from
+nuget.org as well.
 
 ## Quick start
 
@@ -337,13 +338,18 @@ dotnet run --project src/Asdamir.Tools -- audit lint --path AppManagement/src --
 
 Suppressions are deliberate and reviewable; prefer fixing the finding.
 
-## `audit localization` — the localization-completeness gate (AUD015)
+## `audit localization` — the localization gates (AUD015 + AUD019)
 
 A whole class of "raw localization key shows on screen" bugs comes from a `L["X"]` in code whose key was
 never seeded — or seeded in fewer than all three cultures (`tr-TR`/`en-US`/`ru-RU`). It falls through
 silently to the raw key on the UI, and there is no compiler error for it. `audit localization` is the
-**static** gate that closes this (rule **AUD015**): it cross-checks every localization key **used** in
-`.razor`/`.cs` code against every key **seeded** in the tree.
+**static** gate that closes this: it cross-checks every localization key **used** in `.razor`/`.cs` code
+against every key **seeded** in the tree. It carries two rules:
+
+| Rule | Asserts | Fails when |
+| ---- | ------- | ---------- |
+| **AUD015** — completeness | the key is seeded **somewhere**, in all three cultures | no seed at all, or fewer than three cultures across the whole corpus |
+| **AUD019** — SQL backing (since Tools `1.4.6`) | that seed is a **SQL** seed, in all three cultures | the key resolves only from the **in-memory mirror**, or its SQL seed covers fewer than three cultures |
 
 ```bash
 dotnet run --project src/Asdamir.Tools -- audit localization --path src --min-severity warning
@@ -354,36 +360,118 @@ dotnet run --project src/Asdamir.Tools -- audit localization --path . --format j
 
 - **Used keys** — `L["Key"]` and localizer indexers (`Localizer["Key"]` / `_localizer["Key"]` /
   `localizer["Key"]`) in `.razor`/`.cs`.
-- **Seeded keys → cultures** — the SQL tuples `(N'Key', N'tr-TR', …)` in every `localize_*` / `register_*` /
-  `seed_*.sql` and any `.sql` under a `db/admin-onboarding/` or `db/migrations/` directory, **plus** the same
-  tuples and in-memory dictionary literals (`["Key"] = "…"`) in localization seed code (files whose path
-  contains `Localization`). An in-memory-seeded key counts as satisfying **all three** cultures — the
-  framework rule requires the in-memory seed to mirror the DB seed.
+- **Seeded keys → cultures** — from every `localize_*` / `register_*` / `seed_*.sql` and any `.sql` under a
+  `db/admin-onboarding/` or `db/migrations/` directory, **plus** localization seed code (files whose path
+  contains `Localization`, e.g. `AppAdminOnboarding.sbn`, `UiLocalization.cs`), in **both** SQL spellings:
+  - the **tuple** form — `(N'Key', N'tr-TR', N'…')` in a `VALUES` list (a `@Seed` table variable, a
+    `MERGE … USING (VALUES …)`, an `INSERT … VALUES`);
+  - the **EXEC** form (since Tools `1.4.6`) — `EXEC dbo.LocalizationResource_UpsertValue …`, both the
+    AsdamirVault arity `(@appId, @key, @category, @culture, @value)` and the single-tenant free-mode arity
+    `(@key, @category, @culture, @value)`, named **or** positional; plus the legacy migration-001 proc
+    `EXEC dbo.Localization_Upsert @Key=…, @Culture=…`.
 
-**Seed auto-discovery (since Tools `1.4.2`).** A central-model app keeps its seeds under
-`db/admin-onboarding/*.sql` at the **repo root** — *outside* a `--path src` scope — so scanning only `src`
-would report every central key as "never seeded". Seed sources are therefore also discovered from the
-**repo root** (the nearest `.git` ancestor of `--path`; skipped when there is none, so an unrelated parent
-tree is never scanned) IN ADDITION to `--path`. The **usage** scan stays `--path`-scoped — only seed
-*discovery* widens, and it's **visible**: the summary prints `N seed source(s) (+M auto-discovered outside
---path)`. So `--path src` and `--path .` agree — no phantom "never seeded" errors on central keys.
+  …and the in-memory dictionary literals (`["Key"] = "…"`) in that same seed code. An in-memory-seeded key
+  counts as satisfying **all three** cultures for **AUD015** — the framework rule requires the in-memory seed
+  to mirror the DB seed. The two corpora are kept **separate** internally, though, because an in-memory entry
+  is not interchangeable with a SQL seed — that is what **AUD019** checks (below). Note that a SQL tuple
+  inside a `.sbn` seed **template** counts as SQL backing (it renders into SQL that `db apply` runs); only a
+  `["Key"] = "…"` dictionary literal is the in-memory mirror.
+
+  The proc **arguments are lexed, not regexed** (shared `SqlTextScanner`), so a comma inside a value
+  (`N'Sayfa 1, 2 / 3'`) cannot shift the argument positions, and an `EXEC` sitting inside a `--` or `/* … */`
+  comment is never counted. Before `1.4.6` the gate matched the tuple form **only**, so every key seeded
+  exclusively through an upsert proc was wrongly reported as "never seeded": **276 keys across 20
+  AsdamirVault migrations** — the whole billing surface, the audit action labels, the agent-audit ledger.
+  Write **new** seeds in the canonical form only — see [`audit seeds`](#audit-seeds--the-seed-form-gates-aud018--aud017).
+
+**Seed auto-discovery (since Tools `1.4.2`).** A Model-A (central-model) app keeps its central seeds under
+`db/admin-onboarding/*.sql` at the **repo root** — *outside* a `--path src` scope. So in addition to
+`--path`, seed sources are also discovered from the **repo root** (the nearest `.git` ancestor of `--path`;
+if there is none, auto-discovery is skipped and only `--path` is used). The **usage** scan stays
+`--path`-scoped — only seed *discovery* widens. The widening is **visible**, never silent: the summary
+prints `N seed source(s) (+M auto-discovered outside --path)`. The upshot: **`--path src` and `--path .` now
+agree** — you no longer have to remember to scan from the root to avoid phantom "never seeded" errors on
+central keys.
 
 **What it catches.**
 
 - A used static key with **no** seed anywhere → **ERROR** ("the raw key will render on screen").
 - A used static key seeded in **fewer than all three** cultures → **ERROR** (lists the missing cultures).
 - A **dynamic** key — `L[$"Prefix.{x}"]` or `L[variable]` — → **INFO** (never an error; the runtime
-  value-set can't be resolved statically). For an interpolation, the literal prefix is reported.
+  value-set can't be resolved statically). For an interpolation, the literal prefix is reported so you can
+  eyeball the value-set. Suppress the info once you've verified the set is fully seeded.
 
-Seeded-but-**unused** keys are intentionally *not* flagged (shared chrome like `Common.*` is broad). If the
-scan finds **no** seed sources under `--path` **nor auto-discovered from the repo root** (a code-only folder
-outside any git repo — seeds live elsewhere), it prints a notice and exits `0` rather than reporting every
-used key as unseeded.
+Seeded-but-**unused** keys are intentionally *not* flagged (shared chrome like `Common.*` is broad).
 
-Options mirror `audit lint`: `--path/-p`, `--min-severity/-s` (`info`|`warning`|`error`, default `warning` —
-AUD015 emits Info and Error only), `--format/-f` (`text`|`json`), `--include-tests`. Suppress a usage line
-with `// audit-lint:ignore AUD015`; skip a file with `audit-lint:skip-file`. Exit codes: `0` (clean, or no
-seed sources), `1` (findings), `2` (bad args).
+### AUD019 — an in-memory mirror does not substitute for a SQL seed
+
+AUD015 compares against the **merged** corpus, in which an in-memory entry looks exactly like a real SQL
+seed. So a key can be green **purely because it is mirrored into the in-memory seed**
+(`UiLocalization.cs` and its siblings) while the SQL migration the **live database** actually runs is
+missing it, or has it in fewer than three cultures. The in-memory seed is the `Persistence:UseInMemory`
+mirror for tests and demos — it is **not** what `asdamir db apply` runs. Production then renders the raw
+key or a blank, with a green gate.
+
+**AUD019** closes exactly that direction: every key used in code must have a **SQL** seed in all three
+cultures. The in-memory mirror is required **in addition**, never **instead** (the framework rule that the
+two must mirror each other is unchanged — this adds a requirement, it does not replace one).
+
+Two failure kinds, deliberately distinguished because they have different fixes:
+
+```
+[ERROR] AUD019: localization key SQL backing (an in-memory mirror is not a SQL seed)
+    src/Pages/Orders.razor:14
+      localization key 'Page.Orders.Title' has NO SQL seed — it resolves only from an in-memory seed
+      (the `Persistence:UseInMemory` mirror), which is NOT what `db apply` runs. …
+    src/Pages/Orders.razor:21
+      localization key 'Field.Orders.Quantity' is SQL-seeded only in [tr-TR, en-US]; missing [ru-RU] in
+      SQL. An in-memory seed covers the gap, so AUD015 is green — but the live database is short those
+      cultures and will render the raw key there. …
+```
+
+**No overlap with AUD015, by construction.** A key seeded **nowhere** is already AUD015's "used but never
+seeded", so AUD019 stays quiet for it — one key, one finding, one fix. AUD019 fires exactly on the keys
+AUD015 lets through. Dynamic keys (`L[$"Prefix.{x}"]`) are skipped by AUD019 (AUD015 already reports them
+as INFO).
+
+**The honest scope limit — read this before quoting the gate.** AUD019 covers **statically resolved keys
+only**. A key built at runtime is invisible to it, and the nav menu is exactly that case: `NavMenu.razor`
+derives its label key from the row's Url (`"Menu." + slug`), so **no** localization gate — not AUD015, not
+AUD019 — sees a nav label. That is a real hole, not a technicality: `Menu.UserAppRoles` lives in the
+in-memory mirror with no SQL seed either gate recognises, and both are green on it. A second such entry,
+`Menu.Systemreports`, advertised a key `AsdamirVault_043` had deliberately DELETED from SQL — and it was
+found by reading the file, not by a gate. **A green `audit localization` therefore means "every statically
+resolved key has a three-culture SQL seed" — it does not mean "every string the UI can render is seeded."**
+
+A second, related limit: the gates model a seed as an **insert/upsert only**. A migration that **deletes** a
+key (`AsdamirVault_043` removed `Menu.Systemreports` with the feature) or **renames** one
+(`AsdamirVault_077`: `Menu.EntUserAppRoles` → `Menu.UserAppRoles`) changes the effective key set, and no rule
+follows that chain — so a key can read as "seeded" from a migration that later removed it. Both limits are
+tracked as a Faz 2 item in the roadmap; neither is closed today.
+
+**No suppression, no allowlist — deliberately.** Unlike AUD015 there is no `// audit-lint:ignore AUD019`
+and no `packaging/seed-form-allowlist.txt` entry: the offending set across the whole repo is **empty**, and
+a new key has no legitimate reason to live only in the mirror. (A usage line already carrying
+`// audit-lint:ignore AUD015` drops out of the *usage* corpus entirely, so it is out of scope for both
+rules — that filter is shared, not an AUD019 escape hatch.)
+
+**Why it was added while reporting zero.** The offending set is empty *today*, so the rule landed as a
+no-op — which is precisely the cheapest moment to add it: adding it later would first require a cleanup
+migration. And today's zero is the result of a **fix**, not of discipline — it was **186 keys** before the
+Tools `1.4.6` AUD015 EXEC-form repair, and without a gate the count climbs straight back. AUD018 does not
+cover this: **AUD018 constrains the seed's *form*, AUD019 asserts the seed's *existence*.**
+
+**Zero-seed guard.** If the scan finds **no** seed sources under `--path` **nor auto-discovered from the
+repo root** (e.g. you point it at a code-only folder outside any git repo — seeds live elsewhere), it prints
+a notice and exits `0` rather than reporting every used key as unseeded (that would be a false alarm).
+
+Options mirror `audit lint`: `--path/-p` (default cwd), `--min-severity/-s` (`info`|`warning`|`error`,
+default `warning` — AUD015 emits Info and Error, AUD019 Error only, so `warning` gates exactly on the
+errors), `--format/-f` (`text`|`json`), `--include-tests`. Suppress an AUD015 usage line with
+`// audit-lint:ignore AUD015` (leave a comment why); skip a file with `audit-lint:skip-file`. JSON findings
+carry a `ruleId` of `AUD015` or `AUD019`.
+
+Exit codes: `0` (no findings at/above `--min-severity`, or no seed sources), `1` (findings), `2` (bad args).
 
 ## `audit permissions` — the permission/policy-completeness gate (AUD016)
 
@@ -417,14 +505,116 @@ error**:
 `--path/-p` is **repeatable** — pass it once per tree so the policies (`src`) and the seeds (`db`) both
 fall under the scan; the supplied codes are unioned across all paths. The SQL scan is deliberately
 **tolerant/over-collecting** (it recognizes the `MERGE … USING (VALUES …)` / `INSERT … VALUES` / table-var
-shapes by collecting every literal in a file that mentions the table) — a false *supplied* only ever makes
-a perm look OK, never wrongly fails one. Options: `--format/-f` (`text`|`json`), `--include-tests`.
-Suppress a policy line with `// audit-lint:ignore AUD016` (leave a comment why); skip a file with
-`audit-lint:skip-file`.
+shapes by collecting every literal in a file whose **code** mentions the table) — a false *supplied* only
+ever makes a perm look OK, never wrongly fails one. Options: `--format/-f` (`text`|`json`),
+`--include-tests`. Suppress a policy line with `// audit-lint:ignore AUD016` (leave a comment why); skip a
+file with `audit-lint:skip-file`.
+
+**SQL comments are not code (since Tools `1.4.6`).** The seeded codes are read with a real T-SQL scanner,
+not a literal regex: `--` line comments and (nestable) `/* … */` block comments are stripped **before**
+anything is collected, and an apostrophe inside a literal is escaped by **doubling** it (`N'the agent''s
+ledger'` is one literal, not two). This matters in both directions. Before the scanner, one unpaired
+apostrophe in prose — `catalogue's`, `it's`, a `don't` next to a `VALUES` row — shifted literal pairing for
+the **rest of the file**, so (a) genuinely seeded permissions went missing and a correct policy was flagged,
+and (b) — the dangerous half — **comment prose was collected as a seeded code**, letting a policy that no
+seed backs pass the gate and 403 every user in production with a green build. Consequences you can rely on
+now: a permission mentioned **only** in a comment (`-- TODO: seed 'x.write'`) does **not** count as
+supplied, a seed tuple that is **commented out** does not count as applied, and a file that merely *names*
+`dbo.Permissions` in a header comment contributes nothing.
 
 Exit codes: `0` (no findings — the gate is green; every required perm is supplied), `1` (at least one
-AUD016 finding — this **fails the build**), `2` (bad args). Run it alongside `audit lint` and
-`audit localization` before a push.
+AUD016 finding — this **fails the build**), `2` (bad args). Run it alongside `audit lint`,
+`audit localization` and `audit seeds` before a push.
+
+## `audit seeds` — the seed-form gates (AUD018 + AUD017)
+
+The two gates above answer *"is this seeded?"* by **reading SQL as text** — and twice in a row they went
+blind because the SQL was written in a spelling they did not recognise: an apostrophe in a comment shifted
+AUD016's literal pairing, and the `EXEC …_UpsertValue` form was invisible to AUD015 across **276 keys**.
+Both were fixed by teaching the scanner, but that is an infinite race: a third spelling always exists.
+`audit seeds` ends it from the other side by constraining the **input**. It carries two rules: **AUD018** — a
+localization seed may be written in exactly ONE approved way — and **AUD017** ([below](#aud017--a-permission-grant-may-not-be-a-like-pattern)),
+the same principle applied to permission grants. Anything else fails the build.
+
+```bash
+dotnet run --project src/Asdamir.Tools -- audit seeds --path AppManagement/db --path src
+```
+
+**The canonical form** — a `@Seed` table variable of `(N'Key', N'<culture>', N'Value')` tuples, fed through
+`dbo.LocalizationResource_UpsertValue`:
+
+```sql
+DECLARE @Seed TABLE ([Key] NVARCHAR(200), [Culture] NVARCHAR(20), [Value] NVARCHAR(MAX));
+INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
+    (N'Page.Title', N'tr-TR', N'Başlık'),
+    (N'Page.Title', N'en-US', N'Title'),
+    (N'Page.Title', N'ru-RU', N'Заголовок');
+-- … cursor over @Seed …
+EXEC dbo.LocalizationResource_UpsertValue @appId = @SelfApp, @key = @Key,
+     @category = N'UI', @culture = @Culture, @value = @Value;
+```
+
+**Why this one and not a plain tuple `INSERT`/`MERGE`.** The proc is not a stylistic wrapper: it maps the
+SelfApp GUID to `AppId = NULL` (the console scope) before the MERGE, and it owns the table shape
+AppManagement evolves. A raw `MERGE dbo.LocalizationResource … VALUES (@SelfApp, …)` writes the GUID
+*literally*, and the row is then invisible to the console's `AppId IS NULL` read path — a silent,
+data-level divergence, not a style nit. So the mandate is **tuples fed through the proc**: the tuples make
+the rows machine-readable as a *set*, the proc keeps the scoping semantics. `AsdamirVault_128` and every
+scaffold template (`AppAdminOnboarding.sbn`, `PageLocalization.sbn`, `BillingSeed.sbn`, the free-mode
+variants) are already written this way — the rule codifies the existing house form, it does not invent one.
+
+**Two violations:**
+
+| Violation | Why it fails |
+|---|---|
+| an ad-hoc `INSERT`/`MERGE`/`UPDATE` straight at `dbo.LocalizationResource` | bypasses the proc's `AppId` mapping — the row can land in a scope nothing reads |
+| one `EXEC …_UpsertValue` **per row** with the key as an inline literal | the rows are a list of statements, not a data set — unreadable to any tool that does not know the proc's parameter order (exactly how 276 keys hid from AUD015) |
+
+A `SELECT` from the table is fine, and a raw write **inside a stored-procedure body** is exempt — the
+canonical writer is itself a `MERGE` on the table, and T-SQL requires `CREATE PROCEDURE` to open its batch,
+so the exemption is decided per batch.
+
+### AUD017 — a permission grant may not be a `LIKE` pattern
+
+Same command, same idea applied to **authorization**. A grant written as
+
+```sql
+JOIN dbo.Permissions p ON p.Name LIKE N'%.read'      -- ❌ AUD017
+```
+
+does not say what it grants. The set is whatever the catalogue holds when the statement runs, so **both**
+directions are silent: add a permission next year whose code ends in `.read` and it is granted to that role
+retroactively — nobody edited a grant, no review saw it, and AUD016 cannot cross-check it because a wildcard
+supplies **no names**; conversely a permission that does *not* match is never granted, which surfaces as a
+403 nobody wrote down (`ent.agentaudit.verify` does not end in `.read`). A grant is an authorization
+decision, so it must be a reviewable list:
+
+```sql
+WHERE p.Name IN (N'ent.agentaudit.read', N'ent.agentaudit.verify')   -- ✅
+```
+
+The rule fires only on a **statement that writes** `dbo.Permissions` or `dbo.RolePermissions` while
+containing a `LIKE`. A read-path `SELECT … WHERE Name LIKE @Category + '%'` in a lookup proc is legitimate;
+a write to a *different* table that merely JOINs `dbo.Permissions` (e.g. the `dbo.UserMenuPermissions`
+capability computation) is not a grant; a `LIKE` against an audit search or `sys.sql_modules` is irrelevant.
+Two applied migrations are grandfathered: **`AsdamirVault_003`** (the original "AppAdmin gets every `%.read`"
+bootstrap grant — the rule's namesake) and **`AsdamirVault_060`** (a one-off `ent.%` prefix-strip rename;
+the pattern is the point of that migration, but it is still a pattern reaching into the permission table, so
+it is listed rather than carved out of the rule).
+
+**There is no inline suppression — deliberately.** Every other rule takes `// audit-lint:ignore AUDxxx`;
+these two do not. An applied migration is immutable (see the migration-immutability rule in `CLAUDE.md`),
+so the only legitimate exemption is a *pre-existing* file, and that belongs in a reviewed, commented
+allowlist — **`packaging/seed-form-allowlist.txt`**, same idiom as `packaging/removed-public-types.txt`:
+one `<RULE>  <repo-relative path>` per line, `#` comments, every entry stating why it is exempt. A **new**
+seed has no opt-out: canonical form, or the build fails. The allowlist currently grandfathers **63 applied
+AsdamirVault migrations** — 61 for AUD018 in two eras (002–077, written before the proc existed; 093–129,
+per-row `EXEC`s) and 2 for AUD017 (003, 060). Because those files are frozen, the list can only shrink; when
+a later migration supersedes one, the gate prints `NOTE — allowlist entry no longer matches anything` and the
+line is deleted.
+
+Options: `--path/-p` (repeatable), `--format/-f` (`text`|`json`), `--include-tests`, `--allowlist <file>`.
+Exit codes: `0` (clean), `1` (findings — **fails the build**), `2` (bad args).
 
 ## `localization verify` — live apply-drift
 
