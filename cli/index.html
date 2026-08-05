@@ -953,6 +953,62 @@
   
   
     <li class="md-nav__item">
+      <a href="../fundamentals/agent-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../fundamentals/agent-audit-canonicalization-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit — Canonicalization v1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../fundamentals/encryption/" class="md-nav__link">
         
   
@@ -1415,13 +1471,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#audit-localization-the-localization-completeness-gate-aud015" class="md-nav__link">
+  <a href="#audit-localization-the-localization-gates-aud015-aud019" class="md-nav__link">
     <span class="md-ellipsis">
       
-        audit localization — the localization-completeness gate (AUD015)
+        audit localization — the localization gates (AUD015 + AUD019)
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="audit localization — the localization gates (AUD015 + AUD019)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aud019-an-in-memory-mirror-does-not-substitute-for-a-sql-seed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AUD019 — an in-memory mirror does not substitute for a SQL seed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1433,6 +1506,34 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-seeds-the-seed-form-gates-aud018-aud017" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audit seeds — the seed-form gates (AUD018 + AUD017)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="audit seeds — the seed-form gates (AUD018 + AUD017)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aud017-a-permission-grant-may-not-be-a-like-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AUD017 — a permission grant may not be a LIKE pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1872,13 +1973,30 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#audit-localization-the-localization-completeness-gate-aud015" class="md-nav__link">
+  <a href="#audit-localization-the-localization-gates-aud015-aud019" class="md-nav__link">
     <span class="md-ellipsis">
       
-        audit localization — the localization-completeness gate (AUD015)
+        audit localization — the localization gates (AUD015 + AUD019)
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="audit localization — the localization gates (AUD015 + AUD019)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aud019-an-in-memory-mirror-does-not-substitute-for-a-sql-seed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AUD019 — an in-memory mirror does not substitute for a SQL seed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1890,6 +2008,34 @@
       
     </span>
   </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-seeds-the-seed-form-gates-aud018-aud017" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audit seeds — the seed-form gates (AUD018 + AUD017)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="audit seeds — the seed-form gates (AUD018 + AUD017)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#aud017-a-permission-grant-may-not-be-a-like-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AUD017 — a permission grant may not be a LIKE pattern
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2033,8 +2179,9 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>Asdamir.Tools
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">#   update later:  dotnet tool update -g Asdamir.Tools</span>
 </code></pre></div>
-<p><code>Asdamir.Tools</code> is published on <strong>nuget.org</strong> (currently <code>1.3.15</code>). Generated apps restore the framework
-<strong>libraries</strong> — <code>Asdamir.Core</code> · <code>.Web</code> (<code>1.3.0</code>) / <code>.Data</code> (<code>1.2.0</code>) — from nuget.org as well.</p>
+<p><code>Asdamir.Tools</code> is published on <strong>nuget.org</strong> (currently <code>1.4.5</code>). Generated apps restore the framework
+<strong>libraries</strong> — <code>Asdamir.Core</code> (<code>1.7.0</code>) · <code>.Data</code> (<code>1.5.0</code>) · <code>.Web</code> (<code>2.1.0</code>) · <code>.Payments</code> (<code>1.2.0</code>) — from
+nuget.org as well.</p>
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>Scaffold and run your own app end-to-end. This is the <strong>one canonical flow</strong> — the same everywhere.</p>
 <p><strong>Prerequisites:</strong> <strong>.NET 10 SDK</strong> · <strong>SQL Server</strong> on <code>localhost:1433</code> (local or Docker).</p>
@@ -2461,12 +2608,33 @@ to scaffold files only.</p>
 <li>Whole file: <code>// audit-lint:skip-file</code> within the first 10 lines.</li>
 </ul>
 <p>Suppressions are deliberate and reviewable; prefer fixing the finding.</p>
-<h2 id="audit-localization-the-localization-completeness-gate-aud015"><code>audit localization</code> — the localization-completeness gate (AUD015)<a class="headerlink" href="#audit-localization-the-localization-completeness-gate-aud015" title="Permanent link">&para;</a></h2>
+<h2 id="audit-localization-the-localization-gates-aud015-aud019"><code>audit localization</code> — the localization gates (AUD015 + AUD019)<a class="headerlink" href="#audit-localization-the-localization-gates-aud015-aud019" title="Permanent link">&para;</a></h2>
 <p>A whole class of "raw localization key shows on screen" bugs comes from a <code>L["X"]</code> in code whose key was
 never seeded — or seeded in fewer than all three cultures (<code>tr-TR</code>/<code>en-US</code>/<code>ru-RU</code>). It falls through
 silently to the raw key on the UI, and there is no compiler error for it. <code>audit localization</code> is the
-<strong>static</strong> gate that closes this (rule <strong>AUD015</strong>): it cross-checks every localization key <strong>used</strong> in
-<code>.razor</code>/<code>.cs</code> code against every key <strong>seeded</strong> in the tree.</p>
+<strong>static</strong> gate that closes this: it cross-checks every localization key <strong>used</strong> in <code>.razor</code>/<code>.cs</code> code
+against every key <strong>seeded</strong> in the tree. It carries two rules:</p>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Asserts</th>
+<th>Fails when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>AUD015</strong> — completeness</td>
+<td>the key is seeded <strong>somewhere</strong>, in all three cultures</td>
+<td>no seed at all, or fewer than three cultures across the whole corpus</td>
+</tr>
+<tr>
+<td><strong>AUD019</strong> — SQL backing (since Tools <code>1.4.6</code>)</td>
+<td>that seed is a <strong>SQL</strong> seed, in all three cultures</td>
+<td>the key resolves only from the <strong>in-memory mirror</strong>, or its SQL seed covers fewer than three cultures</td>
+</tr>
+</tbody>
+</table>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>localization<span class="w"> </span>--path<span class="w"> </span>src<span class="w"> </span>--min-severity<span class="w"> </span>warning
 <a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>localization<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--format<span class="w"> </span>json
 </code></pre></div>
@@ -2474,34 +2642,101 @@ silently to the raw key on the UI, and there is no compiler error for it. <code>
 <ul>
 <li><strong>Used keys</strong> — <code>L["Key"]</code> and localizer indexers (<code>Localizer["Key"]</code> / <code>_localizer["Key"]</code> /
   <code>localizer["Key"]</code>) in <code>.razor</code>/<code>.cs</code>.</li>
-<li><strong>Seeded keys → cultures</strong> — the SQL tuples <code>(N'Key', N'tr-TR', …)</code> in every <code>localize_*</code> / <code>register_*</code> /
-  <code>seed_*.sql</code> and any <code>.sql</code> under a <code>db/admin-onboarding/</code> or <code>db/migrations/</code> directory, <strong>plus</strong> the same
-  tuples and in-memory dictionary literals (<code>["Key"] = "…"</code>) in localization seed code (files whose path
-  contains <code>Localization</code>). An in-memory-seeded key counts as satisfying <strong>all three</strong> cultures — the
-  framework rule requires the in-memory seed to mirror the DB seed.</li>
+<li><strong>Seeded keys → cultures</strong> — from every <code>localize_*</code> / <code>register_*</code> / <code>seed_*.sql</code> and any <code>.sql</code> under a
+  <code>db/admin-onboarding/</code> or <code>db/migrations/</code> directory, <strong>plus</strong> localization seed code (files whose path
+  contains <code>Localization</code>, e.g. <code>AppAdminOnboarding.sbn</code>, <code>UiLocalization.cs</code>), in <strong>both</strong> SQL spellings:</li>
+<li>the <strong>tuple</strong> form — <code>(N'Key', N'tr-TR', N'…')</code> in a <code>VALUES</code> list (a <code>@Seed</code> table variable, a
+    <code>MERGE … USING (VALUES …)</code>, an <code>INSERT … VALUES</code>);</li>
+<li>the <strong>EXEC</strong> form (since Tools <code>1.4.6</code>) — <code>EXEC dbo.LocalizationResource_UpsertValue …</code>, both the
+    AsdamirVault arity <code>(@appId, @key, @category, @culture, @value)</code> and the single-tenant free-mode arity
+    <code>(@key, @category, @culture, @value)</code>, named <strong>or</strong> positional; plus the legacy migration-001 proc
+    <code>EXEC dbo.Localization_Upsert @Key=…, @Culture=…</code>.</li>
 </ul>
-<p><strong>Seed auto-discovery (since Tools <code>1.4.2</code>).</strong> A central-model app keeps its seeds under
-<code>db/admin-onboarding/*.sql</code> at the <strong>repo root</strong> — <em>outside</em> a <code>--path src</code> scope — so scanning only <code>src</code>
-would report every central key as "never seeded". Seed sources are therefore also discovered from the
-<strong>repo root</strong> (the nearest <code>.git</code> ancestor of <code>--path</code>; skipped when there is none, so an unrelated parent
-tree is never scanned) IN ADDITION to <code>--path</code>. The <strong>usage</strong> scan stays <code>--path</code>-scoped — only seed
-<em>discovery</em> widens, and it's <strong>visible</strong>: the summary prints <code>N seed source(s) (+M auto-discovered outside
---path)</code>. So <code>--path src</code> and <code>--path .</code> agree — no phantom "never seeded" errors on central keys.</p>
+<p>…and the in-memory dictionary literals (<code>["Key"] = "…"</code>) in that same seed code. An in-memory-seeded key
+  counts as satisfying <strong>all three</strong> cultures for <strong>AUD015</strong> — the framework rule requires the in-memory seed
+  to mirror the DB seed. The two corpora are kept <strong>separate</strong> internally, though, because an in-memory entry
+  is not interchangeable with a SQL seed — that is what <strong>AUD019</strong> checks (below). Note that a SQL tuple
+  inside a <code>.sbn</code> seed <strong>template</strong> counts as SQL backing (it renders into SQL that <code>db apply</code> runs); only a
+  <code>["Key"] = "…"</code> dictionary literal is the in-memory mirror.</p>
+<p>The proc <strong>arguments are lexed, not regexed</strong> (shared <code>SqlTextScanner</code>), so a comma inside a value
+  (<code>N'Sayfa 1, 2 / 3'</code>) cannot shift the argument positions, and an <code>EXEC</code> sitting inside a <code>--</code> or <code>/* … */</code>
+  comment is never counted. Before <code>1.4.6</code> the gate matched the tuple form <strong>only</strong>, so every key seeded
+  exclusively through an upsert proc was wrongly reported as "never seeded": <strong>276 keys across 20
+  AsdamirVault migrations</strong> — the whole billing surface, the audit action labels, the agent-audit ledger.
+  Write <strong>new</strong> seeds in the canonical form only — see <a href="#audit-seeds--the-seed-form-gates-aud018--aud017"><code>audit seeds</code></a>.</p>
+<p><strong>Seed auto-discovery (since Tools <code>1.4.2</code>).</strong> A Model-A (central-model) app keeps its central seeds under
+<code>db/admin-onboarding/*.sql</code> at the <strong>repo root</strong> — <em>outside</em> a <code>--path src</code> scope. So in addition to
+<code>--path</code>, seed sources are also discovered from the <strong>repo root</strong> (the nearest <code>.git</code> ancestor of <code>--path</code>;
+if there is none, auto-discovery is skipped and only <code>--path</code> is used). The <strong>usage</strong> scan stays
+<code>--path</code>-scoped — only seed <em>discovery</em> widens. The widening is <strong>visible</strong>, never silent: the summary
+prints <code>N seed source(s) (+M auto-discovered outside --path)</code>. The upshot: <strong><code>--path src</code> and <code>--path .</code> now
+agree</strong> — you no longer have to remember to scan from the root to avoid phantom "never seeded" errors on
+central keys.</p>
 <p><strong>What it catches.</strong></p>
 <ul>
 <li>A used static key with <strong>no</strong> seed anywhere → <strong>ERROR</strong> ("the raw key will render on screen").</li>
 <li>A used static key seeded in <strong>fewer than all three</strong> cultures → <strong>ERROR</strong> (lists the missing cultures).</li>
 <li>A <strong>dynamic</strong> key — <code>L[$"Prefix.{x}"]</code> or <code>L[variable]</code> — → <strong>INFO</strong> (never an error; the runtime
-  value-set can't be resolved statically). For an interpolation, the literal prefix is reported.</li>
+  value-set can't be resolved statically). For an interpolation, the literal prefix is reported so you can
+  eyeball the value-set. Suppress the info once you've verified the set is fully seeded.</li>
 </ul>
-<p>Seeded-but-<strong>unused</strong> keys are intentionally <em>not</em> flagged (shared chrome like <code>Common.*</code> is broad). If the
-scan finds <strong>no</strong> seed sources under <code>--path</code> <strong>nor auto-discovered from the repo root</strong> (a code-only folder
-outside any git repo — seeds live elsewhere), it prints a notice and exits <code>0</code> rather than reporting every
-used key as unseeded.</p>
-<p>Options mirror <code>audit lint</code>: <code>--path/-p</code>, <code>--min-severity/-s</code> (<code>info</code>|<code>warning</code>|<code>error</code>, default <code>warning</code> —
-AUD015 emits Info and Error only), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>. Suppress a usage line
-with <code>// audit-lint:ignore AUD015</code>; skip a file with <code>audit-lint:skip-file</code>. Exit codes: <code>0</code> (clean, or no
-seed sources), <code>1</code> (findings), <code>2</code> (bad args).</p>
+<p>Seeded-but-<strong>unused</strong> keys are intentionally <em>not</em> flagged (shared chrome like <code>Common.*</code> is broad).</p>
+<h3 id="aud019-an-in-memory-mirror-does-not-substitute-for-a-sql-seed">AUD019 — an in-memory mirror does not substitute for a SQL seed<a class="headerlink" href="#aud019-an-in-memory-mirror-does-not-substitute-for-a-sql-seed" title="Permanent link">&para;</a></h3>
+<p>AUD015 compares against the <strong>merged</strong> corpus, in which an in-memory entry looks exactly like a real SQL
+seed. So a key can be green <strong>purely because it is mirrored into the in-memory seed</strong>
+(<code>UiLocalization.cs</code> and its siblings) while the SQL migration the <strong>live database</strong> actually runs is
+missing it, or has it in fewer than three cultures. The in-memory seed is the <code>Persistence:UseInMemory</code>
+mirror for tests and demos — it is <strong>not</strong> what <code>asdamir db apply</code> runs. Production then renders the raw
+key or a blank, with a green gate.</p>
+<p><strong>AUD019</strong> closes exactly that direction: every key used in code must have a <strong>SQL</strong> seed in all three
+cultures. The in-memory mirror is required <strong>in addition</strong>, never <strong>instead</strong> (the framework rule that the
+two must mirror each other is unchanged — this adds a requirement, it does not replace one).</p>
+<p>Two failure kinds, deliberately distinguished because they have different fixes:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>[ERROR] AUD019: localization key SQL backing (an in-memory mirror is not a SQL seed)
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>    src/Pages/Orders.razor:14
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>      localization key &#39;Page.Orders.Title&#39; has NO SQL seed — it resolves only from an in-memory seed
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>      (the `Persistence:UseInMemory` mirror), which is NOT what `db apply` runs. …
+<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>    src/Pages/Orders.razor:21
+<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>      localization key &#39;Field.Orders.Quantity&#39; is SQL-seeded only in [tr-TR, en-US]; missing [ru-RU] in
+<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>      SQL. An in-memory seed covers the gap, so AUD015 is green — but the live database is short those
+<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>      cultures and will render the raw key there. …
+</code></pre></div>
+<p><strong>No overlap with AUD015, by construction.</strong> A key seeded <strong>nowhere</strong> is already AUD015's "used but never
+seeded", so AUD019 stays quiet for it — one key, one finding, one fix. AUD019 fires exactly on the keys
+AUD015 lets through. Dynamic keys (<code>L[$"Prefix.{x}"]</code>) are skipped by AUD019 (AUD015 already reports them
+as INFO).</p>
+<p><strong>The honest scope limit — read this before quoting the gate.</strong> AUD019 covers <strong>statically resolved keys
+only</strong>. A key built at runtime is invisible to it, and the nav menu is exactly that case: <code>NavMenu.razor</code>
+derives its label key from the row's Url (<code>"Menu." + slug</code>), so <strong>no</strong> localization gate — not AUD015, not
+AUD019 — sees a nav label. That is a real hole, not a technicality: <code>Menu.UserAppRoles</code> lives in the
+in-memory mirror with no SQL seed either gate recognises, and both are green on it. A second such entry,
+<code>Menu.Systemreports</code>, advertised a key <code>AsdamirVault_043</code> had deliberately DELETED from SQL — and it was
+found by reading the file, not by a gate. <strong>A green <code>audit localization</code> therefore means "every statically
+resolved key has a three-culture SQL seed" — it does not mean "every string the UI can render is seeded."</strong></p>
+<p>A second, related limit: the gates model a seed as an <strong>insert/upsert only</strong>. A migration that <strong>deletes</strong> a
+key (<code>AsdamirVault_043</code> removed <code>Menu.Systemreports</code> with the feature) or <strong>renames</strong> one
+(<code>AsdamirVault_077</code>: <code>Menu.EntUserAppRoles</code> → <code>Menu.UserAppRoles</code>) changes the effective key set, and no rule
+follows that chain — so a key can read as "seeded" from a migration that later removed it. Both limits are
+tracked as a Faz 2 item in the roadmap; neither is closed today.</p>
+<p><strong>No suppression, no allowlist — deliberately.</strong> Unlike AUD015 there is no <code>// audit-lint:ignore AUD019</code>
+and no <code>packaging/seed-form-allowlist.txt</code> entry: the offending set across the whole repo is <strong>empty</strong>, and
+a new key has no legitimate reason to live only in the mirror. (A usage line already carrying
+<code>// audit-lint:ignore AUD015</code> drops out of the <em>usage</em> corpus entirely, so it is out of scope for both
+rules — that filter is shared, not an AUD019 escape hatch.)</p>
+<p><strong>Why it was added while reporting zero.</strong> The offending set is empty <em>today</em>, so the rule landed as a
+no-op — which is precisely the cheapest moment to add it: adding it later would first require a cleanup
+migration. And today's zero is the result of a <strong>fix</strong>, not of discipline — it was <strong>186 keys</strong> before the
+Tools <code>1.4.6</code> AUD015 EXEC-form repair, and without a gate the count climbs straight back. AUD018 does not
+cover this: <strong>AUD018 constrains the seed's <em>form</em>, AUD019 asserts the seed's <em>existence</em>.</strong></p>
+<p><strong>Zero-seed guard.</strong> If the scan finds <strong>no</strong> seed sources under <code>--path</code> <strong>nor auto-discovered from the
+repo root</strong> (e.g. you point it at a code-only folder outside any git repo — seeds live elsewhere), it prints
+a notice and exits <code>0</code> rather than reporting every used key as unseeded (that would be a false alarm).</p>
+<p>Options mirror <code>audit lint</code>: <code>--path/-p</code> (default cwd), <code>--min-severity/-s</code> (<code>info</code>|<code>warning</code>|<code>error</code>,
+default <code>warning</code> — AUD015 emits Info and Error, AUD019 Error only, so <code>warning</code> gates exactly on the
+errors), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>. Suppress an AUD015 usage line with
+<code>// audit-lint:ignore AUD015</code> (leave a comment why); skip a file with <code>audit-lint:skip-file</code>. JSON findings
+carry a <code>ruleId</code> of <code>AUD015</code> or <code>AUD019</code>.</p>
+<p>Exit codes: <code>0</code> (no findings at/above <code>--min-severity</code>, or no seed sources), <code>1</code> (findings), <code>2</code> (bad args).</p>
 <h2 id="audit-permissions-the-permissionpolicy-completeness-gate-aud016"><code>audit permissions</code> — the permission/policy-completeness gate (AUD016)<a class="headerlink" href="#audit-permissions-the-permissionpolicy-completeness-gate-aud016" title="Permanent link">&para;</a></h2>
 <p>A Gateway defines authorization policies like <code>RequireClaim("perm", "reconciliation.run")</code>. The app-login
 JWT carries the signed-in user's <strong>role codes</strong> (e.g. <code>Admin</code>) <strong>plus</strong> the fine-grained <strong>permission
@@ -2512,40 +2747,134 @@ the <strong>static</strong> gate that closes this (rule <strong>AUD016</strong>)
 a policy in <code>.cs</code> code (<code>RequireClaim("perm", "X")</code> / <code>HasClaim("perm", "X")</code>, including inside a
 <code>RequireAssertion(ctx =&gt; …)</code>) against the codes the tree's SQL seeds <strong>supply</strong> — the <code>Name</code>s inserted into
 <code>dbo.Permissions</code> plus the role codes in <code>dbo.Roles</code> / <code>dbo.UserAppRoles</code>.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># Point one --path at the policies (src) and one at the seeds (db):</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>permissions<span class="w"> </span>--path<span class="w"> </span>src<span class="w"> </span>--path<span class="w"> </span>db
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>permissions<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--format<span class="w"> </span>json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># Point one --path at the policies (src) and one at the seeds (db):</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>permissions<span class="w"> </span>--path<span class="w"> </span>src<span class="w"> </span>--path<span class="w"> </span>db
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>permissions<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--format<span class="w"> </span>json
 </code></pre></div>
 <p>A required <code>perm</code> found in <strong>neither</strong> the supplied permission codes nor the role codes is an <strong>AUD016
 error</strong>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>[ERROR] AUD016: permission/policy completeness
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    src/App.Gateway/Program.cs:128
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>      Gateway policy requires perm &#39;reconciliation.typo-run&#39; but no seed defines it as a permission or
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>      role code — the app-login token can never carry it (guaranteed 403). Seed it in dbo.Permissions
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>      (+ grant it to a role) or fix the policy.
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>[ERROR] AUD016: permission/policy completeness
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>    src/App.Gateway/Program.cs:128
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>      Gateway policy requires perm &#39;reconciliation.typo-run&#39; but no seed defines it as a permission or
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>      role code — the app-login token can never carry it (guaranteed 403). Seed it in dbo.Permissions
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>      (+ grant it to a role) or fix the policy.
 </code></pre></div>
 <p><code>--path/-p</code> is <strong>repeatable</strong> — pass it once per tree so the policies (<code>src</code>) and the seeds (<code>db</code>) both
 fall under the scan; the supplied codes are unioned across all paths. The SQL scan is deliberately
 <strong>tolerant/over-collecting</strong> (it recognizes the <code>MERGE … USING (VALUES …)</code> / <code>INSERT … VALUES</code> / table-var
-shapes by collecting every literal in a file that mentions the table) — a false <em>supplied</em> only ever makes
-a perm look OK, never wrongly fails one. Options: <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>.
-Suppress a policy line with <code>// audit-lint:ignore AUD016</code> (leave a comment why); skip a file with
-<code>audit-lint:skip-file</code>.</p>
+shapes by collecting every literal in a file whose <strong>code</strong> mentions the table) — a false <em>supplied</em> only
+ever makes a perm look OK, never wrongly fails one. Options: <code>--format/-f</code> (<code>text</code>|<code>json</code>),
+<code>--include-tests</code>. Suppress a policy line with <code>// audit-lint:ignore AUD016</code> (leave a comment why); skip a
+file with <code>audit-lint:skip-file</code>.</p>
+<p><strong>SQL comments are not code (since Tools <code>1.4.6</code>).</strong> The seeded codes are read with a real T-SQL scanner,
+not a literal regex: <code>--</code> line comments and (nestable) <code>/* … */</code> block comments are stripped <strong>before</strong>
+anything is collected, and an apostrophe inside a literal is escaped by <strong>doubling</strong> it (<code>N'the agent''s
+ledger'</code> is one literal, not two). This matters in both directions. Before the scanner, one unpaired
+apostrophe in prose — <code>catalogue's</code>, <code>it's</code>, a <code>don't</code> next to a <code>VALUES</code> row — shifted literal pairing for
+the <strong>rest of the file</strong>, so (a) genuinely seeded permissions went missing and a correct policy was flagged,
+and (b) — the dangerous half — <strong>comment prose was collected as a seeded code</strong>, letting a policy that no
+seed backs pass the gate and 403 every user in production with a green build. Consequences you can rely on
+now: a permission mentioned <strong>only</strong> in a comment (<code>-- TODO: seed 'x.write'</code>) does <strong>not</strong> count as
+supplied, a seed tuple that is <strong>commented out</strong> does not count as applied, and a file that merely <em>names</em>
+<code>dbo.Permissions</code> in a header comment contributes nothing.</p>
 <p>Exit codes: <code>0</code> (no findings — the gate is green; every required perm is supplied), <code>1</code> (at least one
-AUD016 finding — this <strong>fails the build</strong>), <code>2</code> (bad args). Run it alongside <code>audit lint</code> and
-<code>audit localization</code> before a push.</p>
+AUD016 finding — this <strong>fails the build</strong>), <code>2</code> (bad args). Run it alongside <code>audit lint</code>,
+<code>audit localization</code> and <code>audit seeds</code> before a push.</p>
+<h2 id="audit-seeds-the-seed-form-gates-aud018-aud017"><code>audit seeds</code> — the seed-form gates (AUD018 + AUD017)<a class="headerlink" href="#audit-seeds-the-seed-form-gates-aud018-aud017" title="Permanent link">&para;</a></h2>
+<p>The two gates above answer <em>"is this seeded?"</em> by <strong>reading SQL as text</strong> — and twice in a row they went
+blind because the SQL was written in a spelling they did not recognise: an apostrophe in a comment shifted
+AUD016's literal pairing, and the <code>EXEC …_UpsertValue</code> form was invisible to AUD015 across <strong>276 keys</strong>.
+Both were fixed by teaching the scanner, but that is an infinite race: a third spelling always exists.
+<code>audit seeds</code> ends it from the other side by constraining the <strong>input</strong>. It carries two rules: <strong>AUD018</strong> — a
+localization seed may be written in exactly ONE approved way — and <strong>AUD017</strong> (<a href="#aud017--a-permission-grant-may-not-be-a-like-pattern">below</a>),
+the same principle applied to permission grants. Anything else fails the build.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>seeds<span class="w"> </span>--path<span class="w"> </span>AppManagement/db<span class="w"> </span>--path<span class="w"> </span>src
+</code></pre></div>
+<p><strong>The canonical form</strong> — a <code>@Seed</code> table variable of <code>(N'Key', N'&lt;culture&gt;', N'Value')</code> tuples, fed through
+<code>dbo.LocalizationResource_UpsertValue</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="k">DECLARE</span><span class="w"> </span><span class="o">@</span><span class="n">Seed</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="p">([</span><span class="k">Key</span><span class="p">]</span><span class="w"> </span><span class="n">NVARCHAR</span><span class="p">(</span><span class="mi">200</span><span class="p">),</span><span class="w"> </span><span class="p">[</span><span class="n">Culture</span><span class="p">]</span><span class="w"> </span><span class="n">NVARCHAR</span><span class="p">(</span><span class="mi">20</span><span class="p">),</span><span class="w"> </span><span class="p">[</span><span class="n">Value</span><span class="p">]</span><span class="w"> </span><span class="n">NVARCHAR</span><span class="p">(</span><span class="k">MAX</span><span class="p">));</span>
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="o">@</span><span class="n">Seed</span><span class="w"> </span><span class="p">([</span><span class="k">Key</span><span class="p">],[</span><span class="n">Culture</span><span class="p">],[</span><span class="n">Value</span><span class="p">])</span><span class="w"> </span><span class="k">VALUES</span>
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">    </span><span class="p">(</span><span class="n">N</span><span class="s1">&#39;Page.Title&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;tr-TR&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;Başlık&#39;</span><span class="p">),</span>
+<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">    </span><span class="p">(</span><span class="n">N</span><span class="s1">&#39;Page.Title&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;en-US&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;Title&#39;</span><span class="p">),</span>
+<a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="w">    </span><span class="p">(</span><span class="n">N</span><span class="s1">&#39;Page.Title&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;ru-RU&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;Заголовок&#39;</span><span class="p">);</span>
+<a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="c1">-- … cursor over @Seed …</span>
+<a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="k">EXEC</span><span class="w"> </span><span class="n">dbo</span><span class="p">.</span><span class="n">LocalizationResource_UpsertValue</span><span class="w"> </span><span class="o">@</span><span class="n">appId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="n">SelfApp</span><span class="p">,</span><span class="w"> </span><span class="o">@</span><span class="k">key</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="k">Key</span><span class="p">,</span>
+<a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="w">     </span><span class="o">@</span><span class="n">category</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;UI&#39;</span><span class="p">,</span><span class="w"> </span><span class="o">@</span><span class="n">culture</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="n">Culture</span><span class="p">,</span><span class="w"> </span><span class="o">@</span><span class="n">value</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">@</span><span class="n">Value</span><span class="p">;</span>
+</code></pre></div>
+<p><strong>Why this one and not a plain tuple <code>INSERT</code>/<code>MERGE</code>.</strong> The proc is not a stylistic wrapper: it maps the
+SelfApp GUID to <code>AppId = NULL</code> (the console scope) before the MERGE, and it owns the table shape
+AppManagement evolves. A raw <code>MERGE dbo.LocalizationResource … VALUES (@SelfApp, …)</code> writes the GUID
+<em>literally</em>, and the row is then invisible to the console's <code>AppId IS NULL</code> read path — a silent,
+data-level divergence, not a style nit. So the mandate is <strong>tuples fed through the proc</strong>: the tuples make
+the rows machine-readable as a <em>set</em>, the proc keeps the scoping semantics. <code>AsdamirVault_128</code> and every
+scaffold template (<code>AppAdminOnboarding.sbn</code>, <code>PageLocalization.sbn</code>, <code>BillingSeed.sbn</code>, the free-mode
+variants) are already written this way — the rule codifies the existing house form, it does not invent one.</p>
+<p><strong>Two violations:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Violation</th>
+<th>Why it fails</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>an ad-hoc <code>INSERT</code>/<code>MERGE</code>/<code>UPDATE</code> straight at <code>dbo.LocalizationResource</code></td>
+<td>bypasses the proc's <code>AppId</code> mapping — the row can land in a scope nothing reads</td>
+</tr>
+<tr>
+<td>one <code>EXEC …_UpsertValue</code> <strong>per row</strong> with the key as an inline literal</td>
+<td>the rows are a list of statements, not a data set — unreadable to any tool that does not know the proc's parameter order (exactly how 276 keys hid from AUD015)</td>
+</tr>
+</tbody>
+</table>
+<p>A <code>SELECT</code> from the table is fine, and a raw write <strong>inside a stored-procedure body</strong> is exempt — the
+canonical writer is itself a <code>MERGE</code> on the table, and T-SQL requires <code>CREATE PROCEDURE</code> to open its batch,
+so the exemption is decided per batch.</p>
+<h3 id="aud017-a-permission-grant-may-not-be-a-like-pattern">AUD017 — a permission grant may not be a <code>LIKE</code> pattern<a class="headerlink" href="#aud017-a-permission-grant-may-not-be-a-like-pattern" title="Permanent link">&para;</a></h3>
+<p>Same command, same idea applied to <strong>authorization</strong>. A grant written as</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="k">JOIN</span><span class="w"> </span><span class="n">dbo</span><span class="p">.</span><span class="n">Permissions</span><span class="w"> </span><span class="n">p</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">Name</span><span class="w"> </span><span class="k">LIKE</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;%.read&#39;</span><span class="w">      </span><span class="c1">-- ❌ AUD017</span>
+</code></pre></div>
+<p>does not say what it grants. The set is whatever the catalogue holds when the statement runs, so <strong>both</strong>
+directions are silent: add a permission next year whose code ends in <code>.read</code> and it is granted to that role
+retroactively — nobody edited a grant, no review saw it, and AUD016 cannot cross-check it because a wildcard
+supplies <strong>no names</strong>; conversely a permission that does <em>not</em> match is never granted, which surfaces as a
+403 nobody wrote down (<code>ent.agentaudit.verify</code> does not end in <code>.read</code>). A grant is an authorization
+decision, so it must be a reviewable list:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">Name</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="n">N</span><span class="s1">&#39;ent.agentaudit.read&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;ent.agentaudit.verify&#39;</span><span class="p">)</span><span class="w">   </span><span class="c1">-- ✅</span>
+</code></pre></div>
+<p>The rule fires only on a <strong>statement that writes</strong> <code>dbo.Permissions</code> or <code>dbo.RolePermissions</code> while
+containing a <code>LIKE</code>. A read-path <code>SELECT … WHERE Name LIKE @Category + '%'</code> in a lookup proc is legitimate;
+a write to a <em>different</em> table that merely JOINs <code>dbo.Permissions</code> (e.g. the <code>dbo.UserMenuPermissions</code>
+capability computation) is not a grant; a <code>LIKE</code> against an audit search or <code>sys.sql_modules</code> is irrelevant.
+Two applied migrations are grandfathered: <strong><code>AsdamirVault_003</code></strong> (the original "AppAdmin gets every <code>%.read</code>"
+bootstrap grant — the rule's namesake) and <strong><code>AsdamirVault_060</code></strong> (a one-off <code>ent.%</code> prefix-strip rename;
+the pattern is the point of that migration, but it is still a pattern reaching into the permission table, so
+it is listed rather than carved out of the rule).</p>
+<p><strong>There is no inline suppression — deliberately.</strong> Every other rule takes <code>// audit-lint:ignore AUDxxx</code>;
+these two do not. An applied migration is immutable (see the migration-immutability rule in <code>CLAUDE.md</code>),
+so the only legitimate exemption is a <em>pre-existing</em> file, and that belongs in a reviewed, commented
+allowlist — <strong><code>packaging/seed-form-allowlist.txt</code></strong>, same idiom as <code>packaging/removed-public-types.txt</code>:
+one <code>&lt;RULE&gt;  &lt;repo-relative path&gt;</code> per line, <code>#</code> comments, every entry stating why it is exempt. A <strong>new</strong>
+seed has no opt-out: canonical form, or the build fails. The allowlist currently grandfathers <strong>63 applied
+AsdamirVault migrations</strong> — 61 for AUD018 in two eras (002–077, written before the proc existed; 093–129,
+per-row <code>EXEC</code>s) and 2 for AUD017 (003, 060). Because those files are frozen, the list can only shrink; when
+a later migration supersedes one, the gate prints <code>NOTE — allowlist entry no longer matches anything</code> and the
+line is deleted.</p>
+<p>Options: <code>--path/-p</code> (repeatable), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>, <code>--allowlist &lt;file&gt;</code>.
+Exit codes: <code>0</code> (clean), <code>1</code> (findings — <strong>fails the build</strong>), <code>2</code> (bad args).</p>
 <h2 id="localization-verify-live-apply-drift"><code>localization verify</code> — live apply-drift<a class="headerlink" href="#localization-verify-live-apply-drift" title="Permanent link">&para;</a></h2>
 <p><code>audit localization</code> catches keys missing from the <strong>seed files</strong>. It cannot catch a key that <em>is</em> in a
 seed file but was <strong>never applied</strong> to the running database (someone forgot to <code>db apply</code>) — the seed looks
 correct in the repo, yet the raw key still renders live. <code>localization verify</code> closes that gap: it collects
 the <code>(key, culture)</code> pairs the tree's SQL seeds <strong>define</strong> (same parser as <code>audit localization</code>), queries the
 live <code>dbo.LocalizationResource</code> for the app, and <strong>diffs</strong> the two.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># Resolve the AppId from the app&#39;s Code:</span>
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--app-code<span class="w"> </span>MyApp
-<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>
-<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="c1"># …or pass the AppId directly, and a full connection string:</span>
-<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--app-id<span class="w"> </span>&lt;guid&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># Resolve the AppId from the app&#39;s Code:</span>
+<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--app-code<span class="w"> </span>MyApp
+<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>
+<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="c1"># …or pass the AppId directly, and a full connection string:</span>
+<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--app-id<span class="w"> </span>&lt;guid&gt;
 </code></pre></div>
 <p>Options: <code>--path/-p</code> (where the seed files are), the connection flags copied from <code>db apply</code>
 (<code>--connection/-c</code>, <code>--server/-S</code>, <code>--database/-d</code>, <code>--user/-U</code>, <code>--password/-P</code>), one of <code>--app-code</code> /
@@ -2560,16 +2889,16 @@ idempotent is never re-executed). Each file is split into batches on <code>GO</c
 imposed (some migrations manage their own <code>BEGIN TRAN</code> and some carry DDL that can't run in a
 transaction); a migration is journaled only after all its batches succeed, so a partial failure is
 retried on the next run.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># Preferred — no SQL password on the command line: set the Gateway user-secret once, then apply.</span>
-<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># db apply resolves ConnectionStrings:Default from the Gateway user-secret (see &quot;Connection resolution&quot; below).</span>
-<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
-<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>
-<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="c1"># Or pass connection details explicitly (SQL auth):</span>
-<a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
-<a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>
-<a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a><span class="c1"># Or a full connection string (e.g. from a secret); on Windows you may omit --user for integrated auth:</span>
-<a id="__codelineno-11-10" name="__codelineno-11-10" href="#__codelineno-11-10"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Preferred — no SQL password on the command line: set the Gateway user-secret once, then apply.</span>
+<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a><span class="c1"># db apply resolves ConnectionStrings:Default from the Gateway user-secret (see &quot;Connection resolution&quot; below).</span>
+<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
+<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># Or pass connection details explicitly (SQL auth):</span>
+<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a>
+<a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="c1"># Or a full connection string (e.g. from a secret); on Windows you may omit --user for integrated auth:</span>
+<a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--migrations<span class="w"> </span>db/migrations
 </code></pre></div>
 <p>Options: <code>--connection/-c</code> (full string, wins over the parts), <code>--server/-S</code>, <code>--database/-d</code>,
 <code>--user/-U</code> + <code>--password/-P</code> (SQL auth — omit for Windows integrated), <code>--migrations/-m</code>,
@@ -2602,10 +2931,10 @@ exists (by the entity's name + plural — no broad globbing, scoped by name and 
 <li><strong>AsdamirVault</strong> (only with <code>--vault-connection</code>): the <code>&lt;plural&gt;.view</code> permission, its menu row(s), role
   grants, and user-menu permissions — AppId-scoped, in FK order, in one transaction.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="w">  </span>--output<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="w">  </span>--output<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
 </code></pre></div>
 <p>Options: <code>&lt;Name&gt;</code>, <code>--output</code>/<code>-o</code> (app root), <code>--gateway-dir</code>/<code>--server-dir</code> (overrides),
 <code>--connection</code>/<code>-c</code> or <code>--server</code>/<code>-S</code>+<code>--database</code>/<code>-d</code>+<code>--user</code>/<code>-U</code>+<code>--password</code>/<code>-P</code> (app DB),
@@ -2651,10 +2980,10 @@ before touching anything. Works in <strong>both</strong> modes (detected from th
   hidden entirely in free-mode teardown — <strong>and</strong> when the mode can't be determined (the app directory is already
   gone), unless you pass <code>--vault-connection</code> explicitly (then it's shown + acted on, in any mode).</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>app<span class="w"> </span>CustomerOrders<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span>--output<span class="w"> </span>~/src/asdamirgenerated<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>app<span class="w"> </span>CustomerOrders<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span>--output<span class="w"> </span>~/src/asdamirgenerated<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
 </code></pre></div>
 <p>Options: <code>&lt;Name&gt;</code>, <code>--output</code>/<code>-o</code> (the app's parent dir OR the app dir itself), <code>--connection</code>/<code>-c</code> or
 <code>--server</code>/<code>-S</code>+<code>--database</code>/<code>-d</code>+<code>--user</code>/<code>-U</code>+<code>--password</code>/<code>-P</code> (app DB), <code>--vault-connection</code> (commercial),
@@ -2675,14 +3004,14 @@ before touching anything. Works in <strong>both</strong> modes (detected from th
 <p>Registers a managed app into a company's AppManagement database — an <code>Apps</code> row, <strong>not</strong> a new
 database — by calling the running AdminConsole.Api (<code>POST /api/admin/apps</code>). Auth and at-rest
 secret encryption are delegated to the API, so the CLI stays credential- and crypto-free.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
 </code></pre></div>
 <p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>2</code> bad arguments. The
 company is taken from the token's <code>company</code> claim. See the AppManagement console's multi-company (firma) operation.</p>
@@ -2695,10 +3024,10 @@ and <code>AppConfigurations</code> rows with <code>IsEncrypted=1</code> — so y
 losing data. <strong>Dry-run by default</strong> (decrypt + re-encrypt + verify, no writes); <code>--apply</code> commits in a
 single transaction. Idempotent (rows already on the new key are skipped) and aborts+rolls back if a value
 can't be decrypted with the old key.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
 </code></pre></div>
 <p>Connection flags match <code>db apply</code> (<code>--connection</code> / <code>--server</code>+<code>--database</code>+<code>--user</code>+<code>--password</code>; omit
 <code>--user</code> for Windows integrated auth). Keys/salts: <code>--old-key</code>/<code>--new-key</code> (+ <code>--old-salt</code>/<code>--new-salt</code>)
@@ -2707,8 +3036,8 @@ or the <code>ASDAMIR_OLD_ENCRYPTION_KEY</code> / <code>ASDAMIR_NEW_ENCRYPTION_KE
 <p>Encrypts a value with <code>Security:EncryptionKey</code> and prints the <code>v2:</code> ciphertext — to seed an encrypted
 <code>AppConfigurations</code> value or a <code>v2:</code> Companies connection string. (There is no <code>decrypt</code> — it never prints
 a stored secret back.)</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
 </code></pre></div>
 <p>Full procedures (incl. <code>Jwt:Key</code> and per-app client-secret rotation): <strong><a href="../secret-rotation/">Secret Management &amp; Key Rotation</a></strong>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>

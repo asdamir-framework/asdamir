@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://docs.asdamir.com/fundamentals/encryption/">
+        <link rel="canonical" href="https://docs.asdamir.com/fundamentals/agent-audit/">
       
       
-        <link rel="prev" href="../agent-audit-canonicalization-v1/">
+        <link rel="prev" href="../audit-logging/">
       
       
-        <link rel="next" href="../observability/">
+        <link rel="next" href="../agent-audit-canonicalization-v1/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Encryption - Asdamir Docs</title>
+        <title>Agent Audit - Asdamir Docs</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#encryption" class="md-skip">
+        <a href="#agent-audit" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Encryption
+              Agent Audit
             
           </span>
         </div>
@@ -955,10 +955,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../agent-audit/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -974,6 +1001,209 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#introduction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Introduction
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-the-guarantee-is-and-what-it-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the guarantee is — and what it is not
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recording-an-action" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recording an action
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-hashed-and-what-is-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is hashed, and what is not
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is hashed, and what is not">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#there-is-no-payload-column" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        There is no payload column
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#two-fields-are-structurally-constrained" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two fields are structurally constrained
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-is-two-layer-and-only-one-layer-is-the-authority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification is two-layer, and only one layer is the authority
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verification is two-layer, and only one layer is the authority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-verdict-is-three-valued" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The verdict is three-valued
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-writes-to-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who writes to the ledger
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retention-folding-not-deleting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retention: folding, not deleting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-delivery-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When delivery fails
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="When delivery fails">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#permanent-versus-transient-and-why-an-unknown-status-is-transient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permanent versus transient — and why an unknown status is transient
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dead-letter-alarm-is-persistent-by-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dead-letter alarm is persistent by design
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permissions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1011,37 +1241,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Encryption
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../encryption/" class="md-nav__link">
         
   
   
@@ -1057,103 +1260,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#introduction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Introduction
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#iencryptionservice" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        IEncryptionService
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How it works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#hashing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hashing
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related-data-protection-web" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related: Data Protection (web)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1605,10 +1711,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#iencryptionservice" class="md-nav__link">
+  <a href="#what-the-guarantee-is-and-what-it-is-not" class="md-nav__link">
     <span class="md-ellipsis">
       
-        IEncryptionService
+        What the guarantee is — and what it is not
       
     </span>
   </a>
@@ -1616,10 +1722,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-it-works" class="md-nav__link">
+  <a href="#recording-an-action" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How it works
+        Recording an action
       
     </span>
   </a>
@@ -1627,10 +1733,77 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#what-is-hashed-and-what-is-not" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration
+        What is hashed, and what is not
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is hashed, and what is not">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#there-is-no-payload-column" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        There is no payload column
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#two-fields-are-structurally-constrained" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two fields are structurally constrained
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-is-two-layer-and-only-one-layer-is-the-authority" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification is two-layer, and only one layer is the authority
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Verification is two-layer, and only one layer is the authority">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-verdict-is-three-valued" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The verdict is three-valued
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#who-writes-to-the-ledger" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Who writes to the ledger
       
     </span>
   </a>
@@ -1638,10 +1811,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hashing" class="md-nav__link">
+  <a href="#retention-folding-not-deleting" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hashing
+        Retention: folding, not deleting
       
     </span>
   </a>
@@ -1649,10 +1822,49 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#related-data-protection-web" class="md-nav__link">
+  <a href="#when-delivery-fails" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related: Data Protection (web)
+        When delivery fails
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="When delivery fails">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#permanent-versus-transient-and-why-an-unknown-status-is-transient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permanent versus transient — and why an unknown status is transient
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-dead-letter-alarm-is-persistent-by-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The dead-letter alarm is persistent by design
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#permissions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Permissions
       
     </span>
   </a>
@@ -1690,45 +1902,315 @@
   
 
 
-<h1 id="encryption">Encryption<a class="headerlink" href="#encryption" title="Permanent link">&para;</a></h1>
-<p><strong>Package:</strong> <code>Asdamir.Core</code> · <strong>Namespace:</strong> <code>Asdamir.Core.Services</code>, <code>Asdamir.Core.Contracts</code></p>
+<h1 id="agent-audit">Agent Audit<a class="headerlink" href="#agent-audit" title="Permanent link">&para;</a></h1>
+<p><strong>Packages:</strong> <code>Asdamir.Core</code> (contracts, <code>AgentActionRecord</code>), <code>Asdamir.Data</code> (the client sink, <code>AddAgentAudit</code>)</p>
 <h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
-<p>Asdamir provides authenticated symmetric encryption for protecting sensitive values at rest (configuration secrets, stored tokens, PII columns). It uses modern <strong>AES-GCM</strong> with a key derived from your master key via <strong>PBKDF2</strong>, and keeps a read-only legacy path so existing data can be migrated transparently.</p>
-<h2 id="iencryptionservice"><code>IEncryptionService</code><a class="headerlink" href="#iencryptionservice" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">public</span><span class="w"> </span><span class="k">interface</span><span class="w"> </span><span class="n">IEncryptionService</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">{</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="nf">Encrypt</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">plainText</span><span class="p">);</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="kt">string</span><span class="w"> </span><span class="nf">Decrypt</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">cipherText</span><span class="p">);</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="kt">bool</span><span class="w">   </span><span class="nf">IsEncrypted</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">text</span><span class="p">);</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">}</span>
+<p>Agent audit records what an AI agent — or any other non-human actor — actually did, in a form that can be
+<strong>checked later by a machine</strong>. Ordinary audit logging answers "what happened?". This answers a different and
+harder question: <strong>"can you show that this record has not been changed since it was written?"</strong></p>
+<p>That distinction is the entire point. A log you can quietly edit is a log you cannot produce as evidence. Every
+record here joins a hash chain, so changing, deleting, reordering or inserting any row breaks the chain from
+that point on, and verification reports the exact position where it broke.</p>
+<h2 id="what-the-guarantee-is-and-what-it-is-not">What the guarantee is — and what it is not<a class="headerlink" href="#what-the-guarantee-is-and-what-it-is-not" title="Permanent link">&para;</a></h2>
+<p>Read this section before you rely on the feature for anything.</p>
+<p><strong>What it gives you.</strong> A tamper-EVIDENT record. Rows are append-only, chained by SHA-256, and enforced by three
+independent layers: a permission-level <code>DENY</code>, <code>INSTEAD OF UPDATE</code>/<code>DELETE</code> triggers, and the hash chain itself.</p>
+<p><strong>What it does not give you.</strong> It is evidence, not prevention. A principal with <code>db_owner</code> or <code>sysadmin</code> rights
+can disable a trigger and edit a row — nothing inside a single database can stop that. What they cannot do is
+make the chain agree afterwards. Never state the guarantee more strongly than that.</p>
+<p><strong>It does not prove WHO acted.</strong> <code>AgentId</code> and <code>OnBehalfOfUserId</code> are the <strong>application's assertion</strong>, recorded
+tamper-evidently. No agent presents a cryptographic identity of its own in this version. The assurance level is
+therefore:</p>
+<blockquote>
+<p><strong>application assertion + tamper-evident record</strong> — <em>not</em> "the agent cryptographically proved its own
+identity".</p>
+</blockquote>
+<p>Per-agent cryptographic identity, signatures and PKI are a later phase. The <code>HashVersion</code> column is live and in
+use; <code>SignatureAlgo</code> and <code>Signature</code> are reserved and always <code>NULL</code> today.</p>
+<h2 id="recording-an-action">Recording an action<a class="headerlink" href="#recording-an-action" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddAgentAudit</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">,</span><span class="w"> </span><span class="n">controlPlaneBaseAddress</span><span class="p">);</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">SecretStore</span><span class="p">(</span><span class="n">IEncryptionService</span><span class="w"> </span><span class="n">crypto</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">await</span><span class="w"> </span><span class="n">auditor</span><span class="p">.</span><span class="n">RecordAsync</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">AgentActionRecord</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="p">{</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">Protect</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="k">value</span><span class="p">)</span><span class="w">   </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">crypto</span><span class="p">.</span><span class="n">Encrypt</span><span class="p">(</span><span class="k">value</span><span class="p">);</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">string</span><span class="w"> </span><span class="nf">Reveal</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">protec</span><span class="p">)</span><span class="w">    </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">crypto</span><span class="p">.</span><span class="n">Decrypt</span><span class="p">(</span><span class="n">protec</span><span class="p">);</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="kt">bool</span><span class="w">   </span><span class="nf">AlreadyProtected</span><span class="p">(</span><span class="kt">string</span><span class="w"> </span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">crypto</span><span class="p">.</span><span class="n">IsEncrypted</span><span class="p">(</span><span class="n">v</span><span class="p">);</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">}</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">AgentId</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;asdamir.recon.matcher&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">AgentVersion</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;3.11.2&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="n">ModelId</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;claude-opus-5-20260501&quot;</span><span class="p">,</span><span class="w">   </span><span class="c1">// the traceability anchor when behaviour changes</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">    </span><span class="n">AuthorityKind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AgentAuthorityKind</span><span class="p">.</span><span class="n">Delegated</span><span class="p">,</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="n">OnBehalfOfUserId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">currentUserId</span><span class="p">,</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="w">    </span><span class="n">ActionType</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;orders.approve&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a><span class="w">    </span><span class="n">TargetType</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;Order&quot;</span><span class="p">,</span>
+<a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="w">    </span><span class="n">TargetId</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;ORD-2026-000913&quot;</span><span class="p">,</span><span class="w">          </span><span class="c1">// opaque identifier ONLY</span>
+<a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="w">    </span><span class="n">Decision</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="n">AgentActionDecision</span><span class="p">.</span><span class="n">Allowed</span><span class="p">,</span>
+<a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a><span class="w">    </span><span class="n">Outcome</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="n">AgentActionOutcome</span><span class="p">.</span><span class="n">Success</span><span class="p">,</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="w">    </span><span class="n">InputDigest</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">SHA256</span><span class="p">.</span><span class="n">HashData</span><span class="p">(</span><span class="n">inputBytes</span><span class="p">),</span>
+<a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="w">    </span><span class="n">OutputDigest</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">SHA256</span><span class="p">.</span><span class="n">HashData</span><span class="p">(</span><span class="n">outputBytes</span><span class="p">),</span>
+<a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="p">});</span>
 </code></pre></div>
-<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<p><code>RecordAsync</code> hands the record to a bounded queue and returns, so a slow control plane never slows down the
+action being audited. Completion of the call is <strong>not</strong> a guarantee that the row is durable yet — see
+<a href="#when-delivery-fails">When delivery fails</a>.</p>
+<p>The record carries <strong>no AppId</strong>. The server resolves it from the ingest service token, so an application can
+only ever append to its own chain.</p>
+<blockquote>
+<p><strong>What "AppId-scoped" does and does not mean.</strong> <code>AppId</code> is the <strong>scoping field</strong> — it partitions the ledger
+into one chain per <code>(AppId, TenantId)</code> and the server, not the caller, decides its value. It is <strong>not
+enforced by a foreign key</strong>: <code>dbo.AgentActionLedger.AppId</code> has no FK to <code>dbo.Apps</code>, so an id that does not
+resolve is not rejected at write time; the read path (<code>AgentActionLedger_List</code>) <code>LEFT JOIN</code>s <code>dbo.Apps</code>, so
+such a row simply shows a blank application name instead of failing. The scoping guarantee comes from the
+token, not from referential integrity. Adding the FK is being evaluated for a later phase.</p>
+</blockquote>
+<h2 id="what-is-hashed-and-what-is-not">What is hashed, and what is not<a class="headerlink" href="#what-is-hashed-and-what-is-not" title="Permanent link">&para;</a></h2>
+<p>This table is the honest boundary of the guarantee. Everything in the left column is covered by the chain;
+everything in the right column is stored but <strong>not</strong> protected by it, and can be changed or removed without
+breaking anything.</p>
+<table>
+<thead>
+<tr>
+<th>Hashed (immutable, unredactable)</th>
+<th>NOT hashed (stored, redactable)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HashVersion</code>, <code>AppId</code>, <code>TenantId</code>, <code>SeqNo</code>, <code>RecordKind</code>, <code>EventId</code></td>
+<td><code>OnBehalfOfUserName</code> — mutable display data</td>
+</tr>
+<tr>
+<td><code>OccurredAtUtc</code>, <code>RecordedAtUtc</code></td>
+<td><code>ErrorMessage</code> — free-text error detail</td>
+</tr>
+<tr>
+<td><code>AgentId</code>, <code>AgentVersion</code>, <code>ModelId</code></td>
+<td><code>FoldSeqStart/End/RowCount/SegmentDigest/ArchiveRef</code></td>
+</tr>
+<tr>
+<td><code>AuthorityKind</code>, <code>OnBehalfOfUserId</code></td>
+<td><code>SignatureAlgo</code>, <code>Signature</code> (reserved, always <code>NULL</code>)</td>
+</tr>
+<tr>
+<td><code>SessionId</code>, <code>InvocationId</code>, <code>CorrelationId</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>ActionType</code>, <code>TargetType</code>, <code>TargetId</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>Decision</code>, <code>Outcome</code></td>
+<td></td>
+</tr>
+<tr>
+<td><code>InputDigest</code>, <code>OutputDigest</code>, <code>ErrorCode</code>, <code>ErrorDigest</code></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The unhashed columns are protected by the immutability triggers only. Saying otherwise would be a false
+assurance claim.</p>
+<h3 id="there-is-no-payload-column">There is no payload column<a class="headerlink" href="#there-is-no-payload-column" title="Permanent link">&para;</a></h3>
+<p><strong>Raw content is never stored.</strong> There is no <code>PayloadJson</code> field and there never was one — only
+<code>InputDigest</code> / <code>OutputDigest</code>, the SHA-256 of content you keep in your own store.</p>
+<p>This is deliberate. Anything inside the hash can never be redacted, so putting a payload there would mean a
+lawful erasure request could only be honoured by breaking the chain. Digests bind the content to the record
+without holding it.</p>
+<p>The same reasoning explains <code>ErrorMessage</code>: the readable sentence is stored <strong>outside</strong> the hash so it can be
+redacted, while <code>ErrorCode</code> (a structural code) and <code>ErrorDigest</code> (the SHA-256 of the full text) are inside it.
+Redacting the message leaves the digest attesting to text that is no longer present — that is the intended
+trade, made explicit rather than hidden.</p>
+<h3 id="two-fields-are-structurally-constrained">Two fields are structurally constrained<a class="headerlink" href="#two-fields-are-structurally-constrained" title="Permanent link">&para;</a></h3>
+<p>Because they are hashed and therefore permanently unredactable, two fields reject anything that looks like free
+text, at write time:</p>
 <ul>
-<li><strong>v2 (default):</strong> <code>AES-GCM</code> — authenticated encryption with a random per-message nonce and an auth tag, so tampering is detected on decrypt.</li>
-<li><strong>Legacy (read path):</strong> <code>AES-CBC</code> values written by older versions still decrypt, so you can re-encrypt on next write during a migration.</li>
-<li><strong>Key derivation:</strong> the symmetric key is derived from <code>Security:EncryptionKey</code> with <code>PBKDF2</code> (<code>Rfc2898DeriveBytes.Pbkdf2</code>) — the configured key is a passphrase, not the raw AES key.</li>
+<li><strong><code>TargetId</code></strong> — at most 128 characters from <code>[0-9 A-Z a-z . _ : / -]</code></li>
+<li><strong><code>ErrorCode</code></strong> — at most 64 characters from <code>[0-9 A-Z a-z . _ -]</code></li>
 </ul>
-<p><code>IsEncrypted</code> lets call sites detect already-protected values (idempotent encrypt-on-save).</p>
-<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>// appsettings.json holds NO secret. Supply the key out-of-band:
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>//   dev : dotnet user-secrets set &quot;Security:EncryptionKey&quot; &quot;&lt;32+ char&gt;&quot;
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>//   prod: environment variable  Security__EncryptionKey
-</code></pre></div>
-<p>The key must be <strong>≥ 32 characters</strong>. Rotating it is a data-migration event: values encrypted under the old key cannot be read under a new one, so decrypt-then-re-encrypt during rotation — use <code>asdamir secrets rotate-key</code>. See the <strong><a href="../../secret-rotation/">Secret Management &amp; Key Rotation runbook</a></strong>.</p>
-<h2 id="hashing">Hashing<a class="headerlink" href="#hashing" title="Permanent link">&para;</a></h2>
-<p><code>CryptographyService</code> provides hashing helpers used for non-reversible needs (e.g. the management app hashes refresh tokens with SHA-256 before storage — the raw token is never persisted). Use encryption for values you must read back, hashing for values you only need to compare.</p>
-<h2 id="related-data-protection-web">Related: Data Protection (web)<a class="headerlink" href="#related-data-protection-web" title="Permanent link">&para;</a></h2>
-<p>For browser-facing token protection (email/refresh tokens in cookies), <code>Asdamir.Web</code> exposes ASP.NET Core <strong>Data Protection</strong> via <code>DataProtectionService</code> with keyed purposes — see <a href="../../web-security/">Web Security</a>.</p>
+<p>No spaces, no <code>@</code>, no commas — so a name, a sentence or an e-mail address cannot be stored there.</p>
+<p><strong>Be clear about what that buys.</strong> It removes the easy accident. It <strong>cannot detect personal data</strong>: a national
+identity number, a phone number or a customer's e-mail localpart all fit the character set perfectly well.
+Choosing a surrogate key over a natural one remains <strong>your</strong> responsibility.</p>
+<h2 id="verification-is-two-layer-and-only-one-layer-is-the-authority">Verification is two-layer, and only one layer is the authority<a class="headerlink" href="#verification-is-two-layer-and-only-one-layer-is-the-authority" title="Permanent link">&para;</a></h2>
+<p>Verification runs in two places, and the difference matters:</p>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Where</th>
+<th>Covers</th>
+<th>Authoritative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1 — database</strong></td>
+<td>T-SQL, no application needed</td>
+<td>Linkage, ordering, SeqNo gaps, head agreement, and each row's hash against the <strong>stored</strong> canonical body</td>
+<td><strong>No — PARTIAL</strong></td>
+</tr>
+<tr>
+<td><strong>2 — canonical</strong></td>
+<td>C#</td>
+<td>Re-canonicalizes every row <strong>from its own columns</strong>, compares byte-for-byte, then re-hashes</td>
+<td><strong>Yes</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Canonicalization happens in C#, so the database can only re-hash the canonical body it already has stored. If
+someone edits a projection column — <code>AgentId</code>, <code>ActionType</code>, <code>Outcome</code>, <code>TargetId</code> — and leaves the canonical
+body and row hash untouched, <strong>the in-database check still passes</strong>. Nothing it can see disagrees. Only
+re-canonicalizing from the row's own columns catches it.</p>
+<p>So: <strong>a "valid" answer from the database layer alone is not a proof of integrity, and must never be presented
+as one</strong> — not in an API response, not in the console, not in a report. <code>POST /api/agent-audit/verify</code> runs both
+layers and reports the first divergence together with the layer that found it; the combined verdict is always
+the worse of the two, so a green database layer can never mask a broken canonical one.</p>
+<h3 id="the-verdict-is-three-valued">The verdict is three-valued<a class="headerlink" href="#the-verdict-is-three-valued" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+<th>Render as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Valid</code></td>
+<td>Everything the database holds verifies, with nothing folded away</td>
+<td>Good</td>
+</tr>
+<tr>
+<td><code>Degraded</code></td>
+<td>Every link and hash agrees, <strong>but the database cannot prove the whole history</strong> — a range was folded into the archive, or a tombstone is unaccounted for</td>
+<td><strong>Not good</strong></td>
+</tr>
+<tr>
+<td><code>Broken</code></td>
+<td>A hash mismatch, a broken link or a SeqNo gap. Evidence of tampering</td>
+<td>Bad</td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>Degraded</code> is never rendered green.</strong> It is not a warning decoration on a good result: it means the
+in-database proof is incomplete and the archive must be checked. The <code>IsValid</code> flag is <code>true</code> for <code>Valid</code> and
+for nothing else — it is <code>false</code> for both <code>Degraded</code> and <code>Broken</code>.</p>
+<h2 id="who-writes-to-the-ledger">Who writes to the ledger<a class="headerlink" href="#who-writes-to-the-ledger" title="Permanent link">&para;</a></h2>
+<blockquote>
+<p><strong>Single appender for events.</strong> In total there are exactly TWO writers: <code>_Append</code> and <code>_Fold</code>. Both are stored
+procedures, both self-audit. No other path INSERTs.</p>
+</blockquote>
+<p><code>_Fold</code> exists as the second writer because a fold tombstone must occupy the folded range's first sequence
+number, mid-chain, which an appender that only ever writes <code>LastSeqNo + 1</code> can never produce. It audits itself
+by appending a normal, hash-covered <code>agentaudit.fold</code> event at the chain tail in the same transaction.</p>
+<p>The ledger lives <strong>only</strong> in the control plane's database. An application never writes to it directly: it POSTs
+to the ingest endpoint with a service token, and the server resolves the application's identity from that token.</p>
+<h2 id="retention-folding-not-deleting">Retention: folding, not deleting<a class="headerlink" href="#retention-folding-not-deleting" title="Permanent link">&para;</a></h2>
+<p>Append-only and "delete old rows" are contradictory, so old data is <strong>folded</strong> rather than deleted:</p>
+<ol>
+<li>The range is exported to an NDJSON archive, which yields a <strong>segment digest</strong>.</li>
+<li>The rows are removed and replaced by a single <strong>tombstone</strong> at the range's first sequence number, carrying
+   the range's boundary hashes verbatim — so the following row's link stays valid and the chain still verifies.</li>
+<li>The fold appends its own hash-covered accounting record, so it audits itself.</li>
+</ol>
+<p>Retention defaults to <strong>730 days</strong>, with an <strong>enforced minimum of 180 days</strong>: a shorter window is refused by the
+database, not merely discouraged. Folding is <strong>operator-triggered only</strong> — nothing schedules it — and requires
+both an archive reference and the segment digest, so "export before you fold" is a mechanism rather than a
+matter of discipline. A range containing a fold accounting record can never itself be folded, because that
+would retroactively orphan an earlier tombstone.</p>
+<p>After a fold the chain still verifies, but the verdict becomes <strong><code>Degraded</code></strong>: the database no longer holds the
+evidence for the folded span, and only the archive can complete the proof.</p>
+<h2 id="when-delivery-fails">When delivery fails<a class="headerlink" href="#when-delivery-fails" title="Permanent link">&para;</a></h2>
+<p>An audit record has no second copy, so the client never drops one quietly. Every path ends somewhere
+accountable: delivered, spooled for retry, or dead-lettered with a standing alarm.</p>
+<p><code>AgentAuditOptions.OnSinkFailure</code> chooses the policy — a compliance decision, not a performance one:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Spool</code> <em>(default)</em></td>
+<td>Undelivered records go to a bounded local NDJSON spool and are replayed at startup</td>
+</tr>
+<tr>
+<td><code>Throw</code></td>
+<td>Fail-closed: once delivery is failing, subsequent calls throw rather than let an unauditable action proceed</td>
+</tr>
+<tr>
+<td><code>DropAndWarn</code></td>
+<td>The gap is accepted and merely logged. Only for an advisory ledger — never for a record you may have to produce</td>
+</tr>
+</tbody>
+</table>
+<p>Because delivery is asynchronous, <code>Throw</code> cannot fail the very record that could not be sent; it fails the
+<strong>next</strong> call. That is a real limitation of an asynchronous sink, and it is why <code>Spool</code> is the default.</p>
+<h3 id="permanent-versus-transient-and-why-an-unknown-status-is-transient">Permanent versus transient — and why an unknown status is transient<a class="headerlink" href="#permanent-versus-transient-and-why-an-unknown-status-is-transient" title="Permanent link">&para;</a></h3>
+<p>Each submitted record comes back with one of a <strong>closed, versioned</strong> set of statuses:</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+<th>Client action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>appended</code></td>
+<td>Written to the ledger</td>
+<td>Done</td>
+</tr>
+<tr>
+<td><code>duplicate</code></td>
+<td>Already present — the expected result of an at-least-once replay</td>
+<td>Done, successfully</td>
+</tr>
+<tr>
+<td><code>rejected</code></td>
+<td><strong>Permanent.</strong> These exact bytes can never be written</td>
+<td>Dead-letter it</td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td><strong>Transient.</strong> The same record may succeed later</td>
+<td>Retry to the cap</td>
+</tr>
+</tbody>
+</table>
+<p>The split is what makes dead-lettering possible at all. Retry a permanent rejection for ever and the record
+merely looks busy while the gap goes unnoticed; dead-letter a transient failure and you discard a record that
+would have succeeded. Both are silent audit gaps.</p>
+<p><strong>A status this client version does not recognise is always treated as TRANSIENT.</strong> The response carries a
+contract version precisely so new statuses can be added; assuming an unknown one is permanent would silently
+discard a record that a newer server considered retryable. The retry cap
+(<code>AgentAuditOptions.MaxDeliveryAttempts</code>) is what stops such a record circulating for ever.</p>
+<p>There are therefore exactly <strong>two routes into the dead letter</strong>: a status known to be permanent, and an
+unknown or transient status that exhausted the retry cap.</p>
+<h3 id="the-dead-letter-alarm-is-persistent-by-design">The dead-letter alarm is persistent by design<a class="headerlink" href="#the-dead-letter-alarm-is-persistent-by-design" title="Permanent link">&para;</a></h3>
+<p>A dead-lettered record is a <strong>hole in the audit trail</strong>. It is written to a separate <code>dead-letter.ndjson</code> file,
+counted, and reported at <strong>error level</strong> — the level the framework forwards to central error monitoring — both
+when it happens and <strong>repeatedly thereafter</strong>, every <code>DeadLetterWarningInterval</code>, for as long as anything
+remains dead-lettered.</p>
+<p>The alarm is deliberately <strong>not</strong> warn-once, and the count is re-derived from the file at startup, so <strong>a
+restart does not silence it</strong>. A warning that a restart clears is a warning that will be cleared by a restart.
+It stops only when someone deals with the file.</p>
+<h2 id="permissions">Permissions<a class="headerlink" href="#permissions" title="Permanent link">&para;</a></h2>
+<p>Three separate permissions, because reading, verifying and folding are genuinely different powers — folding
+removes rows and is the only one that can destroy evidence:</p>
+<ul>
+<li><code>ent.agentaudit.read</code> — view records and chain state</li>
+<li><code>ent.agentaudit.verify</code> — run a chain verification</li>
+<li><code>ent.agentaudit.fold</code> — fold an expired closed range</li>
+</ul>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../authentication/">Authentication</a> · <a href="../../web-security/">Web Security</a> · <a href="../../getting-started/#configuration-secrets">Getting Started → secrets</a></li>
+<li><strong><a href="../agent-audit-canonicalization-v1/">Canonicalization Specification v1</a></strong> — the normative wire format:
+  field order, byte encodings, the hash chain, the tombstone exception, and the verification algorithm.
+  Enough to write an <strong>independent verifier</strong> in any language, with frozen
+  <a href="../agent-audit-golden-vectors-v1.json">golden vectors</a> to check it against. Read it if you need to prove the
+  ledger's integrity without trusting our tooling.</li>
+<li><a href="../audit-logging/">Audit Logging</a> · <a href="../authorization/">Authorization</a> · <a href="../observability/">Observability</a></li>
 </ul>
 
 

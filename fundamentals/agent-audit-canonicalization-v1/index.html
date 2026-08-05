@@ -1,0 +1,2468 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A security-first, offline application framework for .NET 10 + Blazor — multi-tenant, multi-database, two-tier RBAC.">
+      
+      
+      
+        <link rel="canonical" href="https://docs.asdamir.com/fundamentals/agent-audit-canonicalization-v1/">
+      
+      
+        <link rel="prev" href="../agent-audit/">
+      
+      
+        <link rel="next" href="../encryption/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Agent Audit — Canonicalization v1 - Asdamir Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#agent-action-ledger-canonicalization-specification-v1" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="https://asdamir.com" title="Asdamir Docs" class="md-header__button md-logo" aria-label="Asdamir Docs" data-md-component="logo">
+      
+  <img src="../../assets/favicon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Asdamir Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Agent Audit — Canonicalization v1
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="teal"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/asdamir-framework/asdamir" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    asdamir-framework/asdamir
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://asdamir.com" class="md-tabs__link">
+        
+  
+  
+    
+  
+  ← asdamir.com
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../getting-started/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Getting Started
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../ARCHITECTURE/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Architecture
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../modules/" class="md-tabs__link">
+          
+  
+  
+  Fundamentals
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../web-security/" class="md-tabs__link">
+          
+  
+  
+  Web & UI
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../cli/" class="md-tabs__link">
+          
+  
+  
+  Tooling & Operations
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../demo/customer-order-management/" class="md-tabs__link">
+          
+  
+  
+  Demo
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="https://asdamir.com" title="Asdamir Docs" class="md-nav__button md-logo" aria-label="Asdamir Docs" data-md-component="logo">
+      
+  <img src="../../assets/favicon.svg" alt="logo">
+
+    </a>
+    Asdamir Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/asdamir-framework/asdamir" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    asdamir-framework/asdamir
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://asdamir.com" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ← asdamir.com
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ARCHITECTURE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Fundamentals
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../modules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authentication/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../authorization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authorization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../multi-tenancy/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multi-Tenancy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../error-handling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Error Handling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../data-access/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Data Access
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuration & Feature Flags
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../background-jobs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background Jobs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../background-runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background Runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../outbox/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transactional Outbox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../localization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Localization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../audit-logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Audit Logging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit — Canonicalization v1
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit — Canonicalization v1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The chain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-canonical-prefix-field-order-frozen-for-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Canonical prefix — field order (FROZEN for v1)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-encoding-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Encoding rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Encoding rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-length-prefix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Length prefix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-unprefixed-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Unprefixed fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-guids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 GUIDs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-timestamps-in-the-prefix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Timestamps in the prefix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-nullable-32-bit-integer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Nullable 32-bit integer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-digests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Digests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-recordedatticks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. RecordedAtTicks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-what-the-hash-does-not-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. What the hash does NOT cover
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-structural-constraints-free-text-never-enters-the-hashed-body" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Structural constraints — free text never enters the hashed body
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-fold-tombstones-the-one-exception-to-the-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Fold tombstones — the one exception to the invariant
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-verification-the-algorithm-and-the-limits-of-each-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Verification — the algorithm, and the limits of each layer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Verification — the algorithm, and the limits of each layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-why-a-database-only-check-is-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Why a database-only check is partial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-the-verdict-is-three-valued" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 The verdict is three-valued
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-golden-vectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Golden vectors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-assurance-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Assurance statement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../encryption/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Encryption
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../billing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Billing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web & UI
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Web & UI
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../web-security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Security
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ui-components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tooling & Operations
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tooling & Operations
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI (asdamir)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../secret-rotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Secret Management & Rotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../mobile/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mobile App (MAUI)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_8" id="__nav_8_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Demo
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Demo
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../demo/customer-order-management/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Customer / Order Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-chain" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The chain
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-canonical-prefix-field-order-frozen-for-v1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Canonical prefix — field order (FROZEN for v1)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-encoding-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Encoding rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Encoding rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-length-prefix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Length prefix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-unprefixed-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Unprefixed fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-guids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 GUIDs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-timestamps-in-the-prefix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Timestamps in the prefix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-nullable-32-bit-integer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Nullable 32-bit integer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-digests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Digests
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-recordedatticks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. RecordedAtTicks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-what-the-hash-does-not-cover" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. What the hash does NOT cover
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-structural-constraints-free-text-never-enters-the-hashed-body" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Structural constraints — free text never enters the hashed body
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-fold-tombstones-the-one-exception-to-the-invariant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Fold tombstones — the one exception to the invariant
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-verification-the-algorithm-and-the-limits-of-each-layer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Verification — the algorithm, and the limits of each layer
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Verification — the algorithm, and the limits of each layer">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#81-why-a-database-only-check-is-partial" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.1 Why a database-only check is partial
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#82-the-verdict-is-three-valued" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8.2 The verdict is three-valued
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-golden-vectors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Golden vectors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-assurance-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Assurance statement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="agent-action-ledger-canonicalization-specification-v1">Agent Action Ledger — Canonicalization Specification v1<a class="headerlink" href="#agent-action-ledger-canonicalization-specification-v1" title="Permanent link">&para;</a></h1>
+<p><strong>Status: NORMATIVE · Version: 1 (<code>HashVersion = 1</code>) · FROZEN.</strong></p>
+<p>This document specifies, completely and without reference to any Asdamir source code, how a record in the
+agent action ledger is serialized into bytes and chained by hash. It exists so that <strong>anyone can write an
+independent verifier</strong> — in any language, offline, with no Asdamir library, no AppManagement instance and no
+database — and reach the same verdict as the vendor's own tooling.</p>
+<p>That independence is the point. <strong>If the only thing that can verify the ledger is the closed component being
+audited, the assurance collapses to "trust the vendor": a system's own clean report about itself is not audit
+evidence.</strong> This specification, plus the <a href="../agent-audit-golden-vectors-v1.json">golden vectors</a>, is what makes
+the guarantee checkable by someone who does not trust us.</p>
+<p>The key words <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>SHOULD</strong> and <strong>MAY</strong> are to be interpreted as in RFC 2119.</p>
+<p>For the concepts — what the ledger is for, what the guarantee is and is not, how retention works — see
+<a href="../agent-audit/">Agent Audit</a>. This page is the wire format only.</p>
+<hr />
+<h2 id="1-the-chain">1. The chain<a class="headerlink" href="#1-the-chain" title="Permanent link">&para;</a></h2>
+<p>A ledger is partitioned into independent chains, one per <strong>scope</strong> — the pair <code>(AppId, TenantId)</code>. Records
+within a scope carry a gapless <code>SeqNo</code> starting at 1. Each record binds itself to its predecessor:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>RowHash = SHA-256( PrevHash ‖ CanonicalPrefix ‖ SeqNo ‖ RecordedAtTicks )
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Part</th>
+<th>Bytes</th>
+<th>Produced by</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PrevHash</code></td>
+<td>32, raw</td>
+<td>the previous record's <code>RowHash</code>; <strong>32 zero bytes (<code>0x00 × 32</code>)</strong> for <code>SeqNo = 1</code></td>
+</tr>
+<tr>
+<td><code>CanonicalPrefix</code></td>
+<td>variable</td>
+<td>the client (§2, §3)</td>
+</tr>
+<tr>
+<td><code>SeqNo</code></td>
+<td>8, <strong>big-endian</strong> signed</td>
+<td>the server, under the chain lock</td>
+</tr>
+<tr>
+<td><code>RecordedAtTicks</code></td>
+<td>8, <strong>big-endian</strong> signed</td>
+<td>the server, under the chain lock (§4)</td>
+</tr>
+</tbody>
+</table>
+<p><code>‖</code> is plain concatenation: <strong>no separators, no padding, no length field around the whole</strong>.</p>
+<p>The split is deliberate. Everything a client can know is canonicalized by the client, which makes the encoding
+testable in isolation; the two fields only the server can assign — the sequence number and the authoritative
+receipt time — are appended inside the same transaction that holds the per-scope lock, so two concurrent
+writers cannot be assigned the same <code>SeqNo</code> or race the chain head.</p>
+<h2 id="2-canonical-prefix-field-order-frozen-for-v1">2. Canonical prefix — field order (FROZEN for v1)<a class="headerlink" href="#2-canonical-prefix-field-order-frozen-for-v1" title="Permanent link">&para;</a></h2>
+<p>Exactly these 23 fields, in exactly this order. A verifier MUST reject any other order.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;">#</th>
+<th>Field</th>
+<th>Encoding</th>
+<th style="text-align: center;">Nullable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">1</td>
+<td><code>HashVersion</code></td>
+<td>1 byte, <strong>unprefixed</strong></td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td><code>AppId</code></td>
+<td>16 bytes, <strong>unprefixed</strong>, RFC 4122 <strong>big-endian</strong></td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">3</td>
+<td><code>TenantId</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">4</td>
+<td><code>RecordKind</code></td>
+<td>1 byte, unprefixed (0 = Event, 1 = Seal, 2 = FoldTombstone)</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">5</td>
+<td><code>EventId</code></td>
+<td>16 bytes, unprefixed, RFC 4122 <strong>big-endian</strong></td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">6</td>
+<td><code>OccurredAtUtc</code></td>
+<td>length-prefixed UTF-8 of the round-trip form (§3.4)</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">7</td>
+<td><code>AgentId</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">8</td>
+<td><code>AgentVersion</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">9</td>
+<td><code>ModelId</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">10</td>
+<td><code>AuthorityKind</code></td>
+<td>1 byte, unprefixed (0 = Delegated, 1 = Autonomous, 2 = Scheduled)</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">11</td>
+<td><code>OnBehalfOfUserId</code></td>
+<td>nullable int32 (§3.5)</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">12</td>
+<td><code>SessionId</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">13</td>
+<td><code>InvocationId</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">14</td>
+<td><code>CorrelationId</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">15</td>
+<td><code>ActionType</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">16</td>
+<td><code>TargetType</code></td>
+<td>length-prefixed UTF-8</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">17</td>
+<td><code>TargetId</code></td>
+<td>length-prefixed UTF-8 — structurally constrained (§6)</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">18</td>
+<td><code>Decision</code></td>
+<td>1 byte, unprefixed (0 = Allowed, 1 = Denied, 2 = RequiresApproval)</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">19</td>
+<td><code>Outcome</code></td>
+<td>1 byte, unprefixed (0 = Success, 1 = Failure, 2 = Partial)</td>
+<td style="text-align: center;">no</td>
+</tr>
+<tr>
+<td style="text-align: right;">20</td>
+<td><code>InputDigest</code></td>
+<td>length-prefixed raw bytes (32, or NULL)</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">21</td>
+<td><code>OutputDigest</code></td>
+<td>length-prefixed raw bytes (32, or NULL)</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">22</td>
+<td><code>ErrorCode</code></td>
+<td>length-prefixed UTF-8 — structurally constrained (§6)</td>
+<td style="text-align: center;">yes</td>
+</tr>
+<tr>
+<td style="text-align: right;">23</td>
+<td><code>ErrorDigest</code></td>
+<td>length-prefixed raw bytes (32, or NULL)</td>
+<td style="text-align: center;">yes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-encoding-rules">3. Encoding rules<a class="headerlink" href="#3-encoding-rules" title="Permanent link">&para;</a></h2>
+<h3 id="31-length-prefix">3.1 Length prefix<a class="headerlink" href="#31-length-prefix" title="Permanent link">&para;</a></h3>
+<p>Every "length-prefixed" field is written as a <strong>4-byte little-endian signed integer</strong> giving the number of
+<strong>bytes</strong> that follow, then those bytes.</p>
+<ul>
+<li><code>NULL</code> → prefix <strong><code>-1</code></strong> (<code>FF FF FF FF</code>), no bytes follow.</li>
+<li>Empty string → prefix <strong><code>0</code></strong>, no bytes follow.</li>
+</ul>
+<p><code>NULL</code> and <code>""</code> therefore hash <strong>differently</strong>. A verifier MUST preserve that distinction; conflating them is
+the most common implementation error, which is why the golden vectors pin both cases separately.</p>
+<h3 id="32-unprefixed-fields">3.2 Unprefixed fields<a class="headerlink" href="#32-unprefixed-fields" title="Permanent link">&para;</a></h3>
+<p><code>HashVersion</code>, <code>RecordKind</code>, <code>AuthorityKind</code>, <code>Decision</code> and <code>Outcome</code> are single bytes with <strong>no length
+prefix</strong>. <code>AppId</code> and <code>EventId</code> are 16 raw bytes with <strong>no length prefix</strong>.</p>
+<h3 id="33-guids">3.3 GUIDs<a class="headerlink" href="#33-guids" title="Permanent link">&para;</a></h3>
+<p>GUIDs are encoded in <strong>RFC 4122 byte order (big-endian)</strong> — the order in which the textual form reads. In
+.NET this is <code>Guid.ToByteArray(bigEndian: true)</code>; the default <code>Guid.ToByteArray()</code> is <strong>mixed-endian</strong> and
+produces a different, non-conforming prefix.</p>
+<h3 id="34-timestamps-in-the-prefix">3.4 Timestamps in the prefix<a class="headerlink" href="#34-timestamps-in-the-prefix" title="Permanent link">&para;</a></h3>
+<p><code>OccurredAtUtc</code> is the UTF-8 text of the ISO-8601 round-trip form with <strong>exactly 7 fractional digits</strong> and a
+<code>Z</code> suffix, e.g. <code>2026-07-30T12:34:56.1234567Z</code> (.NET: <code>ToString("O")</code> on a <code>DateTimeKind.Utc</code> value). It is
+client-asserted information; the authoritative time is <code>RecordedAtUtc</code> (§4).</p>
+<h3 id="35-nullable-32-bit-integer">3.5 Nullable 32-bit integer<a class="headerlink" href="#35-nullable-32-bit-integer" title="Permanent link">&para;</a></h3>
+<p><code>OnBehalfOfUserId</code> is written as a length-prefixed value: <code>NULL</code> → prefix <code>-1</code>; otherwise prefix <code>4</code> followed
+by the value as <strong>4 bytes big-endian, two's complement</strong> (so negative values are well defined — see the
+<code>negative_user_id</code> vector).</p>
+<h3 id="36-digests">3.6 Digests<a class="headerlink" href="#36-digests" title="Permanent link">&para;</a></h3>
+<p><code>InputDigest</code>, <code>OutputDigest</code> and <code>ErrorDigest</code> are length-prefixed <strong>raw bytes</strong>, never hex text: prefix <code>32</code>
+plus the 32 bytes, or prefix <code>-1</code> when absent. A digest of any other length MUST be rejected at write time.</p>
+<h2 id="4-recordedatticks">4. <code>RecordedAtTicks</code><a class="headerlink" href="#4-recordedatticks" title="Permanent link">&para;</a></h2>
+<p><code>RecordedAtTicks</code> is the number of <strong>100-nanosecond ticks since <code>1970-01-01T00:00:00Z</code></strong> — a documented
+integer, never a cast of a database timestamp type (whose on-disk representation is an implementation detail
+and MUST NOT be relied on).</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>-- T-SQL
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>DATEDIFF_BIG(SECOND, &#39;1970-01-01T00:00:00&#39;, RecordedAtUtc) * 10000000
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  + DATEPART(NANOSECOND, RecordedAtUtc) / 100
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>// .NET
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>recordedAtUtc.Ticks - DateTime.UnixEpoch.Ticks
+</code></pre></div>
+<p>Both forms yield <code>17854148961234567</code> for <code>2026-07-30T12:34:56.1234567Z</code>. (<code>DATEDIFF_BIG(NANOSECOND,
+'0001-01-01', …)</code> overflows a 64-bit integer and MUST NOT be used; the second + nanosecond form above is
+overflow-safe well past the year 29000.)</p>
+<h2 id="5-what-the-hash-does-not-cover">5. What the hash does NOT cover<a class="headerlink" href="#5-what-the-hash-does-not-cover" title="Permanent link">&para;</a></h2>
+<p>The canonical body is immutable by construction, so anything inside it can never be redacted. These columns
+are therefore stored <strong>outside</strong> the hash and are <strong>not</strong> protected by the chain:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Why it is outside</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ErrorMessage</code></td>
+<td>free-text error prose — must stay redactable (§6)</td>
+</tr>
+<tr>
+<td><code>OnBehalfOfUserName</code></td>
+<td>a display name; the <em>identity</em> is bound via <code>OnBehalfOfUserId</code> (field 11)</td>
+</tr>
+<tr>
+<td><code>FoldSeqStart</code>, <code>FoldSeqEnd</code>, <code>FoldRowCount</code>, <code>FoldSegmentDigest</code>, <code>FoldArchiveRef</code></td>
+<td>fold bookkeeping (§7) — an archive must remain relocatable</td>
+</tr>
+<tr>
+<td><code>SignatureAlgo</code>, <code>Signature</code></td>
+<td>reserved for a future version; <strong>always NULL in v1</strong></td>
+</tr>
+</tbody>
+</table>
+<p>State this plainly to anyone relying on the ledger: editing one of these columns <strong>will not</strong> break the chain.
+They are protected by the database's immutability controls, not by cryptography.</p>
+<h2 id="6-structural-constraints-free-text-never-enters-the-hashed-body">6. Structural constraints — free text never enters the hashed body<a class="headerlink" href="#6-structural-constraints-free-text-never-enters-the-hashed-body" title="Permanent link">&para;</a></h2>
+<p>Two fields inside the hash are constrained to structural values, enforced <strong>at write time</strong>:</p>
+<ul>
+<li><strong><code>TargetId</code></strong> — length ≤ 128, characters from <code>[0-9 A-Z a-z . _ : / -]</code> only. It MUST be an <strong>opaque or
+  surrogate identifier</strong>, never a natural key.</li>
+<li><strong><code>ErrorCode</code></strong> — length ≤ 64, characters from <code>[0-9 A-Z a-z . _ -]</code> only. A machine-readable code such as
+  <code>orders.insufficient_stock</code>; the readable text goes to <code>ErrorMessage</code>, bound to the chain only by
+  <code>ErrorDigest</code>.</li>
+</ul>
+<p>The character-set comparison MUST be <strong>ordinal/binary</strong> (SQL Server: <code>Latin1_General_BIN2</code>). Under a
+case-insensitive accent-insensitive collation an <code>A-Z</code> range also matches accented and dotted letters — for
+example the Turkish <code>İ</code> and <code>ş</code> — which silently voids the constraint.</p>
+<p><strong>What this does and does not achieve, stated honestly:</strong> the constraint makes it impossible to store a
+sentence, an e-mail address or a stack trace in these fields. It does <strong>not</strong> detect personal data — a
+national id number or a phone number passes the character set. Choosing a surrogate identifier remains the
+caller's responsibility. The constraint removes easy accidents, not the risk.</p>
+<h2 id="7-fold-tombstones-the-one-exception-to-the-invariant">7. Fold tombstones — the one exception to the invariant<a class="headerlink" href="#7-fold-tombstones-the-one-exception-to-the-invariant" title="Permanent link">&para;</a></h2>
+<p>Retention is implemented by <strong>folding</strong>, not deleting: a closed range <code>[a..b]</code> is exported to an archive and
+replaced by a single tombstone record (<code>RecordKind = 2</code>) that carries <code>PrevHash(a)</code> and <code>RowHash(b)</code>
+<strong>verbatim</strong>, so the record at <code>b+1</code> still links correctly and the chain verifies end to end.</p>
+<p>Consequently:</p>
+<blockquote>
+<p>The invariant <code>RowHash = SHA-256(PrevHash ‖ prefix ‖ SeqNo ‖ ticks)</code> holds <strong>only for <code>RecordKind ∈ {0, 1}</code></strong>.</p>
+</blockquote>
+<p>A conforming verifier MUST special-case <code>RecordKind = 2</code>: do not recompute its <code>RowHash</code>; treat the folded
+range as <strong>verifiable against the archive, not against the database</strong>, and report it as such. A verifier that
+reports a folded chain as fully "valid" from the database alone is <strong>wrong</strong> — see §8.</p>
+<p>Each fold also writes an ordinary Event record (<code>ActionType = agentaudit.fold</code>) whose hashed body carries the
+folded range and the segment digest, so a tombstone has an accounting entry inside the chain. A tombstone with
+no such entry MUST be reported (it is the <code>Degraded</code> case below). A range containing a fold accounting record
+cannot itself be folded.</p>
+<h2 id="8-verification-the-algorithm-and-the-limits-of-each-layer">8. Verification — the algorithm, and the limits of each layer<a class="headerlink" href="#8-verification-the-algorithm-and-the-limits-of-each-layer" title="Permanent link">&para;</a></h2>
+<p>A conforming verifier, given the records of one scope, MUST check:</p>
+<ol>
+<li><strong>Sequence continuity</strong> — <code>SeqNo</code> increases by exactly 1, with no gaps (a fold tombstone accounts for its
+   whole <code>[FoldSeqStart..FoldSeqEnd]</code> range).</li>
+<li><strong>Linkage</strong> — every record's <code>PrevHash</code> equals the previous record's <code>RowHash</code>; the first record's
+   <code>PrevHash</code> is 32 zero bytes.</li>
+<li><strong>Re-derivation</strong> — for <code>RecordKind ∈ {0, 1}</code>, re-canonicalize the record <strong>from its columns</strong> per §2–§4 and
+   recompute <code>RowHash</code>. Comparing against a stored copy of the prefix is <strong>not</strong> re-derivation (§8.1).</li>
+<li><strong>Head</strong> — the last record's <code>RowHash</code> equals the chain head.</li>
+<li><strong>Tombstone accounting</strong> — every tombstone has a matching fold accounting record.</li>
+</ol>
+<h3 id="81-why-a-database-only-check-is-partial">8.1 Why a database-only check is partial<a class="headerlink" href="#81-why-a-database-only-check-is-partial" title="Permanent link">&para;</a></h3>
+<p>An in-database verifier can rehash a <strong>stored</strong> canonical prefix, but it cannot rebuild that prefix from the
+columns. Therefore a database-only check <strong>cannot detect an edit to a projection column</strong> (<code>AgentId</code>,
+<code>ActionType</code>, <code>TargetId</code>, …) that leaves the stored prefix and <code>RowHash</code> untouched. Only re-derivation from
+the columns catches it. Any implementation MUST NOT present a database-only result as proof of integrity.</p>
+<h3 id="82-the-verdict-is-three-valued">8.2 The verdict is three-valued<a class="headerlink" href="#82-the-verdict-is-three-valued" title="Permanent link">&para;</a></h3>
+<p>A boolean verdict is not sufficient, because "the links are intact" and "the history is provable" are
+different claims.</p>
+<table>
+<thead>
+<tr>
+<th>Verdict</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Broken</code></td>
+<td>a hash mismatch, a link break, a gap, or a head mismatch — report the exact <code>SeqNo</code> and which check failed</td>
+</tr>
+<tr>
+<td><code>Degraded</code></td>
+<td>the links verify, but the database alone cannot prove the whole history: a folded range (verifiable only against its archive) or a tombstone with no accounting record</td>
+</tr>
+<tr>
+<td><code>Valid</code></td>
+<td>every check above passes in full</td>
+</tr>
+</tbody>
+</table>
+<p><code>Degraded</code> <strong>MUST NOT</strong> be rendered as success (no green, no check mark). Only <code>Valid</code> may be presented as
+good.</p>
+<h2 id="9-golden-vectors">9. Golden vectors<a class="headerlink" href="#9-golden-vectors" title="Permanent link">&para;</a></h2>
+<p><a href="../agent-audit-golden-vectors-v1.json"><code>agent-audit-golden-vectors-v1.json</code></a> contains frozen test vectors for
+this specification: for each case, the full <code>CanonicalPrefix</code> in hex, its length, and the resulting <code>RowHash</code>
+for a fixed <code>PrevHash</code>, <code>SeqNo = 4242</code> and <code>RecordedAtTicks = 17854148961234567</code>.</p>
+<p>The cases deliberately cover the encoding's failure modes: all-nulls versus all-empty-strings (§3.1),
+Turkish multi-byte text, every field at its maximum length, a negative <code>OnBehalfOfUserId</code> (§3.5), maximum enum
+values, and a <code>HashVersion = 2</code> prefix proving the version byte changes the hash.</p>
+<p>An independent implementation is conforming when it reproduces every <code>prefixHex</code> and every <code>rowHashHex</code>
+byte-for-byte.</p>
+<p><strong>This file is the only copy.</strong> The vectors published here are not a snapshot of some internal fixture — the
+reference implementation's own test suite asserts against <em>this</em> file, so the bytes you verify against are
+byte-for-byte the bytes the implementation is proven correct against. That is deliberate: a private duplicate
+could drift, and a drifted duplicate would leave this specification quietly lying while every internal test
+stayed green — at which point your verifier would disagree with a chain that is in fact intact, and you would
+have no way to tell which side was wrong.</p>
+<blockquote>
+<p><strong>Editing an existing v1 expectation is a bug, not a fix.</strong> If your implementation disagrees with a vector,
+your implementation is wrong — or the format changed, in which case it is a new <code>HashVersion</code> (§10), not an
+edit to v1.</p>
+</blockquote>
+<h2 id="10-versioning">10. Versioning<a class="headerlink" href="#10-versioning" title="Permanent link">&para;</a></h2>
+<p><code>HashVersion</code> is field 1 <strong>and is inside the hash</strong>, so a version change necessarily changes every resulting
+<code>RowHash</code> — a v2 record can never be mistaken for a v1 record.</p>
+<ul>
+<li><strong>v1 is frozen.</strong> Its field order, encodings and vectors do not change, ever. Records already written under
+  v1 must remain verifiable forever.</li>
+<li>A new version MUST be introduced as <code>HashVersion = 2</code> with its own specification page and its own golden
+  vectors, and verifiers MUST dispatch on the stored <code>HashVersion</code> rather than assuming the newest.</li>
+</ul>
+<h2 id="11-assurance-statement">11. Assurance statement<a class="headerlink" href="#11-assurance-statement" title="Permanent link">&para;</a></h2>
+<p>Read this before quoting the ledger in a compliance context.</p>
+<ul>
+<li>What this specification gives you: <strong>a tamper-evident record</strong> — any modification to a hashed field, any
+  deleted row, and any reordering is detectable, and the detection is reproducible by a third party.</li>
+<li>What it does <strong>not</strong> give you: <strong>it is not proof that a particular agent produced the record.</strong> <code>AgentId</code>,
+  <code>ModelId</code> and <code>OnBehalfOfUserId</code> are the <strong>application's assertion</strong>, recorded immutably. There is no
+  per-agent key and no signature in v1 (<code>SignatureAlgo</code>/<code>Signature</code> are reserved and always NULL).</li>
+</ul>
+<p>So the honest formulation is: <em>application assertion, recorded in a tamper-evident chain</em> — <strong>not</strong> <em>"the
+agent cryptographically proved its own identity"</em>. Do not describe it more strongly than that.</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../agent-audit/">Agent Audit</a> — concepts, recording actions, retention, permissions, delivery guarantees.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      © Asdamir · <a href="https://asdamir.com">asdamir.com</a> · open core LGPL-3.0
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.instant", "navigation.tracking", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
