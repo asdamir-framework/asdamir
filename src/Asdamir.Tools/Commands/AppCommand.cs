@@ -125,17 +125,21 @@ public static class AppCommand
         string ConnString, string GatewayUrl, string AdminEmail, string AdminPassword, bool Yes,
         string Mode, bool Billing, bool NoSecrets, bool NoDb);
 
-    // Published Asdamir.* pins the generated app gets by default (restored from nuget.org). Bump these
-    // ATOMICALLY WITH THE NUGET PUBLISH — never with the csproj <Version>. A pin ahead of nuget.org makes
-    // every fresh `asdamir new app` unrestorable (NU1102/NU1109), which is why Core/Data sit at the
-    // PUBLISHED 1.6.0/1.4.0 while their csproj already says 1.7.0/1.5.0: TemplatePinFreshnessTests is
-    // RED BY DESIGN in that window (same signal as the Web 2.1.0 release), and it turns green when the
-    // packages actually ship. --framework-version overrides ALL of them with one value (used with
-    // --local-feed to build against a pre-release pack).
-    private const string PublishedCoreVersion = "1.6.0";
-    private const string PublishedDataVersion = "1.4.0";
-    private const string PublishedWebVersion = "2.1.0";
-    private const string PublishedPaymentsVersion = "1.2.0";
+    // Published Asdamir.* pins the generated app gets by default (restored from nuget.org).
+    //
+    // THERE ARE NO VERSION LITERALS HERE ANY MORE — deliberately. They are read from the ONE manifest,
+    // src/Asdamir.Tools/published-versions.json, via PublishedVersions, and a test asserts this file stays
+    // literal-free. Four hand-written copies of "what is published" (these constants, docs/cli.md,
+    // CHANGELOG.md, and the public repo's copies) all went stale together when Core 1.7.0 / Data 1.5.0
+    // shipped; one physical source makes that a single edit.
+    //
+    // Bump the MANIFEST at the moment of `dotnet nuget push` — never at the csproj <Version> bump. A csproj
+    // version ahead of the manifest is the normal pre-publish state; a manifest ahead of nuget.org makes
+    // every fresh `asdamir new app` unrestorable (NU1102/NU1109). Both directions are gated by
+    // PublishedVersionsGateTests (Category=PublishedVersions).
+    //
+    // --framework-version overrides ALL of them with one value (used with --local-feed to build against a
+    // pre-release pack).
 
     private static async Task Run(RawInputs raw)
     {
@@ -285,10 +289,10 @@ public static class AppCommand
             HasLocalFeed = !string.IsNullOrWhiteSpace(raw.LocalFeed),
             // Asdamir.* pins. --framework-version overrides all four with one value (smoke uses this to pin the
             // locally-packed pre-release); otherwise each defaults to its published baseline.
-            CoreVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedCoreVersion : raw.FrameworkVersion,
-            DataVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedDataVersion : raw.FrameworkVersion,
-            WebVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedWebVersion : raw.FrameworkVersion,
-            PaymentsVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedPaymentsVersion : raw.FrameworkVersion,
+            CoreVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedVersions.Core : raw.FrameworkVersion,
+            DataVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedVersions.Data : raw.FrameworkVersion,
+            WebVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedVersions.Web : raw.FrameworkVersion,
+            PaymentsVersion = string.IsNullOrWhiteSpace(raw.FrameworkVersion) ? PublishedVersions.Payments : raw.FrameworkVersion,
             DatabaseName = database,
             ConnectionStringForAppsettings = connForAppsettings,
             GatewayBaseUrl = gatewayUrl,

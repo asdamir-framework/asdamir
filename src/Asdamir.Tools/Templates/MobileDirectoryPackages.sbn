@@ -47,7 +47,7 @@
   <ItemGroup Label="Asdamir (NuGet feed)">
     <!-- Mobile shares the framework's models/contracts via Asdamir.Core (Contracts is a namespace
          inside it, not a separate package). -->
-    <PackageVersion Include="Asdamir.Core" Version="1.5.0" />
+    <PackageVersion Include="Asdamir.Core" Version="{{ CoreVersion }}" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

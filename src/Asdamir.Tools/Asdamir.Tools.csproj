@@ -84,6 +84,11 @@
     <EmbeddedResource Include="Templates\**\*.sbn" />
     <!-- Static SQL assets (e.g. the managed-app DB schema) copied verbatim — no templating. -->
     <EmbeddedResource Include="Templates\**\*.sql" />
+    <!-- The SINGLE SOURCE for "which Asdamir version is published on nuget.org". The generated-app pins in
+         AppCommand read it through PublishedVersions; docs/cli.md + CHANGELOG.md carry GENERATED regions
+         derived from it (packaging/sync-published-versions.sh). Removing this line breaks the pins at
+         runtime — PublishedVersions.Load() fails loudly rather than falling back to a stale literal. -->
+    <EmbeddedResource Include="published-versions.json" />
   </ItemGroup>
 
 

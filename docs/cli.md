@@ -15,9 +15,19 @@ dotnet tool install -g Asdamir.Tools
 #   update later:  dotnet tool update -g Asdamir.Tools
 ```
 
-`Asdamir.Tools` is published on **nuget.org** (currently `1.4.5`). Generated apps restore the framework
-**libraries** — `Asdamir.Core` (`1.6.0`) · `.Data` (`1.4.0`) · `.Web` (`2.1.0`) · `.Payments` (`1.2.0`) — from
-nuget.org as well.
+<!-- published-versions:begin — GENERATED from src/Asdamir.Tools/published-versions.json by
+     packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
+| Package | Published on nuget.org | Next (in this repo) |
+| --- | --- | --- |
+| `Asdamir.Core` | `1.7.0` | — |
+| `Asdamir.Data` | `1.5.0` | — |
+| `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
+| `Asdamir.Tools` | `1.4.6` | — |
+| `Asdamir.Web` | `2.1.0` | — |
+
+*A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
+not pushed yet. The published column is what a fresh `asdamir new app` pins.*
+<!-- published-versions:end -->
 
 ## Quick start
 

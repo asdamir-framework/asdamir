@@ -1,0 +1,32 @@
+{
+  "note": [
+    "THE SINGLE SOURCE OF TRUTH for 'which Asdamir version is currently PUBLISHED on nuget.org'.",
+    "",
+    "This file records what IS published — never what is about to be. A csproj <Version> ahead of the",
+    "number here is the NORMAL pre-publish state (the next release is built but not pushed yet); a number",
+    "here ahead of nuget.org is a DEFECT (generated apps would pin a version that does not exist).",
+    "",
+    "Everything else derives from this file — do not hand-edit the derived sites:",
+    "  * src/Asdamir.Tools/Commands/AppCommand.cs  — the generated-app pins read PublishedVersions.* (compile",
+    "    time; there are no version literals left in AppCommand.cs, and a test asserts that).",
+    "  * docs/cli.md          — the <!-- published-versions:begin/end --> region is GENERATED.",
+    "  * CHANGELOG.md         — the <!-- published-versions:begin/end --> region is GENERATED.",
+    "  Regenerate both with:  packaging/sync-published-versions.sh",
+    "",
+    "BUMP THIS FILE AT THE MOMENT OF `dotnet nuget push`, not at the csproj bump. PublishedVersionsGateTests",
+    "compares it to nuget.org in BOTH directions (Category=PublishedVersions), so a publish that forgets this",
+    "file goes red as 'PIN BEHIND NUGET' — the direction nothing used to watch, and the one that let Core",
+    "1.7.0 / Data 1.5.0 ship while `asdamir new app` kept pinning 1.6.0 / 1.4.0 for days.",
+    "",
+    "Location rationale: it lives inside src/Asdamir.Tools/ (not packaging/) because packaging/ is NOT synced",
+    "to the public repo, so a manifest there could not be the compile-time source for the pins in the public",
+    "clone — it would need a second copy, which is the duplication this file exists to remove."
+  ],
+  "packages": {
+    "Asdamir.Core": "1.7.0",
+    "Asdamir.Data": "1.5.0",
+    "Asdamir.Web": "2.1.0",
+    "Asdamir.Payments": "1.2.0",
+    "Asdamir.Tools": "1.4.6"
+  }
+}

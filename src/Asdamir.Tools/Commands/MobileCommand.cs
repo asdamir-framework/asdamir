@@ -112,6 +112,11 @@ public static class MobileCommand
             GeneratedAtUtc = now.ToString("u"),
             LocalFeedPath = string.IsNullOrWhiteSpace(localFeed) ? "" : localFeed.Replace('\\', '/'),
             HasLocalFeed = !string.IsNullOrWhiteSpace(localFeed),
+            // The Asdamir.Core pin for a generated mobile app. It used to be a LITERAL inside
+            // MobileDirectoryPackages.sbn (frozen at 1.5.0 while 1.7.0 shipped) — a fifth hand-written copy of
+            // "what is published", invisible to every gate because it was neither a constant nor a doc. It now
+            // comes from the one manifest, exactly like the web app's pins.
+            CoreVersion = PublishedVersions.Core,
         };
 
         var outputs = new[]

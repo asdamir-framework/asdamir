@@ -5,12 +5,12 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.6.0`** · **Data `1.4.0`** · **Web `2.1.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.5`** (Web `2.1.0`: the FluentUI-**isolation facades, batch 2** — 11 more components (`AsdamirSelect`/`Stack`/`TextArea`/`Switch`/`Checkbox`/`DatePicker`/`RadioGroup`+`Radio`/`MessageBar`/`Label`/`Spacer`/`Anchor`) so caller-side raw `<Fluent*>` component usage is now 0. Web `2.0.2`: additive `Required`+`Class` on the input components. Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the entries below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.7.0`** · **Data `1.5.0`** · **Web `2.1.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.6`** (Web `2.1.0`: the FluentUI-**isolation facades, batch 2** — 11 more components (`AsdamirSelect`/`Stack`/`TextArea`/`Switch`/`Checkbox`/`DatePicker`/`RadioGroup`+`Radio`/`MessageBar`/`Label`/`Spacer`/`Anchor`) so caller-side raw `<Fluent*>` component usage is now 0. Web `2.0.2`: additive `Required`+`Class` on the input components. Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the entries below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Core 1.7.0 · Data 1.5.0] — 2026-08-02 — *pending publish*
+## [Core 1.7.0 · Data 1.5.0] — 2026-08-02
 
 ### Added — agent-audit primitives: recording what an AI agent did, in a checkable form
 
@@ -47,7 +47,7 @@ or inserting a row breaks the chain from that point on and verification reports 
 - The ledger itself, its verification/fold procedures and the operator screen are part of the **commercial
   control plane**, not of the open core; the open core is the contract, the client sink and the published spec.
 
-## [Tools 1.4.6] — 2026-08-01 — *pending publish*
+## [Tools 1.4.6] — 2026-08-01
 
 ### Fixed — three ways a gate could be GREEN while the thing it guards was broken
 
@@ -208,7 +208,7 @@ local file log and nothing central, so every Gateway `500` was invisible in cent
   only Console + File are wired.
 - New public API: `Asdamir.Core.ErrorHandling.Logging.AppLogServiceToken` (**Core `1.6.0`**);
   `Asdamir.Data.Logging.AppLogForwardSink` + `AppLogForwardOptions` (**Data `1.4.0`**);
-  `GatewayProgram.sbn` emits the 3-sink wiring (**Tools `1.4.5`**). `SerilogBootstrap.UseWithDatabase` is now
+  `GatewayProgram.sbn` emits the 3-sink wiring (**Tools `1.4.6`**). `SerilogBootstrap.UseWithDatabase` is now
   `[Obsolete]` (direct-DB sink — use the forward sink in a generated app).
 
 **Existing generated apps:** an app from an earlier CLI has no Serilog — add the 3-sink
