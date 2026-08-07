@@ -392,7 +392,7 @@ dotnet run --project src/Asdamir.Tools -- audit localization --path . --format j
   comment is never counted. Before `1.4.6` the gate matched the tuple form **only**, so every key seeded
   exclusively through an upsert proc was wrongly reported as "never seeded": **276 keys across 20
   AsdamirVault migrations** — the whole billing surface, the audit action labels, the agent-audit ledger.
-  Write **new** seeds in the canonical form only — see [`audit seeds`](#audit-seeds--the-seed-form-gates-aud018--aud017).
+  Write **new** seeds in the canonical form only — see [`audit seeds`](#audit-seeds-the-seed-form-gates-aud018-aud017).
 
 **Seed auto-discovery (since Tools `1.4.2`).** A Model-A (central-model) app keeps its central seeds under
 `db/admin-onboarding/*.sql` at the **repo root** — *outside* a `--path src` scope. So in addition to
@@ -543,7 +543,7 @@ blind because the SQL was written in a spelling they did not recognise: an apost
 AUD016's literal pairing, and the `EXEC …_UpsertValue` form was invisible to AUD015 across **276 keys**.
 Both were fixed by teaching the scanner, but that is an infinite race: a third spelling always exists.
 `audit seeds` ends it from the other side by constraining the **input**. It carries two rules: **AUD018** — a
-localization seed may be written in exactly ONE approved way — and **AUD017** ([below](#aud017--a-permission-grant-may-not-be-a-like-pattern)),
+localization seed may be written in exactly ONE approved way — and **AUD017** ([below](#aud017-a-permission-grant-may-not-be-a-like-pattern)),
 the same principle applied to permission grants. Anything else fails the build.
 
 ```bash
