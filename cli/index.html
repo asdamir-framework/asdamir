@@ -2179,9 +2179,48 @@
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>dotnet<span class="w"> </span>tool<span class="w"> </span>install<span class="w"> </span>-g<span class="w"> </span>Asdamir.Tools
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1">#   update later:  dotnet tool update -g Asdamir.Tools</span>
 </code></pre></div>
-<p><code>Asdamir.Tools</code> is published on <strong>nuget.org</strong> (currently <code>1.4.5</code>). Generated apps restore the framework
-<strong>libraries</strong> — <code>Asdamir.Core</code> (<code>1.7.0</code>) · <code>.Data</code> (<code>1.5.0</code>) · <code>.Web</code> (<code>2.1.0</code>) · <code>.Payments</code> (<code>1.2.0</code>) — from
-nuget.org as well.</p>
+<!-- published-versions:begin — GENERATED from src/Asdamir.Tools/published-versions.json by
+     packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
+<table>
+<thead>
+<tr>
+<th>Package</th>
+<th>Published on nuget.org</th>
+<th>Next (in this repo)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Asdamir.Core</code></td>
+<td><code>1.7.0</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>Asdamir.Data</code></td>
+<td><code>1.5.0</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>Asdamir.Payments</code></td>
+<td><code>1.2.0</code></td>
+<td><code>1.3.0</code> built, pending publish</td>
+</tr>
+<tr>
+<td><code>Asdamir.Tools</code></td>
+<td><code>1.4.6</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>Asdamir.Web</code></td>
+<td><code>2.1.0</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p><em>A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
+not pushed yet. The published column is what a fresh <code>asdamir new app</code> pins.</em></p>
+<!-- published-versions:end -->
+
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>Scaffold and run your own app end-to-end. This is the <strong>one canonical flow</strong> — the same everywhere.</p>
 <p><strong>Prerequisites:</strong> <strong>.NET 10 SDK</strong> · <strong>SQL Server</strong> on <code>localhost:1433</code> (local or Docker).</p>
