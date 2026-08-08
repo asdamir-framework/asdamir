@@ -1244,6 +1244,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../agent-audit-archive-format-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit — Archive Format v1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../encryption/" class="md-nav__link">
         
   
@@ -2105,7 +2133,11 @@ to the ingest endpoint with a service token, and the server resolves the applica
 <h2 id="retention-folding-not-deleting">Retention: folding, not deleting<a class="headerlink" href="#retention-folding-not-deleting" title="Permanent link">&para;</a></h2>
 <p>Append-only and "delete old rows" are contradictory, so old data is <strong>folded</strong> rather than deleted:</p>
 <ol>
-<li>The range is exported to an NDJSON archive, which yields a <strong>segment digest</strong>.</li>
+<li>The range is exported to an archive in the normative
+   <strong><a href="../agent-audit-archive-format-v1/">Archive Format v1</a></strong> — a ZIP holding <code>manifest.json</code> and
+   <code>segment.ndjson</code> — which yields a <strong>segment digest</strong>. The digest is written into the manifest as well as
+   returned to the caller, so the archive carries the value that will later be compared against the
+   tombstone's <code>FoldSegmentDigest</code>. (That comparison, not the manifest's own copy, is the anchoring proof.)</li>
 <li>The rows are removed and replaced by a single <strong>tombstone</strong> at the range's first sequence number, carrying
    the range's boundary hashes verbatim — so the following row's link stays valid and the chain still verifies.</li>
 <li>The fold appends its own hash-covered accounting record, so it audits itself.</li>
@@ -2210,6 +2242,9 @@ removes rows and is the only one that can destroy evidence:</p>
   Enough to write an <strong>independent verifier</strong> in any language, with frozen
   <a href="../agent-audit-golden-vectors-v1.json">golden vectors</a> to check it against. Read it if you need to prove the
   ledger's integrity without trusting our tooling.</li>
+<li><strong><a href="../agent-audit-archive-format-v1/">Archive Format v1</a></strong> — what a folded segment is exported to, and
+  how to verify one <strong>without the product</strong>: no database, no control plane, no network. Read its
+  "assurance boundary" section before quoting any verification result.</li>
 <li><a href="../audit-logging/">Audit Logging</a> · <a href="../authorization/">Authorization</a> · <a href="../observability/">Observability</a></li>
 </ul>
 

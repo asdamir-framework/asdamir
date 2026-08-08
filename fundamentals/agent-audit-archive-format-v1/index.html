@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://docs.asdamir.com/fundamentals/agent-audit-canonicalization-v1/">
+        <link rel="canonical" href="https://docs.asdamir.com/fundamentals/agent-audit-archive-format-v1/">
       
       
-        <link rel="prev" href="../agent-audit/">
+        <link rel="prev" href="../agent-audit-canonicalization-v1/">
       
       
-        <link rel="next" href="../agent-audit-archive-format-v1/">
+        <link rel="next" href="../encryption/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Agent Audit — Canonicalization v1 - Asdamir Docs</title>
+        <title>Agent Audit — Archive Format v1 - Asdamir Docs</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#agent-action-ledger-canonicalization-specification-v1" class="md-skip">
+        <a href="#agent-action-ledger-archive-format-specification-v1" class="md-skip">
           Skip to content
         </a>
       
@@ -113,7 +113,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Agent Audit — Canonicalization v1
+              Agent Audit — Archive Format v1
             
           </span>
         </div>
@@ -983,6 +983,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-audit-canonicalization-v1/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Audit — Canonicalization v1
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1002,7 +1030,7 @@
   <span class="md-ellipsis">
     
   
-    Agent Audit — Canonicalization v1
+    Agent Audit — Archive Format v1
   
 
     
@@ -1020,7 +1048,7 @@
   <span class="md-ellipsis">
     
   
-    Agent Audit — Canonicalization v1
+    Agent Audit — Archive Format v1
   
 
     
@@ -1046,44 +1074,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-the-chain" class="md-nav__link">
+  <a href="#1-the-assurance-boundary-read-this-before-trusting-any-result" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. The chain
+        1. The assurance boundary — read this before trusting any result
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-canonical-prefix-field-order-frozen-for-v1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Canonical prefix — field order (FROZEN for v1)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-encoding-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Encoding rules
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Encoding rules">
+    <nav class="md-nav" aria-label="1. The assurance boundary — read this before trusting any result">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#31-length-prefix" class="md-nav__link">
+  <a href="#a-internal-consistency-the-archive-alone-can-prove-this" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.1 Length prefix
+        A — Internal consistency · the archive alone CAN prove this
       
     </span>
   </a>
@@ -1091,10 +1097,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#32-unprefixed-fields" class="md-nav__link">
+  <a href="#b-anchoring-the-archive-alone-cannot-prove-this" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.2 Unprefixed fields
+        B — Anchoring · the archive alone CANNOT prove this
       
     </span>
   </a>
@@ -1102,43 +1108,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#33-guids" class="md-nav__link">
+  <a href="#what-a-conforming-verifier-must-report" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.3 GUIDs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-timestamps-in-the-prefix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Timestamps in the prefix
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#35-nullable-32-bit-integer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.5 Nullable 32-bit integer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#36-digests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.6 Digests
+        What a conforming verifier MUST report
       
     </span>
   </a>
@@ -1151,10 +1124,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-recordedatticks" class="md-nav__link">
+  <a href="#2-versioning-and-forward-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. RecordedAtTicks
+        2. Versioning and forward compatibility
       
     </span>
   </a>
@@ -1162,10 +1135,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-what-the-hash-does-not-cover" class="md-nav__link">
+  <a href="#3-container" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. What the hash does NOT cover
+        3. Container
       
     </span>
   </a>
@@ -1173,10 +1146,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-structural-constraints-free-text-never-enters-the-hashed-body" class="md-nav__link">
+  <a href="#4-manifestjson" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Structural constraints — free text never enters the hashed body
+        4. manifest.json
       
     </span>
   </a>
@@ -1184,10 +1157,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-fold-tombstones-the-one-exception-to-the-invariant" class="md-nav__link">
+  <a href="#5-segmentndjson" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Fold tombstones — the one exception to the invariant
+        5. segment.ndjson
       
     </span>
   </a>
@@ -1195,49 +1168,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-verification-the-algorithm-and-the-limits-of-each-layer" class="md-nav__link">
+  <a href="#6-segmentdigest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Verification — the algorithm, and the limits of each layer
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. Verification — the algorithm, and the limits of each layer">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#81-why-a-database-only-check-is-partial" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8.1 Why a database-only check is partial
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#82-the-verdict-is-three-valued" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8.2 The verdict is three-valued
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#9-golden-vectors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Golden vectors
+        6. SegmentDigest
       
     </span>
   </a>
@@ -1245,10 +1179,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#10-versioning" class="md-nav__link">
+  <a href="#7-canonicalprefix-stored-but-never-trusted" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10. Versioning
+        7. CanonicalPrefix — stored, but never trusted
       
     </span>
   </a>
@@ -1256,10 +1190,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#11-assurance-statement" class="md-nav__link">
+  <a href="#8-segment-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        11. Assurance statement
+        8. Segment constraints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-verification-algorithm-normative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Verification algorithm (normative)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-writing-your-own-verifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Writing your own verifier
       
     </span>
   </a>
@@ -1281,34 +1237,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../agent-audit-archive-format-v1/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Agent Audit — Archive Format v1
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1777,44 +1705,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-the-chain" class="md-nav__link">
+  <a href="#1-the-assurance-boundary-read-this-before-trusting-any-result" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. The chain
+        1. The assurance boundary — read this before trusting any result
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-canonical-prefix-field-order-frozen-for-v1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Canonical prefix — field order (FROZEN for v1)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-encoding-rules" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Encoding rules
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Encoding rules">
+    <nav class="md-nav" aria-label="1. The assurance boundary — read this before trusting any result">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#31-length-prefix" class="md-nav__link">
+  <a href="#a-internal-consistency-the-archive-alone-can-prove-this" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.1 Length prefix
+        A — Internal consistency · the archive alone CAN prove this
       
     </span>
   </a>
@@ -1822,10 +1728,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#32-unprefixed-fields" class="md-nav__link">
+  <a href="#b-anchoring-the-archive-alone-cannot-prove-this" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.2 Unprefixed fields
+        B — Anchoring · the archive alone CANNOT prove this
       
     </span>
   </a>
@@ -1833,43 +1739,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#33-guids" class="md-nav__link">
+  <a href="#what-a-conforming-verifier-must-report" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3.3 GUIDs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#34-timestamps-in-the-prefix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.4 Timestamps in the prefix
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#35-nullable-32-bit-integer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.5 Nullable 32-bit integer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#36-digests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.6 Digests
+        What a conforming verifier MUST report
       
     </span>
   </a>
@@ -1882,10 +1755,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#4-recordedatticks" class="md-nav__link">
+  <a href="#2-versioning-and-forward-compatibility" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. RecordedAtTicks
+        2. Versioning and forward compatibility
       
     </span>
   </a>
@@ -1893,10 +1766,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-what-the-hash-does-not-cover" class="md-nav__link">
+  <a href="#3-container" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. What the hash does NOT cover
+        3. Container
       
     </span>
   </a>
@@ -1904,10 +1777,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#6-structural-constraints-free-text-never-enters-the-hashed-body" class="md-nav__link">
+  <a href="#4-manifestjson" class="md-nav__link">
     <span class="md-ellipsis">
       
-        6. Structural constraints — free text never enters the hashed body
+        4. manifest.json
       
     </span>
   </a>
@@ -1915,10 +1788,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#7-fold-tombstones-the-one-exception-to-the-invariant" class="md-nav__link">
+  <a href="#5-segmentndjson" class="md-nav__link">
     <span class="md-ellipsis">
       
-        7. Fold tombstones — the one exception to the invariant
+        5. segment.ndjson
       
     </span>
   </a>
@@ -1926,49 +1799,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#8-verification-the-algorithm-and-the-limits-of-each-layer" class="md-nav__link">
+  <a href="#6-segmentdigest" class="md-nav__link">
     <span class="md-ellipsis">
       
-        8. Verification — the algorithm, and the limits of each layer
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. Verification — the algorithm, and the limits of each layer">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#81-why-a-database-only-check-is-partial" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8.1 Why a database-only check is partial
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#82-the-verdict-is-three-valued" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8.2 The verdict is three-valued
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#9-golden-vectors" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. Golden vectors
+        6. SegmentDigest
       
     </span>
   </a>
@@ -1976,10 +1810,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#10-versioning" class="md-nav__link">
+  <a href="#7-canonicalprefix-stored-but-never-trusted" class="md-nav__link">
     <span class="md-ellipsis">
       
-        10. Versioning
+        7. CanonicalPrefix — stored, but never trusted
       
     </span>
   </a>
@@ -1987,10 +1821,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#11-assurance-statement" class="md-nav__link">
+  <a href="#8-segment-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        11. Assurance statement
+        8. Segment constraints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-verification-algorithm-normative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Verification algorithm (normative)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-writing-your-own-verifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Writing your own verifier
       
     </span>
   </a>
@@ -2028,407 +1884,498 @@
   
 
 
-<h1 id="agent-action-ledger-canonicalization-specification-v1">Agent Action Ledger — Canonicalization Specification v1<a class="headerlink" href="#agent-action-ledger-canonicalization-specification-v1" title="Permanent link">&para;</a></h1>
-<p><strong>Status: NORMATIVE · Version: 1 (<code>HashVersion = 1</code>) · FROZEN.</strong></p>
-<p>This document specifies, completely and without reference to any Asdamir source code, how a record in the
-agent action ledger is serialized into bytes and chained by hash. It exists so that <strong>anyone can write an
-independent verifier</strong> — in any language, offline, with no Asdamir library, no AppManagement instance and no
-database — and reach the same verdict as the vendor's own tooling.</p>
-<p>That independence is the point. <strong>If the only thing that can verify the ledger is the closed component being
-audited, the assurance collapses to "trust the vendor": a system's own clean report about itself is not audit
-evidence.</strong> This specification, plus the <a href="../agent-audit-golden-vectors-v1.json">golden vectors</a>, is what makes
-the guarantee checkable by someone who does not trust us.</p>
+<h1 id="agent-action-ledger-archive-format-specification-v1">Agent Action Ledger — Archive Format Specification v1<a class="headerlink" href="#agent-action-ledger-archive-format-specification-v1" title="Permanent link">&para;</a></h1>
+<p><strong>Status: NORMATIVE · <code>FormatVersion = 1</code> · FROZEN.</strong>
+<strong>Revision 2026-08-08 — CLARIFICATION ONLY. <code>FormatVersion</code> STAYS <code>1</code>; v1 SEMANTICS DID NOT CHANGE.</strong>
+Implementing the format for the first time surfaced questions this page had not answered — the order in
+which two failures are reported, whether a verifier tolerates uppercase hex, which bucket a row-count
+disagreement falls into. Every answer below is the behaviour the reference implementation <em>already</em> has;
+nothing about the bytes, the field set or the algorithm changed. <strong>An archive valid before this revision is
+valid after it, and vice versa.</strong> The clarifications are here because two conforming implementations that
+answered these differently would disagree on a real archive — silently.</p>
+<p>When a closed range of the ledger is <strong>folded</strong> (removed from the live database and replaced by a tombstone —
+see <a href="../agent-audit/#retention-folding-not-deleting">Agent Audit</a>), the rows themselves are exported to an
+<strong>archive</strong>. This document specifies that archive's bytes: what it contains, how each field is encoded, and
+the exact algorithm a verifier must run.</p>
+<p>It exists so that <strong>anyone can verify an archive without the product</strong> — no AppManagement, no database, no
+commercial licence, no network. If the only thing that can check the archive were the closed component that
+produced it, the assurance would collapse to <em>"trust the vendor"</em>.</p>
+<p>The wire format of the hash chain itself — the canonical byte layout, field order and <code>RowHash</code> formula —
+is <strong>not</strong> repeated here. It is specified once, in
+<a href="../agent-audit-canonicalization-v1/">Canonicalization v1</a>, and this document <strong>references</strong> it. Two copies of
+one contract drift; there is exactly one.</p>
 <p>The key words <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>SHOULD</strong> and <strong>MAY</strong> are to be interpreted as in RFC 2119.</p>
-<p>For the concepts — what the ledger is for, what the guarantee is and is not, how retention works — see
-<a href="../agent-audit/">Agent Audit</a>. This page is the wire format only.</p>
 <hr />
-<h2 id="1-the-chain">1. The chain<a class="headerlink" href="#1-the-chain" title="Permanent link">&para;</a></h2>
-<p>A ledger is partitioned into independent chains, one per <strong>scope</strong> — the pair <code>(AppId, TenantId)</code>. Records
-within a scope carry a gapless <code>SeqNo</code> starting at 1. Each record binds itself to its predecessor:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>RowHash = SHA-256( PrevHash ‖ CanonicalPrefix ‖ SeqNo ‖ RecordedAtTicks )
-</code></pre></div>
-<table>
-<thead>
-<tr>
-<th>Part</th>
-<th>Bytes</th>
-<th>Produced by</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>PrevHash</code></td>
-<td>32, raw</td>
-<td>the previous record's <code>RowHash</code>; <strong>32 zero bytes (<code>0x00 × 32</code>)</strong> for <code>SeqNo = 1</code></td>
-</tr>
-<tr>
-<td><code>CanonicalPrefix</code></td>
-<td>variable</td>
-<td>the client (§2, §3)</td>
-</tr>
-<tr>
-<td><code>SeqNo</code></td>
-<td>8, <strong>big-endian</strong> signed</td>
-<td>the server, under the chain lock</td>
-</tr>
-<tr>
-<td><code>RecordedAtTicks</code></td>
-<td>8, <strong>big-endian</strong> signed</td>
-<td>the server, under the chain lock (§4)</td>
-</tr>
-</tbody>
-</table>
-<p><code>‖</code> is plain concatenation: <strong>no separators, no padding, no length field around the whole</strong>.</p>
-<p>The split is deliberate. Everything a client can know is canonicalized by the client, which makes the encoding
-testable in isolation; the two fields only the server can assign — the sequence number and the authoritative
-receipt time — are appended inside the same transaction that holds the per-scope lock, so two concurrent
-writers cannot be assigned the same <code>SeqNo</code> or race the chain head.</p>
-<h2 id="2-canonical-prefix-field-order-frozen-for-v1">2. Canonical prefix — field order (FROZEN for v1)<a class="headerlink" href="#2-canonical-prefix-field-order-frozen-for-v1" title="Permanent link">&para;</a></h2>
-<p>Exactly these 23 fields, in exactly this order. A verifier MUST reject any other order.</p>
-<table>
-<thead>
-<tr>
-<th style="text-align: right;">#</th>
-<th>Field</th>
-<th>Encoding</th>
-<th style="text-align: center;">Nullable</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align: right;">1</td>
-<td><code>HashVersion</code></td>
-<td>1 byte, <strong>unprefixed</strong></td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">2</td>
-<td><code>AppId</code></td>
-<td>16 bytes, <strong>unprefixed</strong>, RFC 4122 <strong>big-endian</strong></td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">3</td>
-<td><code>TenantId</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">4</td>
-<td><code>RecordKind</code></td>
-<td>1 byte, unprefixed (0 = Event, 1 = Seal, 2 = FoldTombstone)</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">5</td>
-<td><code>EventId</code></td>
-<td>16 bytes, unprefixed, RFC 4122 <strong>big-endian</strong></td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">6</td>
-<td><code>OccurredAtUtc</code></td>
-<td>length-prefixed UTF-8 of the round-trip form (§3.4)</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">7</td>
-<td><code>AgentId</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">8</td>
-<td><code>AgentVersion</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">9</td>
-<td><code>ModelId</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">10</td>
-<td><code>AuthorityKind</code></td>
-<td>1 byte, unprefixed (0 = Delegated, 1 = Autonomous, 2 = Scheduled)</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">11</td>
-<td><code>OnBehalfOfUserId</code></td>
-<td>nullable int32 (§3.5)</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">12</td>
-<td><code>SessionId</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">13</td>
-<td><code>InvocationId</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">14</td>
-<td><code>CorrelationId</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">15</td>
-<td><code>ActionType</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">16</td>
-<td><code>TargetType</code></td>
-<td>length-prefixed UTF-8</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">17</td>
-<td><code>TargetId</code></td>
-<td>length-prefixed UTF-8 — structurally constrained (§6)</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">18</td>
-<td><code>Decision</code></td>
-<td>1 byte, unprefixed (0 = Allowed, 1 = Denied, 2 = RequiresApproval)</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">19</td>
-<td><code>Outcome</code></td>
-<td>1 byte, unprefixed (0 = Success, 1 = Failure, 2 = Partial)</td>
-<td style="text-align: center;">no</td>
-</tr>
-<tr>
-<td style="text-align: right;">20</td>
-<td><code>InputDigest</code></td>
-<td>length-prefixed raw bytes (32, or NULL)</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">21</td>
-<td><code>OutputDigest</code></td>
-<td>length-prefixed raw bytes (32, or NULL)</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">22</td>
-<td><code>ErrorCode</code></td>
-<td>length-prefixed UTF-8 — structurally constrained (§6)</td>
-<td style="text-align: center;">yes</td>
-</tr>
-<tr>
-<td style="text-align: right;">23</td>
-<td><code>ErrorDigest</code></td>
-<td>length-prefixed raw bytes (32, or NULL)</td>
-<td style="text-align: center;">yes</td>
-</tr>
-</tbody>
-</table>
-<h2 id="3-encoding-rules">3. Encoding rules<a class="headerlink" href="#3-encoding-rules" title="Permanent link">&para;</a></h2>
-<h3 id="31-length-prefix">3.1 Length prefix<a class="headerlink" href="#31-length-prefix" title="Permanent link">&para;</a></h3>
-<p>Every "length-prefixed" field is written as a <strong>4-byte little-endian signed integer</strong> giving the number of
-<strong>bytes</strong> that follow, then those bytes.</p>
-<ul>
-<li><code>NULL</code> → prefix <strong><code>-1</code></strong> (<code>FF FF FF FF</code>), no bytes follow.</li>
-<li>Empty string → prefix <strong><code>0</code></strong>, no bytes follow.</li>
-</ul>
-<p><code>NULL</code> and <code>""</code> therefore hash <strong>differently</strong>. A verifier MUST preserve that distinction; conflating them is
-the most common implementation error, which is why the golden vectors pin both cases separately.</p>
-<h3 id="32-unprefixed-fields">3.2 Unprefixed fields<a class="headerlink" href="#32-unprefixed-fields" title="Permanent link">&para;</a></h3>
-<p><code>HashVersion</code>, <code>RecordKind</code>, <code>AuthorityKind</code>, <code>Decision</code> and <code>Outcome</code> are single bytes with <strong>no length
-prefix</strong>. <code>AppId</code> and <code>EventId</code> are 16 raw bytes with <strong>no length prefix</strong>.</p>
-<h3 id="33-guids">3.3 GUIDs<a class="headerlink" href="#33-guids" title="Permanent link">&para;</a></h3>
-<p>GUIDs are encoded in <strong>RFC 4122 byte order (big-endian)</strong> — the order in which the textual form reads. In
-.NET this is <code>Guid.ToByteArray(bigEndian: true)</code>; the default <code>Guid.ToByteArray()</code> is <strong>mixed-endian</strong> and
-produces a different, non-conforming prefix.</p>
-<h3 id="34-timestamps-in-the-prefix">3.4 Timestamps in the prefix<a class="headerlink" href="#34-timestamps-in-the-prefix" title="Permanent link">&para;</a></h3>
-<p><code>OccurredAtUtc</code> is the UTF-8 text of the ISO-8601 round-trip form with <strong>exactly 7 fractional digits</strong> and a
-<code>Z</code> suffix, e.g. <code>2026-07-30T12:34:56.1234567Z</code> (.NET: <code>ToString("O")</code> on a <code>DateTimeKind.Utc</code> value). It is
-client-asserted information; the authoritative time is <code>RecordedAtUtc</code> (§4).</p>
-<h3 id="35-nullable-32-bit-integer">3.5 Nullable 32-bit integer<a class="headerlink" href="#35-nullable-32-bit-integer" title="Permanent link">&para;</a></h3>
-<p><code>OnBehalfOfUserId</code> is written as a length-prefixed value: <code>NULL</code> → prefix <code>-1</code>; otherwise prefix <code>4</code> followed
-by the value as <strong>4 bytes big-endian, two's complement</strong> (so negative values are well defined — see the
-<code>negative_user_id</code> vector).</p>
-<h3 id="36-digests">3.6 Digests<a class="headerlink" href="#36-digests" title="Permanent link">&para;</a></h3>
-<p><code>InputDigest</code>, <code>OutputDigest</code> and <code>ErrorDigest</code> are length-prefixed <strong>raw bytes</strong>, never hex text: prefix <code>32</code>
-plus the 32 bytes, or prefix <code>-1</code> when absent. A digest of any other length MUST be rejected at write time.</p>
-<h2 id="4-recordedatticks">4. <code>RecordedAtTicks</code><a class="headerlink" href="#4-recordedatticks" title="Permanent link">&para;</a></h2>
-<p><code>RecordedAtTicks</code> is the number of <strong>100-nanosecond ticks since <code>1970-01-01T00:00:00Z</code></strong> — a documented
-integer, never a cast of a database timestamp type (whose on-disk representation is an implementation detail
-and MUST NOT be relied on).</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>-- T-SQL
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>DATEDIFF_BIG(SECOND, &#39;1970-01-01T00:00:00&#39;, RecordedAtUtc) * 10000000
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>  + DATEPART(NANOSECOND, RecordedAtUtc) / 100
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>// .NET
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>recordedAtUtc.Ticks - DateTime.UnixEpoch.Ticks
-</code></pre></div>
-<p>Both forms yield <code>17854148961234567</code> for <code>2026-07-30T12:34:56.1234567Z</code>. (<code>DATEDIFF_BIG(NANOSECOND,
-'0001-01-01', …)</code> overflows a 64-bit integer and MUST NOT be used; the second + nanosecond form above is
-overflow-safe well past the year 29000.)</p>
-<h2 id="5-what-the-hash-does-not-cover">5. What the hash does NOT cover<a class="headerlink" href="#5-what-the-hash-does-not-cover" title="Permanent link">&para;</a></h2>
-<p>The canonical body is immutable by construction, so anything inside it can never be redacted. These columns
-are therefore stored <strong>outside</strong> the hash and are <strong>not</strong> protected by the chain:</p>
-<table>
-<thead>
-<tr>
-<th>Column</th>
-<th>Why it is outside</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ErrorMessage</code></td>
-<td>free-text error prose — must stay redactable (§6)</td>
-</tr>
-<tr>
-<td><code>OnBehalfOfUserName</code></td>
-<td>a display name; the <em>identity</em> is bound via <code>OnBehalfOfUserId</code> (field 11)</td>
-</tr>
-<tr>
-<td><code>FoldSeqStart</code>, <code>FoldSeqEnd</code>, <code>FoldRowCount</code>, <code>FoldSegmentDigest</code>, <code>FoldArchiveRef</code></td>
-<td>fold bookkeeping (§7) — an archive must remain relocatable</td>
-</tr>
-<tr>
-<td><code>SignatureAlgo</code>, <code>Signature</code></td>
-<td>reserved for a future version; <strong>always NULL in v1</strong></td>
-</tr>
-</tbody>
-</table>
-<p>State this plainly to anyone relying on the ledger: editing one of these columns <strong>will not</strong> break the chain.
-They are protected by the database's immutability controls, not by cryptography.</p>
-<h2 id="6-structural-constraints-free-text-never-enters-the-hashed-body">6. Structural constraints — free text never enters the hashed body<a class="headerlink" href="#6-structural-constraints-free-text-never-enters-the-hashed-body" title="Permanent link">&para;</a></h2>
-<p>Two fields inside the hash are constrained to structural values, enforced <strong>at write time</strong>:</p>
-<ul>
-<li><strong><code>TargetId</code></strong> — length ≤ 128, characters from <code>[0-9 A-Z a-z . _ : / -]</code> only. It MUST be an <strong>opaque or
-  surrogate identifier</strong>, never a natural key.</li>
-<li><strong><code>ErrorCode</code></strong> — length ≤ 64, characters from <code>[0-9 A-Z a-z . _ -]</code> only. A machine-readable code such as
-  <code>orders.insufficient_stock</code>; the readable text goes to <code>ErrorMessage</code>, bound to the chain only by
-  <code>ErrorDigest</code>.</li>
-</ul>
-<p>The character-set comparison MUST be <strong>ordinal/binary</strong> (SQL Server: <code>Latin1_General_BIN2</code>). Under a
-case-insensitive accent-insensitive collation an <code>A-Z</code> range also matches accented and dotted letters — for
-example the Turkish <code>İ</code> and <code>ş</code> — which silently voids the constraint.</p>
-<p><strong>What this does and does not achieve, stated honestly:</strong> the constraint makes it impossible to store a
-sentence, an e-mail address or a stack trace in these fields. It does <strong>not</strong> detect personal data — a
-national id number or a phone number passes the character set. Choosing a surrogate identifier remains the
-caller's responsibility. The constraint removes easy accidents, not the risk.</p>
-<h2 id="7-fold-tombstones-the-one-exception-to-the-invariant">7. Fold tombstones — the one exception to the invariant<a class="headerlink" href="#7-fold-tombstones-the-one-exception-to-the-invariant" title="Permanent link">&para;</a></h2>
-<p>Retention is implemented by <strong>folding</strong>, not deleting: a closed range <code>[a..b]</code> is exported to an archive and
-replaced by a single tombstone record (<code>RecordKind = 2</code>) that carries <code>PrevHash(a)</code> and <code>RowHash(b)</code>
-<strong>verbatim</strong>, so the record at <code>b+1</code> still links correctly and the chain verifies end to end.</p>
-<p>Consequently:</p>
+<h2 id="1-the-assurance-boundary-read-this-before-trusting-any-result">1. The assurance boundary — read this before trusting any result<a class="headerlink" href="#1-the-assurance-boundary-read-this-before-trusting-any-result" title="Permanent link">&para;</a></h2>
+<p>An archive can attest to <strong>two different things</strong>, and a tool that blurs them is lying to its user.</p>
+<h3 id="a-internal-consistency-the-archive-alone-can-prove-this">A — Internal consistency · <strong>the archive alone CAN prove this</strong><a class="headerlink" href="#a-internal-consistency-the-archive-alone-can-prove-this" title="Permanent link">&para;</a></h3>
+<p>Every row's <code>RowHash</code> is correctly derived from its own columns, each <code>PrevHash</code> equals the previous row's
+<code>RowHash</code>, and <code>SeqNo</code> runs without gaps. In other words: <em>this archive has not been altered since it was
+written</em>.</p>
+<h3 id="b-anchoring-the-archive-alone-cannot-prove-this">B — Anchoring · <strong>the archive alone CANNOT prove this</strong><a class="headerlink" href="#b-anchoring-the-archive-alone-cannot-prove-this" title="Permanent link">&para;</a></h3>
+<p>That this segment is genuinely the segment that was folded out of a particular live ledger. The proof of
+that is the <strong><code>FoldSegmentDigest</code> recorded on the tombstone in the live ledger</strong> — a value the archive cannot
+produce for itself. If it could, a forged archive could produce it too.</p>
 <blockquote>
-<p>The invariant <code>RowHash = SHA-256(PrevHash ‖ prefix ‖ SeqNo ‖ ticks)</code> holds <strong>only for <code>RecordKind ∈ {0, 1}</code></strong>.</p>
+<p><strong>The <code>SegmentDigest</code> inside <code>manifest.json</code> is NOT the anchor.</strong> It is derived from the very rows it
+accompanies, so it verifies nothing on its own: an attacker who rewrites the rows simply recomputes it. It
+is present for a single purpose — to be <strong>compared against the digest held by the live ledger</strong>. Treat a
+manifest digest that matches the archive as saying <em>"this manifest describes these rows"</em>, never as
+<em>"these rows are authentic"</em>.</p>
 </blockquote>
-<p>A conforming verifier MUST special-case <code>RecordKind = 2</code>: do not recompute its <code>RowHash</code>; treat the folded
-range as <strong>verifiable against the archive, not against the database</strong>, and report it as such. A verifier that
-reports a folded chain as fully "valid" from the database alone is <strong>wrong</strong> — see §8.</p>
-<p>Each fold also writes an ordinary Event record (<code>ActionType = agentaudit.fold</code>) whose hashed body carries the
-folded range and the segment digest, so a tombstone has an accounting entry inside the chain. A tombstone with
-no such entry MUST be reported (it is the <code>Degraded</code> case below). A range containing a fold accounting record
-cannot itself be folded.</p>
-<h2 id="8-verification-the-algorithm-and-the-limits-of-each-layer">8. Verification — the algorithm, and the limits of each layer<a class="headerlink" href="#8-verification-the-algorithm-and-the-limits-of-each-layer" title="Permanent link">&para;</a></h2>
-<p>A conforming verifier, given the records of one scope, MUST check:</p>
-<ol>
-<li><strong>Sequence continuity</strong> — <code>SeqNo</code> increases by exactly 1, with no gaps (a fold tombstone accounts for its
-   whole <code>[FoldSeqStart..FoldSeqEnd]</code> range).</li>
-<li><strong>Linkage</strong> — every record's <code>PrevHash</code> equals the previous record's <code>RowHash</code>; the first record's
-   <code>PrevHash</code> is 32 zero bytes.</li>
-<li><strong>Re-derivation</strong> — for <code>RecordKind ∈ {0, 1}</code>, re-canonicalize the record <strong>from its columns</strong> per §2–§4 and
-   recompute <code>RowHash</code>. Comparing against a stored copy of the prefix is <strong>not</strong> re-derivation (§8.1).</li>
-<li><strong>Head</strong> — the last record's <code>RowHash</code> equals the chain head.</li>
-<li><strong>Tombstone accounting</strong> — every tombstone has a matching fold accounting record.</li>
-</ol>
-<h3 id="81-why-a-database-only-check-is-partial">8.1 Why a database-only check is partial<a class="headerlink" href="#81-why-a-database-only-check-is-partial" title="Permanent link">&para;</a></h3>
-<p>An in-database verifier can rehash a <strong>stored</strong> canonical prefix, but it cannot rebuild that prefix from the
-columns. Therefore a database-only check <strong>cannot detect an edit to a projection column</strong> (<code>AgentId</code>,
-<code>ActionType</code>, <code>TargetId</code>, …) that leaves the stored prefix and <code>RowHash</code> untouched. Only re-derivation from
-the columns catches it. Any implementation MUST NOT present a database-only result as proof of integrity.</p>
-<h3 id="82-the-verdict-is-three-valued">8.2 The verdict is three-valued<a class="headerlink" href="#82-the-verdict-is-three-valued" title="Permanent link">&para;</a></h3>
-<p>A boolean verdict is not sufficient, because "the links are intact" and "the history is provable" are
-different claims.</p>
+<h3 id="what-a-conforming-verifier-must-report">What a conforming verifier MUST report<a class="headerlink" href="#what-a-conforming-verifier-must-report" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
-<th>Verdict</th>
+<th>Situation</th>
+<th>Result</th>
 <th>Meaning</th>
 </tr>
 </thead>
 <tbody>
 <tr>
+<td>Internal checks pass <strong>and</strong> an expected digest was supplied <strong>and</strong> it matches</td>
+<td><code>Verified</code></td>
+<td>A <strong>and</strong> B</td>
+</tr>
+<tr>
+<td>Internal checks pass, <strong>no</strong> expected digest supplied</td>
+<td><code>InternallyConsistent</code></td>
+<td>A only — <strong>unanchored</strong></td>
+</tr>
+<tr>
+<td>Internal checks pass, expected digest supplied, <strong>does not</strong> match</td>
+<td><code>DigestMismatch</code></td>
+<td>These rows are not that segment</td>
+</tr>
+<tr>
+<td>Any internal check fails</td>
 <td><code>Broken</code></td>
-<td>a hash mismatch, a link break, a gap, or a head mismatch — report the exact <code>SeqNo</code> and which check failed</td>
-</tr>
-<tr>
-<td><code>Degraded</code></td>
-<td>the links verify, but the database alone cannot prove the whole history: a folded range (verifiable only against its archive) or a tombstone with no accounting record</td>
-</tr>
-<tr>
-<td><code>Valid</code></td>
-<td>every check above passes in full</td>
+<td>The archive is altered or corrupt</td>
 </tr>
 </tbody>
 </table>
-<p><code>Degraded</code> <strong>MUST NOT</strong> be rendered as success (no green, no check mark). Only <code>Valid</code> may be presented as
-good.</p>
-<h2 id="9-golden-vectors">9. Golden vectors<a class="headerlink" href="#9-golden-vectors" title="Permanent link">&para;</a></h2>
-<p><a href="../agent-audit-golden-vectors-v1.json"><code>agent-audit-golden-vectors-v1.json</code></a> contains frozen test vectors for
-this specification: for each case, the full <code>CanonicalPrefix</code> in hex, its length, and the resulting <code>RowHash</code>
-for a fixed <code>PrevHash</code>, <code>SeqNo = 4242</code> and <code>RecordedAtTicks = 17854148961234567</code>.</p>
-<p>The cases deliberately cover the encoding's failure modes: all-nulls versus all-empty-strings (§3.1),
-Turkish multi-byte text, every field at its maximum length, a negative <code>OnBehalfOfUserId</code> (§3.5), maximum enum
-values, and a <code>HashVersion = 2</code> prefix proving the version byte changes the hash.</p>
-<p>An independent implementation is conforming when it reproduces every <code>prefixHex</code> and every <code>rowHashHex</code>
-byte-for-byte.</p>
-<p><strong>This file is the only copy.</strong> The vectors published here are not a snapshot of some internal fixture — the
-reference implementation's own test suite asserts against <em>this</em> file, so the bytes you verify against are
-byte-for-byte the bytes the implementation is proven correct against. That is deliberate: a private duplicate
-could drift, and a drifted duplicate would leave this specification quietly lying while every internal test
-stayed green — at which point your verifier would disagree with a chain that is in fact intact, and you would
-have no way to tell which side was wrong.</p>
+<p>A verifier <strong>MUST NOT</strong> report <code>Verified</code> when no expected digest was supplied, and <strong>MUST</strong> state in its
+output which of A and B was established. <code>Verified ✓</code> on its own is not an acceptable message. (This is the
+same discipline as the ledger's three-valued <code>ChainStatus</code>, where <code>Degraded</code> is never rendered as success:
+do not dilute the green.)</p>
+<hr />
+<h2 id="2-versioning-and-forward-compatibility">2. Versioning and forward compatibility<a class="headerlink" href="#2-versioning-and-forward-compatibility" title="Permanent link">&para;</a></h2>
+<p><code>manifest.json</code> carries <strong><code>FormatVersion</code></strong> (this document: <code>1</code>) and <strong><code>HashVersion</code></strong> (the canonicalization
+contract version of the rows inside; v1 archives carry <code>1</code>).</p>
+<ul>
+<li>A verifier <strong>MUST</strong> reject an archive whose <code>FormatVersion</code> it does not implement, with a distinct
+  "unsupported format version" error. It <strong>MUST NOT</strong> attempt a best-effort parse and it <strong>MUST NOT</strong> report
+  any of the four results in §1 for such an archive — an unknown layout means the checks were not performed,
+  and silently continuing would present an unchecked archive as checked.</li>
+<li>The same applies to <code>HashVersion</code>: a verifier that does not implement the record's hash version <strong>MUST</strong>
+  refuse rather than guess. <code>HashVersion</code> is field 1 of the canonical body, so a wrong assumption changes
+  every hash.</li>
+<li><strong>One <code>HashVersion</code> per archive.</strong> The manifest carries a single value, so every row in the segment
+  <strong>MUST</strong> share it, and a producer <strong>MUST</strong> refuse to write a segment whose rows disagree — no manifest
+  can honestly describe one. For a verifier the bucket depends on WHY it cannot proceed, per the
+  principle in §9:<ul>
+<li>the row's <code>HashVersion</code> is one the verifier <strong>implements</strong> but differs from the manifest's →
+  <strong><code>Broken</code></strong>. The manifest made a claim about the rows and a row contradicts it; that is a
+  detectable content failure, exactly like a line count that disagrees with <code>RowCount</code>.</li>
+<li>the row's <code>HashVersion</code> is one the verifier <strong>does not implement</strong> → <strong>format error</strong>. It cannot
+  rebuild that row's canonical body at all, so it must not report a result that claims it checked.</li>
+</ul>
+</li>
+<li><strong>v1 is frozen.</strong> Its layout, field names and encodings do not change. A future revision is
+  <code>FormatVersion = 2</code> with its own specification page; v1 archives remain verifiable forever.</li>
+</ul>
+<hr />
+<h2 id="3-container">3. Container<a class="headerlink" href="#3-container" title="Permanent link">&para;</a></h2>
+<p>An archive is a <strong>ZIP file</strong> with exactly two entries at the root, named exactly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>&lt;name&gt;.zip
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── manifest.json      (§4)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>└── segment.ndjson     (§5)
+</code></pre></div>
+<ul>
+<li>Both entries <strong>MUST</strong> be UTF-8 with <strong>no byte-order mark</strong>.</li>
+<li>Additional entries <strong>MUST</strong> be ignored by a verifier, not rejected — they carry no meaning in v1 and
+  reserving them keeps a future revision cheap. A verifier <strong>MUST NOT</strong> derive anything from them.</li>
+<li>Entry names are case-sensitive.</li>
+<li>The archive file name is <strong>not</strong> significant; nothing in it is verified.</li>
+</ul>
+<h2 id="4-manifestjson">4. <code>manifest.json</code><a class="headerlink" href="#4-manifestjson" title="Permanent link">&para;</a></h2>
+<p>A single JSON object. All twelve members are <strong>REQUIRED</strong>; a missing or null member is a format error
+(§2 rules apply — refuse, do not proceed).</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FormatVersion</code></td>
+<td>integer</td>
+<td>This specification's version. <code>1</code>.</td>
+</tr>
+<tr>
+<td><code>HashVersion</code></td>
+<td>integer</td>
+<td>The canonicalization version of the rows (§2).</td>
+</tr>
+<tr>
+<td><code>AppId</code></td>
+<td>string (UUID)</td>
+<td>Chain scope, canonical text form (<code>8-4-4-4-12</code>).</td>
+</tr>
+<tr>
+<td><code>TenantId</code></td>
+<td>string</td>
+<td>Chain scope.</td>
+</tr>
+<tr>
+<td><code>SeqStart</code></td>
+<td>integer</td>
+<td><code>SeqNo</code> of the first row in the segment.</td>
+</tr>
+<tr>
+<td><code>SeqEnd</code></td>
+<td>integer</td>
+<td><code>SeqNo</code> of the last row.</td>
+</tr>
+<tr>
+<td><code>RowCount</code></td>
+<td>integer</td>
+<td>Number of rows; <strong>MUST</strong> equal <code>SeqEnd − SeqStart + 1</code> and the actual line count.</td>
+</tr>
+<tr>
+<td><code>SegmentDigest</code></td>
+<td>string (hex)</td>
+<td>§6. <strong>Not the anchor</strong> — see §1.</td>
+</tr>
+<tr>
+<td><code>PrevHashAtStart</code></td>
+<td>string (hex)</td>
+<td>The <code>PrevHash</code> of the row at <code>SeqStart</code> — the link back to the row preceding the segment.</td>
+</tr>
+<tr>
+<td><code>RowHashAtEnd</code></td>
+<td>string (hex)</td>
+<td>The <code>RowHash</code> of the row at <code>SeqEnd</code> — the link forward to the row following the segment.</td>
+</tr>
+<tr>
+<td><code>ExportedAtUtc</code></td>
+<td>string</td>
+<td>When the archive was produced. ISO-8601 round-trip, UTC (<code>…Z</code>). <strong>Informational — outside every hash.</strong></td>
+</tr>
+<tr>
+<td><code>ProducerVersion</code></td>
+<td>string</td>
+<td>Version of the component that produced the archive. <strong>Informational.</strong></td>
+</tr>
+</tbody>
+</table>
+<p><code>PrevHashAtStart</code> and <code>RowHashAtEnd</code> exist so a segment can be re-attached to the live ledger by eye or by
+tooling: the tombstone that replaced this range carries the same two values.</p>
+<p><strong>Hex encoding</strong> throughout this document means <strong>lowercase, unseparated, no <code>0x</code> prefix</strong> — a 32-byte hash
+is 64 characters. A producer <strong>MUST</strong> emit lowercase. A verifier <strong>MUST</strong> compare the DECODED BYTES, not the
+text, and therefore <strong>MUST</strong> accept uppercase or mixed case on input: case is a spelling of the same value,
+and refusing it would fail an archive that is byte-for-byte sound. (A verifier <strong>MAY</strong> note the deviation;
+it <strong>MUST NOT</strong> downgrade the result for it.)</p>
+<h2 id="5-segmentndjson">5. <code>segment.ndjson</code><a class="headerlink" href="#5-segmentndjson" title="Permanent link">&para;</a></h2>
+<p>Newline-delimited JSON: one <strong>flat</strong> JSON object per line, <code>\n</code> (LF) separated, ordered by <strong>strictly
+ascending <code>SeqNo</code></strong>, dense (no gaps). A trailing newline after the last line is permitted.</p>
+<p>Each line carries every field needed to <strong>rebuild the canonical body from scratch</strong>, plus the two chain
+hashes and the stored prefix:</p>
+<table>
+<thead>
+<tr>
+<th>Member</th>
+<th>Type</th>
+<th>In the hash?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SeqNo</code></td>
+<td>integer</td>
+<td>yes (appended, big-endian, by the server)</td>
+</tr>
+<tr>
+<td><code>RecordedAtTicks</code></td>
+<td>integer</td>
+<td>yes (appended, big-endian, by the server)</td>
+</tr>
+<tr>
+<td><code>HashVersion</code></td>
+<td>integer</td>
+<td>yes — canonical field 1</td>
+</tr>
+<tr>
+<td><code>AppId</code></td>
+<td>string (UUID)</td>
+<td>yes — field 2</td>
+</tr>
+<tr>
+<td><code>TenantId</code></td>
+<td>string</td>
+<td>yes — field 3</td>
+</tr>
+<tr>
+<td><code>RecordKind</code></td>
+<td>integer</td>
+<td>yes — field 4</td>
+</tr>
+<tr>
+<td><code>EventId</code></td>
+<td>string (UUID)</td>
+<td>yes — field 5</td>
+</tr>
+<tr>
+<td><code>OccurredAtUtc</code></td>
+<td>string</td>
+<td>yes — field 6</td>
+</tr>
+<tr>
+<td><code>AgentId</code></td>
+<td>string</td>
+<td>yes — field 7</td>
+</tr>
+<tr>
+<td><code>AgentVersion</code></td>
+<td>string | null</td>
+<td>yes — field 8</td>
+</tr>
+<tr>
+<td><code>ModelId</code></td>
+<td>string | null</td>
+<td>yes — field 9</td>
+</tr>
+<tr>
+<td><code>AuthorityKind</code></td>
+<td>integer</td>
+<td>yes — field 10</td>
+</tr>
+<tr>
+<td><code>OnBehalfOfUserId</code></td>
+<td>integer | null</td>
+<td>yes — field 11</td>
+</tr>
+<tr>
+<td><code>SessionId</code></td>
+<td>string | null</td>
+<td>yes — field 12</td>
+</tr>
+<tr>
+<td><code>InvocationId</code></td>
+<td>string | null</td>
+<td>yes — field 13</td>
+</tr>
+<tr>
+<td><code>CorrelationId</code></td>
+<td>string | null</td>
+<td>yes — field 14</td>
+</tr>
+<tr>
+<td><code>ActionType</code></td>
+<td>string</td>
+<td>yes — field 15</td>
+</tr>
+<tr>
+<td><code>TargetType</code></td>
+<td>string | null</td>
+<td>yes — field 16</td>
+</tr>
+<tr>
+<td><code>TargetId</code></td>
+<td>string | null</td>
+<td>yes — field 17</td>
+</tr>
+<tr>
+<td><code>Decision</code></td>
+<td>integer</td>
+<td>yes — field 18</td>
+</tr>
+<tr>
+<td><code>Outcome</code></td>
+<td>integer</td>
+<td>yes — field 19</td>
+</tr>
+<tr>
+<td><code>InputDigest</code></td>
+<td>string (hex) | null</td>
+<td>yes — field 20</td>
+</tr>
+<tr>
+<td><code>OutputDigest</code></td>
+<td>string (hex) | null</td>
+<td>yes — field 21</td>
+</tr>
+<tr>
+<td><code>ErrorCode</code></td>
+<td>string | null</td>
+<td>yes — field 22</td>
+</tr>
+<tr>
+<td><code>ErrorDigest</code></td>
+<td>string (hex) | null</td>
+<td>yes — field 23</td>
+</tr>
+<tr>
+<td><code>PrevHash</code></td>
+<td>string (hex)</td>
+<td>the chain link</td>
+</tr>
+<tr>
+<td><code>RowHash</code></td>
+<td>string (hex)</td>
+<td>the row's hash</td>
+</tr>
+<tr>
+<td><code>CanonicalPrefix</code></td>
+<td>string (hex)</td>
+<td>§7 — stored, <strong>not trusted</strong></td>
+</tr>
+<tr>
+<td><code>OnBehalfOfUserName</code></td>
+<td>string | null</td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td><code>ErrorMessage</code></td>
+<td>string | null</td>
+<td><strong>no</strong></td>
+</tr>
+<tr>
+<td><code>SignatureAlgo</code></td>
+<td>string | null</td>
+<td><strong>no</strong> — reserved, null in v1</td>
+</tr>
+<tr>
+<td><code>Signature</code></td>
+<td>string (hex) | null</td>
+<td><strong>no</strong> — reserved, null in v1</td>
+</tr>
+</tbody>
+</table>
+<p>The last four are carried because they are part of the record a reader wants to see, but they are <strong>outside
+the hash</strong>: editing them does not break anything, and a verifier <strong>MUST NOT</strong> treat them as evidence.
+Which columns the chain covers is stated once, in
+<a href="../agent-audit-canonicalization-v1/#5-what-the-hash-does-not-cover">Canonicalization v1 §5</a>.</p>
+<p>A <code>null</code> member and an <strong>absent</strong> member are equivalent for the nullable fields above. For non-nullable
+fields, absence is a format error — <strong>except as follows.</strong></p>
 <blockquote>
-<p><strong>Editing an existing v1 expectation is a bug, not a fix.</strong> If your implementation disagrees with a vector,
-your implementation is wrong — or the format changed, in which case it is a new <code>HashVersion</code> (§10), not an
-edit to v1.</p>
+<p><strong><code>CanonicalPrefix</code> on a tombstone.</strong> A fold tombstone (<code>RecordKind = 2</code>) carries no canonical prefix: its
+<code>RowHash</code> is <em>carried over</em> from the folded range's last row, not derived from its own content. The
+requirement above therefore binds only for <code>RecordKind ∈ {0, 1}</code>. This is not a licence to include a
+tombstone — §8 forbids it outright — but a verifier must be able to READ one in order to REJECT it for the
+right reason, which is why the field is nullable in the model and why §9 fixes the order of the two checks.</p>
+<p><strong>Encoding note — hex, not base64.</strong> Every binary value in this format is lowercase hex, matching the
+ledger's API surface, the canonicalization specification and its published golden vectors. Encoding one
+field differently from the rest would be a needless second convention to get wrong.</p>
 </blockquote>
-<h2 id="10-versioning">10. Versioning<a class="headerlink" href="#10-versioning" title="Permanent link">&para;</a></h2>
-<p><code>HashVersion</code> is field 1 <strong>and is inside the hash</strong>, so a version change necessarily changes every resulting
-<code>RowHash</code> — a v2 record can never be mistaken for a v1 record.</p>
-<ul>
-<li><strong>v1 is frozen.</strong> Its field order, encodings and vectors do not change, ever. Records already written under
-  v1 must remain verifiable forever.</li>
-<li>A new version MUST be introduced as <code>HashVersion = 2</code> with its own specification page and its own golden
-  vectors, and verifiers MUST dispatch on the stored <code>HashVersion</code> rather than assuming the newest.</li>
-</ul>
-<h2 id="11-assurance-statement">11. Assurance statement<a class="headerlink" href="#11-assurance-statement" title="Permanent link">&para;</a></h2>
-<p>Read this before quoting the ledger in a compliance context.</p>
-<ul>
-<li>What this specification gives you: <strong>a tamper-evident record</strong> — any modification to a hashed field, any
-  deleted row, and any reordering is detectable, and the detection is reproducible by a third party.</li>
-<li>What it does <strong>not</strong> give you: <strong>it is not proof that a particular agent produced the record.</strong> <code>AgentId</code>,
-  <code>ModelId</code> and <code>OnBehalfOfUserId</code> are the <strong>application's assertion</strong>, recorded immutably. There is no
-  per-agent key and no signature in v1 (<code>SignatureAlgo</code>/<code>Signature</code> are reserved and always NULL).</li>
-</ul>
-<p>So the honest formulation is: <em>application assertion, recorded in a tamper-evident chain</em> — <strong>not</strong> <em>"the
-agent cryptographically proved its own identity"</em>. Do not describe it more strongly than that.</p>
+<h2 id="6-segmentdigest">6. <code>SegmentDigest</code><a class="headerlink" href="#6-segmentdigest" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>SegmentDigest = SHA-256( RowHash(SeqStart) ‖ RowHash(SeqStart+1) ‖ … ‖ RowHash(SeqEnd) )
+</code></pre></div>
+<p>Each <code>RowHash</code> contributes its <strong>raw 32 bytes</strong> (not its hex text), concatenated in ascending <code>SeqNo</code> order
+with no separator. The input is therefore exactly <code>32 × RowCount</code> bytes.</p>
+<p>A verifier <strong>MUST</strong> recompute this from the rows it read and compare it to <code>manifest.SegmentDigest</code>; a
+mismatch is <code>Broken</code> (the manifest does not describe these rows). Comparing it to an <strong>expected</strong> digest
+supplied by the caller is a separate step — that is the anchoring check of §1.</p>
+<h2 id="7-canonicalprefix-stored-but-never-trusted">7. <code>CanonicalPrefix</code> — stored, but never trusted<a class="headerlink" href="#7-canonicalprefix-stored-but-never-trusted" title="Permanent link">&para;</a></h2>
+<p>Each line carries the canonical prefix that was hashed when the row was written. A conforming verifier:</p>
+<ol>
+<li><strong>MUST</strong> rebuild the canonical prefix <strong>from the row's own columns</strong>, following
+   <a href="../agent-audit-canonicalization-v1/#2-canonical-prefix-field-order-frozen-for-v1">Canonicalization v1 §2–§3</a>;</li>
+<li><strong>MUST</strong> compare the rebuilt bytes to the stored <code>CanonicalPrefix</code> — a difference is <code>Broken</code>;</li>
+<li><strong>MUST</strong> compute <code>RowHash</code> from the <strong>rebuilt</strong> bytes, never from the stored ones.</li>
+</ol>
+<p><strong>Why this rule exists.</strong> Hashing the stored prefix as-is would make the check circular: an attacker who
+edits a projection column (<code>AgentId</code>, <code>ActionType</code>, <code>TargetId</code>, …) and leaves the prefix and hash untouched
+would pass. That is exactly why the ledger's in-database verification is <strong>partial</strong> by construction — SQL
+cannot rebuild the prefix from the columns — and why the canonical verifier is the authoritative layer. This
+format must not import that weakness: <strong>the archive is verified by re-derivation, not by re-hashing.</strong></p>
+<p>Storing the prefix therefore costs roughly double the payload and repeats the hashed text (<code>TargetId</code>,
+<code>ErrorCode</code>) inside the archive; it is kept because it turns "the columns disagree with what was hashed"
+from an undetectable state into an explicit, localised failure.</p>
+<h2 id="8-segment-constraints">8. Segment constraints<a class="headerlink" href="#8-segment-constraints" title="Permanent link">&para;</a></h2>
+<p>A v1 segment <strong>MUST NOT</strong> contain a row with <code>RecordKind = 2</code> (a fold tombstone). A verifier that encounters
+one <strong>MUST</strong> fail with a distinct <strong>format error</strong> — not <code>Broken</code> — naming the offending <code>SeqNo</code>.</p>
+<p><strong>This check is ORDERED, and the order is normative: the tombstone check runs BEFORE the required-member
+check</strong> (§9 step 4). A tombstone legitimately has no <code>CanonicalPrefix</code> (§5), so a verifier that checked
+required members first would reject a tombstone archive for a <em>missing field</em> rather than for <em>containing a
+tombstone</em> — the same archive, two different reasons. Two implementations that chose differently would hand a
+user two different explanations for one file, which is exactly the kind of silent divergence a normative
+specification exists to prevent.</p>
+<p>The live ledger cannot fold a range that already contains a tombstone (re-folding is refused), so no archive
+produced by the fold flow can contain one. An archive that does was not produced by that flow.</p>
+<blockquote>
+<p><strong>Known limit — the producer is only PARTLY constrained.</strong> The prohibition is enforced by this format and by
+the verifier, and <em>partly</em> by the reference producer:
+- The export <strong>procedure</strong> accepts an arbitrary <code>SeqNo</code> range and applies no tombstone check at all.
+- The export <strong>endpoint</strong> rejects a range whose interior contains an earlier fold — those rows are gone, so
+  the range is not dense, and the density guard refuses it. That covers the ordinary case.
+- It does <strong>not</strong> reject a range consisting of the tombstone <strong>alone</strong> (<code>[a..a]</code> is trivially dense), so a
+  caller invoking the API directly can still produce a one-row archive that this format forbids.</p>
+<p>So the guarantee is: the operator flow cannot produce such an archive, the common direct-API mistake is
+caught, and the narrow single-tombstone case is caught only by the verifier. Closing it fully needs a change
+to the export procedure and is tracked separately.</p>
+</blockquote>
+<h2 id="9-verification-algorithm-normative">9. Verification algorithm (normative)<a class="headerlink" href="#9-verification-algorithm-normative" title="Permanent link">&para;</a></h2>
+<p>Given an archive and an optional <code>expectedDigest</code>:</p>
+<ol>
+<li><strong>Open the container.</strong> Read <code>manifest.json</code> and <code>segment.ndjson</code>. A missing entry is a format error.</li>
+<li><strong>Check versions.</strong> Unsupported <code>FormatVersion</code> or <code>HashVersion</code> → refuse (§2). Do not continue.</li>
+<li><strong>Check the manifest's shape.</strong> All twelve members present (§4); <code>RowCount == SeqEnd − SeqStart + 1</code>.</li>
+<li><strong>Read the rows</strong>, in this order — <strong>the order is normative</strong> (§8):
+   a. parse each line and read its <code>RecordKind</code>; <strong>if any row is <code>RecordKind = 2</code>, stop with the §8 format
+      error naming that <code>SeqNo</code></strong> — before checking required members, because a tombstone legitimately lacks
+      <code>CanonicalPrefix</code> and would otherwise be rejected for the wrong reason;
+   b. <strong>if any row's <code>HashVersion</code> differs from the manifest's</strong>, stop with a format error (§2) — a mixed
+      segment is not a v1 archive;
+   c. assert every required member of every row is present (§5) — format error if not;
+   d. assert the line count equals <code>RowCount</code>, and that <code>SeqNo</code> runs strictly ascending from <code>SeqStart</code> to
+      <code>SeqEnd</code> with no gap or repeat.</li>
+<li><strong>Per row, in order:</strong>
+   a. rebuild the canonical prefix from the columns (§7.1) and compare to <code>CanonicalPrefix</code> (§7.2);
+   b. recompute <code>RowHash = SHA-256(PrevHash ‖ rebuiltPrefix ‖ SeqNo ‖ RecordedAtTicks)</code> per
+      <a href="../agent-audit-canonicalization-v1/#1-the-chain">Canonicalization v1 §1</a> and compare to <code>RowHash</code>;
+   c. for every row after the first, assert <code>PrevHash == RowHash(previous row)</code>.</li>
+<li><strong>Check the boundaries.</strong> <code>PrevHash</code> of the first row equals <code>manifest.PrevHashAtStart</code>; <code>RowHash</code> of the
+   last equals <code>manifest.RowHashAtEnd</code>.</li>
+<li><strong>Recompute the segment digest</strong> (§6) and compare to <code>manifest.SegmentDigest</code>.</li>
+<li><strong>Anchor, if asked.</strong> If <code>expectedDigest</code> was supplied, compare it to the recomputed digest:
+   equal → <code>Verified</code>; different → <code>DigestMismatch</code>. If it was <strong>not</strong> supplied → <code>InternallyConsistent</code>,
+   and say so.</li>
+</ol>
+<p><strong>Which bucket a failure lands in.</strong> Steps 1–3 and 4a–4c are <strong>format errors</strong>: the archive is not a v1
+archive at all, so the integrity checks were never performed, and reporting one of §1's four results would
+claim a check that did not happen. Step 4d onward is <strong><code>Broken</code></strong>: the archive parsed as v1 and then failed a
+check — that is a finding about its content, not about its shape.</p>
+<p>That is why a <strong>line count that disagrees with <code>RowCount</code> is <code>Broken</code>, not a format error</strong> (a deleted or
+added row is precisely tampering, and the manifest is well-formed), while a <strong>missing <code>RowCount</code> member is a
+format error</strong> (nothing can be compared). Same field, different failure, different bucket — deliberately.</p>
+<p>The verifier <strong>SHOULD</strong> report the first offending <code>SeqNo</code> and which check failed — "the archive is broken"
+without a position is not actionable.</p>
+<h2 id="10-writing-your-own-verifier">10. Writing your own verifier<a class="headerlink" href="#10-writing-your-own-verifier" title="Permanent link">&para;</a></h2>
+<p>Everything above is implementable from this page plus
+<a href="../agent-audit-canonicalization-v1/">Canonicalization v1</a>; no Asdamir code is required and none of it is
+consulted at runtime. To check an independent implementation before pointing it at real data, run it against
+the published <a href="../agent-audit-golden-vectors-v1.json">golden vectors</a> — they pin the canonical prefix bytes and
+the resulting <code>RowHash</code> for a fixed <code>PrevHash</code>, <code>SeqNo</code> and <code>RecordedAtTicks</code>, which is the part most
+implementations get wrong first (<code>NULL</code> versus empty string, GUID byte order, the little-endian length
+prefix).</p>
+<p>An implementation is conforming when, for every archive, it reaches the same one of the four results in §1
+as the reference implementation, and refuses the same archives under §2 and §8.</p>
+<p><strong>A conforming verifier also ships, in the open core, and you do not have to use it.</strong> <code>Asdamir.Core</code> exposes
+<code>AgentLedgerArchiveVerifier</code> (LGPL), and the CLI wraps it as
+<a href="../../cli/#audit-verify-archive-verify-a-folded-agent-audit-segment-offline"><code>asdamir audit verify-archive</code></a> —
+runnable with no AppManagement, no database, no network and no commercial licence, and reporting A and B
+separately per §1. It is offered as a convenience, not as the definition: <strong>this page is normative and the
+shipped verifier is not privileged over yours.</strong> If the two disagree, that is a finding worth raising — which
+is the entire reason the format is specified rather than merely implemented.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../agent-audit-archive-format-v1/">Archive Format v1</a> — the normative container a folded segment is
-  exported to, and the algorithm that verifies one offline. It references this page for the byte layout
-  rather than repeating it.</li>
-<li><a href="../agent-audit/">Agent Audit</a> — concepts, recording actions, retention, permissions, delivery guarantees.</li>
+<li><a href="../agent-audit-canonicalization-v1/">Canonicalization v1</a> — the frozen wire format of the hash chain.</li>
+<li><a href="../agent-audit/">Agent Audit</a> — what the ledger is for, what the guarantee is and is not, how folding works.</li>
 </ul>
 
 
