@@ -9,6 +9,7 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
 
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Text;
 using Asdamir.Core.AgentAudit;
 
@@ -35,15 +36,15 @@ namespace Asdamir.Tools.Commands;
 /// two people comparing runs must be reading the same sentence, and a locale-dependent message is a finding
 /// they cannot compare. (The console renders localized product text; this is a different surface.)</para>
 ///
-/// Exit codes — the four verdicts plus the refusal, each distinct, and identical to the independent Python
-/// reference fixture so the two implementations cannot disagree about what a code MEANS:
-///   0  VERIFIED               internal checks pass AND the supplied digest matches   (A and B)
-///   1  INTERNALLY_CONSISTENT  internal checks pass, NO digest supplied — UNANCHORED  (A only)
-///   2  DIGEST_MISMATCH        internal checks pass, the supplied digest does not match
-///   3  BROKEN                 an internal check failed — altered or corrupt
-///   4  FORMAT_ERROR           the shape or version was not understood; NOTHING was checked
-///  64  usage error            a bad argument — deliberately OUTSIDE the 0-4 outcome band, so "the tool was
-///                             invoked wrongly" can never be mistaken for "the archive was judged".
+/// <para><b>Exit codes.</b> The NORMATIVE contract is the table in <c>docs/cli.md</c> ("Exit codes — NORMATIVE"),
+/// which a third party's audit script may rely on; it is stated there once so the two cannot drift. In short:
+/// <c>0</c>–<c>4</c> are claims about an archive — <c>VERIFIED</c>, <c>INTERNALLY_CONSISTENT</c> (unanchored),
+/// <c>DIGEST_MISMATCH</c>, <c>BROKEN</c>, <c>FORMAT_ERROR</c> — and <b>nothing else may occupy them</b>. Every
+/// invocation that produces no such claim exits <c>64</c>, including <c>--help</c> and <c>--version</c>: on this
+/// command <c>0</c> is not "the program ran", it is the assertion that the archive is unaltered and anchored.
+/// The four verdict codes match the independent Python reference fixture, so two implementations cannot
+/// disagree about what a code MEANS. Enforced by <c>VerifyArchiveExitCodeBandTests</c> against the real
+/// parse-and-invoke path — see <see cref="NormalizeParserExitCode"/>.</para>
 /// </summary>
 public static class VerifyArchiveCommand
 {
@@ -65,8 +66,21 @@ public static class VerifyArchiveCommand
     /// <summary>Exit code for a bad invocation. Outside the outcome band on purpose (sysexits <c>EX_USAGE</c>).</summary>
     public const int ExitUsage = 64;
 
+    /// <summary>
+    /// Records whether the verify-archive handler actually ran. Threaded explicitly rather than kept in a
+    /// static field so that tests — which invoke the command in parallel — cannot observe each other's runs.
+    /// </summary>
+    internal sealed class VerdictReached
+    {
+        /// <summary>True once the handler has produced a verdict for this invocation.</summary>
+        internal bool Value { get; set; }
+    }
+
     /// <summary>Builds the <c>audit verify-archive</c> subcommand.</summary>
-    public static Command Build()
+    public static Command Build() => Build(new VerdictReached());
+
+    /// <summary>Builds the subcommand and reports, through <paramref name="verdictReached"/>, whether a verdict was produced.</summary>
+    internal static Command Build(VerdictReached verdictReached)
     {
         var pathOpt = new Option<string>(
             new[] { "--path", "-p" },
@@ -95,11 +109,77 @@ public static class VerifyArchiveCommand
             pathOpt, digestOpt, jsonOpt,
         };
 
-        cmd.SetHandler(
-            (path, digest, json) => Environment.Exit(Execute(path, digest, json)),
-            pathOpt, digestOpt, jsonOpt);
+        // The handler sets InvocationContext.ExitCode instead of calling Environment.Exit. Environment.Exit
+        // tore the process down from inside the handler, which made the invocation pipeline untestable and —
+        // worse — hid the fact that some invocations never reach here at all. See NormalizeParserExitCode.
+        cmd.SetHandler(ctx =>
+        {
+            verdictReached.Value = true;
+            ctx.ExitCode = Execute(
+                ctx.ParseResult.GetValueForOption(pathOpt) ?? string.Empty,
+                ctx.ParseResult.GetValueForOption(digestOpt),
+                ctx.ParseResult.GetValueForOption(jsonOpt));
+
+            return Task.CompletedTask;
+        });
 
         return cmd;
+    }
+
+    /// <summary>
+    /// Forces every invocation that produced <b>no verdict</b> out of the <c>0</c>–<c>4</c> band and onto
+    /// <see cref="ExitUsage"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Why this exists.</b> The <c>0</c>–<c>4</c> codes are factual claims about an archive, and a
+    /// third party's audit script reads them as such. But <c>System.CommandLine</c> answers a whole class of
+    /// invocations <b>before</b> the handler runs — an unknown flag, a required option omitted, an option given
+    /// with no value, a stray argument — and returned <c>1</c> for all of them. <c>1</c> is
+    /// <c>INTERNALLY_CONSISTENT</c>. So <c>verify-archive --pth ./segment.zip</c> — one typo — made a script log
+    /// "the archive is intact" for a command that verified nothing. <c>--help</c> and <c>--version</c> were worse
+    /// still: they returned <c>0</c>, which is <c>VERIFIED</c>.</para>
+    /// <para><b>Why help and version are included</b>, against the usual convention that help exits <c>0</c>: on
+    /// this command <c>0</c> is not "the program ran" — it is the assertion <i>this archive is unaltered and
+    /// anchored to the ledger it claims to come from</i>. Help cannot borrow that code. Nothing else in the CLI
+    /// is affected; the rule is scoped to <c>verify-archive</c>, where the exit code is evidence.</para>
+    /// <para>The check is <b>positive, not a blacklist of known parser errors</b>: the handler is the only thing
+    /// that may hand out a <c>0</c>–<c>4</c>, so anything that did not run it is a usage error by construction.
+    /// A future System.CommandLine that invents a new pre-handler outcome is therefore covered already — which
+    /// is exactly the way the original gate failed, by enumerating the cases that existed when it was written.</para>
+    /// </remarks>
+    /// <param name="parseResult">The parse result for the whole invocation.</param>
+    /// <param name="handlerRan">Whether the verify-archive handler actually produced a verdict.</param>
+    /// <param name="exitCode">The exit code System.CommandLine returned.</param>
+    /// <returns><paramref name="exitCode"/> when a verdict was produced; otherwise <see cref="ExitUsage"/>.</returns>
+    internal static int NormalizeParserExitCode(ParseResult parseResult, bool handlerRan, int exitCode)
+    {
+        if (handlerRan)
+        {
+            return exitCode;
+        }
+
+        return TargetsVerifyArchive(parseResult) ? ExitUsage : exitCode;
+    }
+
+    /// <summary>
+    /// True when the invocation was aimed at <c>audit verify-archive</c> — including when it failed to parse,
+    /// where the command result points at the deepest command that DID parse and the rest lands in the errors.
+    /// </summary>
+    private static bool TargetsVerifyArchive(ParseResult parseResult)
+    {
+        for (var command = parseResult.CommandResult.Command; command is not null;)
+        {
+            if (command.Name == "verify-archive")
+            {
+                return true;
+            }
+
+            command = command.Parents.OfType<Command>().FirstOrDefault();
+        }
+
+        // A token-level failure ("--pth" typo'd before the option is matched) can leave CommandResult on the
+        // parent, so fall back to the raw tokens. Both paths are covered by the usage-error test table.
+        return parseResult.Tokens.Any(t => t.Value == "verify-archive");
     }
 
     /// <summary>

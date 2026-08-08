@@ -19,10 +19,10 @@ dotnet tool install -g Asdamir.Tools
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `1.7.0` | `1.8.0` built, pending publish |
+| `Asdamir.Core` | `1.8.0` | — |
 | `Asdamir.Data` | `1.5.0` | — |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
-| `Asdamir.Tools` | `1.4.6` | `1.5.0` built, pending publish |
+| `Asdamir.Tools` | `1.5.0` | `1.5.1` built, pending publish |
 | `Asdamir.Web` | `2.1.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -671,7 +671,10 @@ and both the text and the `--json` output state A and B **separately** (`provesN
 Same discipline as the ledger's three-valued `ChainStatus`, where `Degraded` is never rendered as success: do
 not dilute the green.
 
-### Exit codes
+### Exit codes — NORMATIVE
+
+This table is the **single, normative** statement of the contract. A third party's audit script may rely on
+it. It is stated **exhaustively**: the command emits these values and **no others**.
 
 | Code | Outcome | Meaning |
 |---:|---|---|
@@ -680,13 +683,29 @@ not dilute the green.
 | `2` | `DIGEST_MISMATCH` | internal checks pass, the supplied digest does **not** match — these rows are not that segment |
 | `3` | `BROKEN` | an internal check failed — the archive is altered or corrupt (the finding names the `SeqNo`) |
 | `4` | `FORMAT_ERROR` | the shape or version was not understood — **nothing was checked** |
-| `64` | usage error | a bad argument. Deliberately **outside** the `0`–`4` band, so "invoked wrongly" can never be read as "judged" |
+| `64` | usage error | the command was **invoked wrongly**. No archive was judged |
 
-`FORMAT_ERROR` is not one of the four verdicts on purpose: an unknown layout means the integrity checks were
-never performed, and reporting a verdict for an unchecked archive would present it as checked.
+**The rule, in one sentence: `0`–`4` are claims about an archive, and nothing else may occupy them.** Every
+invocation that produces no such claim exits `64` — a typo'd or unknown flag, a missing or empty `--path`, an
+option given without its value, a stray argument, a malformed `--expected-digest`, a path that does not
+exist, and **`--help` / `--version` as well**.
+
+Help and version are included **against the usual convention that `--help` exits `0`**, and the reason is the
+whole point of the band: on this command `0` does not mean *the program ran*, it means *this archive is
+unaltered and anchored to the ledger it claims to come from*. Help cannot borrow that code. (Nothing else in
+the CLI is affected — the rule is scoped to `verify-archive`, where an exit code is evidence.)
+
+`FORMAT_ERROR` sits inside the band even though it reports no verdict, because it is still a statement about
+the archive — *this file was refused* — whereas `64` says nothing about any archive at all.
 
 Codes `0`–`4` are identical to the specification's own reference fixture, so a script wired to one
 implementation behaves the same against the other.
+
+> **Fixed in `Asdamir.Tools 1.5.1`.** In `1.5.0` the invocations that `System.CommandLine` answered *before*
+> the handler ran leaked into the band: a typo'd flag exited `1` (`INTERNALLY_CONSISTENT`) and `--help` exited
+> `0` (`VERIFIED`). A script could therefore log a verification result for a command that verified nothing. If
+> you are pinned to `1.5.0`, treat any exit code as trustworthy **only** when the command also printed a
+> verdict line; upgrading is the real fix.
 
 ### What it actually checks
 

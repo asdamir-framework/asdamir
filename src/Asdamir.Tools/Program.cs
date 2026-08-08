@@ -9,6 +9,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
 
 using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
 using Asdamir.Tools.Commands;
 
 namespace Asdamir.Tools;
@@ -35,21 +37,46 @@ namespace Asdamir.Tools;
 /// </summary>
 public static class Program
 {
-    public static async Task<int> Main(string[] args)
+    public static async Task<int> Main(string[] args) => await RunAsync(args);
+
+    /// <summary>
+    /// The real entry point, separated from <see cref="Main"/> so tests can drive the ACTUAL parse-and-invoke
+    /// path rather than a helper that resembles it. The exit-code contract of <c>audit verify-archive</c> is
+    /// only observable here — the cases it exists to catch are answered by the parser, before any handler runs,
+    /// so a test that calls the handler directly can never see them.
+    /// </summary>
+    /// <param name="args">The raw command-line arguments.</param>
+    /// <returns>The process exit code.</returns>
+    internal static async Task<int> RunAsync(string[] args)
     {
+        var verdictReached = new VerifyArchiveCommand.VerdictReached();
+
         var root = new RootCommand("asdamir — scaffolding and code generation for Asdamir")
         {
             BuildNewCommand(),
             BuildAddCommand(),
             RollbackCommand.Build(),
-            BuildAuditCommand(),
+            BuildAuditCommand(verdictReached),
             BuildDbCommand(),
             BuildLocalizationCommand(),
             BuildAppCommand(),
             SecretsCommand.Build(),
         };
 
-        return await root.InvokeAsync(args);
+        // ONE parser, built with UseDefaults(), used for BOTH the inspection and the invocation.
+        //
+        // `root.Parse(args)` followed by `parseResult.InvokeAsync()` looks equivalent and is NOT: it runs
+        // WITHOUT the default middleware, so parse errors stop short-circuiting the pipeline. Measured, after
+        // making exactly that mistake: `verify-archive --path x.zip --bogus` ran the handler and printed a real
+        // verdict for a mistyped command line, `--path` with no value reached the handler and crashed it with an
+        // unhandled exception (exit 134), and — worst — `audit lint --bogus` stopped erroring and instead
+        // scanned 0 files and exited 0, turning a build gate green. Keep the builder.
+        var parser = new CommandLineBuilder(root).UseDefaults().Build();
+
+        var parseResult = parser.Parse(args);
+        var exitCode = await parser.InvokeAsync(args);
+
+        return VerifyArchiveCommand.NormalizeParserExitCode(parseResult, verdictReached.Value, exitCode);
     }
 
     private static Command BuildDbCommand()
@@ -66,14 +93,14 @@ public static class Program
         return appCmd;
     }
 
-    private static Command BuildAuditCommand()
+    private static Command BuildAuditCommand(VerifyArchiveCommand.VerdictReached verdictReached)
     {
         var auditCmd = new Command("audit", "Static checks against the Asdamir audit pattern set.");
         auditCmd.AddCommand(AuditLintCommand.Build());
         auditCmd.AddCommand(LocalizationCheckCommand.Build());
         auditCmd.AddCommand(PermissionPolicyCheckCommand.Build());
         auditCmd.AddCommand(SeedFormCheckCommand.Build());
-        auditCmd.AddCommand(VerifyArchiveCommand.Build());
+        auditCmd.AddCommand(VerifyArchiveCommand.Build(verdictReached));
         return auditCmd;
     }
 

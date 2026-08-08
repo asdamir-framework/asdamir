@@ -5,12 +5,62 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.7.0`** · **Data `1.5.0`** · **Web `2.1.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.4.6`** (Web `2.1.0`: the FluentUI-**isolation facades, batch 2** — 11 more components (`AsdamirSelect`/`Stack`/`TextArea`/`Switch`/`Checkbox`/`DatePicker`/`RadioGroup`+`Radio`/`MessageBar`/`Label`/`Spacer`/`Anchor`) so caller-side raw `<Fluent*>` component usage is now 0. Web `2.0.2`: additive `Required`+`Class` on the input components. Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the entries below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently. Current published state (nuget.org): **Core `1.8.0`** · **Data `1.5.0`** · **Web `2.1.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.5.0`** (Core `1.8.0` + Tools `1.5.0`: the archive verifier goes public — `asdamir audit verify-archive` checks a folded agent-audit segment offline, with no control plane and no licence; Tools `1.5.1` corrects its exit-code band, see below.) (Web `2.1.0`: the FluentUI-**isolation facades, batch 2** — 11 more components (`AsdamirSelect`/`Stack`/`TextArea`/`Switch`/`Checkbox`/`DatePicker`/`RadioGroup`+`Radio`/`MessageBar`/`Label`/`Spacer`/`Anchor`) so caller-side raw `<Fluent*>` component usage is now 0. Web `2.0.2`: additive `Required`+`Class` on the input components. Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the entries below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Core 1.8.0 · Tools 1.5.0] — 2026-08-08 — *pending publish*
+## [Tools 1.5.1] — 2026-08-08 — *pending publish*
+
+### Fixed: a mistyped command line exited `1`, and `1` means "the archive is intact"
+
+`verify-archive` promises that exit codes `0`–`4` are claims about an archive and that a bad invocation stays
+outside that band, on `64` — *"so 'invoked wrongly' can never be read as 'judged'"*. In `1.5.0` that held only
+for the usage errors the **handler** raises. Everything `System.CommandLine` answers **before** the handler
+runs leaked into the band:
+
+| Invocation | `1.5.0` | means | `1.5.1` |
+|---|---:|---|---:|
+| `--pth ./segment.zip` (a typo) | `1` | `INTERNALLY_CONSISTENT` | `64` |
+| `--path ./segment.zip --bogus` | `1` | `INTERNALLY_CONSISTENT` | `64` |
+| `--path` omitted, or given with no value | `1` | `INTERNALLY_CONSISTENT` | `64` |
+| a stray positional argument | `1` | `INTERNALLY_CONSISTENT` | `64` |
+| `--help`, `-h`, `--version` | `0` | **`VERIFIED`** | `64` |
+
+So `asdamir audit verify-archive --pth ./segment.zip` — one transposed letter — made a third party's audit
+script log *"the archive has not been altered"* for a command that never opened it. `--help` returning `0` was
+worse: `0` is the strongest claim the tool can make.
+
+**Help and version are deliberately included**, against the usual convention that `--help` exits `0`. On this
+command `0` does not mean *the program ran*; it means *this archive is unaltered and anchored to the ledger it
+claims to come from*. Help cannot borrow that code. Nothing else in the CLI changes — the rule is scoped to
+`verify-archive`, where the exit code is evidence.
+
+**The check is positive, not a blacklist**: the handler is the only thing that may hand out a `0`–`4`, so
+anything that did not reach it is a usage error by construction. A future parser that invents a new
+pre-handler outcome is covered already — enumerating today's cases is precisely how the original went blind.
+
+**Why the tests were green.** `VerifyArchiveCommandTests` asserts `64` for every usage error *the handler
+produces*, and it passed on every one. It could not reach the others: they are answered before any handler
+runs, so a test that calls the handler cannot see them. The new `VerifyArchiveExitCodeBandTests` drives
+`Program.RunAsync` — the real parse-and-invoke path — over twelve measured invocation shapes, asserts the band
+invariant directly, and pins both that a real archive still gets a real verdict and that a sibling command
+keeps its own codes. Reverting the fix turns **11 of its 16** cases red.
+
+**One near-miss worth recording**, because it was caught by measurement and not by review: the first attempt
+replaced `root.InvokeAsync(args)` with `root.Parse(args)` + `parseResult.InvokeAsync()`. Those look equivalent
+and are not — the second runs **without the default middleware**, so parse errors stop short-circuiting. The
+handler then ran on malformed input (printing a genuine verdict for a mistyped line), crashed with an
+unhandled exception on a valueless option (exit `134`), and — the serious one — turned `audit lint --bogus`
+from an error into *"0 files scanned"*, exit `0`: **a build gate silently green**. The shipped fix keeps
+`CommandLineBuilder(root).UseDefaults()` and normalizes afterwards; a test now pins the sibling command.
+
+**Documentation**: `docs/cli.md` states the contract **normatively and exhaustively** in one place — these
+values and no others — including the `1.5.0` caveat for anyone pinned to it. The archive format, its
+semantics and the four verdicts are **unchanged**; nothing published in `1.5.0` reports a wrong verdict, it is
+only more forgiving of a typo than it claims to be.
+
+## [Core 1.8.0 · Tools 1.5.0] — 2026-08-08
 
 ### Added — you can now verify a folded archive yourself, offline
 
