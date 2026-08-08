@@ -1692,6 +1692,14 @@
 <li><strong>.NET 10 SDK</strong></li>
 <li><strong>SQL Server</strong> running on <code>localhost:1433</code> (local or Docker). Oracle / PostgreSQL are also supported.</li>
 </ul>
+<blockquote>
+<p><strong>Package signing.</strong> The <code>Asdamir.*</code> packages carry the <strong>nuget.org repository signature</strong> (applied by
+NuGet.org at publish, and what <code>dotnet nuget verify</code> checks by default) but <strong>not yet an author
+signature</strong>. If your organisation enforces author-signed packages via <code>&lt;trustedSigners&gt;</code> in
+<code>nuget.config</code>, restore will be rejected by that policy — author signing is on the roadmap. Stated here
+rather than left to be discovered: a framework whose selling point is verifiability should not be quiet
+about the limits of its own supply chain.</p>
+</blockquote>
 <h2 id="scaffold-and-run-your-first-app">Scaffold and run your first app<a class="headerlink" href="#scaffold-and-run-your-first-app" title="Permanent link">&para;</a></h2>
 <p>The fastest path is the <strong><code>asdamir</code> CLI</strong> — it generates a complete, run-ready app (both tiers, dev secrets,
 database, migrations). This is the <strong>one canonical flow</strong>, identical across the docs, the README and the CLI guide.</p>
