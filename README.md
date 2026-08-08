@@ -220,6 +220,7 @@ dotnet run --project src/Asdamir.Tools -- <command>      # or from source
 | `db apply` | Journaled, idempotent SQL migration runner |
 | `secrets rotate-key` · `secrets encrypt` | At-rest key rotation + value encryption |
 | `audit lint` | Static anti-pattern gate (run it before every push) |
+| `audit verify-archive` | Verify a folded agent-audit segment **offline** — no database, no network, no licence |
 | `app register` | Register a managed app into AppManagement |
 
 Suppress a single finding with `// audit-lint:ignore AUDxxx` (+ a reason); whole-file opt-out with `// audit-lint:skip-file` in the first 10 lines.

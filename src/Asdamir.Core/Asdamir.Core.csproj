@@ -22,7 +22,7 @@
          AgentActionRecord + its three enums, AgentAuditOptions and AgentAuditServiceToken. Purely ADDITIVE —
          no existing public type is removed or renamed — and co-versioned with Asdamir.Data 1.5.0, which
          carries the client sink that consumes them. -->
-    <Version>1.7.0</Version>
+    <Version>1.8.0</Version>
     <Description>Core foundation for Asdamir: shared models, abstractions, modules, error handling, and Serilog/Polly wiring.</Description>
     <PackageTags>blazor;fluentui;shared;models;dtos;constants;utilities;abstractions;error-handling;modules</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -43,14 +43,15 @@
   <ItemGroup>
     <!-- Framework unit tests may construct internal impl types (e.g. ValidationContext) directly. -->
     <InternalsVisibleTo Include="Asdamir.Core.Tests" />
-    <!-- The agent-audit canonicalizer + record validator are INTERNAL on purpose: the byte layout they produce
-         is a frozen hash contract, not an API surface to program against, and the §7 public list is closed.
-         They must nonetheless run in the CONTROL PLANE rather than in the calling application, because field 2
-         of the canonical prefix is the AppId and the AppId is resolved from the ingest service token, never
-         from the payload — so the client is structurally unable to build its own prefix. AppManagement is
-         therefore the one consumer that needs to see them (to canonicalize on ingest and to run the
-         authoritative canonical verification). This works over a PackageReference too: neither assembly is
-         strong-named. -->
+    <!-- The agent-audit CANONICALIZER is no longer internal: Faz 2a deliberately opened it, together with
+         IAgentActionCanonicalizer, AgentLedgerArchiveVerifier and its result types. A folded range leaves the
+         database and survives only as an archive, so if the only code able to re-derive those bytes were the
+         closed component that produced them, the assurance would collapse to "trust the vendor". What is still
+         INTERNAL is AgentActionRecordValidator — a write-time input guard, not something to program against —
+         and AppManagement is its one consumer, because canonicalization must run in the CONTROL PLANE rather
+         than in the calling application: field 2 of the canonical prefix is the AppId, and the AppId is
+         resolved from the ingest service token, never from the payload, so the client is structurally unable to
+         build its own prefix. This works over a PackageReference too: neither assembly is strong-named. -->
     <InternalsVisibleTo Include="Asdamir.AdminConsole.Api" />
     <InternalsVisibleTo Include="Asdamir.AdminConsole.Api.Tests" />
     <!-- The agent-audit E2E fixtures build ledger STATE (a clean chain, a folded chain, a tampered chain) by

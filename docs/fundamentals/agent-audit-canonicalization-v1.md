@@ -260,4 +260,7 @@ agent cryptographically proved its own identity"*. Do not describe it more stron
 
 ## See also
 
+- [Archive Format v1](agent-audit-archive-format-v1.md) — the normative container a folded segment is
+  exported to, and the algorithm that verifies one offline. It references this page for the byte layout
+  rather than repeating it.
 - [Agent Audit](agent-audit.md) — concepts, recording actions, retention, permissions, delivery guarantees.

@@ -166,7 +166,11 @@ to the ingest endpoint with a service token, and the server resolves the applica
 
 Append-only and "delete old rows" are contradictory, so old data is **folded** rather than deleted:
 
-1. The range is exported to an NDJSON archive, which yields a **segment digest**.
+1. The range is exported to an archive in the normative
+   **[Archive Format v1](agent-audit-archive-format-v1.md)** — a ZIP holding `manifest.json` and
+   `segment.ndjson` — which yields a **segment digest**. The digest is written into the manifest as well as
+   returned to the caller, so the archive carries the value that will later be compared against the
+   tombstone's `FoldSegmentDigest`. (That comparison, not the manifest's own copy, is the anchoring proof.)
 2. The rows are removed and replaced by a single **tombstone** at the range's first sequence number, carrying
    the range's boundary hashes verbatim — so the following row's link stays valid and the chain still verifies.
 3. The fold appends its own hash-covered accounting record, so it audits itself.
@@ -246,4 +250,7 @@ removes rows and is the only one that can destroy evidence:
   Enough to write an **independent verifier** in any language, with frozen
   [golden vectors](agent-audit-golden-vectors-v1.json) to check it against. Read it if you need to prove the
   ledger's integrity without trusting our tooling.
+- **[Archive Format v1](agent-audit-archive-format-v1.md)** — what a folded segment is exported to, and
+  how to verify one **without the product**: no database, no control plane, no network. Read its
+  "assurance boundary" section before quoting any verification result.
 - [Audit Logging](audit-logging.md) · [Authorization](authorization.md) · [Observability](observability.md)

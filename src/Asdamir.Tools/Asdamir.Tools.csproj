@@ -48,7 +48,7 @@
          Asdamir.Core 1.4.0 / Data 1.3.0 (the primitive's home). New framework-version flag overrides the
          Asdamir.* pin (for building against a locally-packed pre-release). Additive; a non-scaffolded
          existing app is unaffected. -->
-    <Version>1.4.6</Version>
+    <Version>1.5.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>
@@ -71,6 +71,38 @@
          so the published dotnet tool stays small — a Core ProjectReference dragged its whole runtime
          graph (libphonenumber ~5 MB, FluentValidation, IdentityModel/Azure, Polly…) into the tool
          package (~8 MB), which stalled the GitHub Packages push. -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- `audit verify-archive` COMPILES Core's agent-audit verifier IN, rather than referencing the package.
+
+         Why not a ProjectReference: see the note above — it would drag Core's whole runtime graph into a
+         dotnet tool that must stay small. Why not a second implementation (the `secrets`/SecretCrypto
+         idiom): because this is a HASH CONTRACT, and two copies of a frozen byte layout is precisely the
+         drift the whole agent-audit design exists to prevent — a divergence would not fail a build, it
+         would report an intact archive as broken, in the one tool a third party runs to check us.
+
+         Source-linking is the only option that gives BOTH: exactly ONE implementation of the bytes (edit
+         it in Core and this tool changes with it — there is nothing here to keep in sync) and no runtime
+         dependency at all. These files are self-contained by construction: pure BCL, no Core service, no
+         DI. If one of them ever needs something else from Core, that is the signal to reconsider — not a
+         reason to copy the file. -->
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentActionRecord.cs"
+             Link="AgentAudit/AgentActionRecord.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentActionCanonicalizer.cs"
+             Link="AgentAudit/AgentActionCanonicalizer.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/IAgentActionCanonicalizer.cs"
+             Link="AgentAudit/IAgentActionCanonicalizer.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentLedgerArchiveManifest.cs"
+             Link="AgentAudit/AgentLedgerArchiveManifest.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentLedgerArchiveRow.cs"
+             Link="AgentAudit/AgentLedgerArchiveRow.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentLedgerArchiveVerifier.cs"
+             Link="AgentAudit/AgentLedgerArchiveVerifier.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/ArchiveVerificationResult.cs"
+             Link="AgentAudit/ArchiveVerificationResult.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/ArchiveVerificationStatus.cs"
+             Link="AgentAudit/ArchiveVerificationStatus.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -73,6 +73,7 @@ public static class Program
         auditCmd.AddCommand(LocalizationCheckCommand.Build());
         auditCmd.AddCommand(PermissionPolicyCheckCommand.Build());
         auditCmd.AddCommand(SeedFormCheckCommand.Build());
+        auditCmd.AddCommand(VerifyArchiveCommand.Build());
         return auditCmd;
     }
 

@@ -10,6 +10,64 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
+## [Core 1.8.0 · Tools 1.5.0] — 2026-08-08 — *pending publish*
+
+### Added — you can now verify a folded archive yourself, offline
+
+`Core 1.7.0` published the *specification* so that anyone could write an independent verifier. This
+release ships one — **in the open core**, so running it costs nothing and requires nothing.
+
+Until now the authoritative canonical verifier was `internal` to the commercial control plane. In an audit
+product that is a contradiction: **if the only thing able to check the archive is the closed component that
+produced it, the assurance collapses to "trust the vendor"** — a system's own clean report about itself is
+not audit evidence.
+
+- **[Archive Format v1](docs/fundamentals/agent-audit-archive-format-v1.md) is frozen and published.** A
+  folded segment is a **ZIP** holding `manifest.json` + `segment.ndjson`: twelve manifest members, flat
+  NDJSON lines, lowercase hex throughout, dense ascending `SeqNo`. Normative and complete — the format, not
+  our implementation of it, is what a third party has to agree with.
+- **New public API in `Asdamir.Core`** (additive; nothing removed or renamed): `IAgentActionCanonicalizer`,
+  `AgentActionCanonicalizer` (was `internal`), `AgentLedgerArchiveVerifier`, `ArchiveVerificationResult`,
+  `ArchiveVerificationStatus`, `AgentLedgerArchiveManifest`, `AgentLedgerArchiveRow`. **Core `1.7.0 → 1.8.0`.**
+- **New CLI command** — `asdamir audit verify-archive --path <dir|zip> [--expected-digest <hex>] [--json]`.
+  **Tools `1.4.6 → 1.5.0`.** No network, no database, no AppManagement, no licence; a test proves it by
+  running the real tool from an empty directory with every proxy variable pointed at a dead port.
+- **One implementation, not two.** The commercial tier's verifier is now a thin DTO adapter over this public
+  Core type. Two copies of a frozen hash contract would not fail a build if they drifted — they would report
+  an intact archive as broken, in the very tool a third party runs to check us.
+
+**The honesty rule is enforced in code, not documented and hoped for.** An archive can attest to two
+different things, and one tick for both would be a lie:
+
+| Result | Exit | What it proves |
+|---|---:|---|
+| `VERIFIED` | 0 | not altered **and** anchored to the ledger it claims to come from |
+| `INTERNALLY_CONSISTENT` | 1 | not altered — **UNANCHORED**, and it says so instead of showing green |
+| `DIGEST_MISMATCH` | 2 | internally sound, but not that segment |
+| `BROKEN` | 3 | a check failed, naming the offending `SeqNo` |
+| *(format error)* | 4 | not a v1 archive — **no check ran**, so no verdict is reported |
+
+Anchoring needs the `FoldSegmentDigest` recorded on the tombstone in the live ledger, passed as
+`--expected-digest`. The `SegmentDigest` **inside** the manifest is not an anchor: it is derived from the
+rows it accompanies, so whoever rewrites the rows recomputes it. The specification says so in its own
+assurance-boundary section, and the tool refuses to blur it.
+
+The verifier **re-derives**; it never re-hashes what it was handed. Each row carries the canonical prefix
+that was hashed when it was written, and the verifier rebuilds that prefix **from the row's own columns**
+before comparing — hashing the stored prefix would be circular, and someone who edited a projection column
+while leaving prefix and hash alone would pass.
+
+**Conformance is proven against an implementation that shares no code with ours.** A Python fixture written
+from the published specification checks the real export, and a ten-case tamper matrix proves each check can
+go RED, every case naming its position. Exit codes `0`–`4` are identical in both, so a script wired to one
+behaves the same against the other.
+
+Two places where two *conforming* implementations could still disagree are known and written down rather
+than quietly left: a required member that is present but **not decodable** (a malformed hex hash, an
+out-of-range enum), and the order in which the line-count and tombstone rules are applied. Both are
+tracked, and both will land with the conformance cases that pin them — a clarification without a test is
+how a specification drifts.
+
 ## [Core 1.7.0 · Data 1.5.0] — 2026-08-02
 
 ### Added — agent-audit primitives: recording what an AI agent did, in a checkable form

@@ -19,10 +19,10 @@ dotnet tool install -g Asdamir.Tools
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `1.7.0` | — |
+| `Asdamir.Core` | `1.7.0` | `1.8.0` built, pending publish |
 | `Asdamir.Data` | `1.5.0` | — |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
-| `Asdamir.Tools` | `1.4.6` | — |
+| `Asdamir.Tools` | `1.4.6` | `1.5.0` built, pending publish |
 | `Asdamir.Web` | `2.1.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -625,6 +625,84 @@ line is deleted.
 
 Options: `--path/-p` (repeatable), `--format/-f` (`text`|`json`), `--include-tests`, `--allowlist <file>`.
 Exit codes: `0` (clean), `1` (findings — **fails the build**), `2` (bad args).
+
+## `audit verify-archive` — verify a folded agent-audit segment, offline
+
+Unlike every other `audit` subcommand, this one is **not a build gate**. It is the tool a third party runs on
+an **exported agent action ledger archive** — with **no AppManagement, no database, no network and no
+commercial licence**.
+
+When a closed range of the [agent action ledger](fundamentals/agent-audit.md) is *folded*, those rows leave the
+live database and survive only as an archive ([Archive Format v1](fundamentals/agent-audit-archive-format-v1.md)
+— a ZIP holding `manifest.json` + `segment.ndjson`). If the only thing able to check that archive were the
+closed component that produced it, the assurance would collapse to *"trust the vendor"*, and a system's own
+clean report about itself is not audit evidence. So the verifier lives in **`Asdamir.Core` (open core, LGPL)**
+and this command is its front end.
+
+```bash
+# UNANCHORED — proves the archive has not been altered; proves nothing about where it came from
+asdamir audit verify-archive --path ./segment.zip
+
+# ANCHORED — additionally proves these rows ARE the segment folded from that ledger
+asdamir audit verify-archive --path ./segment.zip --expected-digest <FoldSegmentDigest from the tombstone>
+
+# machine-readable
+asdamir audit verify-archive --path ./unpacked-dir --json
+```
+
+`--path` takes either the `.zip` container or a **directory** holding the two entries.
+
+### The two claims, never blurred — read this before quoting a result
+
+An archive can attest to **two different things**, and a tool that reports one tick for both is lying:
+
+| | Claim | Provable from the archive alone? |
+|---|---|---|
+| **A** | This archive has not been altered since it was written. Every row's `RowHash` re-derives **from its own columns**, the links hold, the sequence is dense. | **yes** |
+| **B** | These rows genuinely **are** the segment folded out of a particular live ledger. | **no** |
+
+The proof of **B** is the **`FoldSegmentDigest` recorded on the tombstone in the live ledger** — a value the
+archive cannot produce for itself (if it could, a forged archive could produce it too). Pass it as
+`--expected-digest`. **The `SegmentDigest` inside `manifest.json` is NOT an anchor**: it is derived from the
+very rows it accompanies, so an attacker who rewrites the rows simply recomputes it.
+
+So without `--expected-digest` the command reports **`INTERNALLY_CONSISTENT` — UNANCHORED**, never `VERIFIED`,
+and both the text and the `--json` output state A and B **separately** (`provesNotAltered` / `provesAnchored`).
+Same discipline as the ledger's three-valued `ChainStatus`, where `Degraded` is never rendered as success: do
+not dilute the green.
+
+### Exit codes
+
+| Code | Outcome | Meaning |
+|---:|---|---|
+| `0` | `VERIFIED` | internal checks pass **and** the supplied digest matches — A **and** B |
+| `1` | `INTERNALLY_CONSISTENT` | internal checks pass, **no** digest supplied — A only, **unanchored** |
+| `2` | `DIGEST_MISMATCH` | internal checks pass, the supplied digest does **not** match — these rows are not that segment |
+| `3` | `BROKEN` | an internal check failed — the archive is altered or corrupt (the finding names the `SeqNo`) |
+| `4` | `FORMAT_ERROR` | the shape or version was not understood — **nothing was checked** |
+| `64` | usage error | a bad argument. Deliberately **outside** the `0`–`4` band, so "invoked wrongly" can never be read as "judged" |
+
+`FORMAT_ERROR` is not one of the four verdicts on purpose: an unknown layout means the integrity checks were
+never performed, and reporting a verdict for an unchecked archive would present it as checked.
+
+Codes `0`–`4` are identical to the specification's own reference fixture, so a script wired to one
+implementation behaves the same against the other.
+
+### What it actually checks
+
+It **re-derives**; it never re-hashes what it was handed. Each row carries the canonical prefix that was hashed
+when it was written, and the verifier rebuilds that prefix **from the row's own columns** before comparing —
+because hashing the stored prefix would be circular: someone who edits a projection column (`AgentId`,
+`ActionType`, `TargetId`, …) and leaves the prefix and hash alone would pass. That circularity is exactly why
+the ledger's in-database check is *partial* by construction, and the archive layer must not import it.
+
+Output is **English only**, deliberately: a verification finding is evidence quoted in an audit, and a message
+that reads differently depending on the reader's locale is a finding two people cannot compare.
+
+You do not have to use this command at all — [Archive Format v1](fundamentals/agent-audit-archive-format-v1.md)
+and [Canonicalization v1](fundamentals/agent-audit-canonicalization-v1.md) are normative and complete, and the
+[golden vectors](fundamentals/agent-audit-golden-vectors-v1.json) let you check your own implementation before
+pointing it at real data. That it is *optional* is the point.
 
 ## `localization verify` — live apply-drift
 
