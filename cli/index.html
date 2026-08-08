@@ -2702,7 +2702,7 @@ against every key <strong>seeded</strong> in the tree. It carries two rules:</p>
   comment is never counted. Before <code>1.4.6</code> the gate matched the tuple form <strong>only</strong>, so every key seeded
   exclusively through an upsert proc was wrongly reported as "never seeded": <strong>276 keys across 20
   AsdamirVault migrations</strong> — the whole billing surface, the audit action labels, the agent-audit ledger.
-  Write <strong>new</strong> seeds in the canonical form only — see <a href="#audit-seeds--the-seed-form-gates-aud018--aud017"><code>audit seeds</code></a>.</p>
+  Write <strong>new</strong> seeds in the canonical form only — see <a href="#audit-seeds-the-seed-form-gates-aud018-aud017"><code>audit seeds</code></a>.</p>
 <p><strong>Seed auto-discovery (since Tools <code>1.4.2</code>).</strong> A Model-A (central-model) app keeps its central seeds under
 <code>db/admin-onboarding/*.sql</code> at the <strong>repo root</strong> — <em>outside</em> a <code>--path src</code> scope. So in addition to
 <code>--path</code>, seed sources are also discovered from the <strong>repo root</strong> (the nearest <code>.git</code> ancestor of <code>--path</code>;
@@ -2825,7 +2825,7 @@ blind because the SQL was written in a spelling they did not recognise: an apost
 AUD016's literal pairing, and the <code>EXEC …_UpsertValue</code> form was invisible to AUD015 across <strong>276 keys</strong>.
 Both were fixed by teaching the scanner, but that is an infinite race: a third spelling always exists.
 <code>audit seeds</code> ends it from the other side by constraining the <strong>input</strong>. It carries two rules: <strong>AUD018</strong> — a
-localization seed may be written in exactly ONE approved way — and <strong>AUD017</strong> (<a href="#aud017--a-permission-grant-may-not-be-a-like-pattern">below</a>),
+localization seed may be written in exactly ONE approved way — and <strong>AUD017</strong> (<a href="#aud017-a-permission-grant-may-not-be-a-like-pattern">below</a>),
 the same principle applied to permission grants. Anything else fails the build.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>seeds<span class="w"> </span>--path<span class="w"> </span>AppManagement/db<span class="w"> </span>--path<span class="w"> </span>src
 </code></pre></div>
