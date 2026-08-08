@@ -213,7 +213,7 @@ supplied by the caller is a separate step — that is the anchoring check of §1
 Each line carries the canonical prefix that was hashed when the row was written. A conforming verifier:
 
 1. **MUST** rebuild the canonical prefix **from the row's own columns**, following
-   [Canonicalization v1 §2–§3](agent-audit-canonicalization-v1.md#2-canonical-prefix--field-order-frozen-for-v1);
+   [Canonicalization v1 §2–§3](agent-audit-canonicalization-v1.md#2-canonical-prefix-field-order-frozen-for-v1);
 2. **MUST** compare the rebuilt bytes to the stored `CanonicalPrefix` — a difference is `Broken`;
 3. **MUST** compute `RowHash` from the **rebuilt** bytes, never from the stored ones.
 
@@ -309,7 +309,7 @@ as the reference implementation, and refuses the same archives under §2 and §8
 
 **A conforming verifier also ships, in the open core, and you do not have to use it.** `Asdamir.Core` exposes
 `AgentLedgerArchiveVerifier` (LGPL), and the CLI wraps it as
-[`asdamir audit verify-archive`](../cli.md#audit-verify-archive--verify-a-folded-agent-audit-segment-offline) —
+[`asdamir audit verify-archive`](../cli.md#audit-verify-archive-verify-a-folded-agent-audit-segment-offline) —
 runnable with no AppManagement, no database, no network and no commercial licence, and reporting A and B
 separately per §1. It is offered as a convenience, not as the definition: **this page is normative and the
 shipped verifier is not privileged over yours.** If the two disagree, that is a finding worth raising — which
