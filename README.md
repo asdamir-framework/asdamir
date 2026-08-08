@@ -248,12 +248,27 @@ There is **no hosted CI** on this repository (GitHub Actions is disabled for cos
 
 ```bash
 dotnet build Asdamir.sln -c Release                              # must be 0 warnings
-dotnet test  Asdamir.sln                                         # all green
-#   skip the slow generate-and-build scaffold test when you didn't touch templates/framework:
-dotnet test  Asdamir.sln --filter "Category!=Scaffold"
-dotnet run --project src/Asdamir.Tools -- audit lint --path src
-dotnet run --project src/Asdamir.Tools -- audit lint --path AppManagement/src
+dotnet run --project src/Asdamir.Tools -- audit lint --path src  # no findings
 ```
+
+### What is *not* in this repository — and why
+
+This is the **open-core distribution**, cut from a larger development repository. Two directories are
+deliberately absent; their absence is not an incomplete upload:
+
+- **`tests/`** — the suites (unit, bUnit, Testcontainers integration, Playwright E2E) exercise the open core
+  *together with* AppManagement, the commercial control plane, so publishing them would publish that
+  component's expected behaviour in detail. Consequence to know up front: **`dotnet test` here runs nothing**
+  — it exits quietly with no test projects found, which is expected, not a broken checkout.
+- **`packaging/`** — the release machinery (the script that produces this repository from the development
+  one, the leak checks that guard what may be published, the NuGet packing). It describes how the
+  distribution is cut, which is of no use inside the distribution.
+
+For the same reason `--path AppManagement/src` is not runnable here (that tree is the commercial component
+and is not distributed); lint the open core with `--path src`, as above.
+
+Everything needed to **use** the framework is present — the five package sources, the docs and the LICENSE.
+What is missing is only what **produces** the distribution. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The repo name is `entframework` (kept on purpose); the product/brand is **Asdamir**.
 

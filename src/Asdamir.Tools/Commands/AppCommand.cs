@@ -546,14 +546,14 @@ public static class AppCommand
             var freeStep = 1;
             if (dbProvisioned)
             {
-                Console.WriteLine($"  {freeStep++}. cd {name} && ./restart-{model.AppNameLower}.sh    # starts both tiers → open {gatewayUrl}, sign in with the starter admin above");
+                Console.WriteLine($"  {freeStep++}. cd {name} && ./restart-{model.AppNameLower}.sh    # starts both tiers → open {model.ServerUrl}/ (the UI), sign in with the starter admin above");
             }
             else
             {
                 Console.WriteLine($"  {freeStep++}. cd {name}");
                 PrintManualSecretSteps(secrets, hasRealSecret, isFreeMode, gatewayProject, connSecretExample, ref freeStep);
                 Console.WriteLine($"  {freeStep++}. asdamir db apply --create-database --migrations db/migrations   # creates the DB + applies ALL migrations (reads ConnectionStrings:Default from the secret, or pass -S -d -U -P)");
-                Console.WriteLine($"  {freeStep++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl} and sign in with the starter admin above");
+                Console.WriteLine($"  {freeStep++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {model.ServerUrl}/ (the UI) and sign in with the starter admin above");
             }
             Console.WriteLine();
             Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add a feature: asdamir new feature <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
@@ -583,7 +583,7 @@ public static class AppCommand
         }
         Console.WriteLine($"  {step++}. Register + seed in AppManagement: run db/admin-onboarding/register_{model.AppNameLower}.sql");
         Console.WriteLine($"     against AsdamirVault — registers the app + seeds its users/roles/permissions/menus/config/localization (AppId-scoped).");
-        Console.WriteLine($"  {step++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {gatewayUrl}");
+        Console.WriteLine($"  {step++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {model.ServerUrl}/ (the UI)");
         Console.WriteLine();
         Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add a feature: asdamir new feature <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
         }

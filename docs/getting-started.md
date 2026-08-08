@@ -7,6 +7,13 @@ This guide gets a new application running on Asdamir in a few minutes.
 - **.NET 10 SDK**
 - **SQL Server** running on `localhost:1433` (local or Docker). Oracle / PostgreSQL are also supported.
 
+> **Package signing.** The `Asdamir.*` packages carry the **nuget.org repository signature** (applied by
+> NuGet.org at publish, and what `dotnet nuget verify` checks by default) but **not yet an author
+> signature**. If your organisation enforces author-signed packages via `<trustedSigners>` in
+> `nuget.config`, restore will be rejected by that policy — author signing is on the roadmap. Stated here
+> rather than left to be discovered: a framework whose selling point is verifiability should not be quiet
+> about the limits of its own supply chain.
+
 ## Scaffold and run your first app
 
 The fastest path is the **`asdamir` CLI** — it generates a complete, run-ready app (both tiers, dev secrets,
