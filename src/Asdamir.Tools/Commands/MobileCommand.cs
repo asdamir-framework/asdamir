@@ -79,7 +79,7 @@ public static class MobileCommand
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("App name must be PascalCase (e.g. MobileV2).");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 

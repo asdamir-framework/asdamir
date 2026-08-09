@@ -88,32 +88,39 @@ public static class AuditLintCommand
             pathOpt, severityOpt, formatOpt, includeTestsOpt,
         };
 
-        lintCmd.SetHandler(Run, pathOpt, severityOpt, formatOpt, includeTestsOpt);
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes. Environment.Exit tears the process down from
+        // inside the handler, which skips the rest of the invocation pipeline and makes the command
+        // untestable: the CLI-wide contract test drives the real parse-and-invoke path, and a handler that
+        // kills the process aborts the whole test run instead of returning a code to assert on.
+        lintCmd.SetHandler(
+            ctx => ctx.ExitCode = Run(
+                ctx.ParseResult.GetValueForOption(pathOpt)!,
+                ctx.ParseResult.GetValueForOption(severityOpt)!,
+                ctx.ParseResult.GetValueForOption(formatOpt)!,
+                ctx.ParseResult.GetValueForOption(includeTestsOpt)));
+
         return lintCmd;
     }
 
-    private static void Run(DirectoryInfo path, string severityRaw, string formatRaw, bool includeTests)
+    private static int Run(DirectoryInfo path, string severityRaw, string formatRaw, bool includeTests)
     {
         if (!path.Exists)
         {
             Console.Error.WriteLine($"Path '{path.FullName}' does not exist.");
-            Environment.Exit(2);
-            return;
+            return ExitCodes.Usage;
         }
 
         if (!Enum.TryParse<AuditSeverity>(severityRaw, ignoreCase: true, out var minSeverity))
         {
             Console.Error.WriteLine($"Invalid --min-severity '{severityRaw}'. Use: info, warning, error.");
-            Environment.Exit(2);
-            return;
+            return ExitCodes.Usage;
         }
 
         var format = formatRaw.ToLowerInvariant();
         if (format != "text" && format != "json")
         {
             Console.Error.WriteLine($"Invalid --format '{formatRaw}'. Use: text, json.");
-            Environment.Exit(2);
-            return;
+            return ExitCodes.Usage;
         }
 
         var rules = AuditRuleSet.All;
@@ -132,8 +139,8 @@ public static class AuditLintCommand
         if (format == "json") EmitJson(findings, filesScanned, minSeverity);
         else EmitText(findings, filesScanned, minSeverity, path.FullName);
 
-        // Exit code 1 only if findings at or above the threshold remain.
-        Environment.Exit(findings.Count == 0 ? 0 : 1);
+        // ExitCodes.Findings only if findings at or above the threshold remain.
+        return findings.Count == 0 ? ExitCodes.Success : ExitCodes.Findings;
     }
 
     private static IEnumerable<string> EnumerateFiles(string root, bool includeTests)

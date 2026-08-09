@@ -59,7 +59,7 @@ public static class ModuleCommand
         if (string.IsNullOrWhiteSpace(name))
         {
             Console.Error.WriteLine("Module name is required.");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 
@@ -68,7 +68,7 @@ public static class ModuleCommand
         if (bareName.Length == 0 || !char.IsUpper(bareName[0]))
         {
             Console.Error.WriteLine("Module name (after stripping the optional 'Core.' prefix) must be PascalCase (e.g. Telemetry).");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 

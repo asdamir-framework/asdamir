@@ -94,15 +94,19 @@ public static class LocalizationCheckCommand
             pathOpt, severityOpt, formatOpt, includeTestsOpt,
         };
 
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes and the note in AuditLintCommand.
         cmd.SetHandler(
-            (path, severity, format, includeTests) => Environment.Exit(Execute(path, severity, format, includeTests)),
-            pathOpt, severityOpt, formatOpt, includeTestsOpt);
+            ctx => ctx.ExitCode = Execute(
+                ctx.ParseResult.GetValueForOption(pathOpt)!,
+                ctx.ParseResult.GetValueForOption(severityOpt)!,
+                ctx.ParseResult.GetValueForOption(formatOpt)!,
+                ctx.ParseResult.GetValueForOption(includeTestsOpt)));
         return cmd;
     }
 
     /// <summary>
     /// Runs the gate and RETURNS the exit code (0 clean / 1 findings / 2 bad args) instead of terminating,
-    /// so it is unit-testable. <see cref="Build"/>'s handler wraps this in <see cref="Environment.Exit(int)"/>.
+    /// so it is unit-testable. <see cref="Build"/>'s handler assigns it to the invocation's exit code.
     /// Output goes to <paramref name="outWriter"/> (default <see cref="Console.Out"/>) and errors to
     /// <paramref name="errWriter"/> (default <see cref="Console.Error"/>).
     /// </summary>
@@ -123,7 +127,7 @@ public static class LocalizationCheckCommand
         if (!path.Exists)
         {
             err.WriteLine($"Path '{path.FullName}' does not exist.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // AUD015 emits Info and Error, AUD019 Error only — neither emits Warning. `warning` (the default)
@@ -131,14 +135,14 @@ public static class LocalizationCheckCommand
         if (!Enum.TryParse<AuditSeverity>(severityRaw, ignoreCase: true, out var minSeverity))
         {
             err.WriteLine($"Invalid --min-severity '{severityRaw}'. Use: info, warning, error.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         var format = formatRaw.ToLowerInvariant();
         if (format != "text" && format != "json")
         {
             err.WriteLine($"Invalid --format '{formatRaw}'. Use: text, json.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // Pass 1: collect the seed corpus from UNDER --path. The SQL seeds and the in-memory mirror are kept

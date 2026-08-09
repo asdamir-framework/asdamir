@@ -96,13 +96,13 @@ public static class FeatureCommand
         if (appRoot is null)
         {
             Console.Error.WriteLine("Could not find an app root (no .sln above the output dir). Run inside a generated app or pass --output.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         var gatewayDir = !string.IsNullOrWhiteSpace(gatewayDirOverride) ? gatewayDirOverride : FindProject(appRoot, isGateway: true);
         var serverDir = !string.IsNullOrWhiteSpace(serverDirOverride) ? serverDirOverride : FindProject(appRoot, isGateway: false);
-        if (gatewayDir is null) { Console.Error.WriteLine("Gateway/API project not found under src/ (needs Controllers/ or db/migrations). Use --gateway-dir."); return 2; }
-        if (serverDir is null) { Console.Error.WriteLine("Server/UI project not found under src/ (needs Components/Pages/). Use --server-dir."); return 2; }
+        if (gatewayDir is null) { Console.Error.WriteLine("Gateway/API project not found under src/ (needs Controllers/ or db/migrations). Use --gateway-dir."); return ExitCodes.Usage; }
+        if (serverDir is null) { Console.Error.WriteLine("Server/UI project not found under src/ (needs Components/Pages/). Use --server-dir."); return ExitCodes.Usage; }
 
         Console.WriteLine($"App root: {appRoot}");
         Console.WriteLine($"  entity → {Path.GetRelativePath(appRoot, gatewayDir)}   ·   page → {Path.GetRelativePath(appRoot, serverDir)}");

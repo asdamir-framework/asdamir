@@ -72,7 +72,7 @@ public static class AddFieldCommand
         if (string.IsNullOrWhiteSpace(entityName) || !char.IsUpper(entityName[0]))
         {
             Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 
@@ -84,14 +84,14 @@ public static class AddFieldCommand
         catch (ArgumentException ex)
         {
             Console.Error.WriteLine($"Field parse error: {ex.Message}");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 
         if (fields.Count != 1)
         {
             Console.Error.WriteLine("Pass exactly one field via --field. For multiple, re-run the command per field.");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 
@@ -101,7 +101,7 @@ public static class AddFieldCommand
         if (gatewayDir is null)
         {
             Console.Error.WriteLine("Not inside an Asdamir app (no .sln found, and this isn't a Gateway project). Run this from the app root or pass --output <app root or Gateway project>.");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
         output = new DirectoryInfo(gatewayDir);
@@ -120,7 +120,7 @@ public static class AddFieldCommand
         {
             Console.Error.WriteLine($"Neither '{entityPath}' nor '{dtoPath}' exists.");
             Console.Error.WriteLine($"Did you run this in the wrong --output, or mistype '{entityName}'?");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 

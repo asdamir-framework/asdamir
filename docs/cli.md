@@ -22,12 +22,63 @@ dotnet tool install -g Asdamir.Tools
 | `Asdamir.Core` | `1.8.0` | — |
 | `Asdamir.Data` | `1.5.0` | — |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
-| `Asdamir.Tools` | `1.5.1` | — |
+| `Asdamir.Tools` | `1.5.1` | `1.6.0` built, pending publish |
 | `Asdamir.Web` | `2.1.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
 <!-- published-versions:end -->
+
+## Exit codes — NORMATIVE, and the same model for every command
+
+A third party's script may rely on this section. It is the **single** statement of the contract; a command's
+own help text and its `Exit codes:` line below derive from it and may not contradict it.
+
+**The model — two disjoint kinds of code:**
+
+| Kind | Codes | Meaning |
+|---|---|---|
+| **Result** | `0`, `1`, and for `verify-archive` also `2`–`4` | The command ran and is reporting **what it examined**. Each command owns a small result band starting at `0`; see its own section. |
+| **Usage** | **`64`** | The command was **invoked wrongly**, so it examined nothing and is making **no statement at all**. (`EX_USAGE`, sysexits(3).) |
+| **Internal** | **`70`** | The tool itself failed unexpectedly. A **bug report**, not a supported outcome. (`EX_SOFTWARE`.) |
+
+**The rule, in one sentence: a result code is possible only when a command handler produced it.** Everything
+else — an unknown or mistyped flag, a required option omitted, an option given without its value, a value the
+option cannot parse, a stray argument, **and `--help` / `--version`** — exits `64`.
+
+`--help` exiting `64` is deliberate and against the usual convention. It follows from the rule rather than
+from taste: `0` is a *claim* (a clean gate, a verified archive), and printing help establishes no such claim,
+so it cannot borrow the code. If you script `--help`, treat `64` as its success.
+
+### Why the rule is worded positively
+
+Not "these parser errors return 64" but "only a handler may return a result". An enumerated list of today's
+parser errors goes blind the moment the parser grows a new pre-handler outcome — which is exactly how the
+previous version of this contract went blind, and the failure was silent in the dangerous direction.
+
+### What this replaces — read if you pin an older version
+
+Before **`Asdamir.Tools 1.6.0`**, usage errors that `System.CommandLine` answered *before* the handler ran
+leaked into the result band as **`1`**, and the handler's own usage errors used **`2`**:
+
+| Invocation | ≤ 1.5.1 | which meant | ≥ 1.6.0 |
+|---|---:|---|---:|
+| `audit lint --pth src` (typo) | `1` | **"findings — build fails"** | `64` |
+| any gate, required option omitted / no value / stray argument | `1` | **"findings"** | `64` |
+| `--version` on a subcommand | `1` | **"findings"** | `64` |
+| `--help` | `0` | **"clean"** | `64` |
+| `audit seeds --path ""` | `1` + **stack trace** | crash | `64` + one line |
+| `db apply` from the wrong folder | `0`/`1` + **stack trace** | crash | `64` + one line |
+| any handler-raised bad argument | `2` | bad args | `64` |
+
+So a mistyped audit invocation used to be indistinguishable from a **failing gate**, and `--help` from a
+**clean run**. **`2` is no longer produced by any command.** It could not become the single usage code
+because in `verify-archive` `2` is a verdict (`DIGEST_MISMATCH`) — the CLI would have needed
+"`2` everywhere except one command", and a rule with an exception is the kind that gets misremembered.
+
+**Stack traces are gone from user-facing failures.** In an audit tool they leak absolute paths and internals
+a third party did not ask for, and they read as "the product is broken" when the real cause was a mistyped
+argument. Errors now print one sentence; `70` says explicitly that it is *not* your invocation.
 
 ## Quick start
 
@@ -341,6 +392,15 @@ dotnet run --project src/Asdamir.Tools -- audit lint --path src --min-severity w
 dotnet run --project src/Asdamir.Tools -- audit lint --path AppManagement/src --min-severity warning
 ```
 
+Exit codes: `0` (clean — no finding at or above `--min-severity`), `1` (findings — **fails the build**),
+`64` (usage — see [Exit codes — NORMATIVE](#exit-codes--normative-and-the-same-model-for-every-command)).
+
+> This line is new in **`1.6.0`**, and it was written **before** the behaviour was made to match it. Until
+> then `audit lint` — the most-run gate in the repository — was the only one whose exit codes were **not
+> documented anywhere**, while `1` was in practice returned both for real findings and for a mistyped flag.
+> Writing down what it did would have made that official; the contract above is what it *should* do, and the
+> code now does it.
+
 ### Suppressing a finding
 
 - Single line: `// audit-lint:ignore AUDxxx` — leave a sibling comment explaining *why*.
@@ -481,7 +541,7 @@ errors), `--format/-f` (`text`|`json`), `--include-tests`. Suppress an AUD015 us
 `// audit-lint:ignore AUD015` (leave a comment why); skip a file with `audit-lint:skip-file`. JSON findings
 carry a `ruleId` of `AUD015` or `AUD019`.
 
-Exit codes: `0` (no findings at/above `--min-severity`, or no seed sources), `1` (findings), `2` (bad args).
+
 
 ## `audit permissions` — the permission/policy-completeness gate (AUD016)
 
@@ -533,7 +593,7 @@ supplied, a seed tuple that is **commented out** does not count as applied, and 
 `dbo.Permissions` in a header comment contributes nothing.
 
 Exit codes: `0` (no findings — the gate is green; every required perm is supplied), `1` (at least one
-AUD016 finding — this **fails the build**), `2` (bad args). Run it alongside `audit lint`,
+AUD016 finding — this **fails the build**), `64` (usage — see [Exit codes — NORMATIVE](#exit-codes--normative-and-the-same-model-for-every-command)). Run it alongside `audit lint`,
 `audit localization` and `audit seeds` before a push.
 
 ## `audit seeds` — the seed-form gates (AUD018 + AUD017)
@@ -624,7 +684,7 @@ a later migration supersedes one, the gate prints `NOTE — allowlist entry no l
 line is deleted.
 
 Options: `--path/-p` (repeatable), `--format/-f` (`text`|`json`), `--include-tests`, `--allowlist <file>`.
-Exit codes: `0` (clean), `1` (findings — **fails the build**), `2` (bad args).
+
 
 ## `audit verify-archive` — verify a folded agent-audit segment, offline
 
@@ -897,7 +957,7 @@ asdamir app register \
   [--environment Production]
 ```
 
-Exit codes: `0` ok · `1` API/HTTP error (401/403/unreachable/non-2xx) · `2` bad arguments. The
+Exit codes: `0` ok · `1` API/HTTP error (401/403/unreachable/non-2xx) · `64` usage (see [Exit codes — NORMATIVE](#exit-codes--normative-and-the-same-model-for-every-command)). The
 company is taken from the token's `company` claim. See the AppManagement console's multi-company (firma) operation.
 
 ## `secrets`

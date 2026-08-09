@@ -81,12 +81,12 @@ public static class AppRegisterCommand
         if (clientSecret.Length < 20)
         {
             Console.Error.WriteLine("--client-secret must be at least 20 characters.");
-            return 2;
+            return ExitCodes.Usage;
         }
         if (!Uri.TryCreate(api, UriKind.Absolute, out var apiBase))
         {
             Console.Error.WriteLine($"--api is not a valid absolute URL: {api}");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         using var http = new HttpClient { BaseAddress = apiBase };

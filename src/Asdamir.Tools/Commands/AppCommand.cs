@@ -151,7 +151,7 @@ public static class AppCommand
         if (!isFreeMode && !string.Equals(raw.Mode, "commercial", StringComparison.OrdinalIgnoreCase))
         {
             Console.Error.WriteLine("--mode must be 'free' or 'commercial'.");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 
@@ -174,7 +174,7 @@ public static class AppCommand
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("App name must be PascalCase (e.g. GeneratedApp).");
-            Environment.Exit(2);
+            Environment.Exit(ExitCodes.Usage);
             return;
         }
 

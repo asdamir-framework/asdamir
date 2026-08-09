@@ -103,7 +103,7 @@ public static class EntityCommand
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // Run from the app ROOT (no `cd src/<App>.Gateway` needed) — resolve the Gateway project from --output
@@ -112,7 +112,7 @@ public static class EntityCommand
         if (gatewayDir is null)
         {
             Console.Error.WriteLine("Not inside an Asdamir app (no .sln found, and this isn't a Gateway project). Run this from the app root or pass --output <app root or Gateway project>.");
-            return 2;
+            return ExitCodes.Usage;
         }
         output = new DirectoryInfo(gatewayDir);   // the entity slice + its migration are written here
 
@@ -124,13 +124,13 @@ public static class EntityCommand
         catch (ArgumentException ex)
         {
             Console.Error.WriteLine($"Field parse error: {ex.Message}");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         if (fields.Count == 0)
         {
             Console.Error.WriteLine("At least one field is required via --fields.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // --namespace wins; else the containing project's namespace; else (no project) the entity name.

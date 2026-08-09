@@ -79,15 +79,18 @@ public static class SeedFormCheckCommand
             pathOpt, formatOpt, includeTestsOpt, allowlistOpt,
         };
 
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes and the note in AuditLintCommand.
         cmd.SetHandler(
-            (paths, format, includeTests, allowlist) =>
-                Environment.Exit(Execute(paths, format, includeTests, allowlist)),
-            pathOpt, formatOpt, includeTestsOpt, allowlistOpt);
+            ctx => ctx.ExitCode = Execute(
+                ctx.ParseResult.GetValueForOption(pathOpt)!,
+                ctx.ParseResult.GetValueForOption(formatOpt)!,
+                ctx.ParseResult.GetValueForOption(includeTestsOpt),
+                ctx.ParseResult.GetValueForOption(allowlistOpt)));
         return cmd;
     }
 
     /// <summary>
-    /// Runs the gate and RETURNS the exit code (0 clean / 1 findings / 2 bad args) instead of terminating, so
+    /// Runs the gate and RETURNS the exit code (0 clean / 1 findings / 64 usage) instead of terminating, so
     /// it is unit-testable.
     /// </summary>
     /// <param name="paths">Trees whose <c>.sql</c>/<c>.sbn</c> files are scanned.</param>
@@ -112,7 +115,7 @@ public static class SeedFormCheckCommand
             if (!Directory.Exists(root))
             {
                 err.WriteLine($"Path '{root}' does not exist.");
-                return 2;
+                return ExitCodes.Usage;
             }
         }
 
@@ -120,7 +123,7 @@ public static class SeedFormCheckCommand
         if (format != "text" && format != "json")
         {
             err.WriteLine($"Invalid --format '{formatRaw}'. Use: text, json.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         var repoRoot = FindRepoRoot(roots[0]) ?? roots[0];

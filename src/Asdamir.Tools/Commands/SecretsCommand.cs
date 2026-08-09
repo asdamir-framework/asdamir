@@ -91,12 +91,12 @@ public static class SecretsCommand
         if (string.IsNullOrWhiteSpace(oldKey) || string.IsNullOrWhiteSpace(newKey))
         {
             Console.Error.WriteLine($"Both keys are required. Set --old-key/--new-key or the {EnvOldKey}/{EnvNewKey} env vars.");
-            return 2;
+            return ExitCodes.Usage;
         }
         if (oldKey == newKey && oldSalt == newSalt)
         {
             Console.Error.WriteLine("The new key/salt are identical to the old — nothing to rotate.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         SecretCrypto oldSvc, newSvc;
@@ -108,12 +108,12 @@ public static class SecretsCommand
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Invalid key/salt: {ex.Message}");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         string connStr;
         try { connStr = BuildConnString(connection, server, database, user, password); }
-        catch (Exception ex) { Console.Error.WriteLine($"Invalid connection settings: {ex.Message}"); return 2; }
+        catch (Exception ex) { Console.Error.WriteLine($"Invalid connection settings: {ex.Message}"); return ExitCodes.Usage; }
 
         Console.WriteLine(apply
             ? "Rotating encryption key (APPLY — writing re-encrypted values, single transaction)."
@@ -239,8 +239,8 @@ public static class SecretsCommand
             var key = Resolve(p.GetValueForOption(keyOpt), EnvKey);
             var salt = Resolve(p.GetValueForOption(saltOpt), EnvSalt);
 
-            if (string.IsNullOrEmpty(value)) { Console.Error.WriteLine("Nothing to encrypt (pass --value or pipe a line on stdin)."); ctx.ExitCode = 2; return; }
-            if (string.IsNullOrWhiteSpace(key)) { Console.Error.WriteLine($"No key. Set --key or the {EnvKey} env var."); ctx.ExitCode = 2; return; }
+            if (string.IsNullOrEmpty(value)) { Console.Error.WriteLine("Nothing to encrypt (pass --value or pipe a line on stdin)."); ctx.ExitCode = ExitCodes.Usage; return; }
+            if (string.IsNullOrWhiteSpace(key)) { Console.Error.WriteLine($"No key. Set --key or the {EnvKey} env var."); ctx.ExitCode = ExitCodes.Usage; return; }
 
             try
             {

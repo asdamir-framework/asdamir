@@ -9,7 +9,6 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
 
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using System.Text;
 using Asdamir.Core.AgentAudit;
 
@@ -44,7 +43,7 @@ namespace Asdamir.Tools.Commands;
 /// command <c>0</c> is not "the program ran", it is the assertion that the archive is unaltered and anchored.
 /// The four verdict codes match the independent Python reference fixture, so two implementations cannot
 /// disagree about what a code MEANS. Enforced by <c>VerifyArchiveExitCodeBandTests</c> against the real
-/// parse-and-invoke path — see <see cref="NormalizeParserExitCode"/>.</para>
+/// parse-and-invoke path — see <see cref="ExitCodes"/> and <c>Program.RunAsync</c>.</para>
 /// </summary>
 public static class VerifyArchiveCommand
 {
@@ -66,21 +65,11 @@ public static class VerifyArchiveCommand
     /// <summary>Exit code for a bad invocation. Outside the outcome band on purpose (sysexits <c>EX_USAGE</c>).</summary>
     public const int ExitUsage = 64;
 
-    /// <summary>
-    /// Records whether the verify-archive handler actually ran. Threaded explicitly rather than kept in a
-    /// static field so that tests — which invoke the command in parallel — cannot observe each other's runs.
-    /// </summary>
-    internal sealed class VerdictReached
-    {
-        /// <summary>True once the handler has produced a verdict for this invocation.</summary>
-        internal bool Value { get; set; }
-    }
-
     /// <summary>Builds the <c>audit verify-archive</c> subcommand.</summary>
-    public static Command Build() => Build(new VerdictReached());
+    public static Command Build() => Build(new HandlerReached());
 
-    /// <summary>Builds the subcommand and reports, through <paramref name="verdictReached"/>, whether a verdict was produced.</summary>
-    internal static Command Build(VerdictReached verdictReached)
+    /// <summary>Builds the subcommand and reports, through <paramref name="handlerReached"/>, whether a verdict was produced.</summary>
+    internal static Command Build(HandlerReached handlerReached)
     {
         var pathOpt = new Option<string>(
             new[] { "--path", "-p" },
@@ -111,10 +100,10 @@ public static class VerifyArchiveCommand
 
         // The handler sets InvocationContext.ExitCode instead of calling Environment.Exit. Environment.Exit
         // tore the process down from inside the handler, which made the invocation pipeline untestable and —
-        // worse — hid the fact that some invocations never reach here at all. See NormalizeParserExitCode.
+        // worse — hid the fact that some invocations never reach here at all. See HandlerReached.
         cmd.SetHandler(ctx =>
         {
-            verdictReached.Value = true;
+            handlerReached.Value = true;
             ctx.ExitCode = Execute(
                 ctx.ParseResult.GetValueForOption(pathOpt) ?? string.Empty,
                 ctx.ParseResult.GetValueForOption(digestOpt),
@@ -124,62 +113,6 @@ public static class VerifyArchiveCommand
         });
 
         return cmd;
-    }
-
-    /// <summary>
-    /// Forces every invocation that produced <b>no verdict</b> out of the <c>0</c>–<c>4</c> band and onto
-    /// <see cref="ExitUsage"/>.
-    /// </summary>
-    /// <remarks>
-    /// <para><b>Why this exists.</b> The <c>0</c>–<c>4</c> codes are factual claims about an archive, and a
-    /// third party's audit script reads them as such. But <c>System.CommandLine</c> answers a whole class of
-    /// invocations <b>before</b> the handler runs — an unknown flag, a required option omitted, an option given
-    /// with no value, a stray argument — and returned <c>1</c> for all of them. <c>1</c> is
-    /// <c>INTERNALLY_CONSISTENT</c>. So <c>verify-archive --pth ./segment.zip</c> — one typo — made a script log
-    /// "the archive is intact" for a command that verified nothing. <c>--help</c> and <c>--version</c> were worse
-    /// still: they returned <c>0</c>, which is <c>VERIFIED</c>.</para>
-    /// <para><b>Why help and version are included</b>, against the usual convention that help exits <c>0</c>: on
-    /// this command <c>0</c> is not "the program ran" — it is the assertion <i>this archive is unaltered and
-    /// anchored to the ledger it claims to come from</i>. Help cannot borrow that code. Nothing else in the CLI
-    /// is affected; the rule is scoped to <c>verify-archive</c>, where the exit code is evidence.</para>
-    /// <para>The check is <b>positive, not a blacklist of known parser errors</b>: the handler is the only thing
-    /// that may hand out a <c>0</c>–<c>4</c>, so anything that did not run it is a usage error by construction.
-    /// A future System.CommandLine that invents a new pre-handler outcome is therefore covered already — which
-    /// is exactly the way the original gate failed, by enumerating the cases that existed when it was written.</para>
-    /// </remarks>
-    /// <param name="parseResult">The parse result for the whole invocation.</param>
-    /// <param name="handlerRan">Whether the verify-archive handler actually produced a verdict.</param>
-    /// <param name="exitCode">The exit code System.CommandLine returned.</param>
-    /// <returns><paramref name="exitCode"/> when a verdict was produced; otherwise <see cref="ExitUsage"/>.</returns>
-    internal static int NormalizeParserExitCode(ParseResult parseResult, bool handlerRan, int exitCode)
-    {
-        if (handlerRan)
-        {
-            return exitCode;
-        }
-
-        return TargetsVerifyArchive(parseResult) ? ExitUsage : exitCode;
-    }
-
-    /// <summary>
-    /// True when the invocation was aimed at <c>audit verify-archive</c> — including when it failed to parse,
-    /// where the command result points at the deepest command that DID parse and the rest lands in the errors.
-    /// </summary>
-    private static bool TargetsVerifyArchive(ParseResult parseResult)
-    {
-        for (var command = parseResult.CommandResult.Command; command is not null;)
-        {
-            if (command.Name == "verify-archive")
-            {
-                return true;
-            }
-
-            command = command.Parents.OfType<Command>().FirstOrDefault();
-        }
-
-        // A token-level failure ("--pth" typo'd before the option is matched) can leave CommandResult on the
-        // parent, so fall back to the raw tokens. Both paths are covered by the usage-error test table.
-        return parseResult.Tokens.Any(t => t.Value == "verify-archive");
     }
 
     /// <summary>

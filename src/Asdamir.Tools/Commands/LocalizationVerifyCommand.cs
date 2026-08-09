@@ -107,14 +107,14 @@ public static class LocalizationVerifyCommand
         if (!path.Exists)
         {
             Console.Error.WriteLine($"Path '{path.FullName}' does not exist.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         format = format.ToLowerInvariant();
         if (format != "text" && format != "json")
         {
             Console.Error.WriteLine($"Invalid --format '{format}'. Use: text, json.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // A live connection is REQUIRED — never silently skip (same policy as `db apply`).
@@ -122,13 +122,13 @@ public static class LocalizationVerifyCommand
         if (connString is null)
         {
             Console.Error.WriteLine(connError);
-            return 2;
+            return ExitCodes.Usage;
         }
 
         if (string.IsNullOrWhiteSpace(appCode) && string.IsNullOrWhiteSpace(appId))
         {
             Console.Error.WriteLine("Provide --app-code <code> (to resolve the AppId) or --app-id <guid> directly.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // Collect the seeded (key,culture) pairs from the tree's SQL seed files (shared parser).
@@ -162,7 +162,7 @@ public static class LocalizationVerifyCommand
                 if (resolvedAppId is null)
                 {
                     Console.Error.WriteLine($"No app found in dbo.Apps with Code = '{appCode}'.");
-                    return 2;
+                    return ExitCodes.Usage;
                 }
             }
 

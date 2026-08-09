@@ -73,11 +73,17 @@ public static class PermissionPolicyCheckCommand
             pathOpt, formatOpt, includeTestsOpt,
         };
 
-        cmd.SetHandler(Run, pathOpt, formatOpt, includeTestsOpt);
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes and the note in AuditLintCommand.
+        cmd.SetHandler(
+            ctx => ctx.ExitCode = Run(
+                ctx.ParseResult.GetValueForOption(pathOpt)!,
+                ctx.ParseResult.GetValueForOption(formatOpt)!,
+                ctx.ParseResult.GetValueForOption(includeTestsOpt)));
+
         return cmd;
     }
 
-    private static void Run(List<DirectoryInfo> paths, string formatRaw, bool includeTests)
+    private static int Run(List<DirectoryInfo> paths, string formatRaw, bool includeTests)
     {
         var roots = (paths is { Count: > 0 } ? paths : new List<DirectoryInfo> { new(Directory.GetCurrentDirectory()) })
             .Select(p => p.FullName).Distinct(StringComparer.Ordinal).ToList();
@@ -87,8 +93,7 @@ public static class PermissionPolicyCheckCommand
             if (!Directory.Exists(root))
             {
                 Console.Error.WriteLine($"Path '{root}' does not exist.");
-                Environment.Exit(2);
-                return;
+                return ExitCodes.Usage;
             }
         }
 
@@ -96,8 +101,7 @@ public static class PermissionPolicyCheckCommand
         if (format != "text" && format != "json")
         {
             Console.Error.WriteLine($"Invalid --format '{formatRaw}'. Use: text, json.");
-            Environment.Exit(2);
-            return;
+            return ExitCodes.Usage;
         }
 
         // Pass 1: collect the union of supplied permission codes + role codes across every SQL seed in all roots.
@@ -139,7 +143,7 @@ public static class PermissionPolicyCheckCommand
         else EmitText(findings, csFilesScanned, sqlFilesScanned, requiredCount, rootForRel);
 
         // GATE: any AUD016 finding fails. (Every finding is an Error — this gate has no Info/Warning tier.)
-        Environment.Exit(findings.Count == 0 ? 0 : 1);
+        return findings.Count == 0 ? ExitCodes.Success : ExitCodes.Findings;
     }
 
     private static IEnumerable<string> EnumerateFiles(string root, bool includeTests, params string[] globs)

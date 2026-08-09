@@ -69,7 +69,7 @@ public static class RollbackAppCommand
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("App name must be PascalCase (e.g. CustomerOrders).");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // 1) Resolve the app root — the directory whose .sln is named after the app. Accept either the parent
@@ -101,7 +101,7 @@ public static class RollbackAppCommand
         if (ProtectedDatabases.Contains(dbName))
         {
             Console.Error.WriteLine($"Refusing to drop protected database '{dbName}' (control plane / system DB). A generated app's database is named after the app — pass the correct --database.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // 3) Mode + code. Free apps have no control plane, so the vault step is skipped for them.
@@ -134,7 +134,7 @@ public static class RollbackAppCommand
         if (vault.exists && vault.isSelf)
         {
             Console.Error.WriteLine($"Refusing: the AsdamirVault registration for '{appCode}' is the self-app (AppManagement) — it can never be purged.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         // 6) Confirmation — show EVERYTHING first (full path + server/db + vault code).

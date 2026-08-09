@@ -102,6 +102,19 @@ public static class DbApplyCommand
         // ConnectionStrings:Default from the app's Gateway user-secret (the value `asdamir new app`
         // tells you to set) or the ConnectionStrings__Default environment variable. This keeps the SQL
         // password off the terminal — `asdamir db apply --create-database` just works after the secret
+        // The migrations directory is checked HERE, before anything reads it. It used to be validated further
+        // down, after the connection-resolution walk had already enumerated the tree — so `asdamir db apply`
+        // run from the wrong folder threw DirectoryNotFoundException out of that walk and printed a stack
+        // trace with absolute paths, instead of the one-line "not found" message that was waiting a few lines
+        // below. Being in the wrong directory is the single most likely way to invoke this command wrongly.
+        if (!migrations.Exists)
+        {
+            Console.Error.WriteLine($"Migrations directory not found: {migrations.FullName}");
+            Console.Error.WriteLine(
+                "Run this from an app root (it defaults to ./db/migrations), or pass --migrations <dir>.");
+            return ExitCodes.Usage;
+        }
+
         // is set. Explicit --connection / --server / --user / --password always take precedence.
         if (string.IsNullOrWhiteSpace(connection) && string.IsNullOrWhiteSpace(database)
             && string.IsNullOrWhiteSpace(user) && string.IsNullOrWhiteSpace(password))
@@ -127,7 +140,7 @@ public static class DbApplyCommand
                 if (string.IsNullOrWhiteSpace(database))
                 {
                     Console.Error.WriteLine("Provide --database (with --server) or a full --connection string.");
-                    return 2;
+                    return ExitCodes.Usage;
                 }
                 builder = new SqlConnectionStringBuilder
                 {
@@ -150,20 +163,20 @@ public static class DbApplyCommand
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Invalid connection settings: {ex.Message}");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         var dbName = builder.InitialCatalog;
         if (string.IsNullOrWhiteSpace(dbName))
         {
             Console.Error.WriteLine("The connection string has no Initial Catalog / Database. Pass --database.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         if (!migrations.Exists)
         {
             Console.Error.WriteLine($"Migrations directory not found: {migrations.FullName}");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         var files = migrations.GetFiles("*.sql")
@@ -172,7 +185,7 @@ public static class DbApplyCommand
         if (files.Count == 0)
         {
             Console.Error.WriteLine($"No *.sql migrations in {migrations.FullName}.");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         try

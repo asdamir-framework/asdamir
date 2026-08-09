@@ -68,11 +68,11 @@ public static class RollbackCommand
         if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
         {
             Console.Error.WriteLine("Entity name must be PascalCase (e.g. Invoice).");
-            return 2;
+            return ExitCodes.Usage;
         }
 
         var appRoot = FeatureCommand.FindAppRoot(output);
-        if (appRoot is null) { Console.Error.WriteLine("Could not find an app root (no .sln above the output dir). Pass --output."); return 2; }
+        if (appRoot is null) { Console.Error.WriteLine("Could not find an app root (no .sln above the output dir). Pass --output."); return ExitCodes.Usage; }
 
         var gatewayDir = !string.IsNullOrWhiteSpace(gatewayOverride) ? gatewayOverride : FeatureCommand.FindProject(appRoot, isGateway: true);
         var serverDir = !string.IsNullOrWhiteSpace(serverOverride) ? serverOverride : FeatureCommand.FindProject(appRoot, isGateway: false);

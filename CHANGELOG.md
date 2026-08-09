@@ -10,6 +10,57 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
+## [Tools 1.6.0] — 2026-08-09 — *pending publish*
+
+### Fixed: a mistyped flag was indistinguishable from a failing gate — CLI-wide this time
+
+`1.5.1` fixed this leak in `verify-archive` and left the other eight commands **unmeasured**. Measuring them
+found the identical defect in **every one**, plus two crashes. "Unmeasured" is not "fine" — that assumption
+was made three times in this phase and was wrong all three times.
+
+**What was actually happening.** Usage errors that `System.CommandLine` answers *before* a handler runs
+leaked into each command's RESULT band:
+
+| Invocation | before | which the docs define as | now |
+|---|---:|---|---:|
+| `audit lint --pth src` (one transposed letter) | `1` | **"findings — fails the build"** | `64` |
+| any gate: required option omitted / no value / stray argument / unknown alias | `1` | **"findings"** | `64` |
+| `--version` on any subcommand | `1` | **"findings"** | `64` |
+| `--help` on any command | `0` | **"clean"** (for `verify-archive`, **"VERIFIED"**) | `64` |
+| `audit seeds --path ""`, `audit permissions --path ""` | `1` + **stack trace** | crash | `64` + one line |
+| `db apply` from the wrong directory | + **stack trace** | crash | `64` + one line |
+| every handler-raised bad argument (52 sites) | `2` | bad args | `64` |
+
+So a typo in a CI script reported a **failing lint**, and `--help` reported a **clean gate**.
+
+**One usage code for the whole CLI: `64` (`EX_USAGE`).** `2` — the previous house convention — could not be
+it: in `verify-archive` `2` is a verdict (`DIGEST_MISMATCH`), so the choice was `64` everywhere or
+"`2` except one command", and a rule with an exception is the kind that gets misremembered. A new `70`
+(`EX_SOFTWARE`) marks an unexpected internal failure, so "the tool broke" is never reported as "you typed it
+wrong". **Stack traces are gone from user-facing failures** — in an audit tool they leak absolute paths and
+internals nobody asked for, and they read as a broken product when the cause was a bad argument.
+
+**The rule is positive, not a blacklist:** a result code is possible only when a command handler produced it;
+everything else is a usage error by construction. An enumerated list of today's parser errors goes blind the
+moment the parser grows a new pre-handler outcome — which is exactly how the previous version went blind.
+
+**`docs/cli.md` states the contract normatively, in one place**, with a before/after table for anyone pinned
+to an older version. `audit lint` — the most-run gate in the repository — had **no documented exit codes at
+all**; it has them now, and they were written as what the command *should* do, then the code was made to
+match. Documenting the old behaviour would have made the defect official.
+
+**Enforcement — `CliExitCodeContractTests`**, driving the real parse-and-invoke path over
+**9 commands × 8 invocation shapes**. Its scope comes from a list, so covering a new command is one row.
+Reverting the normalization turns **70 of 76** cases red; reverting only the crash handling turns **5** red,
+naming both commands. The pre-existing per-command suites could not have caught any of this: they call
+handlers, and these invocations never reach one.
+
+**Also fixed, because it made the contract unenforceable:** four gates called `Environment.Exit` inside their
+handlers. That skips the rest of the invocation pipeline and kills the process — the first run of the new
+test *aborted the entire test session* instead of failing. They now set the invocation's exit code. Four
+file-writing commands still use `Environment.Exit`; they are the next slice's scope and are listed in the
+roadmap rather than left implicit.
+
 ## [Tools 1.5.1] — 2026-08-08
 
 ### Fixed: a mistyped command line exited `1`, and `1` means "the archive is intact"
