@@ -65,9 +65,9 @@ public static class RollbackCommand
     private static async Task<int> RunAsync(string name, DirectoryInfo output, string gatewayOverride, string serverOverride,
         string connection, string server, string database, string user, string password, string vaultConnection, bool yes)
     {
-        if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
+        if (!NameArgument.IsValid(name))
         {
-            Console.Error.WriteLine("Entity name must be PascalCase (e.g. Invoice).");
+            Console.Error.WriteLine(NameArgument.Explain(name, "entity name", "asdamir rollback <Name>"));
             return ExitCodes.Usage;
         }
 

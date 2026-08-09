@@ -100,9 +100,9 @@ public static class EntityCommand
     internal static async Task<int> RunAsync(string name, string fieldsRaw, DirectoryInfo output, string nsOverride,
         bool noDb, string connection, string server, string database, string user, string password, bool restartHint = true)
     {
-        if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
+        if (!NameArgument.IsValid(name))
         {
-            Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
+            Console.Error.WriteLine(NameArgument.Explain(name, "entity name", "asdamir new entity <Name> --fields <spec>"));
             return ExitCodes.Usage;
         }
 

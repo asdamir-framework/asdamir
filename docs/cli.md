@@ -22,7 +22,7 @@ dotnet tool install -g Asdamir.Tools
 | `Asdamir.Core` | `1.8.0` | — |
 | `Asdamir.Data` | `1.5.0` | — |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
-| `Asdamir.Tools` | `1.6.0` | — |
+| `Asdamir.Tools` | `1.6.0` | `1.7.0` built, pending publish |
 | `Asdamir.Web` | `2.1.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -49,6 +49,26 @@ option cannot parse, a stray argument, **and `--help` / `--version`** — exits 
 `--help` exiting `64` is deliberate and against the usual convention. It follows from the rule rather than
 from taste: `0` is a *claim* (a clean gate, a verified archive), and printing help establishes no such claim,
 so it cannot borrow the code. If you script `--help`, treat `64` as its success.
+
+### Side effects follow the same rule
+
+A command that writes or deletes files must leave the filesystem **untouched** when it exits `64`. The two
+are separate promises and they came apart: **`asdamir new app` with no name, in a non-interactive shell,
+used to scaffold a complete application and exit `0`** — the name prompt fell back to the placeholder
+`GeneratedApp` when no console was attached, and `--yes` did the same. A missing name is now a usage error
+and nothing is written.
+
+**`--yes` accepts DEFAULTS, not placeholders.** Every other prompted input derives from something (the
+projects from the name, the database from the name, the SQL host from `localhost`); the app name derives
+from nothing, so there is nothing to accept on your behalf. Pass it explicitly in scripts:
+`asdamir new app <Name> --yes`.
+
+**A mistyped option in the name position is reported as a mistyped option.** `asdamir new app --bogus` hands
+`--bogus` to the command as the *name*; it now says so, instead of reporting that your capitalisation is
+wrong — which sent you to inspect a name that was never the problem.
+
+`3` is a **result**, not a usage error: a scaffolding command exits `3` when it refuses to write into a
+non-empty target. The invocation was fine; the command examined the target and declined.
 
 ### Why the rule is worded positively
 

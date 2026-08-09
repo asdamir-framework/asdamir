@@ -59,7 +59,8 @@ public static class AddFieldCommand
             nameArg, fieldOpt, outputOpt, noDbOpt,
         };
 
-        fieldCmd.SetHandler(async ctx => await Run(
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes and the note in AuditLintCommand.
+        fieldCmd.SetHandler(async ctx => ctx.ExitCode = await Run(
             ctx.ParseResult.GetValueForArgument(nameArg),
             ctx.ParseResult.GetValueForOption(fieldOpt) ?? "",
             ctx.ParseResult.GetValueForOption(outputOpt)!,
@@ -67,13 +68,12 @@ public static class AddFieldCommand
         return fieldCmd;
     }
 
-    private static async Task Run(string entityName, string fieldRaw, DirectoryInfo output, bool noDb)
+    private static async Task<int> Run(string entityName, string fieldRaw, DirectoryInfo output, bool noDb)
     {
-        if (string.IsNullOrWhiteSpace(entityName) || !char.IsUpper(entityName[0]))
+        if (!NameArgument.IsValid(entityName))
         {
-            Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            Console.Error.WriteLine(NameArgument.Explain(entityName, "entity name", "asdamir add field <Entity> --field <Name:type>"));
+            return ExitCodes.Usage;
         }
 
         IReadOnlyList<FieldSpec> fields;
@@ -84,15 +84,13 @@ public static class AddFieldCommand
         catch (ArgumentException ex)
         {
             Console.Error.WriteLine($"Field parse error: {ex.Message}");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            return ExitCodes.Usage;
         }
 
         if (fields.Count != 1)
         {
             Console.Error.WriteLine("Pass exactly one field via --field. For multiple, re-run the command per field.");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            return ExitCodes.Usage;
         }
 
         // Run from the app ROOT (no `cd src/<App>.Gateway` needed) — resolve the Gateway project from --output
@@ -101,8 +99,7 @@ public static class AddFieldCommand
         if (gatewayDir is null)
         {
             Console.Error.WriteLine("Not inside an Asdamir app (no .sln found, and this isn't a Gateway project). Run this from the app root or pass --output <app root or Gateway project>.");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            return ExitCodes.Usage;
         }
         output = new DirectoryInfo(gatewayDir);
 
@@ -120,8 +117,7 @@ public static class AddFieldCommand
         {
             Console.Error.WriteLine($"Neither '{entityPath}' nor '{dtoPath}' exists.");
             Console.Error.WriteLine($"Did you run this in the wrong --output, or mistype '{entityName}'?");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            return ExitCodes.Usage;
         }
 
         // If both code files already had the property, the field is fully applied —
@@ -172,7 +168,7 @@ public static class AddFieldCommand
         // Auto-apply the ALTER migration by DEFAULT (unless --no-db), reusing `db apply`'s journaled runner and
         // resolving the connection from the Gateway user-secret (same as `new entity`). Idempotent; if no
         // connection resolves, the file is written and the manual command is printed — never a hard failure.
-        if (!migrationWritten) return;
+        if (!migrationWritten) return ExitCodes.Success;
         var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
         var appRoot = FeatureCommand.FindAppRoot(output);
         var migRel = appRoot is not null ? Path.GetRelativePath(appRoot, migDir.FullName).Replace('\\', '/') : "db/migrations";
@@ -180,17 +176,19 @@ public static class AddFieldCommand
         if (noDb)
         {
             Console.WriteLine($"  --no-db: apply the ALTER with:  {applyCmd}");
-            return;
+            return ExitCodes.Success;
         }
         if (DbApplyCommand.TryResolveConnectionFromApp(migDir, out _) is not { Length: > 0 })
         {
             Console.WriteLine($"  no connection resolved — apply the ALTER with:  {applyCmd}  (or set the Gateway ConnectionStrings:Default secret)");
-            return;
+            return ExitCodes.Success;
         }
         Console.WriteLine();
         var exit = await DbApplyCommand.RunAsync("", "localhost", "", "", "", migDir, createDatabase: false);
         if (exit != 0) Console.Error.WriteLine($"  ⚠️  ALTER not applied (exit {exit}) — apply it with:  {applyCmd}");
         else FeatureCommand.PrintRestartHint(appRoot);   // schema + code changed → rebuild/restart to pick it up
+
+        return ExitCodes.Success;
     }
 
     private enum PatchOutcome { Patched, AnchorMissing, FileMissing, AlreadyPresent }

@@ -93,10 +93,14 @@ public static class AppCommand
             adminEmailOpt, adminPasswordOpt, yesOpt, modeOpt, billingOpt, noSecretsOpt, noDbOpt,
         };
 
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes. Environment.Exit kills the process from
+        // inside the handler, skipping the rest of the invocation pipeline and making the command
+        // untestable: a contract test that drives the real parse-and-invoke path gets its whole session
+        // aborted instead of a code to assert on.
         appCmd.SetHandler(async (InvocationContext ctx) =>
         {
             var r = ctx.ParseResult;
-            await Run(new RawInputs(
+            ctx.ExitCode = await Run(new RawInputs(
                 Name: r.GetValueForArgument(nameArg),
                 Output: r.GetValueForOption(outputOpt)!,
                 NsOverride: r.GetValueForOption(namespaceOpt) ?? "",
@@ -141,7 +145,7 @@ public static class AppCommand
     // --framework-version overrides ALL of them with one value (used with --local-feed to build against a
     // pre-release pack).
 
-    private static async Task Run(RawInputs raw)
+    private static async Task<int> Run(RawInputs raw)
     {
         var interactive = !raw.Yes && !Console.IsInputRedirected;
 
@@ -151,8 +155,7 @@ public static class AppCommand
         if (!isFreeMode && !string.Equals(raw.Mode, "commercial", StringComparison.OrdinalIgnoreCase))
         {
             Console.Error.WriteLine("--mode must be 'free' or 'commercial'.");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            return ExitCodes.Usage;
         }
 
         // Billing is opt-in (--billing) and works in BOTH modes now:
@@ -168,14 +171,35 @@ public static class AppCommand
         // the Gateway wiring, which must stay byte-identical to R3).
         var hasLocalBilling = hasBilling && isFreeMode;
 
+        // THE NAME IS REQUIRED — it is the one input with no derivable default, and it is NOT covered by the
+        // non-interactive fallback below.
+        //
+        // Measured before this check existed: `asdamir new app` with no console attached (a script, a CI
+        // step, a pipeline) skipped the prompt, fell back to the placeholder "GeneratedApp", and wrote a
+        // complete 67-file, 364 KB application into the current directory — exiting 0, as if that had been
+        // asked for. `--yes` did the same, which is worse: it is documented as "accept every default", and a
+        // placeholder is not a default. Every other prompted input genuinely derives from something (the
+        // projects from the name, the database from the name, the SQL host from localhost); the name derives
+        // from nothing, so there is nothing to accept on the user's behalf.
         var name = raw.Name;
-        if (string.IsNullOrWhiteSpace(name))
-            name = Ask(interactive, "Uygulama adı / App name", "GeneratedApp");
-        if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
+        if (string.IsNullOrWhiteSpace(name) && interactive)
         {
-            Console.Error.WriteLine("App name must be PascalCase (e.g. GeneratedApp).");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            name = Ask(true, "Uygulama adı / App name", "GeneratedApp");
+        }
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            Console.Error.WriteLine("An app name is required: asdamir new app <Name>");
+            Console.Error.WriteLine(
+                "It was not supplied and there is no console to prompt on (redirected input, or --yes). "
+                + "Nothing was written.");
+            return ExitCodes.Usage;
+        }
+
+        if (!NameArgument.IsValid(name))
+        {
+            Console.Error.WriteLine(NameArgument.Explain(name, "app name", "asdamir new app <Name>"));
+            return ExitCodes.Usage;
         }
 
         var serverProject = FirstNonEmpty(raw.ServerName, () => Ask(interactive, "UI (Server) proje adı / project name", $"{name}.Server"));
@@ -226,8 +250,7 @@ public static class AppCommand
         if (Directory.Exists(appRoot) && Directory.EnumerateFileSystemEntries(appRoot).Any())
         {
             Console.Error.WriteLine($"Refusing to write into non-empty directory '{appRoot}'. Remove it first or choose a different --output.");
-            Environment.Exit(3);
-            return;
+            return ExitCodes.RefusedExistingTarget;
         }
 
         // Starter admin — seeded into AsdamirVault (scoped by this app's AppId) by the generated
@@ -587,6 +610,8 @@ public static class AppCommand
         Console.WriteLine();
         Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add a feature: asdamir new feature <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
         }
+
+        return ExitCodes.Success;
     }
 
     // ── Auto-configure the Gateway's dev user-secrets (run-ready out of the box) ────────────────────────

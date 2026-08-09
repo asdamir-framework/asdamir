@@ -10,6 +10,47 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
+## [Tools 1.7.0] — 2026-08-09 — *pending publish*
+
+### Fixed: `new app` with no name wrote a whole application and exited `0`
+
+The name prompt fell back to the placeholder `GeneratedApp` when no console was attached. So
+`asdamir new app` in a script, a CI step or a pipeline **scaffolded a complete 67-file, 364 KB application
+into the current directory and exited `0`**, as though that had been asked for. `--yes` did the same, which
+is worse: it is documented as *"accept every default"*, and a placeholder is not a default.
+
+A missing app name is now a **usage error (`64`) and nothing is written**. `--yes` still accepts every real
+default — the projects derive from the name, the database from the name, the SQL host from `localhost` — but
+the name derives from nothing, so there is nothing to accept on the user's behalf.
+
+**A mistyped option in the name position is now reported as one.** `asdamir new app --bogus` hands `--bogus`
+to the command as the *name*. The exit code was already correct (`-` is not an uppercase letter, so the
+PascalCase check rejected it), but the message blamed the user's capitalisation for what was a typo'd flag —
+the harder of the two mistakes to spot, and the reader was sent to inspect a name that was never the problem.
+One implementation now serves all seven commands that take a name; there were seven copies of the check.
+
+**The last eight `Environment.Exit` calls are gone.** They killed the process from inside a handler, skipping
+the rest of the invocation pipeline — which is what had kept these commands outside the contract test: its
+first run *aborted the whole test session* instead of failing. They return exit codes now.
+
+**Measured, then fixed, in that order.** The other file-writing commands — `new entity`, `new page`,
+`new feature`, `add field`, `new mobile`, `new module`, `rollback` — were probed in a sandbox with a
+before/after directory comparison for every usage error. All were already correct on both exit code and side
+effects; only their message was improved. **One earlier claim of mine was wrong and is corrected here:**
+`asdamir rollback Invoice --yse` does *not* fall through to the confirmation prompt of a destructive command.
+It exits `64` and does nothing — `1.6.0`'s contract already covered it. It had been reported as a risk
+without being measured.
+
+**Enforcement — `ScaffoldSideEffectTests`**: 16 usage errors across 8 file-writing commands, each in its own
+temporary directory, asserting the exit code **and** that the directory is unchanged, plus a positive case
+(a valid invocation still scaffolds) and a pin that the placeholder never becomes a real app name. Reverting
+the required-name fix turns **3** red; reverting the flag-detection **message** turns **3** red — that second
+one is a message-only guarantee with its own test precisely because it changes no exit code, and an
+improvement with no gate silently disappears. `CliExitCodeContractTests` now covers **17 commands × 7 shapes**.
+
+`3` is documented as a **result**, not a usage error: a scaffolding command exits `3` when it refuses to
+write into a non-empty target. The invocation was fine; the command examined the target and declined.
+
 ## [Tools 1.6.0] — 2026-08-09
 
 ### Fixed: a mistyped flag was indistinguishable from a failing gate — CLI-wide this time

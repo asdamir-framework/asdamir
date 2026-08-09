@@ -50,26 +50,34 @@ public static class ModuleCommand
             nameArg, descriptionOpt, outputOpt,
         };
 
-        moduleCmd.SetHandler(Run, nameArg, descriptionOpt, outputOpt);
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes and the note in AuditLintCommand.
+        moduleCmd.SetHandler(
+            ctx => ctx.ExitCode = Run(
+                ctx.ParseResult.GetValueForArgument(nameArg),
+                ctx.ParseResult.GetValueForOption(descriptionOpt)!,
+                ctx.ParseResult.GetValueForOption(outputOpt)!));
         return moduleCmd;
     }
 
-    private static void Run(string name, string description, DirectoryInfo output)
+    private static int Run(string name, string description, DirectoryInfo output)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
             Console.Error.WriteLine("Module name is required.");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            return ExitCodes.Usage;
         }
 
         // Accept "Telemetry" OR "Core.Telemetry" — strip the prefix if present, then validate.
         var bareName = name.StartsWith("Core.", StringComparison.Ordinal) ? name.Substring(5) : name;
-        if (bareName.Length == 0 || !char.IsUpper(bareName[0]))
+        if (!NameArgument.IsValid(bareName) || name.StartsWith('-'))
         {
-            Console.Error.WriteLine("Module name (after stripping the optional 'Core.' prefix) must be PascalCase (e.g. Telemetry).");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            // The raw arg is checked too: 'Core.' stripping happens first, so a flag would otherwise be
+            // reported as a bad module name rather than as the mistyped option it is.
+            Console.Error.WriteLine(
+                name.StartsWith('-')
+                    ? NameArgument.Explain(name, "module name", "asdamir new module <Name>")
+                    : "Module name (after stripping the optional 'Core.' prefix) must be PascalCase (e.g. Telemetry).");
+            return ExitCodes.Usage;
         }
 
         var projectName = "Core." + bareName;        // Core.Telemetry
@@ -94,8 +102,7 @@ public static class ModuleCommand
         {
             // Don't blow over an existing project — bail with an actionable hint instead.
             Console.Error.WriteLine($"Refusing to write into non-empty directory '{projectRoot}'. Remove it first or choose a different --output.");
-            Environment.Exit(3);
-            return;
+            return ExitCodes.RefusedExistingTarget;
         }
         Directory.CreateDirectory(projectRoot);
 
@@ -133,5 +140,7 @@ public static class ModuleCommand
         Console.WriteLine();
         Console.WriteLine($"Done. {written} written, {skipped} skipped.");
         Console.WriteLine($"Next: add '<ProjectReference Include=\"../{projectName}/{projectName}.csproj\" />' to consumers, and call services.Add{bareName}() in Program.cs.");
+
+        return ExitCodes.Success;
     }
 }

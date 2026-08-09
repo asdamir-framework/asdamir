@@ -70,17 +70,23 @@ public static class MobileCommand
             nameArg, outputOpt, namespaceOpt, gatewayUrlOpt, localFeedOpt,
         };
 
-        mobileCmd.SetHandler(Run, nameArg, outputOpt, namespaceOpt, gatewayUrlOpt, localFeedOpt);
+        // ctx.ExitCode, never Environment.Exit — see ExitCodes and the note in AuditLintCommand.
+        mobileCmd.SetHandler(
+            ctx => ctx.ExitCode = Run(
+                ctx.ParseResult.GetValueForArgument(nameArg),
+                ctx.ParseResult.GetValueForOption(outputOpt)!,
+                ctx.ParseResult.GetValueForOption(namespaceOpt)!,
+                ctx.ParseResult.GetValueForOption(gatewayUrlOpt)!,
+                ctx.ParseResult.GetValueForOption(localFeedOpt)!));
         return mobileCmd;
     }
 
-    private static void Run(string name, DirectoryInfo output, string nsOverride, string gatewayUrl, string localFeed)
+    private static int Run(string name, DirectoryInfo output, string nsOverride, string gatewayUrl, string localFeed)
     {
-        if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
+        if (!NameArgument.IsValid(name))
         {
-            Console.Error.WriteLine("App name must be PascalCase (e.g. MobileV2).");
-            Environment.Exit(ExitCodes.Usage);
-            return;
+            Console.Error.WriteLine(NameArgument.Explain(name, "app name", "asdamir new mobile <Name>"));
+            return ExitCodes.Usage;
         }
 
         var ns = string.IsNullOrWhiteSpace(nsOverride) ? name : nsOverride;
@@ -88,8 +94,7 @@ public static class MobileCommand
         if (Directory.Exists(appRoot) && Directory.EnumerateFileSystemEntries(appRoot).Any())
         {
             Console.Error.WriteLine($"Refusing to write into non-empty directory '{appRoot}'. Remove it first or choose a different --output.");
-            Environment.Exit(3);
-            return;
+            return ExitCodes.RefusedExistingTarget;
         }
 
         var now = DateTime.UtcNow;
@@ -198,5 +203,7 @@ public static class MobileCommand
         Console.WriteLine($"  3. Build a single target RID (a plain multi-RID build fails with NETSDK1047):");
         Console.WriteLine($"       dotnet build src/{name}.Mobile/{name}.Mobile.csproj -f net10.0-android -r android-arm64");
         Console.WriteLine($"  4. Open in Visual Studio / VS Code and run on an Android emulator or device.");
+
+        return ExitCodes.Success;
     }
 }

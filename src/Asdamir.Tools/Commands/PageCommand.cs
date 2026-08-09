@@ -82,9 +82,9 @@ public static class PageCommand
 
     internal static async Task<int> Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy, string icon, bool noDb = false, bool restartHint = true)
     {
-        if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
+        if (!NameArgument.IsValid(name))
         {
-            Console.Error.WriteLine("Entity name must be PascalCase (e.g. Customer).");
+            Console.Error.WriteLine(NameArgument.Explain(name, "entity name", "asdamir new page <Name> --fields <spec>"));
             return ExitCodes.Usage;
         }
 
