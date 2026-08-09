@@ -1388,6 +1388,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#exit-codes-normative-and-the-same-model-for-every-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes — NORMATIVE, and the same model for every command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exit codes — NORMATIVE, and the same model for every command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-the-rule-is-worded-positively" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the rule is worded positively
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-replaces-read-if-you-pin-an-older-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this replaces — read if you pin an older version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1940,6 +1979,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#exit-codes-normative-and-the-same-model-for-every-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes — NORMATIVE, and the same model for every command
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Exit codes — NORMATIVE, and the same model for every command">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#why-the-rule-is-worded-positively" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why the rule is worded positively
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-replaces-read-if-you-pin-an-older-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this replaces — read if you pin an older version
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2336,7 +2414,7 @@
 <tr>
 <td><code>Asdamir.Tools</code></td>
 <td><code>1.5.1</code></td>
-<td>—</td>
+<td><code>1.6.0</code> built, pending publish</td>
 </tr>
 <tr>
 <td><code>Asdamir.Web</code></td>
@@ -2349,6 +2427,110 @@
 not pushed yet. The published column is what a fresh <code>asdamir new app</code> pins.</em></p>
 <!-- published-versions:end -->
 
+<h2 id="exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE, and the same model for every command<a class="headerlink" href="#exit-codes-normative-and-the-same-model-for-every-command" title="Permanent link">&para;</a></h2>
+<p>A third party's script may rely on this section. It is the <strong>single</strong> statement of the contract; a command's
+own help text and its <code>Exit codes:</code> line below derive from it and may not contradict it.</p>
+<p><strong>The model — two disjoint kinds of code:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>Codes</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Result</strong></td>
+<td><code>0</code>, <code>1</code>, and for <code>verify-archive</code> also <code>2</code>–<code>4</code></td>
+<td>The command ran and is reporting <strong>what it examined</strong>. Each command owns a small result band starting at <code>0</code>; see its own section.</td>
+</tr>
+<tr>
+<td><strong>Usage</strong></td>
+<td><strong><code>64</code></strong></td>
+<td>The command was <strong>invoked wrongly</strong>, so it examined nothing and is making <strong>no statement at all</strong>. (<code>EX_USAGE</code>, sysexits(3).)</td>
+</tr>
+<tr>
+<td><strong>Internal</strong></td>
+<td><strong><code>70</code></strong></td>
+<td>The tool itself failed unexpectedly. A <strong>bug report</strong>, not a supported outcome. (<code>EX_SOFTWARE</code>.)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The rule, in one sentence: a result code is possible only when a command handler produced it.</strong> Everything
+else — an unknown or mistyped flag, a required option omitted, an option given without its value, a value the
+option cannot parse, a stray argument, <strong>and <code>--help</code> / <code>--version</code></strong> — exits <code>64</code>.</p>
+<p><code>--help</code> exiting <code>64</code> is deliberate and against the usual convention. It follows from the rule rather than
+from taste: <code>0</code> is a <em>claim</em> (a clean gate, a verified archive), and printing help establishes no such claim,
+so it cannot borrow the code. If you script <code>--help</code>, treat <code>64</code> as its success.</p>
+<h3 id="why-the-rule-is-worded-positively">Why the rule is worded positively<a class="headerlink" href="#why-the-rule-is-worded-positively" title="Permanent link">&para;</a></h3>
+<p>Not "these parser errors return 64" but "only a handler may return a result". An enumerated list of today's
+parser errors goes blind the moment the parser grows a new pre-handler outcome — which is exactly how the
+previous version of this contract went blind, and the failure was silent in the dangerous direction.</p>
+<h3 id="what-this-replaces-read-if-you-pin-an-older-version">What this replaces — read if you pin an older version<a class="headerlink" href="#what-this-replaces-read-if-you-pin-an-older-version" title="Permanent link">&para;</a></h3>
+<p>Before <strong><code>Asdamir.Tools 1.6.0</code></strong>, usage errors that <code>System.CommandLine</code> answered <em>before</em> the handler ran
+leaked into the result band as <strong><code>1</code></strong>, and the handler's own usage errors used <strong><code>2</code></strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Invocation</th>
+<th style="text-align: right;">≤ 1.5.1</th>
+<th>which meant</th>
+<th style="text-align: right;">≥ 1.6.0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>audit lint --pth src</code> (typo)</td>
+<td style="text-align: right;"><code>1</code></td>
+<td><strong>"findings — build fails"</strong></td>
+<td style="text-align: right;"><code>64</code></td>
+</tr>
+<tr>
+<td>any gate, required option omitted / no value / stray argument</td>
+<td style="text-align: right;"><code>1</code></td>
+<td><strong>"findings"</strong></td>
+<td style="text-align: right;"><code>64</code></td>
+</tr>
+<tr>
+<td><code>--version</code> on a subcommand</td>
+<td style="text-align: right;"><code>1</code></td>
+<td><strong>"findings"</strong></td>
+<td style="text-align: right;"><code>64</code></td>
+</tr>
+<tr>
+<td><code>--help</code></td>
+<td style="text-align: right;"><code>0</code></td>
+<td><strong>"clean"</strong></td>
+<td style="text-align: right;"><code>64</code></td>
+</tr>
+<tr>
+<td><code>audit seeds --path ""</code></td>
+<td style="text-align: right;"><code>1</code> + <strong>stack trace</strong></td>
+<td>crash</td>
+<td style="text-align: right;"><code>64</code> + one line</td>
+</tr>
+<tr>
+<td><code>db apply</code> from the wrong folder</td>
+<td style="text-align: right;"><code>0</code>/<code>1</code> + <strong>stack trace</strong></td>
+<td>crash</td>
+<td style="text-align: right;"><code>64</code> + one line</td>
+</tr>
+<tr>
+<td>any handler-raised bad argument</td>
+<td style="text-align: right;"><code>2</code></td>
+<td>bad args</td>
+<td style="text-align: right;"><code>64</code></td>
+</tr>
+</tbody>
+</table>
+<p>So a mistyped audit invocation used to be indistinguishable from a <strong>failing gate</strong>, and <code>--help</code> from a
+<strong>clean run</strong>. <strong><code>2</code> is no longer produced by any command.</strong> It could not become the single usage code
+because in <code>verify-archive</code> <code>2</code> is a verdict (<code>DIGEST_MISMATCH</code>) — the CLI would have needed
+"<code>2</code> everywhere except one command", and a rule with an exception is the kind that gets misremembered.</p>
+<p><strong>Stack traces are gone from user-facing failures.</strong> In an audit tool they leak absolute paths and internals
+a third party did not ask for, and they read as "the product is broken" when the real cause was a mistyped
+argument. Errors now print one sentence; <code>70</code> says explicitly that it is <em>not</em> your invocation.</p>
 <h2 id="quick-start">Quick start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h2>
 <p>Scaffold and run your own app end-to-end. This is the <strong>one canonical flow</strong> — the same everywhere.</p>
 <p><strong>Prerequisites:</strong> <strong>.NET 10 SDK</strong> · <strong>SQL Server</strong> on <code>localhost:1433</code> (local or Docker).</p>
@@ -2769,6 +2951,15 @@ to scaffold files only.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>src<span class="w"> </span>--min-severity<span class="w"> </span>warning
 <a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>dotnet<span class="w"> </span>run<span class="w"> </span>--project<span class="w"> </span>src/Asdamir.Tools<span class="w"> </span>--<span class="w"> </span>audit<span class="w"> </span>lint<span class="w"> </span>--path<span class="w"> </span>AppManagement/src<span class="w"> </span>--min-severity<span class="w"> </span>warning
 </code></pre></div>
+<p>Exit codes: <code>0</code> (clean — no finding at or above <code>--min-severity</code>), <code>1</code> (findings — <strong>fails the build</strong>),
+<code>64</code> (usage — see <a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>).</p>
+<blockquote>
+<p>This line is new in <strong><code>1.6.0</code></strong>, and it was written <strong>before</strong> the behaviour was made to match it. Until
+then <code>audit lint</code> — the most-run gate in the repository — was the only one whose exit codes were <strong>not
+documented anywhere</strong>, while <code>1</code> was in practice returned both for real findings and for a mistyped flag.
+Writing down what it did would have made that official; the contract above is what it <em>should</em> do, and the
+code now does it.</p>
+</blockquote>
 <h3 id="suppressing-a-finding">Suppressing a finding<a class="headerlink" href="#suppressing-a-finding" title="Permanent link">&para;</a></h3>
 <ul>
 <li>Single line: <code>// audit-lint:ignore AUDxxx</code> — leave a sibling comment explaining <em>why</em>.</li>
@@ -2903,7 +3094,6 @@ default <code>warning</code> — AUD015 emits Info and Error, AUD019 Error only,
 errors), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>. Suppress an AUD015 usage line with
 <code>// audit-lint:ignore AUD015</code> (leave a comment why); skip a file with <code>audit-lint:skip-file</code>. JSON findings
 carry a <code>ruleId</code> of <code>AUD015</code> or <code>AUD019</code>.</p>
-<p>Exit codes: <code>0</code> (no findings at/above <code>--min-severity</code>, or no seed sources), <code>1</code> (findings), <code>2</code> (bad args).</p>
 <h2 id="audit-permissions-the-permissionpolicy-completeness-gate-aud016"><code>audit permissions</code> — the permission/policy-completeness gate (AUD016)<a class="headerlink" href="#audit-permissions-the-permissionpolicy-completeness-gate-aud016" title="Permanent link">&para;</a></h2>
 <p>A Gateway defines authorization policies like <code>RequireClaim("perm", "reconciliation.run")</code>. The app-login
 JWT carries the signed-in user's <strong>role codes</strong> (e.g. <code>Admin</code>) <strong>plus</strong> the fine-grained <strong>permission
@@ -2945,7 +3135,7 @@ now: a permission mentioned <strong>only</strong> in a comment (<code>-- TODO: s
 supplied, a seed tuple that is <strong>commented out</strong> does not count as applied, and a file that merely <em>names</em>
 <code>dbo.Permissions</code> in a header comment contributes nothing.</p>
 <p>Exit codes: <code>0</code> (no findings — the gate is green; every required perm is supplied), <code>1</code> (at least one
-AUD016 finding — this <strong>fails the build</strong>), <code>2</code> (bad args). Run it alongside <code>audit lint</code>,
+AUD016 finding — this <strong>fails the build</strong>), <code>64</code> (usage — see <a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>). Run it alongside <code>audit lint</code>,
 <code>audit localization</code> and <code>audit seeds</code> before a push.</p>
 <h2 id="audit-seeds-the-seed-form-gates-aud018-aud017"><code>audit seeds</code> — the seed-form gates (AUD018 + AUD017)<a class="headerlink" href="#audit-seeds-the-seed-form-gates-aud018-aud017" title="Permanent link">&para;</a></h2>
 <p>The two gates above answer <em>"is this seeded?"</em> by <strong>reading SQL as text</strong> — and twice in a row they went
@@ -3028,8 +3218,7 @@ AsdamirVault migrations</strong> — 61 for AUD018 in two eras (002–077, writt
 per-row <code>EXEC</code>s) and 2 for AUD017 (003, 060). Because those files are frozen, the list can only shrink; when
 a later migration supersedes one, the gate prints <code>NOTE — allowlist entry no longer matches anything</code> and the
 line is deleted.</p>
-<p>Options: <code>--path/-p</code> (repeatable), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>, <code>--allowlist &lt;file&gt;</code>.
-Exit codes: <code>0</code> (clean), <code>1</code> (findings — <strong>fails the build</strong>), <code>2</code> (bad args).</p>
+<p>Options: <code>--path/-p</code> (repeatable), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>, <code>--allowlist &lt;file&gt;</code>.</p>
 <h2 id="audit-verify-archive-verify-a-folded-agent-audit-segment-offline"><code>audit verify-archive</code> — verify a folded agent-audit segment, offline<a class="headerlink" href="#audit-verify-archive-verify-a-folded-agent-audit-segment-offline" title="Permanent link">&para;</a></h2>
 <p>Unlike every other <code>audit</code> subcommand, this one is <strong>not a build gate</strong>. It is the tool a third party runs on
 an <strong>exported agent action ledger archive</strong> — with <strong>no AppManagement, no database, no network and no
@@ -3306,7 +3495,7 @@ secret encryption are delegated to the API, so the CLI stays credential- and cry
 <a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
 <a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
 </code></pre></div>
-<p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>2</code> bad arguments. The
+<p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>64</code> usage (see <a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>). The
 company is taken from the token's <code>company</code> claim. See the AppManagement console's multi-company (firma) operation.</p>
 <h2 id="secrets"><code>secrets</code><a class="headerlink" href="#secrets" title="Permanent link">&para;</a></h2>
 <p>Tooling for the at-rest encryption key (<code>Security:EncryptionKey</code>). Keys are read from environment
