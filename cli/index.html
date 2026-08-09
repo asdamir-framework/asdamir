@@ -1589,10 +1589,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#exit-codes" class="md-nav__link">
+  <a href="#exit-codes-normative" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Exit codes
+        Exit codes — NORMATIVE
       
     </span>
   </a>
@@ -2141,10 +2141,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#exit-codes" class="md-nav__link">
+  <a href="#exit-codes-normative" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Exit codes
+        Exit codes — NORMATIVE
       
     </span>
   </a>
@@ -2320,8 +2320,8 @@
 <tbody>
 <tr>
 <td><code>Asdamir.Core</code></td>
-<td><code>1.7.0</code></td>
-<td><code>1.8.0</code> built, pending publish</td>
+<td><code>1.8.0</code></td>
+<td>—</td>
 </tr>
 <tr>
 <td><code>Asdamir.Data</code></td>
@@ -2335,8 +2335,8 @@
 </tr>
 <tr>
 <td><code>Asdamir.Tools</code></td>
-<td><code>1.4.6</code></td>
-<td><code>1.5.0</code> built, pending publish</td>
+<td><code>1.5.1</code></td>
+<td>—</td>
 </tr>
 <tr>
 <td><code>Asdamir.Web</code></td>
@@ -3081,7 +3081,9 @@ very rows it accompanies, so an attacker who rewrites the rows simply recomputes
 and both the text and the <code>--json</code> output state A and B <strong>separately</strong> (<code>provesNotAltered</code> / <code>provesAnchored</code>).
 Same discipline as the ledger's three-valued <code>ChainStatus</code>, where <code>Degraded</code> is never rendered as success: do
 not dilute the green.</p>
-<h3 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h3>
+<h3 id="exit-codes-normative">Exit codes — NORMATIVE<a class="headerlink" href="#exit-codes-normative" title="Permanent link">&para;</a></h3>
+<p>This table is the <strong>single, normative</strong> statement of the contract. A third party's audit script may rely on
+it. It is stated <strong>exhaustively</strong>: the command emits these values and <strong>no others</strong>.</p>
 <table>
 <thead>
 <tr>
@@ -3119,14 +3121,29 @@ not dilute the green.</p>
 <tr>
 <td style="text-align: right;"><code>64</code></td>
 <td>usage error</td>
-<td>a bad argument. Deliberately <strong>outside</strong> the <code>0</code>–<code>4</code> band, so "invoked wrongly" can never be read as "judged"</td>
+<td>the command was <strong>invoked wrongly</strong>. No archive was judged</td>
 </tr>
 </tbody>
 </table>
-<p><code>FORMAT_ERROR</code> is not one of the four verdicts on purpose: an unknown layout means the integrity checks were
-never performed, and reporting a verdict for an unchecked archive would present it as checked.</p>
+<p><strong>The rule, in one sentence: <code>0</code>–<code>4</code> are claims about an archive, and nothing else may occupy them.</strong> Every
+invocation that produces no such claim exits <code>64</code> — a typo'd or unknown flag, a missing or empty <code>--path</code>, an
+option given without its value, a stray argument, a malformed <code>--expected-digest</code>, a path that does not
+exist, and <strong><code>--help</code> / <code>--version</code> as well</strong>.</p>
+<p>Help and version are included <strong>against the usual convention that <code>--help</code> exits <code>0</code></strong>, and the reason is the
+whole point of the band: on this command <code>0</code> does not mean <em>the program ran</em>, it means <em>this archive is
+unaltered and anchored to the ledger it claims to come from</em>. Help cannot borrow that code. (Nothing else in
+the CLI is affected — the rule is scoped to <code>verify-archive</code>, where an exit code is evidence.)</p>
+<p><code>FORMAT_ERROR</code> sits inside the band even though it reports no verdict, because it is still a statement about
+the archive — <em>this file was refused</em> — whereas <code>64</code> says nothing about any archive at all.</p>
 <p>Codes <code>0</code>–<code>4</code> are identical to the specification's own reference fixture, so a script wired to one
 implementation behaves the same against the other.</p>
+<blockquote>
+<p><strong>Fixed in <code>Asdamir.Tools 1.5.1</code>.</strong> In <code>1.5.0</code> the invocations that <code>System.CommandLine</code> answered <em>before</em>
+the handler ran leaked into the band: a typo'd flag exited <code>1</code> (<code>INTERNALLY_CONSISTENT</code>) and <code>--help</code> exited
+<code>0</code> (<code>VERIFIED</code>). A script could therefore log a verification result for a command that verified nothing. If
+you are pinned to <code>1.5.0</code>, treat any exit code as trustworthy <strong>only</strong> when the command also printed a
+verdict line; upgrading is the real fix.</p>
+</blockquote>
 <h3 id="what-it-actually-checks">What it actually checks<a class="headerlink" href="#what-it-actually-checks" title="Permanent link">&para;</a></h3>
 <p>It <strong>re-derives</strong>; it never re-hashes what it was handed. Each row carries the canonical prefix that was hashed
 when it was written, and the verifier rebuilds that prefix <strong>from the row's own columns</strong> before comparing —
