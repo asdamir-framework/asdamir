@@ -5,14 +5,17 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
 
-  <!-- Open-core packages — used only when AppManagement is built standalone (commercial repo, no src/).
-       In this dev monorepo the open core is consumed via ProjectReference, so these stay inactive. -->
-  <ItemGroup Label="Asdamir open core (standalone consumption)">
-    <PackageVersion Include="Asdamir.Core" Version="1.3.0" />
-    <PackageVersion Include="Asdamir.Data" Version="1.2.1" />
-    <PackageVersion Include="Asdamir.Web" Version="1.2.0" />
-    <PackageVersion Include="Asdamir.Payments" Version="1.2.0" />
-  </ItemGroup>
+  <!-- NO Asdamir.* PackageVersion entries here, DELIBERATELY.
+       In this monorepo the open core is consumed via ProjectReference (the Exists()-conditional ItemGroups
+       in the AppManagement csproj), so a PackageVersion for it is never read. It was read by nobody and
+       wrong by four releases — Core 1.5.0 / Data 1.3.1 / Web 1.2.0 while nuget served 1.8.0 / 1.5.0 / 2.1.0.
+       Deleting it converts a SILENT wrong number into a LOUD failure: should this tree ever fall to the
+       PackageReference branch, Central Package Management fails the build with NU1010 (no version declared)
+       instead of quietly restoring a four-release-old framework.
+       The versions that DO matter live in src/Asdamir.Tools/published-versions.json — the single source,
+       compared to nuget.org in both directions by the Category=PublishedVersions gate. The commercial repo
+       keeps its own pins because it genuinely restores from them; ArchiveVersionPinTests checks them
+       against that manifest. -->
 
   <ItemGroup Label="Microsoft.Extensions (.NET 10)">
     <PackageVersion Include="Microsoft.Extensions.Caching.Memory" Version="10.0.8" />

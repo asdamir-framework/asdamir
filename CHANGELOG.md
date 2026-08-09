@@ -58,6 +58,30 @@ independent Python fixture, and the tests.
 a matrix that aborts on case 3 hides cases 4–15, and the useful question is always *which inputs*, never
 *whether any*. On a synthetic break it reports **3 of 15 cases disagreed**, by name.
 
+### Fixed: the last three hand-written version claims — two generated, one deleted
+
+The sweep the previous slice reported is now closed, and the decisions differ by file because the files do.
+
+- **The public `README.md` was wrong in public.** Its first screen said `Asdamir.Core 1.6.0`,
+  `Data 1.4.0`, `Web 2.0.1`, `Tools 1.4.5` while nuget served **`1.8.0`, `1.5.0`, `2.1.0`, `1.7.0`**. It is
+  now a generated region like the CHANGELOG's — but rendered **inline**, because a README opens with a
+  sentence and dropping a markdown table there would be worse than the drift it fixes. One source, two
+  presentations; never two sources.
+- **`CLAUDE.md`'s version sentence is DELETED, not corrected.** It had drifted six releases. A rule document
+  that restates the fact it points at is one more copy to get wrong, so it now points and stops.
+- **The dead `Asdamir.*` pins are DELETED from entframework and the public tree.** Measured: entframework
+  resolves the open core through the `Exists()` `ProjectReference` branch, and the public tree has no
+  `Asdamir.*` `PackageReference` at all — so those four `PackageVersion` entries were read by nobody and
+  wrong by four releases. **Deleting is better than syncing**: under Central Package Management a
+  `PackageReference` with no `PackageVersion` fails the build with `NU1010`, so a silent wrong number becomes
+  a loud error. The commercial repo keeps its pins — it genuinely restores from them — and `verify-mirror`
+  now compares them to the same manifest.
+
+**A hole surfaced while proving the new gate could go red**, which is the entire reason for doing that: with
+the README's region *edited* the gate failed correctly, but with the region *deleted* it PASSED — the
+"no region" case was skipped so entframework's own README (which legitimately makes no version claim) would
+not error. Closed: absence is a hard failure whenever `--root` names a mirror.
+
 ### Fixed: the last hand-written version claim is generated
 
 The public repo's `CHANGELOG.md` opened with a hand-typed *"Current published state (nuget.org): …"* — after
