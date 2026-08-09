@@ -1209,6 +1209,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="9. Verification algorithm (normative)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-a-member-that-is-present-but-not-well-formed-normative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 A member that is PRESENT but not well-formed (normative)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1840,6 +1857,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="9. Verification algorithm (normative)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#91-a-member-that-is-present-but-not-well-formed-normative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9.1 A member that is PRESENT but not well-formed (normative)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1893,6 +1927,24 @@ disagreement falls into. Every answer below is the behaviour the reference imple
 nothing about the bytes, the field set or the algorithm changed. <strong>An archive valid before this revision is
 valid after it, and vice versa.</strong> The clarifications are here because two conforming implementations that
 answered these differently would disagree on a real archive — silently.</p>
+<p><strong>Revision 2026-08-09 — CLARIFICATION ONLY, and one honest caveat. <code>FormatVersion</code> STAYS <code>1</code>.</strong> Two more
+questions, both found by implementing the format twice rather than by reading it:</p>
+<ul>
+<li><strong>§9.1 — a member that is present but not well-formed</strong> (<code>"RowHash": "zzzz…"</code>, a 30-byte hash,
+  <code>AuthorityKind: 256</code>). <strong>This page did not say.</strong> That is the caveat: unlike the 2026-08-08 revision, this
+  is not merely writing down settled behaviour — it is <strong>defining a previously UNDEFINED area</strong>. Both
+  existing implementations happen to agree (both report a format error), so no archive changes verdict and
+  nothing that verified before verifies differently now; but a third implementation could legitimately have
+  read the silence the other way, and would then have called the same file <code>Broken</code>. The rule is stated so
+  that it cannot.</li>
+<li><strong>§9 step 4d — where the line-count check sits.</strong> This page <em>did</em> say (4d, last), and one of the two
+  implementations had it first. That one is now corrected. It is a real, measured divergence: on an archive
+  that violates both the tombstone rule and the line count, the two reported different buckets, different
+  exit codes and different reasons — <code>Broken (3)</code> versus <code>FORMAT_ERROR (4)</code> — for the same bytes.</li>
+</ul>
+<p><strong>No archive's verdict changes as a result of either.</strong> An archive that verified before verifies now; an
+archive that was broken before is broken now. What changes is that two conforming verifiers can no longer
+answer these two questions differently.</p>
 <p>When a closed range of the ledger is <strong>folded</strong> (removed from the live database and replaced by a tombstone —
 see <a href="../agent-audit/#retention-folding-not-deleting">Agent Audit</a>), the rows themselves are exported to an
 <strong>archive</strong>. This document specifies that archive's bytes: what it contains, how each field is encoded, and
@@ -2333,7 +2385,11 @@ to the export procedure and is tracked separately.</p>
       segment is not a v1 archive;
    c. assert every required member of every row is present (§5) — format error if not;
    d. assert the line count equals <code>RowCount</code>, and that <code>SeqNo</code> runs strictly ascending from <code>SeqStart</code> to
-      <code>SeqEnd</code> with no gap or repeat.</li>
+      <code>SeqEnd</code> with no gap or repeat. <strong>This is the LAST of the four, not the first</strong> — checking the line
+      count early is the natural instinct and produces a different answer for an archive that violates two
+      rules at once: <code>Broken</code> (a content finding) instead of the format error that 4a–4c would have raised.
+      A verifier that reorders these reports a different bucket, a different exit code and a different reason
+      for the same file.</li>
 <li><strong>Per row, in order:</strong>
    a. rebuild the canonical prefix from the columns (§7.1) and compare to <code>CanonicalPrefix</code> (§7.2);
    b. recompute <code>RowHash = SHA-256(PrevHash ‖ rebuiltPrefix ‖ SeqNo ‖ RecordedAtTicks)</code> per
@@ -2346,6 +2402,48 @@ to the export procedure and is tracked separately.</p>
    equal → <code>Verified</code>; different → <code>DigestMismatch</code>. If it was <strong>not</strong> supplied → <code>InternallyConsistent</code>,
    and say so.</li>
 </ol>
+<h3 id="91-a-member-that-is-present-but-not-well-formed-normative">9.1 A member that is PRESENT but not well-formed (normative)<a class="headerlink" href="#91-a-member-that-is-present-but-not-well-formed-normative" title="Permanent link">&para;</a></h3>
+<p>Throughout §9, <strong>"present" means present AND well-formed.</strong> A member whose value cannot be decoded to the
+type §4/§5 declares is a <strong>format error</strong>: the check that would have used it never ran, so no verdict may be
+reported. This is not a new rule — it is the same principle as step 4c, made explicit, because "is the member
+there?" and "can it be read?" are easy to conflate and two verifiers that split them differently would
+disagree about the same file.</p>
+<p><strong>The checks in this class, counted.</strong> Per row: <strong>7 hex</strong> members (<code>InputDigest</code>, <code>OutputDigest</code>,
+<code>ErrorDigest</code>, <code>PrevHash</code>, <code>RowHash</code>, <code>CanonicalPrefix</code>, <code>Signature</code>), <strong>2 UUID</strong> members (<code>AppId</code>,
+<code>EventId</code>), <strong>8 integer</strong> members (<code>SeqNo</code>, <code>RecordedAtTicks</code>, <code>HashVersion</code>, <code>RecordKind</code>,
+<code>AuthorityKind</code>, <code>OnBehalfOfUserId</code>, <code>Decision</code>, <code>Outcome</code>). In <code>manifest.json</code>: <strong>3 hex</strong>
+(<code>SegmentDigest</code>, <code>PrevHashAtStart</code>, <code>RowHashAtEnd</code>) and <strong>1 UUID</strong> (<code>AppId</code>). A member documented as
+nullable is well-formed when absent or <code>null</code>; the rule applies to a value that is <em>supplied</em> and cannot be
+read.</p>
+<p>Concretely, each of these is a <strong>format error</strong>, not <code>Broken</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Malformed value</th>
+<th>Why it is a format error, not a finding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>"RowHash": "zzzz…"</code></td>
+<td>not hexadecimal — nothing was compared, so "the hashes differ" would be a claim about a comparison that never happened</td>
+</tr>
+<tr>
+<td>a hash of the wrong byte length (e.g. 30 bytes)</td>
+<td>the same: a 30-byte value is not a SHA-256 output, so there is no comparison to report</td>
+</tr>
+<tr>
+<td><code>"AuthorityKind": 256</code></td>
+<td>outside the single unsigned byte the canonical layout defines — the canonical body cannot be built at all</td>
+</tr>
+<tr>
+<td>a UUID that does not parse, an integer supplied as a string</td>
+<td>the canonical body cannot be built</td>
+</tr>
+</tbody>
+</table>
+<p>The distinction that keeps this coherent: <strong><code>Broken</code> means a check ran and failed</strong>; a format error means it
+could not run. A malformed value belongs to the second, always.</p>
 <p><strong>Which bucket a failure lands in.</strong> Steps 1–3 and 4a–4c are <strong>format errors</strong>: the archive is not a v1
 archive at all, so the integrity checks were never performed, and reporting one of §1's four results would
 claim a check that did not happen. Step 4d onward is <strong><code>Broken</code></strong>: the archive parsed as v1 and then failed a
