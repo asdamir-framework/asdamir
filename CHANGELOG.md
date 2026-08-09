@@ -5,10 +5,73 @@ Versioning: [SemVer](https://semver.org/spec/v2.0.0.html).
 
 The open-core packages (`Asdamir.Core`, `Asdamir.Data`, `Asdamir.Web`) share one version via
 `Directory.Build.props`; `Asdamir.Payments` is cohort-aligned; the CLI (`Asdamir.Tools`) versions
-independently. Current published state (nuget.org): **Core `1.8.0`** · **Data `1.5.0`** · **Web `2.1.0`** · **`Asdamir.Payments 1.2.0`** · **Tools `1.6.0`** (Tools `1.6.0`: the CLI exit-code contract — a usage error now exits `64`, never a code that means "findings" or "clean"; **breaking if you script exit codes**. Core `1.8.0` + Tools `1.5.0`: the archive verifier goes public — `asdamir audit verify-archive` checks a folded agent-audit segment offline, with no control plane and no licence; Tools `1.5.1` corrects its exit-code band — a mistyped flag used to exit `1`, which means "the archive is intact"; see below.) (Web `2.1.0`: the FluentUI-**isolation facades, batch 2** — 11 more components (`AsdamirSelect`/`Stack`/`TextArea`/`Switch`/`Checkbox`/`DatePicker`/`RadioGroup`+`Radio`/`MessageBar`/`Label`/`Spacer`/`Anchor`) so caller-side raw `<Fluent*>` component usage is now 0. Web `2.0.2`: additive `Required`+`Class` on the input components. Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the entries below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
+independently.
+
+**Currently published on nuget.org** — the table below is GENERATED from the manifest that also drives the
+generated-app pins, so it cannot drift from what the feed actually serves. It replaces a hand-written
+sentence that was, when this was written, three releases stale.
+
+<!-- published-versions:begin — GENERATED from src/Asdamir.Tools/published-versions.json by
+     packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
+| Package | Published on nuget.org | Next (in this repo) |
+| --- | --- | --- |
+| `Asdamir.Core` | `1.8.0` | — |
+| `Asdamir.Data` | `1.5.0` | — |
+| `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
+| `Asdamir.Tools` | `1.7.0` | — |
+| `Asdamir.Web` | `2.1.0` | — |
+
+*A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
+not pushed yet. The published column is what a fresh `asdamir new app` pins.*
+<!-- published-versions:end -->
+
+**What the recent releases contain** — history, not a statement of the current version: (Web `2.1.0`: the FluentUI-**isolation facades, batch 2** — 11 more components (`AsdamirSelect`/`Stack`/`TextArea`/`Switch`/`Checkbox`/`DatePicker`/`RadioGroup`+`Radio`/`MessageBar`/`Label`/`Spacer`/`Anchor`) so caller-side raw `<Fluent*>` component usage is now 0. Web `2.0.2`: additive `Required`+`Class` on the input components. Web `2.0.0`: the FluentUI-**isolation facades** — callers no longer reference `Microsoft.FluentUI.*`; **BREAKING**, the notification service was renamed — see the entries below. Web `1.6.0` added the `AsdamirTextInput` + `AsdamirNumberInput<T>` input components. Earlier: central error visibility for generated apps — the `AppLogForwardSink`. Earlier: the shared INSPINIA theme as a static web asset + chrome components in Web `1.4.0`–`1.5.3`, the `audit permissions` / AUD016 gate — see the Tools 1.4.1 entry below; the `IBackgroundJobHandler` run-context — see the 1.5.0 entry below; the Gateway background-run primitive + the localization-completeness gate landed in 1.4.0). Earlier: **Tools `1.3.15`** (generated SQL bracket-quotes every table/column identifier so reserved-word field names stay valid, and the generated `run-tests.sh` keeps a Docker-free default run; generated apps enforce a nonce-based CSP + ship an audit trail; `new entity`/`new page`/`new feature`/`add field` run from the app root + auto-apply the generated migration, with `--no-db` to skip, and print a restart reminder after applying; generated apps bind the auth cookie to a server-side session registry so a restart / re-create ends the session; `rollback app` reads the DB connection from the Gateway user-secret + hides the vault line when the mode is undetermined; generated `restart-<app>.sh` frees the port; `new app` is generate → run: writes the
 Gateway dev user-secrets + creates the DB + applies migrations; a profile menu + self-service change-password page in BOTH modes, and the forced first-login change-password flow removed). Data `1.2.1`'s FeatureManager value-type fallback fix shipped **inside Data `1.3.0`** (never published separately).
+
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Unreleased] — 2026-08-09 — no package version moves
+
+### Fixed: Archive Format v1 — the two places two conforming verifiers could still disagree
+
+The format is published so third parties can implement it. Two questions could make two *conforming*
+verifiers answer differently on the same bytes. **No archive's verdict changes**, and **no package version
+moves** — the shipped C# verifier was already correct on both; what changed is the specification, the
+independent Python fixture, and the tests.
+
+- **§9.1 — a member that is PRESENT but not well-formed** (`"RowHash": "zzzz…"`, a 30-byte hash,
+  `AuthorityKind: 256`) is now normatively a **format error**: the check that would have used the value never
+  ran, so no verdict may be reported. The class is **counted** rather than gestured at — per row 7 hex,
+  2 UUID and 8 integer members; in the manifest 3 hex and 1 UUID.
+  **The honest part:** unlike the 2026-08-08 revision, this is not writing down settled behaviour — the page
+  had left this **undefined**. Both existing implementations happened to agree, so agreement was luck rather
+  than conformance, and a third could legitimately have read the silence the other way. The clarification
+  banner says so in those words.
+- **§9 step 4d — where the line-count check sits.** The page already said *last*; the Python fixture had it
+  *first*. That is a real, measured divergence: on an archive breaking **both** the tombstone rule (4a) and
+  the line count (4d), the two answered `BROKEN (3)` versus `FORMAT_ERROR (4)` — different bucket, different
+  exit code, different reason, same bytes. No single-violation case could reveal it, which is why it survived.
+  The fixture is corrected and the spec now states *why* the position matters.
+
+**The shared cross-implementation matrix now collects EVERY divergence instead of stopping at the first** —
+a matrix that aborts on case 3 hides cases 4–15, and the useful question is always *which inputs*, never
+*whether any*. On a synthetic break it reports **3 of 15 cases disagreed**, by name.
+
+### Fixed: the last hand-written version claim is generated
+
+The public repo's `CHANGELOG.md` opened with a hand-typed *"Current published state (nuget.org): …"* — after
+`published-versions.json` and the `PublishedVersions` gate, the one version claim left in the project that
+derived from nothing and was compared to nothing. **It was three releases stale.**
+
+`packaging/sync-published-versions.sh` gained **`--root <dir>`**, so it generates into a mirror clone from
+this repo's manifest (the mirror never carries its own copy of the truth), and `packaging/verify-mirror.sh`
+runs `--check` for the public target. A stale block, or a deleted one, fails before the push — both proven.
+
+**The sweep it asked for found three more**, reported and deliberately **not** fixed: the public `README.md`
+states versions three to four releases stale on its first screen; `CLAUDE.md` states a set six releases
+stale; and `Directory.Packages.props` disagrees across all three repos — though measurement shows only the
+commercial copy is ever read, and that one is current. See the roadmap.
 
 ## [Tools 1.7.0] — 2026-08-09 — *pending publish*
 

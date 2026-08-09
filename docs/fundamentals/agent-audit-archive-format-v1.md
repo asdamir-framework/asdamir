@@ -9,6 +9,25 @@ nothing about the bytes, the field set or the algorithm changed. **An archive va
 valid after it, and vice versa.** The clarifications are here because two conforming implementations that
 answered these differently would disagree on a real archive — silently.
 
+**Revision 2026-08-09 — CLARIFICATION ONLY, and one honest caveat. `FormatVersion` STAYS `1`.** Two more
+questions, both found by implementing the format twice rather than by reading it:
+
+- **§9.1 — a member that is present but not well-formed** (`"RowHash": "zzzz…"`, a 30-byte hash,
+  `AuthorityKind: 256`). **This page did not say.** That is the caveat: unlike the 2026-08-08 revision, this
+  is not merely writing down settled behaviour — it is **defining a previously UNDEFINED area**. Both
+  existing implementations happen to agree (both report a format error), so no archive changes verdict and
+  nothing that verified before verifies differently now; but a third implementation could legitimately have
+  read the silence the other way, and would then have called the same file `Broken`. The rule is stated so
+  that it cannot.
+- **§9 step 4d — where the line-count check sits.** This page *did* say (4d, last), and one of the two
+  implementations had it first. That one is now corrected. It is a real, measured divergence: on an archive
+  that violates both the tombstone rule and the line count, the two reported different buckets, different
+  exit codes and different reasons — `Broken (3)` versus `FORMAT_ERROR (4)` — for the same bytes.
+
+**No archive's verdict changes as a result of either.** An archive that verified before verifies now; an
+archive that was broken before is broken now. What changes is that two conforming verifiers can no longer
+answer these two questions differently.
+
 When a closed range of the ledger is **folded** (removed from the live database and replaced by a tombstone —
 see [Agent Audit](agent-audit.md#retention-folding-not-deleting)), the rows themselves are exported to an
 **archive**. This document specifies that archive's bytes: what it contains, how each field is encoded, and
@@ -269,7 +288,11 @@ Given an archive and an optional `expectedDigest`:
       segment is not a v1 archive;
    c. assert every required member of every row is present (§5) — format error if not;
    d. assert the line count equals `RowCount`, and that `SeqNo` runs strictly ascending from `SeqStart` to
-      `SeqEnd` with no gap or repeat.
+      `SeqEnd` with no gap or repeat. **This is the LAST of the four, not the first** — checking the line
+      count early is the natural instinct and produces a different answer for an archive that violates two
+      rules at once: `Broken` (a content finding) instead of the format error that 4a–4c would have raised.
+      A verifier that reorders these reports a different bucket, a different exit code and a different reason
+      for the same file.
 5. **Per row, in order:**
    a. rebuild the canonical prefix from the columns (§7.1) and compare to `CanonicalPrefix` (§7.2);
    b. recompute `RowHash = SHA-256(PrevHash ‖ rebuiltPrefix ‖ SeqNo ‖ RecordedAtTicks)` per
@@ -281,6 +304,34 @@ Given an archive and an optional `expectedDigest`:
 8. **Anchor, if asked.** If `expectedDigest` was supplied, compare it to the recomputed digest:
    equal → `Verified`; different → `DigestMismatch`. If it was **not** supplied → `InternallyConsistent`,
    and say so.
+
+### 9.1 A member that is PRESENT but not well-formed (normative)
+
+Throughout §9, **"present" means present AND well-formed.** A member whose value cannot be decoded to the
+type §4/§5 declares is a **format error**: the check that would have used it never ran, so no verdict may be
+reported. This is not a new rule — it is the same principle as step 4c, made explicit, because "is the member
+there?" and "can it be read?" are easy to conflate and two verifiers that split them differently would
+disagree about the same file.
+
+**The checks in this class, counted.** Per row: **7 hex** members (`InputDigest`, `OutputDigest`,
+`ErrorDigest`, `PrevHash`, `RowHash`, `CanonicalPrefix`, `Signature`), **2 UUID** members (`AppId`,
+`EventId`), **8 integer** members (`SeqNo`, `RecordedAtTicks`, `HashVersion`, `RecordKind`,
+`AuthorityKind`, `OnBehalfOfUserId`, `Decision`, `Outcome`). In `manifest.json`: **3 hex**
+(`SegmentDigest`, `PrevHashAtStart`, `RowHashAtEnd`) and **1 UUID** (`AppId`). A member documented as
+nullable is well-formed when absent or `null`; the rule applies to a value that is *supplied* and cannot be
+read.
+
+Concretely, each of these is a **format error**, not `Broken`:
+
+| Malformed value | Why it is a format error, not a finding |
+|---|---|
+| `"RowHash": "zzzz…"` | not hexadecimal — nothing was compared, so "the hashes differ" would be a claim about a comparison that never happened |
+| a hash of the wrong byte length (e.g. 30 bytes) | the same: a 30-byte value is not a SHA-256 output, so there is no comparison to report |
+| `"AuthorityKind": 256` | outside the single unsigned byte the canonical layout defines — the canonical body cannot be built at all |
+| a UUID that does not parse, an integer supplied as a string | the canonical body cannot be built |
+
+The distinction that keeps this coherent: **`Broken` means a check ran and failed**; a format error means it
+could not run. A malformed value belongs to the second, always.
 
 **Which bucket a failure lands in.** Steps 1–3 and 4a–4c are **format errors**: the archive is not a v1
 archive at all, so the integrity checks were never performed, and reporting one of §1's four results would
