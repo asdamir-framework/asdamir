@@ -1400,6 +1400,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#side-effects-follow-the-same-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Side effects follow the same rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#why-the-rule-is-worded-positively" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1991,6 +2002,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#side-effects-follow-the-same-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Side effects follow the same rule
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#why-the-rule-is-worded-positively" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2414,7 +2436,7 @@
 <tr>
 <td><code>Asdamir.Tools</code></td>
 <td><code>1.6.0</code></td>
-<td>—</td>
+<td><code>1.7.0</code> built, pending publish</td>
 </tr>
 <tr>
 <td><code>Asdamir.Web</code></td>
@@ -2463,6 +2485,21 @@ option cannot parse, a stray argument, <strong>and <code>--help</code> / <code>-
 <p><code>--help</code> exiting <code>64</code> is deliberate and against the usual convention. It follows from the rule rather than
 from taste: <code>0</code> is a <em>claim</em> (a clean gate, a verified archive), and printing help establishes no such claim,
 so it cannot borrow the code. If you script <code>--help</code>, treat <code>64</code> as its success.</p>
+<h3 id="side-effects-follow-the-same-rule">Side effects follow the same rule<a class="headerlink" href="#side-effects-follow-the-same-rule" title="Permanent link">&para;</a></h3>
+<p>A command that writes or deletes files must leave the filesystem <strong>untouched</strong> when it exits <code>64</code>. The two
+are separate promises and they came apart: <strong><code>asdamir new app</code> with no name, in a non-interactive shell,
+used to scaffold a complete application and exit <code>0</code></strong> — the name prompt fell back to the placeholder
+<code>GeneratedApp</code> when no console was attached, and <code>--yes</code> did the same. A missing name is now a usage error
+and nothing is written.</p>
+<p><strong><code>--yes</code> accepts DEFAULTS, not placeholders.</strong> Every other prompted input derives from something (the
+projects from the name, the database from the name, the SQL host from <code>localhost</code>); the app name derives
+from nothing, so there is nothing to accept on your behalf. Pass it explicitly in scripts:
+<code>asdamir new app &lt;Name&gt; --yes</code>.</p>
+<p><strong>A mistyped option in the name position is reported as a mistyped option.</strong> <code>asdamir new app --bogus</code> hands
+<code>--bogus</code> to the command as the <em>name</em>; it now says so, instead of reporting that your capitalisation is
+wrong — which sent you to inspect a name that was never the problem.</p>
+<p><code>3</code> is a <strong>result</strong>, not a usage error: a scaffolding command exits <code>3</code> when it refuses to write into a
+non-empty target. The invocation was fine; the command examined the target and declined.</p>
 <h3 id="why-the-rule-is-worded-positively">Why the rule is worded positively<a class="headerlink" href="#why-the-rule-is-worded-positively" title="Permanent link">&para;</a></h3>
 <p>Not "these parser errors return 64" but "only a handler may return a result". An enumerated list of today's
 parser errors goes blind the moment the parser grows a new pre-handler outcome — which is exactly how the
