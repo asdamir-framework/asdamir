@@ -393,7 +393,7 @@ dotnet run --project src/Asdamir.Tools -- audit lint --path AppManagement/src --
 ```
 
 Exit codes: `0` (clean — no finding at or above `--min-severity`), `1` (findings — **fails the build**),
-`64` (usage — see [Exit codes — NORMATIVE](#exit-codes--normative-and-the-same-model-for-every-command)).
+`64` (usage — see [Exit codes — NORMATIVE](#exit-codes-normative-and-the-same-model-for-every-command)).
 
 > This line is new in **`1.6.0`**, and it was written **before** the behaviour was made to match it. Until
 > then `audit lint` — the most-run gate in the repository — was the only one whose exit codes were **not
@@ -593,7 +593,7 @@ supplied, a seed tuple that is **commented out** does not count as applied, and 
 `dbo.Permissions` in a header comment contributes nothing.
 
 Exit codes: `0` (no findings — the gate is green; every required perm is supplied), `1` (at least one
-AUD016 finding — this **fails the build**), `64` (usage — see [Exit codes — NORMATIVE](#exit-codes--normative-and-the-same-model-for-every-command)). Run it alongside `audit lint`,
+AUD016 finding — this **fails the build**), `64` (usage — see [Exit codes — NORMATIVE](#exit-codes-normative-and-the-same-model-for-every-command)). Run it alongside `audit lint`,
 `audit localization` and `audit seeds` before a push.
 
 ## `audit seeds` — the seed-form gates (AUD018 + AUD017)
@@ -957,7 +957,7 @@ asdamir app register \
   [--environment Production]
 ```
 
-Exit codes: `0` ok · `1` API/HTTP error (401/403/unreachable/non-2xx) · `64` usage (see [Exit codes — NORMATIVE](#exit-codes--normative-and-the-same-model-for-every-command)). The
+Exit codes: `0` ok · `1` API/HTTP error (401/403/unreachable/non-2xx) · `64` usage (see [Exit codes — NORMATIVE](#exit-codes-normative-and-the-same-model-for-every-command)). The
 company is taken from the token's `company` claim. See the AppManagement console's multi-company (firma) operation.
 
 ## `secrets`
