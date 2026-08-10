@@ -58,6 +58,62 @@ independent Python fixture, and the tests.
 a matrix that aborts on case 3 hides cases 4–15, and the useful question is always *which inputs*, never
 *whether any*. On a synthetic break it reports **3 of 15 cases disagreed**, by name.
 
+### Added: a read-only **Auditor** role — the ledger is no longer visible only to its own subject
+
+Until now `ent.agentaudit.read` / `.verify` / `.fold` belonged to **SuperAdmin alone**. That was a deliberate
+interim position, not the end state: SuperAdmin is the widest authority on the platform and therefore *the
+actor most in need of auditing*. An audit trail only its own subject can read is the classic failure shape.
+The previous release made this argument outward — *if verification depends on the closed component, assurance
+collapses to trusting the vendor* — and this is the same argument turned inward.
+
+`AsdamirVault_132` adds an **`Auditor`** role holding `read` + `verify` and **deliberately not `fold`**:
+folding is the one irreversible operation, and the party auditing must not be able to destroy what it audits.
+
+**SuperAdmin is untouched, on purpose.** The aim is to ADD a second pair of eyes, not to remove the first —
+real separation of duties on the destructive operation arrives when fold requires two signatures. Restricting
+reads in the meantime would cost the platform owner visibility and buy little.
+
+**Scope: the role is app-scoped, its READ is not.** An auditor who can see only one application audits
+nothing, so the ledger endpoints are cross-app by construction. That deviation is contained and asserted —
+the negative test set checks the app registry, the user directory, role administration, app configuration and
+localization **one surface at a time**, because a single "cannot do admin things" assertion would pass while
+one specific endpoint stood open.
+
+**The fold panel is now gated before it renders.** It used to draw the whole form for everyone and reveal the
+refusal only after the operator filled it in and pressed the button — a 403 turned into a message. Hiding a
+control is a courtesy and never the control: the API policy refuses regardless, which is asserted with a real
+token, not against the screen.
+
+**The honesty boundary is in the docs, in those words: this is access control, not evidence.** A role answers
+*who may look*; whether what they see is true comes from the hash chain and from independent verification.
+Granting a read permission to a second person adds a witness, not integrity.
+
+### Fixed: operator logins resolved role codes but never permissions — 87 grants authorized nothing
+
+Every API policy authorizes on a permission code (`RequireClaim("perm", "ent.agentaudit.read")`), while the
+operator login stamped only **role codes** (`"Admin"`, `"AppAdmin"`). A role code can never satisfy such a
+policy, so every `dbo.RolePermissions` row belonging to an operator role was **inert**: the seed looked right,
+the AUD016 gate looked right, and the request 403'd silently. **`AsdamirVault_125` had fixed exactly this for
+the app-login token — its own header says so — and stopped at `AppAuthController`.** `AsdamirVault_131`
+carries the same decision to the console.
+
+**Measured on the live vault, before and after.** Of 120 grant rows, 33 belong to app roles and were already
+live; the other **87** (SuperAdmin 77, AppAdmin 10) sit on the SelfApp and are held only by a user who
+short-circuits to a hardcoded catalogue. After the fix **no API policy and no UI check comes alive** — both
+intersections are empty, checked per user — so this unblocks future operator roles without widening anything
+today. Those 87 rows are now **dormant rather than dead**: assign that role to a non-super operator and they
+really do grant.
+
+**The in-memory mirror was wrong in the OPPOSITE direction**, which is why neither could catch the other: it
+returned the permissions and no role code, while the real store returned the role code and no permissions. A
+policy on a role code worked in production and failed under `UseInMemory`; one on a permission code did the
+reverse. Both are aligned, and a test that had **pinned the divergence** is corrected.
+
+**One more, found by a new test on its first run:** the in-memory `AppAdmin` grant was the pattern
+`catalogue.Where(p => p.EndsWith(".read"))` — a wildcard grant in C#. When the ledger permission was added it
+silently joined that role, which the real database never did. That is AUD017's rationale playing out where
+the SQL gate cannot see; the grant is now an explicit list mirroring the ten rows the database actually holds.
+
 ### Fixed: the last three hand-written version claims — two generated, one deleted
 
 The sweep the previous slice reported is now closed, and the decisions differ by file because the files do.

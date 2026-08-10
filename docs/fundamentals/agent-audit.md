@@ -243,6 +243,51 @@ removes rows and is the only one that can destroy evidence:
 - `ent.agentaudit.verify` — run a chain verification
 - `ent.agentaudit.fold` — fold an expired closed range
 
+### Roles: who holds them
+
+| Role | `read` | `verify` | `fold` |
+|---|:--:|:--:|:--:|
+| **SuperAdmin** | ✅ | ✅ | ✅ |
+| **Auditor** | ✅ | ✅ | **no** |
+
+**Why an Auditor exists at all.** Until `AsdamirVault_132` all three permissions belonged to SuperAdmin
+alone — the widest authority on the platform, and therefore *the actor most in need of auditing*. An audit
+trail that only its own subject can read is the classic failure shape. The argument is the same one
+[Archive Format v1](agent-audit-archive-format-v1.md) makes outward ("if verification depends on the closed
+component, assurance collapses to trusting the vendor"), turned inward.
+
+**Why the Auditor cannot fold.** Folding is the one irreversible operation here: it removes rows. The party
+auditing must not be able to destroy what it audits. The omission is deliberate and is asserted at the API,
+not merely hidden in the console — the fold panel is not offered to a non-holder, but that is a courtesy;
+the policy refuses the request whether or not the page was ever opened.
+
+**SuperAdmin is unchanged, deliberately.** The aim is to ADD a second pair of eyes, not to remove the first.
+Real separation of duties on the destructive operation arrives when fold requires two signatures; restricting
+reads in the meantime would cost the platform owner visibility and buy little.
+
+**Scope — the role is app-scoped, its READ is not.** Roles in this schema carry an `AppId`, and `Auditor` is
+no exception. But an auditor who can see only one application audits nothing, so the ledger endpoints are
+cross-app by construction and an Auditor reads **every** app's chain. That is a deliberate deviation from
+"a role is scoped to one app", and it is contained: it applies to the ledger endpoints and to nothing else.
+The negative test set asserts that reach does not extend to the app registry, the user directory, role
+administration, app configuration or localization — **one surface at a time**, because a single "cannot do
+admin things" assertion would pass while one specific endpoint stood open.
+
+### The honesty boundary — what a role does NOT establish
+
+**This is access control. It is not evidence.**
+
+The Auditor role answers *"who may look?"*. Whether what they see is TRUE is a different question, answered
+by the hash chain (this page) and by [independent verification](agent-audit-archive-format-v1.md) — never by
+the role. A narrative that blends the two claims a stronger guarantee than exists: granting a read
+permission to a second person adds a witness, not integrity. Integrity was already there, or it was not, and
+no role changes which.
+
+Concretely: an Auditor reading a chain that reports `Valid` has learned that *this database's rows hash
+consistently*. That is exactly what a SuperAdmin reading the same screen learns. What separation of duties
+adds is that the reading is no longer performed solely by the party with the most to hide — a governance
+property, not a cryptographic one.
+
 ## See also
 
 - **[Canonicalization Specification v1](agent-audit-canonicalization-v1.md)** — the normative wire format:
