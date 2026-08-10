@@ -1187,6 +1187,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Permissions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#roles-who-holds-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles: who holds them
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-honesty-boundary-what-a-role-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The honesty boundary — what a role does NOT establish
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1897,6 +1925,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Permissions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#roles-who-holds-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Roles: who holds them
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-honesty-boundary-what-a-role-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The honesty boundary — what a role does NOT establish
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2235,6 +2291,61 @@ removes rows and is the only one that can destroy evidence:</p>
 <li><code>ent.agentaudit.verify</code> — run a chain verification</li>
 <li><code>ent.agentaudit.fold</code> — fold an expired closed range</li>
 </ul>
+<h3 id="roles-who-holds-them">Roles: who holds them<a class="headerlink" href="#roles-who-holds-them" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th style="text-align: center;"><code>read</code></th>
+<th style="text-align: center;"><code>verify</code></th>
+<th style="text-align: center;"><code>fold</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SuperAdmin</strong></td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+</tr>
+<tr>
+<td><strong>Auditor</strong></td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
+<td style="text-align: center;"><strong>no</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why an Auditor exists at all.</strong> Until <code>AsdamirVault_132</code> all three permissions belonged to SuperAdmin
+alone — the widest authority on the platform, and therefore <em>the actor most in need of auditing</em>. An audit
+trail that only its own subject can read is the classic failure shape. The argument is the same one
+<a href="../agent-audit-archive-format-v1/">Archive Format v1</a> makes outward ("if verification depends on the closed
+component, assurance collapses to trusting the vendor"), turned inward.</p>
+<p><strong>Why the Auditor cannot fold.</strong> Folding is the one irreversible operation here: it removes rows. The party
+auditing must not be able to destroy what it audits. The omission is deliberate and is asserted at the API,
+not merely hidden in the console — the fold panel is not offered to a non-holder, but that is a courtesy;
+the policy refuses the request whether or not the page was ever opened.</p>
+<p><strong>SuperAdmin is unchanged, deliberately.</strong> The aim is to ADD a second pair of eyes, not to remove the first.
+Real separation of duties on the destructive operation arrives when fold requires two signatures; restricting
+reads in the meantime would cost the platform owner visibility and buy little.</p>
+<p><strong>Scope — the role is app-scoped, its READ is not.</strong> Roles in this schema carry an <code>AppId</code>, and <code>Auditor</code> is
+no exception. But an auditor who can see only one application audits nothing, so the ledger endpoints are
+cross-app by construction and an Auditor reads <strong>every</strong> app's chain. That is a deliberate deviation from
+"a role is scoped to one app", and it is contained: it applies to the ledger endpoints and to nothing else.
+The negative test set asserts that reach does not extend to the app registry, the user directory, role
+administration, app configuration or localization — <strong>one surface at a time</strong>, because a single "cannot do
+admin things" assertion would pass while one specific endpoint stood open.</p>
+<h3 id="the-honesty-boundary-what-a-role-does-not-establish">The honesty boundary — what a role does NOT establish<a class="headerlink" href="#the-honesty-boundary-what-a-role-does-not-establish" title="Permanent link">&para;</a></h3>
+<p><strong>This is access control. It is not evidence.</strong></p>
+<p>The Auditor role answers <em>"who may look?"</em>. Whether what they see is TRUE is a different question, answered
+by the hash chain (this page) and by <a href="../agent-audit-archive-format-v1/">independent verification</a> — never by
+the role. A narrative that blends the two claims a stronger guarantee than exists: granting a read
+permission to a second person adds a witness, not integrity. Integrity was already there, or it was not, and
+no role changes which.</p>
+<p>Concretely: an Auditor reading a chain that reports <code>Valid</code> has learned that <em>this database's rows hash
+consistently</em>. That is exactly what a SuperAdmin reading the same screen learns. What separation of duties
+adds is that the reading is no longer performed solely by the party with the most to hide — a governance
+property, not a cryptographic one.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong><a href="../agent-audit-canonicalization-v1/">Canonicalization Specification v1</a></strong> — the normative wire format:
