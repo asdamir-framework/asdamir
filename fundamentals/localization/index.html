@@ -1017,6 +1017,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#scope-which-application-a-string-belongs-to" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope: which application a string belongs to
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope: which application a string belongs to">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#history-because-the-shape-repeats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        History, because the shape repeats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cultures" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1677,6 +1705,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#scope-which-application-a-string-belongs-to" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope: which application a string belongs to
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scope: which application a string belongs to">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#history-because-the-shape-repeats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        History, because the shape repeats
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cultures" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1738,6 +1794,52 @@
 <p>Operators manage keys and per-culture values in the AdminConsole <strong>Localization editor</strong>; changes propagate to managed apps via the orchestration sync push. There is no inline upsert/delete from consumer code — the central store is the single source of truth.</p>
 <h2 id="menu-labels">Menu labels<a class="headerlink" href="#menu-labels" title="Permanent link">&para;</a></h2>
 <p>Nav menu items are composed centrally (<code>dbo.Menus</code>, per app/<code>AppId</code>) and <strong>localized</strong>, not rendered from the raw stored <code>Name</code>. The generated <code>NavMenu</code> derives a stable key from each item's Url — <code>/order-items</code> → <code>Menu.OrderItems</code> — and resolves <code>L["Menu.&lt;Slug&gt;"]</code>, falling back to the raw <code>Name</code> only when no key is seeded. <code>asdamir new page</code> seeds the matching <code>Menu.&lt;Slug&gt;</code> key (all cultures) in its <code>localize_&lt;entity&gt;.sql</code>, so the menu label, page title and field labels all translate together when the culture changes.</p>
+<h2 id="scope-which-application-a-string-belongs-to">Scope: which application a string belongs to<a class="headerlink" href="#scope-which-application-a-string-belongs-to" title="Permanent link">&para;</a></h2>
+<p>Every row in <code>LocalizationResource</code> carries an <strong><code>AppId</code></strong>, and it decides who can read the string.</p>
+<table>
+<thead>
+<tr>
+<th><code>AppId</code></th>
+<th>Meaning</th>
+<th>Who reads it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>a managed app's id</td>
+<td>that application's own strings</td>
+<td>that app, through its Gateway</td>
+</tr>
+<tr>
+<td><strong>the self-app id</strong></td>
+<td>the <strong>AdminConsole's own</strong> strings</td>
+<td>the console only</td>
+</tr>
+<tr>
+<td><strong><code>NULL</code></strong></td>
+<td><strong>global</strong> — inherited by every managed app</td>
+<td>every managed app; <strong>not</strong> the console</td>
+</tr>
+</tbody>
+</table>
+<p>The console reads with <code>AppId = SelfApp</code> and therefore does <strong>not</strong> inherit global rows: its own strings are
+always stored against the self-app explicitly. That asymmetry is deliberate — it is what stops a row left
+global by one application from silently becoming part of the operator console's vocabulary.</p>
+<p><strong><code>NULL</code> is empty by design, and nothing seeds it.</strong> <code>AsdamirVault_137</code> moved every stranded row onto the
+self-app, and no migration writes a global row on purpose. The slot stays open because
+<code>Localization_GetMapForApp</code> genuinely implements inheritance and that mechanism is worth keeping for
+framework-wide strings — but a key that lands there <strong>by accident</strong> is invisible to the console and visible to
+every app at once, which is exactly the defect 137 repaired. <strong>If you seed a global row, mean it.</strong></p>
+<p><code>(AppId, Key, Culture)</code> is <strong>unique</strong>. That mirrors the canonical writer's own MERGE key, so the same key can
+never exist twice for one scope — the state in which an edit updates one copy while a reader serves another,
+and a stale translation reads as a correct one.</p>
+<h3 id="history-because-the-shape-repeats">History, because the shape repeats<a class="headerlink" href="#history-because-the-shape-repeats" title="Permanent link">&para;</a></h3>
+<p><code>AsdamirVault_033</code> mapped the self-app id to <code>NULL</code> on write, when <code>NULL</code> <em>was</em> the console's scope.
+<code>AsdamirVault_080</code> moved the console's rows onto the self-app id and <code>_082</code> taught the readers to filter on it
+— but the <strong>writer was never updated</strong>, so for 362 keys across eleven feature areas the console wrote to one
+place and read from another. Its screens rendered raw keys on every fresh install while every managed app
+inherited those same strings. <code>AsdamirVault_137</code> completes 080; the scoping is covered by
+<code>LocalizationScopeIntegrationTests</code> and by an E2E guard that fails any page showing a raw key.</p>
 <h2 id="cultures">Cultures<a class="headerlink" href="#cultures" title="Permanent link">&para;</a></h2>
 <p>The framework's error-translation fallbacks cover <code>tr</code>, <code>en</code> and <code>ru</code>; add cultures by seeding their rows in the localization store.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
