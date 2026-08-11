@@ -1624,6 +1624,17 @@
     </span>
   </a>
   
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-verify-archive-verify-a-folded-agent-audit-segment-offline_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audit verify-archive — verify a folded agent-audit segment, offline
+      
+    </span>
+  </a>
+  
     <nav class="md-nav" aria-label="audit verify-archive — verify a folded agent-audit segment, offline">
       <ul class="md-nav__list">
         
@@ -2219,6 +2230,17 @@
       
         <li class="md-nav__item">
   <a href="#audit-verify-archive-verify-a-folded-agent-audit-segment-offline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        audit verify-archive — verify a folded agent-audit segment, offline
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#audit-verify-archive-verify-a-folded-agent-audit-segment-offline_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         audit verify-archive — verify a folded agent-audit segment, offline
@@ -3237,6 +3259,60 @@ supplies <strong>no names</strong>; conversely a permission that does <em>not</e
 decision, so it must be a reviewable list:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="k">WHERE</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">Name</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="n">N</span><span class="s1">&#39;ent.agentaudit.read&#39;</span><span class="p">,</span><span class="w"> </span><span class="n">N</span><span class="s1">&#39;ent.agentaudit.verify&#39;</span><span class="p">)</span><span class="w">   </span><span class="c1">-- ✅</span>
 </code></pre></div>
+<p><strong>AUD017 reads <code>.cs</code> as well as <code>.sql</code>, and it had to.</strong> The rule was built for SQL and was blind to C#, so
+the in-memory stores kept doing exactly what it forbids:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="na">[&quot;AppAdmin&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">catalogue</span><span class="p">.</span><span class="n">All</span><span class="p">.</span><span class="n">Where</span><span class="p">(</span><span class="n">p</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">p</span><span class="p">.</span><span class="n">EndsWith</span><span class="p">(</span><span class="s">&quot;.read&quot;</span><span class="p">)).</span><span class="n">ToArray</span><span class="p">()</span><span class="w">   </span><span class="c1">// ❌ AUD017</span>
+</code></pre></div>
+<p>That is the same authorization decision, written in another language. When a ledger permission ending in
+<code>.read</code> was later added to the catalogue, it joined that role <strong>retroactively and silently</strong> — a grant the
+database has never held. <em>A gate built in one language and left absent in another is not a gate.</em></p>
+<p>The C# check is narrow on purpose: it fires only on a LINQ filter (<code>Where</code>/<code>Any</code>/<code>All</code>) whose predicate uses
+<code>EndsWith</code> / <code>StartsWith</code> / <code>Contains</code> <strong>and</strong> whose receiver is named after permissions, a catalogue or a
+grant. Filtering file paths or culture codes by suffix is ordinary code and is not flagged — a rule that
+produces noise gets suppressed, which is worse than no rule. Write the list:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="na">[&quot;AppAdmin&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span><span class="s">&quot;appconfig.read&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;apps.read&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;audit.read&quot;</span><span class="p">,</span><span class="w"> </span><span class="cm">/* … */</span><span class="p">]</span><span class="w">   </span><span class="c1">// ✅</span>
+</code></pre></div>
+<p>The rule fires only on a <strong>statement that writes</strong> <code>dbo.Permissions</code> or <code>dbo.RolePermissions</code> while
+containing a <code>LIKE</code>. A read-path <code>SELECT … WHERE Name LIKE @Category + '%'</code> in a lookup proc is legitimate;
+a write to a <em>different</em> table that merely JOINs <code>dbo.Permissions</code> (e.g. the <code>dbo.UserMenuPermissions</code>
+capability computation) is not a grant; a <code>LIKE</code> against an audit search or <code>sys.sql_modules</code> is irrelevant.
+Two applied migrations are grandfathered: <strong><code>AsdamirVault_003</code></strong> (the original "AppAdmin gets every <code>%.read</code>"
+bootstrap grant — the rule's namesake) and <strong><code>AsdamirVault_060</code></strong> (a one-off <code>ent.%</code> prefix-strip rename;
+the pattern is the point of that migration, but it is still a pattern reaching into the permission table, so
+it is listed rather than carved out of the rule).</p>
+<p><strong>There is no inline suppression — deliberately.</strong> Every other rule takes <code>// audit-lint:ignore AUDxxx</code>;
+these two do not. An applied migration is immutable (see the migration-immutability rule in <code>CLAUDE.md</code>),
+so the only legitimate exemption is a <em>pre-existing</em> file, and that belongs in a reviewed, commented
+allowlist — <strong><code>packaging/seed-form-allowlist.txt</code></strong>, same idiom as <code>packaging/removed-public-types.txt</code>:
+one <code>&lt;RULE&gt;  &lt;repo-relative path&gt;</code> per line, <code>#</code> comments, every entry stating why it is exempt. A <strong>new</strong>
+seed has no opt-out: canonical form, or the build fails. The allowlist currently grandfathers <strong>63 applied
+AsdamirVault migrations</strong> — 61 for AUD018 in two eras (002–077, written before the proc existed; 093–129,
+per-row <code>EXEC</code>s) and 2 for AUD017 (003, 060). Because those files are frozen, the list can only shrink; when
+a later migration supersedes one, the gate prints <code>NOTE — allowlist entry no longer matches anything</code> and the
+line is deleted.</p>
+<p>Options: <code>--path/-p</code> (repeatable), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>, <code>--allowlist &lt;file&gt;</code>.
+Exit codes: <code>0</code> (clean), <code>1</code> (findings — <strong>fails the build</strong>), <code>64</code> (usage — see
+<a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>).</p>
+<h2 id="audit-verify-archive-verify-a-folded-agent-audit-segment-offline"><code>audit verify-archive</code> — verify a folded agent-audit segment, offline<a class="headerlink" href="#audit-verify-archive-verify-a-folded-agent-audit-segment-offline" title="Permanent link">&para;</a></h2>
+<p>Unlike every other <code>audit</code> subcommand, this one is <strong>not a build gate</strong>. It is the tool a third party runs on
+an <strong>exported agent action ledger archive</strong> — with <strong>no AppManagement, no database, no network and no
+commercial licence</strong>.</p>
+<p>When a closed range of the <a href="../fundamentals/agent-audit/">agent action ledger</a> is <em>folded</em>, those rows leave the
+live database and survive only as an archive (<a href="../fundamentals/agent-audit-archive-format-v1/">Archive Format v1</a>
+— a ZIP holding <code>manifest.json</code> + <code>segment.ndjson</code>). If the only thing able to check that archive were the
+closed component that produced it, the assurance would collapse to <em>"trust the vendor"</em>, and a system's own
+clean report about itself is not audit evidence. So the verifier lives in <strong><code>Asdamir.Core</code> (open core, LGPL)</strong>
+and this command is its front end.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># UNANCHORED — proves the archive has not been altered; proves nothing about where it came from</span>
+<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./segment.zip
+<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>
+<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="c1"># ANCHORED — additionally proves these rows ARE the segment folded from that ledger</span>
+<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./segment.zip<span class="w"> </span>--expected-digest<span class="w"> </span>&lt;FoldSegmentDigest<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>tombstone&gt;
+<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>
+<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="c1"># machine-readable</span>
+<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./unpacked-dir<span class="w"> </span>--json
+</code></pre></div>
+<p><code>--path</code> takes either the <code>.zip</code> container or a <strong>directory</strong> holding the two entries.</p>
 <p>The rule fires only on a <strong>statement that writes</strong> <code>dbo.Permissions</code> or <code>dbo.RolePermissions</code> while
 containing a <code>LIKE</code>. A read-path <code>SELECT … WHERE Name LIKE @Category + '%'</code> in a lookup proc is legitimate;
 a write to a <em>different</em> table that merely JOINs <code>dbo.Permissions</code> (e.g. the <code>dbo.UserMenuPermissions</code>
@@ -3256,7 +3332,7 @@ per-row <code>EXEC</code>s) and 2 for AUD017 (003, 060). Because those files are
 a later migration supersedes one, the gate prints <code>NOTE — allowlist entry no longer matches anything</code> and the
 line is deleted.</p>
 <p>Options: <code>--path/-p</code> (repeatable), <code>--format/-f</code> (<code>text</code>|<code>json</code>), <code>--include-tests</code>, <code>--allowlist &lt;file&gt;</code>.</p>
-<h2 id="audit-verify-archive-verify-a-folded-agent-audit-segment-offline"><code>audit verify-archive</code> — verify a folded agent-audit segment, offline<a class="headerlink" href="#audit-verify-archive-verify-a-folded-agent-audit-segment-offline" title="Permanent link">&para;</a></h2>
+<h2 id="audit-verify-archive-verify-a-folded-agent-audit-segment-offline_1"><code>audit verify-archive</code> — verify a folded agent-audit segment, offline<a class="headerlink" href="#audit-verify-archive-verify-a-folded-agent-audit-segment-offline_1" title="Permanent link">&para;</a></h2>
 <p>Unlike every other <code>audit</code> subcommand, this one is <strong>not a build gate</strong>. It is the tool a third party runs on
 an <strong>exported agent action ledger archive</strong> — with <strong>no AppManagement, no database, no network and no
 commercial licence</strong>.</p>
@@ -3266,14 +3342,14 @@ live database and survive only as an archive (<a href="../fundamentals/agent-aud
 closed component that produced it, the assurance would collapse to <em>"trust the vendor"</em>, and a system's own
 clean report about itself is not audit evidence. So the verifier lives in <strong><code>Asdamir.Core</code> (open core, LGPL)</strong>
 and this command is its front end.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="c1"># UNANCHORED — proves the archive has not been altered; proves nothing about where it came from</span>
-<a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./segment.zip
-<a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>
-<a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a><span class="c1"># ANCHORED — additionally proves these rows ARE the segment folded from that ledger</span>
-<a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./segment.zip<span class="w"> </span>--expected-digest<span class="w"> </span>&lt;FoldSegmentDigest<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>tombstone&gt;
-<a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a>
-<a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a><span class="c1"># machine-readable</span>
-<a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./unpacked-dir<span class="w"> </span>--json
+<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="c1"># UNANCHORED — proves the archive has not been altered; proves nothing about where it came from</span>
+<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./segment.zip
+<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a>
+<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="c1"># ANCHORED — additionally proves these rows ARE the segment folded from that ledger</span>
+<a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./segment.zip<span class="w"> </span>--expected-digest<span class="w"> </span>&lt;FoldSegmentDigest<span class="w"> </span>from<span class="w"> </span>the<span class="w"> </span>tombstone&gt;
+<a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a>
+<a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="c1"># machine-readable</span>
+<a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a>asdamir<span class="w"> </span>audit<span class="w"> </span>verify-archive<span class="w"> </span>--path<span class="w"> </span>./unpacked-dir<span class="w"> </span>--json
 </code></pre></div>
 <p><code>--path</code> takes either the <code>.zip</code> container or a <strong>directory</strong> holding the two entries.</p>
 <h3 id="the-two-claims-never-blurred-read-this-before-quoting-a-result">The two claims, never blurred — read this before quoting a result<a class="headerlink" href="#the-two-claims-never-blurred-read-this-before-quoting-a-result" title="Permanent link">&para;</a></h3>
@@ -3388,12 +3464,12 @@ seed file but was <strong>never applied</strong> to the running database (someon
 correct in the repo, yet the raw key still renders live. <code>localization verify</code> closes that gap: it collects
 the <code>(key, culture)</code> pairs the tree's SQL seeds <strong>define</strong> (same parser as <code>audit localization</code>), queries the
 live <code>dbo.LocalizationResource</code> for the app, and <strong>diffs</strong> the two.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="c1"># Resolve the AppId from the app&#39;s Code:</span>
-<a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--app-code<span class="w"> </span>MyApp
-<a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a>
-<a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="c1"># …or pass the AppId directly, and a full connection string:</span>
-<a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--app-id<span class="w"> </span>&lt;guid&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="c1"># Resolve the AppId from the app&#39;s Code:</span>
+<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--app-code<span class="w"> </span>MyApp
+<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a>
+<a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="c1"># …or pass the AppId directly, and a full connection string:</span>
+<a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a>asdamir<span class="w"> </span>localization<span class="w"> </span>verify<span class="w"> </span>--path<span class="w"> </span>.<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--app-id<span class="w"> </span>&lt;guid&gt;
 </code></pre></div>
 <p>Options: <code>--path/-p</code> (where the seed files are), the connection flags copied from <code>db apply</code>
 (<code>--connection/-c</code>, <code>--server/-S</code>, <code>--database/-d</code>, <code>--user/-U</code>, <code>--password/-P</code>), one of <code>--app-code</code> /
@@ -3408,16 +3484,16 @@ idempotent is never re-executed). Each file is split into batches on <code>GO</c
 imposed (some migrations manage their own <code>BEGIN TRAN</code> and some carry DDL that can't run in a
 transaction); a migration is journaled only after all its batches succeed, so a partial failure is
 retried on the next run.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="c1"># Preferred — no SQL password on the command line: set the Gateway user-secret once, then apply.</span>
-<a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a><span class="c1"># db apply resolves ConnectionStrings:Default from the Gateway user-secret (see &quot;Connection resolution&quot; below).</span>
-<a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
-<a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a>
-<a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="c1"># Or pass connection details explicitly (SQL auth):</span>
-<a id="__codelineno-17-6" name="__codelineno-17-6" href="#__codelineno-17-6"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-17-7" name="__codelineno-17-7" href="#__codelineno-17-7"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
-<a id="__codelineno-17-8" name="__codelineno-17-8" href="#__codelineno-17-8"></a>
-<a id="__codelineno-17-9" name="__codelineno-17-9" href="#__codelineno-17-9"></a><span class="c1"># Or a full connection string (e.g. from a secret); on Windows you may omit --user for integrated auth:</span>
-<a id="__codelineno-17-10" name="__codelineno-17-10" href="#__codelineno-17-10"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="c1"># Preferred — no SQL password on the command line: set the Gateway user-secret once, then apply.</span>
+<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="c1"># db apply resolves ConnectionStrings:Default from the Gateway user-secret (see &quot;Connection resolution&quot; below).</span>
+<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a>
+<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="c1"># Or pass connection details explicitly (SQL auth):</span>
+<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--server<span class="w"> </span>localhost<span class="w"> </span>--database<span class="w"> </span>MyAppDb<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">  </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--create-database<span class="w"> </span>--migrations<span class="w"> </span>db/migrations
+<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a>
+<a id="__codelineno-20-9" name="__codelineno-20-9" href="#__codelineno-20-9"></a><span class="c1"># Or a full connection string (e.g. from a secret); on Windows you may omit --user for integrated auth:</span>
+<a id="__codelineno-20-10" name="__codelineno-20-10" href="#__codelineno-20-10"></a>asdamir<span class="w"> </span>db<span class="w"> </span>apply<span class="w"> </span>--connection<span class="w"> </span><span class="s2">&quot;&lt;connstr&gt;&quot;</span><span class="w"> </span>--migrations<span class="w"> </span>db/migrations
 </code></pre></div>
 <p>Options: <code>--connection/-c</code> (full string, wins over the parts), <code>--server/-S</code>, <code>--database/-d</code>,
 <code>--user/-U</code> + <code>--password/-P</code> (SQL auth — omit for Windows integrated), <code>--migrations/-m</code>,
@@ -3450,10 +3526,10 @@ exists (by the entity's name + plural — no broad globbing, scoped by name and 
 <li><strong>AsdamirVault</strong> (only with <code>--vault-connection</code>): the <code>&lt;plural&gt;.view</code> permission, its menu row(s), role
   grants, and user-menu permissions — AppId-scoped, in FK order, in one transaction.</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a><span class="w">  </span>--output<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>Supplier<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="w">  </span>--output<span class="w"> </span>.<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-d<span class="w"> </span>AppDb<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
 </code></pre></div>
 <p>Options: <code>&lt;Name&gt;</code>, <code>--output</code>/<code>-o</code> (app root), <code>--gateway-dir</code>/<code>--server-dir</code> (overrides),
 <code>--connection</code>/<code>-c</code> or <code>--server</code>/<code>-S</code>+<code>--database</code>/<code>-d</code>+<code>--user</code>/<code>-U</code>+<code>--password</code>/<code>-P</code> (app DB),
@@ -3499,10 +3575,10 @@ before touching anything. Works in <strong>both</strong> modes (detected from th
   hidden entirely in free-mode teardown — <strong>and</strong> when the mode can't be determined (the app directory is already
   gone), unless you pass <code>--vault-connection</code> explicitly (then it's shown + acted on, in any mode).</li>
 </ul>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>app<span class="w"> </span>CustomerOrders<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a><span class="w">  </span>--output<span class="w"> </span>~/src/asdamirgenerated<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a>asdamir<span class="w"> </span>rollback<span class="w"> </span>app<span class="w"> </span>CustomerOrders<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a><span class="w">  </span>--output<span class="w"> </span>~/src/asdamirgenerated<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="w">  </span>-S<span class="w"> </span>localhost<span class="w"> </span>-U<span class="w"> </span>sa<span class="w"> </span>-P<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="w">  </span>--vault-connection<span class="w"> </span><span class="s2">&quot;Server=localhost;Database=AsdamirVault;User Id=sa;Password=&lt;pwd&gt;;TrustServerCertificate=True&quot;</span>
 </code></pre></div>
 <p>Options: <code>&lt;Name&gt;</code>, <code>--output</code>/<code>-o</code> (the app's parent dir OR the app dir itself), <code>--connection</code>/<code>-c</code> or
 <code>--server</code>/<code>-S</code>+<code>--database</code>/<code>-d</code>+<code>--user</code>/<code>-U</code>+<code>--password</code>/<code>-P</code> (app DB), <code>--vault-connection</code> (commercial),
@@ -3523,14 +3599,14 @@ before touching anything. Works in <strong>both</strong> modes (detected from th
 <p>Registers a managed app into a company's AppManagement database — an <code>Apps</code> row, <strong>not</strong> a new
 database — by calling the running AdminConsole.Api (<code>POST /api/admin/apps</code>). Auth and at-rest
 secret encryption are delegated to the API, so the CLI stays credential- and crypto-free.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-20-6" name="__codelineno-20-6" href="#__codelineno-20-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-20-7" name="__codelineno-20-7" href="#__codelineno-20-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
-<a id="__codelineno-20-8" name="__codelineno-20-8" href="#__codelineno-20-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a>asdamir<span class="w"> </span>app<span class="w"> </span>register<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a><span class="w">  </span>--api<span class="w"> </span>https://admin-api.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="w">  </span>--token<span class="w"> </span>&lt;SuperAdmin<span class="w"> </span>JWT<span class="w"> </span>from<span class="w"> </span>an<span class="w"> </span>authenticated<span class="w"> </span>console<span class="w"> </span>session&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="w">  </span>--code<span class="w"> </span>acme.portal<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a><span class="w">  </span>--display-name<span class="w"> </span><span class="s2">&quot;Acme Portal&quot;</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-6" name="__codelineno-23-6" href="#__codelineno-23-6"></a><span class="w">  </span>--gateway-url<span class="w"> </span>https://gw.acme.example.com/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-7" name="__codelineno-23-7" href="#__codelineno-23-7"></a><span class="w">  </span>--client-secret<span class="w"> </span>&lt;client_credentials<span class="w"> </span>secret&gt;<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-23-8" name="__codelineno-23-8" href="#__codelineno-23-8"></a><span class="w">  </span><span class="o">[</span>--environment<span class="w"> </span>Production<span class="o">]</span>
 </code></pre></div>
 <p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>64</code> usage (see <a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>). The
 company is taken from the token's <code>company</code> claim. See the AppManagement console's multi-company (firma) operation.</p>
@@ -3543,10 +3619,10 @@ and <code>AppConfigurations</code> rows with <code>IsEncrypted=1</code> — so y
 losing data. <strong>Dry-run by default</strong> (decrypt + re-encrypt + verify, no writes); <code>--apply</code> commits in a
 single transaction. Idempotent (rows already on the new key are skipped) and aborts+rolls back if a value
 can't be decrypted with the old key.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
-<a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
-<a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
-<a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_OLD_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;current key&gt;&#39;</span>
+<a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_NEW_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;new 32+ char key&gt;&#39;</span>
+<a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w">          </span><span class="c1"># dry-run</span>
+<a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>rotate-key<span class="w"> </span>--server<span class="w"> </span>&lt;sql&gt;<span class="w"> </span>--database<span class="w"> </span>AsdamirVault<span class="w"> </span>--user<span class="w"> </span>&lt;login&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;pwd&gt;<span class="w"> </span>--apply<span class="w">  </span><span class="c1"># commit</span>
 </code></pre></div>
 <p>Connection flags match <code>db apply</code> (<code>--connection</code> / <code>--server</code>+<code>--database</code>+<code>--user</code>+<code>--password</code>; omit
 <code>--user</code> for Windows integrated auth). Keys/salts: <code>--old-key</code>/<code>--new-key</code> (+ <code>--old-salt</code>/<code>--new-salt</code>)
@@ -3555,8 +3631,8 @@ or the <code>ASDAMIR_OLD_ENCRYPTION_KEY</code> / <code>ASDAMIR_NEW_ENCRYPTION_KE
 <p>Encrypts a value with <code>Security:EncryptionKey</code> and prints the <code>v2:</code> ciphertext — to seed an encrypted
 <code>AppConfigurations</code> value or a <code>v2:</code> Companies connection string. (There is no <code>decrypt</code> — it never prints
 a stored secret back.)</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
-<a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
+<a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
 </code></pre></div>
 <p>Full procedures (incl. <code>Jwt:Key</code> and per-app client-secret rotation): <strong><a href="../secret-rotation/">Secret Management &amp; Key Rotation</a></strong>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
