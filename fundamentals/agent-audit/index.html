@@ -1137,6 +1137,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Retention: folding, not deleting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#folding-takes-two-people" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Folding takes two people
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1195,6 +1212,17 @@
     <span class="md-ellipsis">
       
         Roles: who holds them
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration-note-this-enables-a-second-operator-it-does-not-create-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration note: this enables a second operator, it does not create one
       
     </span>
   </a>
@@ -1875,6 +1903,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Retention: folding, not deleting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#folding-takes-two-people" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Folding takes two people
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1933,6 +1978,17 @@
     <span class="md-ellipsis">
       
         Roles: who holds them
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#migration-note-this-enables-a-second-operator-it-does-not-create-one" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migration note: this enables a second operator, it does not create one
       
     </span>
   </a>
@@ -2203,6 +2259,33 @@ database, not merely discouraged. Folding is <strong>operator-triggered only</st
 both an archive reference and the segment digest, so "export before you fold" is a mechanism rather than a
 matter of discipline. A range containing a fold accounting record can never itself be folded, because that
 would retroactively orphan an earlier tombstone.</p>
+<h3 id="folding-takes-two-people">Folding takes two people<a class="headerlink" href="#folding-takes-two-people" title="Permanent link">&para;</a></h3>
+<p>Since <code>AsdamirVault_134</code> a fold is not a single action. It is three:</p>
+<ol>
+<li><strong>Propose</strong> — an operator holding <code>ent.agentaudit.fold.propose</code> exports the range, records where the archive
+   was stored, and states <strong>why</strong>. The justification is mandatory: a checker asked to approve an irreversible
+   action with no stated reason can only rubber-stamp it. Proposing removes nothing.</li>
+<li><strong>Approve or reject</strong> — a <strong>different</strong> operator, holding <code>ent.agentaudit.fold.approve</code>, decides. The
+   proposer cannot decide their own proposal, and that is enforced by a database <code>CHECK</code> constraint on the two
+   identities — not only by the stored procedure and not only by the API. If the rule lived solely in the
+   application, "four eyes" would mean "four eyes as long as everyone uses the front door".</li>
+<li><strong>Execute</strong> — the approved proposal is carried out, again not by its proposer.</li>
+</ol>
+<p>Two things stand between an approval and a deletion:</p>
+<ul>
+<li><strong>Only the proposal id crosses the wire.</strong> The range, the archive reference and the retention window are read
+  back from the stored proposal. If they could be supplied at execution time, a caller could have range A
+  approved and fold range B, and the approval would attest to something that never happened.</li>
+<li><strong>The segment digest is re-derived and compared.</strong> The digest recorded when the proposal was made is
+  recomputed from the live rows at execution. Any difference refuses the fold and asks for a fresh export and a
+  fresh proposal — what was approved is what gets folded, or nothing does.</li>
+</ul>
+<p><strong>An approval expires after seven days.</strong> Seven spans a working week, which is the natural unit for <em>"the same
+two people are still here and still authorized"</em>. A shorter window forces haste across timezones and shifts,
+which turns the second signature into a formality; a longer one lets an approval outlive an access review or an
+operator's notice period, and it would then attest to authority that no longer exists. Expiry <strong>refuses and
+says so</strong> rather than lapsing quietly — an approval that simply stopped working, with no explanation, reads as
+a broken feature and gets worked around.</p>
 <p>After a fold the chain still verifies, but the verdict becomes <strong><code>Degraded</code></strong>: the database no longer holds the
 evidence for the folded span, and only the archive can complete the proof.</p>
 <h2 id="when-delivery-fails">When delivery fails<a class="headerlink" href="#when-delivery-fails" title="Permanent link">&para;</a></h2>
@@ -2284,13 +2367,19 @@ remains dead-lettered.</p>
 restart does not silence it</strong>. A warning that a restart clears is a warning that will be cleared by a restart.
 It stops only when someone deals with the file.</p>
 <h2 id="permissions">Permissions<a class="headerlink" href="#permissions" title="Permanent link">&para;</a></h2>
-<p>Three separate permissions, because reading, verifying and folding are genuinely different powers — folding
-removes rows and is the only one that can destroy evidence:</p>
+<p>Four separate permissions, because reading, verifying, asking to fold and allowing a fold are genuinely
+different powers — folding removes rows and is the only one that can destroy evidence:</p>
 <ul>
 <li><code>ent.agentaudit.read</code> — view records and chain state</li>
 <li><code>ent.agentaudit.verify</code> — run a chain verification</li>
-<li><code>ent.agentaudit.fold</code> — fold an expired closed range</li>
+<li><code>ent.agentaudit.fold.propose</code> — export a range and open a fold proposal</li>
+<li><code>ent.agentaudit.fold.approve</code> — decide on a proposal, and execute an approved one</li>
 </ul>
+<p><strong>Why the fold permission was split rather than kept as one.</strong> A single code cannot express <em>may ask</em> versus
+<em>may allow</em>: whoever holds it holds both halves, and the second pair of eyes becomes a step the same person
+completes alone. <code>AsdamirVault_134</code> therefore replaced <code>ent.agentaudit.fold</code> with the pair above and
+<strong>deleted</strong> the old code rather than deprecating it — a permission left seeded keeps satisfying any policy that
+still requires it.</p>
 <h3 id="roles-who-holds-them">Roles: who holds them<a class="headerlink" href="#roles-who-holds-them" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
@@ -2298,7 +2387,8 @@ removes rows and is the only one that can destroy evidence:</p>
 <th>Role</th>
 <th style="text-align: center;"><code>read</code></th>
 <th style="text-align: center;"><code>verify</code></th>
-<th style="text-align: center;"><code>fold</code></th>
+<th style="text-align: center;"><code>fold.propose</code></th>
+<th style="text-align: center;"><code>fold.approve</code></th>
 </tr>
 </thead>
 <tbody>
@@ -2307,11 +2397,13 @@ removes rows and is the only one that can destroy evidence:</p>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
+<td style="text-align: center;">✅</td>
 </tr>
 <tr>
 <td><strong>Auditor</strong></td>
 <td style="text-align: center;">✅</td>
 <td style="text-align: center;">✅</td>
+<td style="text-align: center;"><strong>no</strong></td>
 <td style="text-align: center;"><strong>no</strong></td>
 </tr>
 </tbody>
@@ -2325,9 +2417,19 @@ component, assurance collapses to trusting the vendor"), turned inward.</p>
 auditing must not be able to destroy what it audits. The omission is deliberate and is asserted at the API,
 not merely hidden in the console — the fold panel is not offered to a non-holder, but that is a courtesy;
 the policy refuses the request whether or not the page was ever opened.</p>
-<p><strong>SuperAdmin is unchanged, deliberately.</strong> The aim is to ADD a second pair of eyes, not to remove the first.
-Real separation of duties on the destructive operation arrives when fold requires two signatures; restricting
-reads in the meantime would cost the platform owner visibility and buy little.</p>
+<p><strong>SuperAdmin is unchanged, deliberately.</strong> The aim is to ADD a second pair of eyes, not to remove the first.</p>
+<h3 id="migration-note-this-enables-a-second-operator-it-does-not-create-one">Migration note: this enables a second operator, it does not create one<a class="headerlink" href="#migration-note-this-enables-a-second-operator-it-does-not-create-one" title="Permanent link">&para;</a></h3>
+<p><code>AsdamirVault_134</code> seeds both fold permissions and grants them to <code>SuperAdmin</code>. It creates <strong>no</strong> additional
+operator and assigns <strong>no</strong> role to anyone. Who proposes and who approves is a human decision about your
+organization, and a migration that invented a second account would be answering it on your behalf.</p>
+<p>The consequence is worth stating plainly rather than discovering: <strong>on a fresh install, or on any deployment
+with exactly one console operator, folding cannot complete.</strong> The proposal step works; the decision step
+refuses, because the only available decider is the proposer. That is the rule working, not a defect — the
+console says so on screen rather than leaving a dead button.</p>
+<p>To enable folding, give a second operator <code>ent.agentaudit.fold.approve</code>. Note that <code>SuperAdmin</code> and <code>AppAdmin</code>
+cannot be hand-assigned for this purpose (the API refuses it): they derive their permissions from the built-in
+catalogue, so granting one to obtain an approver would hand over the entire platform. Create a role carrying
+just the approve permission, or use <code>Auditor</code> plus that one grant.</p>
 <p><strong>Scope — the role is app-scoped, its READ is not.</strong> Roles in this schema carry an <code>AppId</code>, and <code>Auditor</code> is
 no exception. But an auditor who can see only one application audits nothing, so the ledger endpoints are
 cross-app by construction and an Auditor reads <strong>every</strong> app's chain. That is a deliberate deviation from
