@@ -181,6 +181,35 @@ both an archive reference and the segment digest, so "export before you fold" is
 matter of discipline. A range containing a fold accounting record can never itself be folded, because that
 would retroactively orphan an earlier tombstone.
 
+### Folding takes two people
+
+Since `AsdamirVault_134` a fold is not a single action. It is three:
+
+1. **Propose** — an operator holding `ent.agentaudit.fold.propose` exports the range, records where the archive
+   was stored, and states **why**. The justification is mandatory: a checker asked to approve an irreversible
+   action with no stated reason can only rubber-stamp it. Proposing removes nothing.
+2. **Approve or reject** — a **different** operator, holding `ent.agentaudit.fold.approve`, decides. The
+   proposer cannot decide their own proposal, and that is enforced by a database `CHECK` constraint on the two
+   identities — not only by the stored procedure and not only by the API. If the rule lived solely in the
+   application, "four eyes" would mean "four eyes as long as everyone uses the front door".
+3. **Execute** — the approved proposal is carried out, again not by its proposer.
+
+Two things stand between an approval and a deletion:
+
+- **Only the proposal id crosses the wire.** The range, the archive reference and the retention window are read
+  back from the stored proposal. If they could be supplied at execution time, a caller could have range A
+  approved and fold range B, and the approval would attest to something that never happened.
+- **The segment digest is re-derived and compared.** The digest recorded when the proposal was made is
+  recomputed from the live rows at execution. Any difference refuses the fold and asks for a fresh export and a
+  fresh proposal — what was approved is what gets folded, or nothing does.
+
+**An approval expires after seven days.** Seven spans a working week, which is the natural unit for *"the same
+two people are still here and still authorized"*. A shorter window forces haste across timezones and shifts,
+which turns the second signature into a formality; a longer one lets an approval outlive an access review or an
+operator's notice period, and it would then attest to authority that no longer exists. Expiry **refuses and
+says so** rather than lapsing quietly — an approval that simply stopped working, with no explanation, reads as
+a broken feature and gets worked around.
+
 After a fold the chain still verifies, but the verdict becomes **`Degraded`**: the database no longer holds the
 evidence for the folded span, and only the archive can complete the proof.
 
@@ -236,19 +265,26 @@ It stops only when someone deals with the file.
 
 ## Permissions
 
-Three separate permissions, because reading, verifying and folding are genuinely different powers — folding
-removes rows and is the only one that can destroy evidence:
+Four separate permissions, because reading, verifying, asking to fold and allowing a fold are genuinely
+different powers — folding removes rows and is the only one that can destroy evidence:
 
 - `ent.agentaudit.read` — view records and chain state
 - `ent.agentaudit.verify` — run a chain verification
-- `ent.agentaudit.fold` — fold an expired closed range
+- `ent.agentaudit.fold.propose` — export a range and open a fold proposal
+- `ent.agentaudit.fold.approve` — decide on a proposal, and execute an approved one
+
+**Why the fold permission was split rather than kept as one.** A single code cannot express *may ask* versus
+*may allow*: whoever holds it holds both halves, and the second pair of eyes becomes a step the same person
+completes alone. `AsdamirVault_134` therefore replaced `ent.agentaudit.fold` with the pair above and
+**deleted** the old code rather than deprecating it — a permission left seeded keeps satisfying any policy that
+still requires it.
 
 ### Roles: who holds them
 
-| Role | `read` | `verify` | `fold` |
-|---|:--:|:--:|:--:|
-| **SuperAdmin** | ✅ | ✅ | ✅ |
-| **Auditor** | ✅ | ✅ | **no** |
+| Role | `read` | `verify` | `fold.propose` | `fold.approve` |
+|---|:--:|:--:|:--:|:--:|
+| **SuperAdmin** | ✅ | ✅ | ✅ | ✅ |
+| **Auditor** | ✅ | ✅ | **no** | **no** |
 
 **Why an Auditor exists at all.** Until `AsdamirVault_132` all three permissions belonged to SuperAdmin
 alone — the widest authority on the platform, and therefore *the actor most in need of auditing*. An audit
@@ -262,8 +298,22 @@ not merely hidden in the console — the fold panel is not offered to a non-hold
 the policy refuses the request whether or not the page was ever opened.
 
 **SuperAdmin is unchanged, deliberately.** The aim is to ADD a second pair of eyes, not to remove the first.
-Real separation of duties on the destructive operation arrives when fold requires two signatures; restricting
-reads in the meantime would cost the platform owner visibility and buy little.
+
+### Migration note: this enables a second operator, it does not create one
+
+`AsdamirVault_134` seeds both fold permissions and grants them to `SuperAdmin`. It creates **no** additional
+operator and assigns **no** role to anyone. Who proposes and who approves is a human decision about your
+organization, and a migration that invented a second account would be answering it on your behalf.
+
+The consequence is worth stating plainly rather than discovering: **on a fresh install, or on any deployment
+with exactly one console operator, folding cannot complete.** The proposal step works; the decision step
+refuses, because the only available decider is the proposer. That is the rule working, not a defect — the
+console says so on screen rather than leaving a dead button.
+
+To enable folding, give a second operator `ent.agentaudit.fold.approve`. Note that `SuperAdmin` and `AppAdmin`
+cannot be hand-assigned for this purpose (the API refuses it): they derive their permissions from the built-in
+catalogue, so granting one to obtain an approver would hand over the entire platform. Create a role carrying
+just the approve permission, or use `Auditor` plus that one grant.
 
 **Scope — the role is app-scoped, its READ is not.** Roles in this schema carry an `AppId`, and `Auditor` is
 no exception. But an auditor who can see only one application audits nothing, so the ledger endpoints are
