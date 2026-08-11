@@ -58,6 +58,39 @@ independent Python fixture, and the tests.
 a matrix that aborts on case 3 hides cases 4–15, and the useful question is always *which inputs*, never
 *whether any*. On a synthetic break it reports **3 of 15 cases disagreed**, by name.
 
+### Fixed: the console login accepted app end-users, and AUD017 could not see C#
+
+**The console is operator-pool only now.** `dbo.User_GetAuthByEmail` filtered on `Email` + `IsActive` and
+nothing else, so an app END-USER with a valid password could obtain a console token. It was harmless only
+because of an empty intersection — the console has 4 policies and 14 UI checks, and no code in common with
+anything an app role grants — which is a fact about today's policy list, not a property of the design.
+
+**The check is at the CALL SITE, not in the resolver, and that distinction was paid for.** The first attempt
+put the predicate in `dbo.User_GetAuthByEmail`; an existing integration test failed within minutes, because
+that proc is shared with app login and app change-password. Filtering it would have locked **every end-user
+out of their own application** — a worse defect than the one being fixed, introduced while fixing it. A
+shared resolver answers *who is this?*; only the console answers *may they sign in here?*.
+
+**And the predicate is not `AppId IS NULL`, though that is what the model says.** `dbo.Users.AppId` carries a
+DEFAULT of the SelfApp GUID, so the bootstrap operator — seeded without an AppId — landed on SelfApp.
+Measured before writing it: **0 users at `AppId IS NULL`**, and the platform owner at SelfApp holding 41
+console refresh tokens. A literal filter would have denied every console login including the only account
+able to undo it. Both failure modes are pinned: reverting the filter turns the app-user test red, the literal
+version turns the owner test red.
+
+**AUD017 now reads `.cs`.** The ban on pattern-based permission grants was built in SQL and left absent in
+C#, so the in-memory stores kept doing precisely what it forbids —
+`catalogue.Where(p => p.EndsWith(".read"))` — and when the ledger permission was added it joined `AppAdmin`
+**silently and retroactively**, a grant the real database has never held. *A gate built in one language and
+absent in another is not a gate.* Extending it found a **second, latent** instance no test had reached; both
+are explicit lists now.
+
+The check is deliberately narrow — a LINQ predicate over a receiver named permission/catalogue/grant —
+because flagging every `EndsWith` would catch file paths and culture codes, and noise gets suppressed. Its
+**first version reported zero findings on a tree with two real violations** (a regex that forbade the keyword
+at the start of an identifier, so `Permissions.Where(...)` never matched). A scan that finds nothing is the
+one to distrust first.
+
 ### Added: a read-only **Auditor** role — the ledger is no longer visible only to its own subject
 
 Until now `ent.agentaudit.read` / `.verify` / `.fold` belonged to **SuperAdmin alone**. That was a deliberate

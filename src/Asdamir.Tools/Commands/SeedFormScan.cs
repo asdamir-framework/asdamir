@@ -168,6 +168,81 @@ public static class SeedFormScan
     }
 
     /// <summary>
+    /// <b>AUD017 in C#</b> — the same ban, on the other side of the language boundary: a role's permission
+    /// set may not be selected by a pattern.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Why this exists.</b> AUD017 banned wildcard grants in SQL and could not see C#, so the
+    /// in-memory stores kept doing exactly what the rule forbids —
+    /// <c>catalogue.Where(p =&gt; p.EndsWith(".read"))</c>. When Faz 1 added <c>ent.agentaudit.read</c> it
+    /// joined the <c>AppAdmin</c> role **silently and retroactively**, a permission the real database has
+    /// never granted it. That is the rule's own worked example, produced in the one place the gate was blind.
+    /// A gate built in one language and left absent in another is not a gate.</para>
+    /// <para><b>The predicate is deliberately narrow.</b> It fires only on a LINQ filter whose lambda uses
+    /// <c>EndsWith</c> / <c>StartsWith</c> / <c>Contains</c> AND whose RECEIVER names permissions or a
+    /// catalogue. Filtering file paths, cultures or namespaces by suffix is ordinary code and is not a grant;
+    /// widening this to every <c>EndsWith</c> would produce noise that gets suppressed, which is worse than
+    /// no rule. If a future grant is written some third way, the answer is the same as AUD018's: constrain
+    /// the input (write the list) rather than teach the scanner another dialect.</para>
+    /// </remarks>
+    /// <param name="file">Absolute path used to label the findings.</param>
+    /// <param name="content">Raw C# text.</param>
+    /// <returns>One finding per pattern-selected grant.</returns>
+    public static IReadOnlyList<SeedFormFinding> CheckCSharpPatternGrants(string file, string content)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+
+        var findings = new List<SeedFormFinding>();
+        var lines = content.Split('\n');
+
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var line = lines[i];
+            var trimmed = line.TrimStart();
+
+            // A doc comment or a plain comment that QUOTES the banned shape — including this rule's own
+            // explanation of it — must not be a finding. The rule is about code that runs.
+            if (trimmed.StartsWith("//", StringComparison.Ordinal) || trimmed.StartsWith("*", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var match = CSharpPatternGrantRegex.Match(line);
+            if (!match.Success) continue;
+
+            findings.Add(new SeedFormFinding(
+                Aud017,
+                file,
+                i + 1,
+                FindingSeverity.Error,
+                $"'{match.Groups["receiver"].Value}' is filtered by a {match.Groups["op"].Value} pattern to "
+                + "build a permission set. A grant must be an explicit list of codes: the set a pattern "
+                + "confers is whatever the catalogue holds when it runs, so a permission added later is "
+                + "granted retroactively with nobody reviewing it — and one that does not match is silently "
+                + "never granted. This exact shape swept ent.agentaudit.read into AppAdmin, which the "
+                + "database never did."));
+        }
+
+        return findings;
+    }
+
+    /// <summary>
+    /// A LINQ filter over something named like a permission catalogue, using a string-pattern predicate.
+    /// </summary>
+    private static readonly Regex CSharpPatternGrantRegex = new(
+        // The receiver: an identifier CONTAINING Permission/Catalog/Grant, anywhere in the word — the
+        // keyword must be allowed at the very start (`Permissions.Where(...)`), which an earlier version
+        // forbade by requiring a leading character, and that version reported ZERO findings on a tree with
+        // two real ones. Proven against both, and against four look-alikes that must stay quiet (file
+        // paths, culture codes, name prefixes) before it was trusted.
+        @"(?<receiver>\b[A-Za-z0-9_]*(?:Permission|Catalog|Catalogue|Grant)[A-Za-z0-9_]*)"
+        // An optional member chain, so `AdminPermissionCatalog.All.Where(...)` reads as one receiver.
+        + @"(?:\s*\.\s*[A-Za-z_][A-Za-z0-9_]*)*?"
+        + @"\s*\.\s*(?:Where|Any|All)\s*\("
+        + @"[^)]*\.\s*(?<op>EndsWith|StartsWith|Contains)\s*\(",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
     /// <b>AUD017 — no pattern-based permission grants.</b> Scans a single SQL/template file's
     /// <paramref name="content"/> for a statement that writes <c>dbo.Permissions</c> or
     /// <c>dbo.RolePermissions</c> while selecting rows with a <c>LIKE</c> pattern.

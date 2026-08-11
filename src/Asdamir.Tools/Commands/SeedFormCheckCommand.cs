@@ -156,6 +156,29 @@ public static class SeedFormCheckCommand
                     findings.Add(f);
                 }
             }
+
+            // AUD017 also reads C#. The rule bans a permission set selected by a PATTERN, and a wildcard
+            // written as `catalogue.Where(p => p.EndsWith(".read"))` is the same authorization decision as
+            // the SQL form — it was simply invisible to a gate that only read .sql. It stayed invisible long
+            // enough to sweep a ledger permission into a role the database never granted it.
+            foreach (var file in EnumerateFiles(root, includeTests, "*.cs"))
+            {
+                var text = TryRead(file);
+                if (text is null) continue;
+                filesScanned++;
+
+                var relative = Relative(repoRoot, file);
+                foreach (var f in SeedFormScan.CheckCSharpPatternGrants(file, text))
+                {
+                    if (allowlist.IsExempt(f.RuleId, relative))
+                    {
+                        suppressed++;
+                        usedEntries.Add(SeedFormAllowlist.EntryKey(f.RuleId, relative));
+                        continue;
+                    }
+                    findings.Add(f);
+                }
+            }
         }
 
         var staleEntries = allowlist.Entries
@@ -247,7 +270,7 @@ public static class SeedFormCheckCommand
             @out.WriteLine($"audit seeds: NOTE — allowlist entry no longer matches anything: {e.RuleId} {e.Path}");
 
         @out.WriteLine();
-        @out.WriteLine($"audit seeds: {filesScanned} sql/sbn file(s) scanned, {findings.Count} finding(s), " +
+        @out.WriteLine($"audit seeds: {filesScanned} sql/sbn/cs file(s) scanned, {findings.Count} finding(s), " +
                        $"{suppressed} grandfathered.");
         if (findings.Count > 0)
             @out.WriteLine("  (There is no inline suppression for AUD017/AUD018 — write the seed in the " +

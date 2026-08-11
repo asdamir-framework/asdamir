@@ -683,6 +683,78 @@ decision, so it must be a reviewable list:
 WHERE p.Name IN (N'ent.agentaudit.read', N'ent.agentaudit.verify')   -- ✅
 ```
 
+**AUD017 reads `.cs` as well as `.sql`, and it had to.** The rule was built for SQL and was blind to C#, so
+the in-memory stores kept doing exactly what it forbids:
+
+```csharp
+["AppAdmin"] = catalogue.All.Where(p => p.EndsWith(".read")).ToArray()   // ❌ AUD017
+```
+
+That is the same authorization decision, written in another language. When a ledger permission ending in
+`.read` was later added to the catalogue, it joined that role **retroactively and silently** — a grant the
+database has never held. *A gate built in one language and left absent in another is not a gate.*
+
+The C# check is narrow on purpose: it fires only on a LINQ filter (`Where`/`Any`/`All`) whose predicate uses
+`EndsWith` / `StartsWith` / `Contains` **and** whose receiver is named after permissions, a catalogue or a
+grant. Filtering file paths or culture codes by suffix is ordinary code and is not flagged — a rule that
+produces noise gets suppressed, which is worse than no rule. Write the list:
+
+```csharp
+["AppAdmin"] = ["appconfig.read", "apps.read", "audit.read", /* … */]   // ✅
+```
+
+The rule fires only on a **statement that writes** `dbo.Permissions` or `dbo.RolePermissions` while
+containing a `LIKE`. A read-path `SELECT … WHERE Name LIKE @Category + '%'` in a lookup proc is legitimate;
+a write to a *different* table that merely JOINs `dbo.Permissions` (e.g. the `dbo.UserMenuPermissions`
+capability computation) is not a grant; a `LIKE` against an audit search or `sys.sql_modules` is irrelevant.
+Two applied migrations are grandfathered: **`AsdamirVault_003`** (the original "AppAdmin gets every `%.read`"
+bootstrap grant — the rule's namesake) and **`AsdamirVault_060`** (a one-off `ent.%` prefix-strip rename;
+the pattern is the point of that migration, but it is still a pattern reaching into the permission table, so
+it is listed rather than carved out of the rule).
+
+**There is no inline suppression — deliberately.** Every other rule takes `// audit-lint:ignore AUDxxx`;
+these two do not. An applied migration is immutable (see the migration-immutability rule in `CLAUDE.md`),
+so the only legitimate exemption is a *pre-existing* file, and that belongs in a reviewed, commented
+allowlist — **`packaging/seed-form-allowlist.txt`**, same idiom as `packaging/removed-public-types.txt`:
+one `<RULE>  <repo-relative path>` per line, `#` comments, every entry stating why it is exempt. A **new**
+seed has no opt-out: canonical form, or the build fails. The allowlist currently grandfathers **63 applied
+AsdamirVault migrations** — 61 for AUD018 in two eras (002–077, written before the proc existed; 093–129,
+per-row `EXEC`s) and 2 for AUD017 (003, 060). Because those files are frozen, the list can only shrink; when
+a later migration supersedes one, the gate prints `NOTE — allowlist entry no longer matches anything` and the
+line is deleted.
+
+Options: `--path/-p` (repeatable), `--format/-f` (`text`|`json`), `--include-tests`, `--allowlist <file>`.
+Exit codes: `0` (clean), `1` (findings — **fails the build**), `64` (usage — see
+[Exit codes — NORMATIVE](#exit-codes-normative-and-the-same-model-for-every-command)).
+
+## `audit verify-archive` — verify a folded agent-audit segment, offline
+
+Unlike every other `audit` subcommand, this one is **not a build gate**. It is the tool a third party runs on
+an **exported agent action ledger archive** — with **no AppManagement, no database, no network and no
+commercial licence**.
+
+When a closed range of the [agent action ledger](fundamentals/agent-audit.md) is *folded*, those rows leave the
+live database and survive only as an archive ([Archive Format v1](fundamentals/agent-audit-archive-format-v1.md)
+— a ZIP holding `manifest.json` + `segment.ndjson`). If the only thing able to check that archive were the
+closed component that produced it, the assurance would collapse to *"trust the vendor"*, and a system's own
+clean report about itself is not audit evidence. So the verifier lives in **`Asdamir.Core` (open core, LGPL)**
+and this command is its front end.
+
+```bash
+# UNANCHORED — proves the archive has not been altered; proves nothing about where it came from
+asdamir audit verify-archive --path ./segment.zip
+
+# ANCHORED — additionally proves these rows ARE the segment folded from that ledger
+asdamir audit verify-archive --path ./segment.zip --expected-digest <FoldSegmentDigest from the tombstone>
+
+# machine-readable
+asdamir audit verify-archive --path ./unpacked-dir --json
+```
+
+`--path` takes either the `.zip` container or a **directory** holding the two entries.
+
+
+
 The rule fires only on a **statement that writes** `dbo.Permissions` or `dbo.RolePermissions` while
 containing a `LIKE`. A read-path `SELECT … WHERE Name LIKE @Category + '%'` in a lookup proc is legitimate;
 a write to a *different* table that merely JOINs `dbo.Permissions` (e.g. the `dbo.UserMenuPermissions`
