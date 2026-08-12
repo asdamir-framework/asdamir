@@ -177,6 +177,7 @@ public static class Program
         auditCmd.AddCommand(PermissionPolicyCheckCommand.Build());
         auditCmd.AddCommand(SeedFormCheckCommand.Build());
         auditCmd.AddCommand(VerifyArchiveCommand.Build(handlerReached));
+        auditCmd.AddCommand(VerifySignaturesCommand.Build());
         return auditCmd;
     }
 

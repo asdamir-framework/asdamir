@@ -194,4 +194,29 @@ public sealed record AgentActionRecord
     /// the intended trade.
     /// </summary>
     public string? ErrorMessage { get; init; }
+
+    // ─── Signature (Faz 3a) — all three are OUTSIDE the canonical body ──────────────────────────────
+    //
+    // Canonicalization v1 is frozen and these fields are not part of it, so signing changes no hash and needs
+    // no new HashVersion. The consequence is worth stating rather than discovering: because the chain does
+    // not cover them, a stripped signature does not break the chain. Seeing that is the verifier's job — it
+    // reports a record left unsigned while its agent held a usable key.
+
+    /// <summary>
+    /// The algorithm the signature was produced with — see <see cref="AgentSignatureAlgorithms"/>. Null on an
+    /// unsigned record, which is valid: signing is optional.
+    /// </summary>
+    public string? SignatureAlgo { get; init; }
+
+    /// <summary>
+    /// The signature over this record's canonical prefix, or null when unsigned. Stored but NOT hashed.
+    /// </summary>
+    public byte[]? Signature { get; init; }
+
+    /// <summary>
+    /// Which registered key produced <see cref="Signature"/>. Recorded so a verifier checks against the key
+    /// that actually signed, instead of trying every key the agent has ever held — which would leave a
+    /// revoked key still verifying, and make revocation a formality.
+    /// </summary>
+    public string? SigningKeyId { get; init; }
 }

@@ -213,6 +213,129 @@ a broken feature and gets worked around.
 After a fold the chain still verifies, but the verdict becomes **`Degraded`**: the database no longer holds the
 evidence for the folded span, and only the archive can complete the proof.
 
+## Per-agent signatures
+
+Since Faz 3a an agent can sign what it records, so a verifier can check the signer independently of the
+application that stored the record.
+
+### What a signature proves — and what it does not
+
+A valid signature proves that **the holder of the named private key signed this record's content**. Stated as
+plainly: *the agent meant to send this*.
+
+It does **not** prove that the key was not stolen, that the agent's work was correct, or that the record
+belongs where it sits. A compromised key produces signatures that verify perfectly. This is the same kind of
+boundary the ledger already draws around its hash chain, and it is written here for the same reason: an
+assurance that is not stated precisely will be over-read.
+
+### Division of labour: content from the signature, context from the token
+
+The signed body is the record's canonical body **with the application id zeroed**. That is a rule, not an
+omission, and the reason is worth keeping in view:
+
+- Canonical field 2 is the chain's `AppId`, which the control plane resolves from the **ingest token** and
+  never from the payload. An agent genuinely does not know it.
+- Signing it anyway would mean shipping that id into every application's configuration — where **one wrong
+  entry makes every record report INVALID**, a configuration typo wearing the costume of tampering.
+
+So: **the signature carries the CONTENT guarantee** (this agent produced these bytes) and **the ingest token
+carries the CONTEXT guarantee** (which application's chain the record may join). Replaying a signed body under
+another application's token cannot launder a record into that application's history: the token decides the
+chain, and the key registry is scoped per application, so the replayed record reports *key unavailable* rather
+than *valid*. That is asserted by a test, not merely argued here.
+
+### Four states, never three
+
+| State | Meaning |
+|---|---|
+| **Unsigned** | No signature. Valid — signing is optional, so ledgers written before Faz 3a stay correct. |
+| **Valid** | A key was resolved and the signature verified against it. |
+| **Invalid** | A key was resolved and the signature did **not** verify. |
+| **Key unavailable** | Signed, but the key could not be resolved — unknown, expired or revoked. **Nothing was checked.** |
+
+The fourth exists because *"I could not check this"* and *"I checked it and it failed"* are different facts
+about the world. Merging them would let an unregistered key look like tampering — or, far worse, let tampering
+hide behind a plausible registration gap.
+
+**Invalid is the loud one.** A record whose signature does not verify is worse than an unsigned record: an
+unsigned record claims nothing, while a broken signature is a claim that failed. No surface presents them the
+same way.
+
+### Keys: rotation and revocation
+
+A key is registered per application and agent with an id, a validity window and an optional revocation
+instant. Agents hold a **list** of keys rather than one, because rotation needs an overlap: records already
+written must stay verifiable with the key that signed them.
+
+Every record records **which key** signed it. Without that a verifier would have to try every key an agent
+ever held — and a revoked key would still verify, which makes revocation a formality.
+
+**Revocation is judged against the signing time, not against now.** A record honestly signed before a key was
+withdrawn stays verifiable. Treating revocation as retroactive would silently invalidate history that was
+correct when it was written, and would make a key compromise look as though the agent had been lying all
+along.
+
+**A key id is immutable.** Registering an existing id with different key material is refused: it would
+silently change what every already-signed record verifies against, which is indistinguishable from forging
+history. Rotate by registering a new id.
+
+### The signature is stored on ingest and verified on read
+
+Ingest takes a signature as given and never rejects one. That is deliberate. The client spools records it
+cannot deliver and dead-letters what the server refuses — a dead letter is a **hole in the audit trail**, and
+a hole is worse than a record whose signature fails, because the failing record is visible and the hole is
+not. Rejecting at ingest would also require a key to be registered before the first signed record arrives, so
+a registration race would quietly turn honest records into gaps.
+
+Verification therefore happens on read, and the verdict is computed every time rather than stored: a persisted
+verdict goes stale the moment a key is registered or revoked, and a stale *"valid"* is the one answer an audit
+trail must never give.
+
+### Signature verification needs ledger access
+
+**Scope statement:** checking *who signed* a record requires the key registry, which lives in the control
+plane's database. An archive is a complete, self-contained proof of **chain integrity** — a third party can
+verify it offline, forever, with the published format specification. Identifying the **signer** is a separate
+question that needs the registry, in the same way verifying a certificate needs its issuer.
+
+Concretely: `asdamir audit verify-archive` answers *"is this archive intact?"*, and
+`asdamir audit verify-signatures` answers *"who signed these records?"*. Archive Format v1 is unchanged and
+existing archives remain valid.
+
+### What the chain cannot see, and what reports it
+
+Signature columns sit **outside** the canonical body, so removing a signature breaks no hash — the chain still
+reports `Valid`. `verify-signatures` therefore reports separately when a record is **unsigned although its
+agent held a usable key at that moment**: either the signature was stripped, or the agent was misconfigured.
+Both are worth seeing, and neither is visible anywhere else.
+
+It is a finding, not a refusal. Requiring signatures would be a policy, and this reports rather than enforces.
+
+### Algorithm
+
+**ECDSA P-256 with SHA-256** (`ecdsa-p256-sha256`), signature in fixed-field form (64 bytes).
+
+Ed25519 was the intended choice and was rejected on measurement: it does not exist in .NET 10 — no EdDSA type,
+`curve25519` is not a supported named curve, and the OID resolves to nothing. Obtaining it would have required
+a third-party crypto dependency in the framework **and** in the CLI, whose verifier is source-linked precisely
+to avoid that weight. P-256 is in the box and produces the same 64-byte signature.
+
+The one property lost is determinism, and its consequence is bounded: the signature is outside the canonical
+body, so it affects neither the chain nor an archive's digest — it only means a conformance vector verifies a
+signature instead of comparing it byte for byte.
+
+### Key handling is the operator's responsibility
+
+Private keys never reach the control plane; signing happens on the agent's side. A design where the server
+could sign would empty the claim the signature exists to make.
+
+The framework imports a private key into a signer and does nothing else with it: it is not logged, not
+persisted, not copied and never transmitted. Everything before that is yours — where the key is stored, who
+can read it, and whether it can reach a log line, a crash dump or a configuration file in source control. A
+signing key in a log is a signing key that is gone, and no API can prevent that from the inside.
+
+HSM/KMS integration is **not** part of this version.
+
 ## When delivery fails
 
 An audit record has no second copy, so the client never drops one quietly. Every path ends somewhere

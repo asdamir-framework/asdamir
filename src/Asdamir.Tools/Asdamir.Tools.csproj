@@ -48,7 +48,7 @@
          Asdamir.Core 1.4.0 / Data 1.3.0 (the primitive's home). New framework-version flag overrides the
          Asdamir.* pin (for building against a locally-packed pre-release). Additive; a non-scaffolded
          existing app is unaffected. -->
-    <Version>1.7.0</Version>
+    <Version>1.8.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>
@@ -109,6 +109,22 @@
              Link="AgentAudit/ArchiveVerificationResult.cs" />
     <Compile Include="../Asdamir.Core/AgentAudit/ArchiveVerificationStatus.cs"
              Link="AgentAudit/ArchiveVerificationStatus.cs" />
+    <!-- Faz 3a. Signature verification is source-linked for the same reason the archive verifier is: the CLI
+         is the tool a third party runs to check us, and it must stay small. ECDSA P-256 comes from the base
+         class library, so these files add exactly zero runtime dependencies — which is also why Ed25519 was
+         rejected: it would have required a crypto package HERE as well as in Core. -->
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentSignatureAlgorithms.cs"
+             Link="AgentAudit/AgentSignatureAlgorithms.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentSignatureState.cs"
+             Link="AgentAudit/AgentSignatureState.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentActionSignature.cs"
+             Link="AgentAudit/AgentActionSignature.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/AgentSigningKey.cs"
+             Link="AgentAudit/AgentSigningKey.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/IAgentActionSignatureVerifier.cs"
+             Link="AgentAudit/IAgentActionSignatureVerifier.cs" />
+    <Compile Include="../Asdamir.Core/AgentAudit/EcdsaP256AgentActionSignatureVerifier.cs"
+             Link="AgentAudit/EcdsaP256AgentActionSignatureVerifier.cs" />
   </ItemGroup>
 
   <ItemGroup>

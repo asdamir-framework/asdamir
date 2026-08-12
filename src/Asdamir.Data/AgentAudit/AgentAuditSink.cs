@@ -85,11 +85,67 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         if (_options.OnSinkFailure == AgentAuditOptions.SinkFailureMode.Throw && _lastFailure is not null)
             throw new InvalidOperationException($"The agent action ledger is not accepting records: {_lastFailure}");
 
+        record = Sign(record);
+
         if (!_queue.Writer.TryWrite(new PendingRecord(record, 0, null)))
             HandleUndeliverable([new SpooledRecord(record, 0)], "queue_full", "the in-memory queue is saturated");
 
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Attaches the agent's signature, if one is configured.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>The signed body uses a ZERO AppId, and that is a rule, not a shortcut.</b> Canonical field 2
+    /// is the chain's application id, which the control plane resolves from the ingest token and never from
+    /// the payload — so an agent genuinely does not know it. Signing over a value the signer cannot know would
+    /// mean either shipping the id into every application's configuration, where one wrong entry makes every
+    /// record verify as INVALID (a configuration typo wearing the costume of tampering), or a start-up round
+    /// trip for an optional feature. Neither is worth it, because AppId is not something the agent authored:
+    /// it is an assignment made ABOUT the agent.</para>
+    /// <para><b>Division of labour, so nobody later "fixes" this.</b> The signature carries the CONTENT
+    /// guarantee — this agent produced these bytes. The ingest token carries the CONTEXT guarantee — which
+    /// application's chain the record may join. A record cannot be moved into another application's chain by
+    /// replaying its signature, because the token, not the signature, decides the chain.</para>
+    /// <para>Signing failures do NOT drop the record. A sink whose purpose is accountability must not answer a
+    /// local key problem by recording nothing: an unsigned record is a smaller loss than a missing one, and
+    /// the verifier tells the two apart. The failure is logged as an error rather than swallowed.</para>
+    /// </remarks>
+    private AgentActionRecord Sign(AgentActionRecord record)
+    {
+        var signer = _options.Signer;
+        if (signer is null) return record;
+
+        try
+        {
+            var body = AgentActionCanonicalizer.BuildPrefix(SigningBodyAppId, record);
+            var signature = signer.Sign(body);
+            return record with
+            {
+                SignatureAlgo = signature.Algorithm,
+                Signature = signature.Value,
+                SigningKeyId = signature.KeyId,
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Agent action {EventId} could not be signed; recording it UNSIGNED rather than dropping it",
+                record.EventId);
+            return record;
+        }
+    }
+
+    /// <summary>
+    /// The AppId used when building the SIGNED body: all zeroes, on both the signing and the verifying side.
+    /// </summary>
+    /// <remarks>
+    /// Kept as a named constant so the two sides cannot drift, and so a reader meets the reason rather than a
+    /// bare <c>Guid.Empty</c> that looks like an oversight.
+    /// </remarks>
+    internal static readonly Guid SigningBodyAppId = Guid.Empty;
 
     /// <inheritdoc />
     public Task StartAsync(CancellationToken cancellationToken)

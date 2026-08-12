@@ -107,4 +107,19 @@ public sealed class AgentAuditOptions
     /// startup line that scrolls away is exactly how such a gap goes unnoticed.
     /// </summary>
     public TimeSpan DeadLetterWarningInterval { get; set; } = TimeSpan.FromMinutes(5);
+
+    /// <summary>
+    /// Signs each record before it is queued, or <see langword="null"/> to record without signatures.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Signing happens at record time, not at send time</b>, and the difference is not cosmetic. The
+    /// sink spools undeliverable records to disk and replays them later; a record signed on the way out would
+    /// be signed during REPLAY — minutes or days after the action, potentially with a key that has since been
+    /// rotated, attaching a signature whose key was not the one in force when the agent acted. Signing on the
+    /// way IN means the signature travels with the record through the queue, the spool and the replay,
+    /// unchanged, because it is part of the record.</para>
+    /// <para>Null is a supported configuration, not a degraded one: signatures are optional by design so that
+    /// ledgers written before Faz 3a stay valid.</para>
+    /// </remarks>
+    public IAgentActionSigner? Signer { get; set; }
 }
