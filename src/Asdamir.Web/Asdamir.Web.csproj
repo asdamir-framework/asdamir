@@ -20,8 +20,14 @@
          (resolves the CS0104 clash with FluentUI v5's same-named INotificationService). Consumers that
          @inject or register the old names must rename them — see CHANGELOG.
          2.0.1 RESTORES the FluentUI-isolation input components AsdamirTextInput + AsdamirNumberInput<T>
-         (shipped in 1.6.0) that were accidentally dropped when 2.0.0 branched off before the 1.6.0 merge. -->
-    <Version>2.1.0</Version>
+         (shipped in 1.6.0) that were accidentally dropped when 2.0.0 branched off before the 1.6.0 merge.
+         2.1.1 is a FIX-only release, no API change: (a) AsdamirTextInput dropped a dead @oncompositionend
+         handler that .NET 10 does not recognise as an event and that therefore shipped as a literal DOM
+         attribute on every field; (b) a new border token for INTERACTIVE controls gives every field and
+         button a boundary meeting WCAG 2.1 SC 1.4.11 (>= 3:1) — the decorative one was 1.23:1 on white,
+         which is why a correctly rendered input could read as "there is no box here". (Token names are
+         spelled out in CHANGELOG.md; a CSS custom property cannot be written in an XML comment.) -->
+    <Version>2.1.1</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Web/UI for Asdamir: Blazor + FluentUI component library (DataGrid, dialogs, layout), API-backed localization (3 cultures), and admin pool security (JWT + DataProtection + cookie/bearer handler).</Description>
     <PackageTags>blazor;fluentui;localization;authorization;jwt;data-protection;ui-components</PackageTags>

@@ -1,4 +1,3 @@
-@using System.Globalization
 @using System.Text
 @using Microsoft.AspNetCore.Components.Forms
 @inherits InputBase<string?>
@@ -14,10 +13,19 @@
     validation for free). Used stand-alone (no EditContext) it still works — InputBase tolerates a null
     cascade and the two-way Value/ValueChanged binding is enough.
 
-    Filtering covers BOTH input paths: TYPING (@oninput) and PASTE / IME composition (@onpaste,
-    @oncompositionend) — an @onkeydown-only filter would miss a paste and a CJK/IME commit, so those are
-    handled explicitly. No JS interop: MaxLength is enforced by the native maxlength attribute AND
-    re-checked server-side (a paste can exceed it before the attribute clamps in some engines).
+    Filtering runs on @oninput ALONE, which is deliberate and sufficient: the DOM fires `input` for
+    typing, for a PASTE and for an IME/CJK composition commit alike, so one handler covers all three.
+    (It used to also carry @onpaste + @oncompositionend handlers. Both were dead: `oncompositionend`
+    is NOT a Blazor event in .NET 10 — it has no [EventHandler] in Microsoft.AspNetCore.Components.Web,
+    so the Razor compiler emitted it as a LITERAL DOM attribute and the handler never ran — and both
+    called a reconcile that compared the bound value against itself, so it could never detect a
+    divergence. RenderedEventAttributeGuardTests now fails the build on the first half of that.)
+
+    Rejected characters do not linger in the element: the filtered value is committed through
+    CurrentValueAsString on the same `input` event, and Blazor's EventFieldInfo records the browser-side
+    value with the event, so the renderer re-emits `value` even when the sanitized result equals the
+    previously rendered one. No JS interop, no module. MaxLength is enforced by the native maxlength
+    attribute AND re-clamped here (a paste can exceed it before the attribute clamps in some engines).
 
     All user-facing text is an English-defaulted parameter — a framework component can't assume a
     DB-seeded localization key exists, so the caller passes @L["…"] values in (Label / Placeholder).
@@ -28,15 +36,12 @@
     {
         <label class="asd-ti-label @(Required ? "required" : null)" for="@_inputId">@Label</label>
     }
-    <input @ref="_inputRef"
-           id="@_inputId"
+    <input id="@_inputId"
            class="asd-ti-input @(_hasError ? "invalid" : null)"
            type="@InputTypeAttr"
            value="@CurrentValueAsString"
-           @oninput="OnInputAsync"
-           @onchange="OnChangeAsync"
-           @onpaste="OnPasteAsync"
-           @oncompositionend="OnCompositionEndAsync"
+           @oninput="OnInput"
+           @onchange="OnChange"
            maxlength="@(MaxLength > 0 ? MaxLength : (int?)null)"
            placeholder="@Placeholder"
            disabled="@Disabled"
@@ -55,7 +60,6 @@
 @code {
     private readonly string _inputId = $"asd-ti-{Guid.NewGuid():N}";
     private readonly string _errorId = $"asd-ti-err-{Guid.NewGuid():N}";
-    private ElementReference _inputRef;
 
     /// <summary>
     /// Maximum number of characters accepted. Enforced both by the native <c>maxlength</c> attribute and
@@ -148,49 +152,26 @@
         return true;
     }
 
-    private async Task OnInputAsync(ChangeEventArgs e)
+    // Fires for typing, paste AND IME commit alike (see the header note). Two cases commit the sanitized
+    // text straight away: Immediate (that is the mode's contract), and — regardless of Immediate — when a
+    // character was actually REJECTED, because otherwise the rejected char stays visible in the element
+    // until the next change/blur. Everything else is left to OnChange so the non-Immediate mode keeps its
+    // commit-on-blur semantics.
+    private void OnInput(ChangeEventArgs e)
     {
-        var sanitized = Sanitize(e.Value?.ToString());
-        if (Immediate)
+        var raw = e.Value?.ToString();
+        var sanitized = Sanitize(raw);
+        if (Immediate || !string.Equals(sanitized, raw, StringComparison.Ordinal))
         {
             CurrentValueAsString = sanitized;   // commits through InputBase → ValueChanged + validation
         }
-        else if (!string.Equals(sanitized, e.Value?.ToString(), StringComparison.Ordinal))
-        {
-            // A char was filtered out mid-typing but we're not committing on input — reflect the cleaned
-            // text back into the field so the rejected char never lingers.
-            await SetElementValueAsync(sanitized);
-        }
     }
 
-    private void OnChangeAsync(ChangeEventArgs e)
+    private void OnChange(ChangeEventArgs e)
     {
         if (!Immediate)
         {
             CurrentValueAsString = Sanitize(e.Value?.ToString());
-        }
-    }
-
-    // Paste and IME commit deliver a whole run of characters at once; @oninput fires for them too, so the
-    // same Sanitize path already covers them. These handlers exist to also clean the *element* when we are
-    // NOT committing on input, so a pasted disallowed run never stays visible before the next change.
-    private async Task OnPasteAsync(ClipboardEventArgs e)
-    {
-        if (!Immediate) await ReconcileElementAsync();
-    }
-
-    private async Task OnCompositionEndAsync()
-    {
-        if (!Immediate) await ReconcileElementAsync();
-    }
-
-    private async Task ReconcileElementAsync()
-    {
-        var current = await GetElementValueAsync();
-        var sanitized = Sanitize(current);
-        if (!string.Equals(sanitized, current, StringComparison.Ordinal))
-        {
-            await SetElementValueAsync(sanitized);
         }
     }
 
@@ -208,16 +189,4 @@
         return sb.ToString();
     }
 
-    // Reading/writing the live element value here is DOM state reconciliation, not a business action, and
-    // Blazor's own binding uses the same. bUnit drives value through ChangeEventArgs so these are inert in
-    // tests; in the browser they keep the filtered text in sync without a JS module.
-    private ValueTask<string> GetElementValueAsync() =>
-        ValueTask.FromResult(CurrentValueAsString ?? string.Empty);
-
-    private ValueTask SetElementValueAsync(string? value)
-    {
-        CurrentValueAsString = value;
-        StateHasChanged();
-        return ValueTask.CompletedTask;
-    }
 }

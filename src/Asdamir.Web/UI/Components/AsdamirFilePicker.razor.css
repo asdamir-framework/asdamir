@@ -20,7 +20,7 @@
     align-items: center;
     gap: 8px;
     text-align: center;
-    border: 2px dashed var(--asd-border-strong, #cfc7bc);
+    border: 2px dashed var(--asd-border-field, #868da4);
     border-radius: 12px;
     padding: 32px 20px;
     background: var(--asd-surface, #fff);

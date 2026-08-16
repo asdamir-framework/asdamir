@@ -36,7 +36,7 @@
     font-variant-numeric: tabular-nums;
     color: var(--asd-ink, #222);
     background: var(--asd-surface, #fff);
-    border: 1px solid var(--asd-border-strong, #cfc7bc);
+    border: 1px solid var(--asd-border-field, #868da4);
     border-radius: var(--asd-radius-sm, 8px);
     transition: border-color .15s ease, box-shadow .15s ease;
     outline: none;

@@ -69,6 +69,27 @@ public static class SeedFormScan
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     // A call to a localization upsert proc (all three spellings AUD015 reads — see LocalizationScan).
+    // A write is a SEED only if it puts a STRING there. An INSERT or MERGE always creates a row, so it always
+    // counts; an UPDATE counts only when it assigns one of the columns that carry the string itself.
+    //
+    // This narrowing was paid for by AsdamirVault_137, which relocates existing rows with
+    // `UPDATE dbo.LocalizationResource SET AppId = @SelfApp WHERE AppId IS NULL`. That statement seeds
+    // nothing — no key, no culture, no value — yet the original check flagged it, and the flagged file was
+    // already applied and therefore frozen. CLAUDE.md's escalation for exactly this case says to fix the
+    // SCANNER rather than paste a suppression, because a suppression hides the finding and records the
+    // exemption nowhere a reviewer looks.
+    //
+    // The narrowing deliberately does NOT weaken the rule: a raw `UPDATE … SET [Value] = …` is still a seed
+    // written the forbidden way, and INSERT/MERGE are untouched.
+    private static bool IsSeedingWrite(string statement)
+        => !statement.TrimStart().StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase)
+        || SeedColumnAssignmentRegex.IsMatch(statement);
+
+    // `SET [Value] = …`, `SET Culture = …`, `SET [Key] = …` — the columns that hold the string being seeded.
+    private static readonly Regex SeedColumnAssignmentRegex = new(
+        @"\bSET\b[^;]*?\[?(?:Value|Key|Culture)\]?\s*=",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
     private static readonly Regex ExecUpsertRegex = new(
         @"\bEXEC(?:UTE)?\s+(?:\[?dbo\]?\s*\.\s*)?\[?(?:LocalizationResource_UpsertValue|Localization_Upsert)\]?",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
@@ -138,14 +159,19 @@ public static class SeedFormScan
 
             if (!inRoutine)
             {
-                foreach (Match m in RawLocalizationWriteRegex.Matches(batch.Text))
+                foreach (var statement in SqlTextScanner.SplitStatements(batch.Text))
                 {
-                    findings.Add(new SeedFormFinding(Aud018, file, LineOf(batch, m.Index), FindingSeverity.Error,
+                    var m = RawLocalizationWriteRegex.Match(statement.Text);
+                    if (!m.Success) continue;
+                    if (!IsSeedingWrite(statement.Text)) continue;
+
+                    findings.Add(new SeedFormFinding(
+                        Aud018, file, LineOf(batch, statement, m.Index), FindingSeverity.Error,
                         "localization seed writes dbo.LocalizationResource directly. The row must be written " +
-                        "through dbo.LocalizationResource_UpsertValue — it maps the SelfApp GUID to AppId NULL " +
-                        "and owns the table shape, so an ad-hoc INSERT/MERGE can silently land the row in a " +
-                        "scope the console never reads. Canonical form: a @Seed table variable of " +
-                        "(N'Key', N'<culture>', N'Value') tuples looped through the proc."));
+                        "through dbo.LocalizationResource_UpsertValue, which owns the table shape, so an " +
+                        "ad-hoc INSERT/MERGE cannot land a row in a scope no reader agrees on. Canonical " +
+                        "form: a @Seed table variable of (N'Key', N'<culture>', N'Value') tuples looped " +
+                        "through the proc."));
                 }
             }
 

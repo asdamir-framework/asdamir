@@ -40,7 +40,7 @@
 .login-field label { font-size: .8rem; font-weight: 600; color: var(--asd-ink, #1e2230); }
 .login-field ::deep input {
     height: 40px; padding: 0 12px;
-    border: 1px solid var(--asd-border-strong, #e3e8f1); border-radius: 9px;
+    border: 1px solid var(--asd-border-field, #868da4); border-radius: 9px;
     background: var(--asd-surface, #fff); color: var(--asd-ink, #1e2230);
     font: inherit; font-size: .9rem; outline: none; width: 100%; box-sizing: border-box;
 }

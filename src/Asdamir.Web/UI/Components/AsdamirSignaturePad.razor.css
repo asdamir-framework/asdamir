@@ -24,7 +24,7 @@
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    border: 2px solid var(--asd-border-strong, #cfc7bc);
+    border: 2px solid var(--asd-border-field, #868da4);
     cursor: pointer;
     padding: 0;
 }

@@ -19,7 +19,7 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Data` | `1.5.0` | — |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
 | `Asdamir.Tools` | `1.8.0` | — |
-| `Asdamir.Web` | `2.1.0` | — |
+| `Asdamir.Web` | `2.1.0` | `2.1.1` built, pending publish |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -30,6 +30,32 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Web 2.1.1] — 2026-08-16 — *pending publish*
+
+Two defects found while diagnosing a report that turned out **not** to be a product bug (a login screen's
+input boxes looked missing in one particular viewer; the rendered DOM, geometry and styles were correct at
+every width). Nothing was broken — these two were found on the way and are real.
+
+### Fixed
+- **`AsdamirTextInput` no longer emits an invalid `@oncompositionend` attribute into the DOM.**
+  `oncompositionend` has **no `[EventHandler]`** in `Microsoft.AspNetCore.Components.Web` on .NET 10
+  (unlike `onpaste`), so the Razor compiler emitted it as **literal markup** — the handler never ran, and
+  the IME/CJK reconcile path the component documented was dead code. The paste/composition machinery is
+  removed (its reconcile compared the bound value against itself and so could never detect a divergence):
+  `@oninput` alone fires for typing, paste **and** IME commit, and the filtered value is committed on that
+  same event so a rejected character never lingers in the field. `AsdamirNumberInput`'s empty `@onpaste`
+  hook is gone too — a wired handler that did nothing cost a circuit round-trip per paste.
+- **Interactive controls now meet WCAG 2.1 SC 1.4.11 (≥3:1) via the new `--asd-border-field` token.**
+  Fields and buttons drew their boundary with the *decorative* `--asd-border-strong` — `#e3e8f1`, which is
+  **1.23:1** on white, i.e. one rounding error away from invisible. Applied to `.asd-btn`, `.asd-input`,
+  `.asd-grid-search`, `.asd-pager-input`, `.asd-pagebtn`, `AsdamirTextInput`, `AsdamirNumberInput`, the
+  file dropzone, the signature pad and the FluentUI number-field part, with per-skin values for
+  pixel/galaxy/luxe/retro/dark. Decorative borders (panels, cards, table rules, modals, toasts)
+  deliberately keep `--asd-border-strong` — the two tokens are **not** interchangeable, and a skin that
+  re-tones one must re-tone the other. See `docs/ui-components.md` → *Theming → Border tokens*.
+
+**No API change** — this is a fix-only release; no public type was added, removed or renamed.
 
 ## [Unreleased] — 2026-08-09 — no package version moves
 

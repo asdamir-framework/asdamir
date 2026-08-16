@@ -44,7 +44,6 @@
            value="@_displayText"
            @oninput="OnInputAsync"
            @onchange="OnCommitAsync"
-           @onpaste="OnPasteAsync"
            @onwheel:preventDefault
            placeholder="@Placeholder"
            disabled="@Disabled"
@@ -231,12 +230,6 @@
             _displayText = raw;
         }
         StateHasChanged();
-    }
-
-    private void OnPasteAsync(ClipboardEventArgs e)
-    {
-        // @oninput fires right after a paste with the merged text, so FilterRaw there already cleans it;
-        // this handler is a no-op hook kept for symmetry/clarity (paste is a covered path, not a gap).
     }
 
     private async Task SetCurrentValueSilentlyAsync(TValue value)

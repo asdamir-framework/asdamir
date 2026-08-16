@@ -51,6 +51,15 @@
     --asd-surface-muted: #f4f5f9;      /* Pixel topbar search bg */
     --asd-border: #edf2f9;
     --asd-border-strong: #e3e8f1;
+    /* --asd-border-field: THE BOUNDARY OF AN INTERACTIVE CONTROL (input, button, pager box, dropzone).
+       WCAG 2.1 SC 1.4.11 requires >= 3:1 against the adjacent surface for such a boundary, and
+       --asd-border-strong is a DECORATIVE tone (1.23:1 on white) that does not meet it — a field then
+       reads as "there is no input box here", which is exactly how it was reported. The two tokens are
+       therefore NOT interchangeable: decorative structure (panel, card, table rule, modal, toast) keeps
+       --asd-border-strong; anything the user operates uses --asd-border-field. Every skin that overrides
+       --asd-border-strong MUST override this one too, and ThemeFieldBorderContrastTests fails the build
+       if any block's value drops below 3:1 against that block's --asd-surface. */
+    --asd-border-field: #868da4;              /* 3.30:1 on #ffffff */
     --asd-tab-line: rgba(60, 70, 100, .26);   /* visible tab outline on any skin */
 
     /* Pixel sidebar (data-menu-color="gradient" = muted blue→purple) */
@@ -132,6 +141,7 @@ html[data-skin="saas"] {
 html[data-skin="galaxy"] {
     --asd-accent: #6575f5; --asd-accent-hover: #5462d0; --asd-accent-soft: #e8ebfb;
     --asd-bg: #eceffb; --asd-border: #e0e4f5; --asd-border-strong: #d3d9ef;
+    --asd-border-field: #8288a6;   /* 3.49:1 on #ffffff */
     --asd-sidebar-1: #193146; --asd-sidebar-2: #1e5262; --asd-sidebar-fg: #c5c8de;
     --accent-base-color: #6575f5; --accent-fill-rest: #6575f5; --accent-fill-hover: #5462d0; --accent-fill-active: #4a56bd; --accent-foreground-rest: #5462d0; --accent-foreground-hover: #4a56bd;
 }
@@ -139,6 +149,7 @@ html[data-skin="galaxy"] {
 html[data-skin="luxe"] {
     --asd-accent: #1c9390; --asd-accent-hover: #167673; --asd-accent-soft: #e6f4f3;
     --asd-bg: #dcefe4; --asd-surface: #f6fcf8; --asd-border: #cfe6da; --asd-border-strong: #bcdccb;
+    --asd-border-field: #71907f;   /* 3.37:1 on #f6fcf8 */
     --asd-sidebar-1: #2e2e40; --asd-sidebar-2: #3d395e; --asd-sidebar-fg: #c5c8de;
     --accent-base-color: #1c9390; --accent-fill-rest: #1c9390; --accent-fill-hover: #167673; --accent-fill-active: #115c5a; --accent-foreground-rest: #167673; --accent-foreground-hover: #115c5a;
 }
@@ -152,6 +163,7 @@ html[data-skin="neon"] {
 html[data-skin="retro"] {
     --asd-accent: #c0552b; --asd-accent-hover: #a8471f; --asd-accent-soft: #f7ece6;
     --asd-bg: #f3efe7; --asd-surface: #fffdf9; --asd-border: #ece4d7; --asd-border-strong: #ddd2bf;
+    --asd-border-field: #948877;   /* 3.42:1 on #fffdf9 */
     --asd-sidebar-1: #3a2f28; --asd-sidebar-2: #54453a; --asd-sidebar-fg: #d8cabd;
     --accent-base-color: #c0552b; --accent-fill-rest: #c0552b; --accent-fill-hover: #a8471f; --accent-fill-active: #8f3b18; --accent-foreground-rest: #a8471f; --accent-foreground-hover: #8f3b18;
 }
@@ -162,6 +174,7 @@ html[data-skin="dark"] {
     --asd-accent-soft: color-mix(in srgb, var(--asd-accent) 22%, transparent);
     --asd-bg: #17181e; --asd-surface: #1b1c22; --asd-surface-muted: #252630;
     --asd-border: #2c2d38; --asd-border-strong: #343541;
+    --asd-border-field: #6f7281;   /* 3.56:1 on #1b1c22 */
     --asd-tab-line: rgba(255, 255, 255, .18);
     --asd-ink: #e3e5ea; --asd-ink-soft: #9aa0aa;
     --asd-shadow: 0 0 30px rgba(0, 0, 0, .3);
@@ -178,6 +191,7 @@ html[data-bs-theme="dark"] {
     --asd-surface-muted: #252630;
     --asd-border: #2c2d38;
     --asd-border-strong: #343541;
+    --asd-border-field: #6f7281;                                      /* 3.56:1 on #1b1c22 */
     --asd-tab-line: rgba(255, 255, 255, .18);                         /* visible tab outline on dark */
     --asd-accent-soft: color-mix(in srgb, var(--asd-accent) 22%, transparent);  /* dark-safe accent tint */
     --asd-ink: #e3e5ea;
@@ -292,7 +306,7 @@ fluent-search::part(root),
 fluent-number-field::part(root) {
     border-radius: 9px;
     background: var(--asd-surface) !important;   /* same tone as the card; the border defines the field */
-    border: 1px solid var(--asd-border-strong) !important;
+    border: 1px solid var(--asd-border-field) !important;
     color: var(--asd-ink) !important;
 }
 /* placeholder + value text follow the theme ink */
@@ -674,7 +688,7 @@ h1:focus { outline: none; }
 .asd-grid-toolbar .grow { flex: 1 1 auto; }
 .asd-grid-search {
     width: 260px; max-width: 100%; height: 38px; padding: 0 12px 0 34px;
-    border: 1px solid var(--asd-border-strong); border-radius: 9px;
+    border: 1px solid var(--asd-border-field); border-radius: 9px;
     background: var(--asd-surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%237a7f99' stroke-width='1.8' stroke-linecap='round'><circle cx='7' cy='7' r='5'/><path d='M11 11l3 3'/></svg>") no-repeat 10px center;
     color: var(--asd-ink); font: inherit; font-size: .85rem; outline: none;
 }
@@ -682,7 +696,7 @@ h1:focus { outline: none; }
 .asd-grid-search::placeholder { color: var(--asd-ink-soft); }
 .asd-pagebtn {
     min-width: 30px; height: 30px; padding: 0 8px;
-    border: 1px solid var(--asd-border-strong); background: var(--asd-surface);
+    border: 1px solid var(--asd-border-field); background: var(--asd-surface);
     border-radius: 7px; color: var(--asd-ink); cursor: pointer; font: inherit; font-size: .8rem;
     display: inline-flex; align-items: center; justify-content: center;
 }
@@ -694,7 +708,7 @@ h1:focus { outline: none; }
 .asd-pager-jump { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; color: var(--asd-ink-soft); }
 .asd-pager-input {
     width: 54px; height: 30px; padding: 0 6px; text-align: center;
-    border: 1px solid var(--asd-border-strong); background: var(--asd-surface);
+    border: 1px solid var(--asd-border-field); background: var(--asd-surface);
     border-radius: 7px; color: var(--asd-ink); font: inherit; font-size: .8rem;
 }
 .asd-pager-input:focus { outline: none; border-color: var(--asd-accent); }
@@ -863,7 +877,7 @@ h1:focus { outline: none; }
 /* box-sizing + a shared min-height so EVERY button is the same height regardless of content — an icon-only
    button (short content) and a text button (taller line-box) both settle at min-height, so a Refresh icon
    button lines up with a text/Export button next to it. line-height keeps the text content under the floor. */
-.asd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 38px; line-height: 1.2; padding: 8px 16px; border-radius: var(--asd-radius-sm); border: 1px solid var(--asd-border-strong); background: var(--asd-surface); color: var(--asd-ink); font-size: .85rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .12s, border-color .12s; }
+.asd-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; min-height: 38px; line-height: 1.2; padding: 8px 16px; border-radius: var(--asd-radius-sm); border: 1px solid var(--asd-border-field); background: var(--asd-surface); color: var(--asd-ink); font-size: .85rem; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .12s, border-color .12s; }
 .asd-btn:hover, a.asd-btn:hover { background: var(--asd-surface-muted); color: var(--asd-ink); text-decoration: none; }
 /* color set on both states (and !important) so a global a:hover can't blank out the label on anchor-buttons */
 /* !important on bg + color: the anchor-button variant (a.asd-btn:hover, 0,1,1) otherwise out-specifies
@@ -888,7 +902,7 @@ h1:focus { outline: none; }
 .asd-btn-danger:hover { filter: brightness(.92); }
 
 /* Plain native controls used inside data tables (e.g. per-row override editing). */
-.asd-input { padding: 5px 8px; border: 1px solid var(--asd-border-strong); border-radius: var(--asd-radius-sm);
+.asd-input { padding: 5px 8px; border: 1px solid var(--asd-border-field); border-radius: var(--asd-radius-sm);
     background: var(--asd-surface); color: var(--asd-ink); font-size: .82rem; }
 
 /* AsdamirTextArea — isolation multi-line field primitive. A native <textarea> styled to match the

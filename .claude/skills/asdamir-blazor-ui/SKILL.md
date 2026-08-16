@@ -58,6 +58,18 @@ markup + classes on every page:
 - The theme palette/tokens (`:root`, `--asd-*`), `html, body`, global FluentUI element theming, and the
   `.asd-*` design system live in the **shared `_content/Asdamir.Web/asdamir-theme.css`** (above) — NOT in an
   app's `app.css`. An app's `app.css` is overrides-only.
+- **Two border tokens, not one — `--asd-border-field` for anything the user OPERATES, `--asd-border-strong`
+  for decoration.** A control's boundary (input, button, pager box, dropzone) must reach **≥3:1** against the
+  surface behind it (WCAG 2.1 SC 1.4.11); `--asd-border-strong` is `#e3e8f1` = **1.23:1** on white, so using
+  it on a field makes a perfectly rendered input read as "there is no box here" (that is a real, reported
+  bug, not a hypothetical). Panels/cards/table rules/modals/toasts keep `--asd-border-strong`. A new skin
+  that re-tones one token **must** re-tone the other in the same block — `ThemeFieldBorderContrastTests`
+  fails the build otherwise.
+- **An `@onEVENT` Blazor does not know does NOT fail the build — it silently becomes a literal DOM
+  attribute and the handler never fires.** `@oncompositionend` has no `[EventHandler]` in .NET 10 (while
+  `@onpaste` does), and it shipped that way on every `AsdamirTextInput`. `@oninput` alone already covers
+  typing, paste AND IME commit, so reach for it first. `RenderedEventAttributeGuardTests` now derives the
+  allowed event names from the framework assembly and fails on any other.
 
 ## The combobox / select z-index trap (don't regress this)
 FluentUI `fluent-select` / `fluent-combobox` render their dropdown **inside** the component (no portal),

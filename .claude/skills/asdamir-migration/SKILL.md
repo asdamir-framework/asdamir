@@ -53,6 +53,17 @@ Before pushing, prove it on a throwaway DB: apply (N applied) → re-run (`Done.
 ## DON'T
 - **Don't add management tables/seed to a generated app's DB** — central data lives in AsdamirVault, AppId-scoped.
 - **Don't edit an already-applied migration** — the runner detects the changed content, warns, and will
-  NOT re-run it (so your edit silently won't take). **Add a new migration instead.**
+  NOT re-run it (so your edit silently won't take). **Add a new migration instead.** And when a GATE goes red
+  on one, **don't silence it either**: `audit-lint:ignore` is not an option: either the scanner misreads the
+  file → **fix the scanner**, or the form really is forbidden and unfixable → **add a reviewed, commented entry
+  to `packaging/seed-form-allowlist.txt`**. (Full rule: CLAUDE.md → "AN APPLIED (or PUSHED) MIGRATION IS
+  IMMUTABLE".)
+- **Don't invent a localization-seed spelling** — AUD018 (`asdamir audit seeds`) allows exactly one: a
+  `@Seed TABLE ([Key],[Culture],[Value])` of `(N'Key', N'<culture>', N'Value')` tuples looped through
+  `dbo.LocalizationResource_UpsertValue`. An ad-hoc `INSERT`/`MERGE` at `dbo.LocalizationResource` skips the
+  proc's SelfApp→`AppId NULL` mapping (the row lands in a scope the console never reads); one `EXEC` per row
+  with a literal key makes the seed unreadable as a set. `AsdamirVault_128` is the model.
+- **Don't grant permissions by pattern** — AUD017: `p.Name LIKE N'%.read'` in a statement writing
+  `dbo.Permissions`/`dbo.RolePermissions` fails the build. Name the codes: `p.Name IN (N'…', N'…')`.
 - **Don't rely on a re-apply** of a non-idempotent script — write idempotent guards; the journal is the
   safety net, not an excuse.

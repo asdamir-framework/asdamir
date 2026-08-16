@@ -6,6 +6,9 @@
     --asd-surface-muted: #f4f5f9;
     --asd-border: #edf2f9;
     --asd-border-strong: #e3e8f1;
+    /* Interactive-control boundary: WCAG 2.1 SC 1.4.11 wants >= 3:1 vs the surface;
+       --asd-border-strong is decorative and does not meet it. See asdamir-theme.css. */
+    --asd-border-field: #868da4;      /* 3.30:1 on #ffffff */
     --asd-accent: #8e7fe0;
     --asd-accent-hover: #786bbe;
     --asd-accent-soft: #f0edfc;
@@ -24,6 +27,7 @@
     --asd-surface-muted: #262935;
     --asd-border: #2c2f3a;
     --asd-border-strong: #353948;
+    --asd-border-field: #71758a;      /* 3.57:1 on #1e2029 */
     --asd-accent: #9d8ff0;
     --asd-accent-hover: #b3a7f5;
     --asd-accent-soft: #2a2740;
@@ -81,7 +85,7 @@ html, body {
     color: var(--asd-accent); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
 .drawer-item.active .drawer-item-ico { background: var(--asd-accent); color: #fff; }
 .drawer-logout { display: flex; align-items: center; gap: 10px; margin: 8px 14px 0; padding: 12px 14px;
-    border: 1px solid var(--asd-border-strong); background: transparent; color: var(--asd-ink);
+    border: 1px solid var(--asd-border-field); background: transparent; color: var(--asd-ink);
     border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
 .drawer-logout:active { background: var(--asd-surface-muted); }
 
@@ -98,13 +102,13 @@ html, body {
 /* ── Auth (login / forgot) ──────────────────────────────────────────────── */
 .auth-page { flex: 1; display: flex; flex-direction: column; }
 .auth-toolbar { display: flex; align-items: center; justify-content: space-between; padding: calc(env(safe-area-inset-top, 24px) + 14px) 16px 14px; }
-.seg { display: inline-flex; background: var(--asd-surface-muted); border: 1px solid var(--asd-border-strong);
+.seg { display: inline-flex; background: var(--asd-surface-muted); border: 1px solid var(--asd-border-field);
     border-radius: 999px; padding: 3px; }
 .seg-btn { border: none; background: transparent; color: var(--asd-ink-soft); font-weight: 700; font-size: 13px;
     padding: 6px 14px; border-radius: 999px; cursor: pointer; }
 .seg-btn.on { background: var(--asd-surface); color: var(--asd-accent); box-shadow: var(--asd-shadow); }
 .icon-btn { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center;
-    border: 1px solid var(--asd-border-strong); background: var(--asd-surface); color: var(--asd-ink);
+    border: 1px solid var(--asd-border-field); background: var(--asd-surface); color: var(--asd-ink);
     border-radius: 50%; cursor: pointer; }
 
 .auth-card { width: 100%; max-width: 400px; margin: auto; background: var(--asd-surface);
@@ -118,7 +122,7 @@ html, body {
 .auth-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .auth-field label { font-size: 13px; font-weight: 600; color: var(--asd-ink); }
 .auth-field input { width: 100%; box-sizing: border-box; padding: 13px 14px; font-size: 16px;
-    border: 1px solid var(--asd-border-strong); border-radius: 10px; background: var(--asd-surface); color: var(--asd-ink); }
+    border: 1px solid var(--asd-border-field); border-radius: 10px; background: var(--asd-surface); color: var(--asd-ink); }
 .auth-field input::placeholder { color: var(--asd-ink-soft); }
 .auth-field input:focus { outline: none; border-color: var(--asd-accent);
     box-shadow: 0 0 0 3px var(--asd-accent-soft); }

@@ -225,6 +225,17 @@ All user-facing text (`Label`, `Placeholder`) is an **English-defaulted paramete
 
 Themes ship as CSS (`light`, `dark`, `high-contrast`) with design tokens; `ThemeService` switches them at runtime. Static assets are served as **static web assets** (no embedded-resource manifest needed).
 
+### Border tokens — decorative vs. interactive (they are NOT interchangeable)
+
+There are two border tokens and picking the wrong one is an accessibility defect, not a taste question:
+
+| Token | Use it for | Contrast rule |
+| ----- | ---------- | ------------- |
+| `--asd-border-strong` | **Decorative structure** — panel/card outlines, table rules, modal and toast edges, dividers | none (it is a tone, not a boundary) |
+| `--asd-border-field` | **The boundary of anything the user operates** — text/number inputs, buttons, pager boxes, the grid search, file dropzones, the signature pad | **≥ 3:1** against the adjacent surface (WCAG 2.1 SC 1.4.11) |
+
+`--asd-border-strong` is `#e3e8f1`, which is **1.23:1** on white. Used as a control boundary it is one rounding error away from invisible — a correctly rendered login field was reported as "the input box does not render" for exactly this reason. Every skin that re-tones `--asd-border-strong` **must** re-tone `--asd-border-field` in the same block; `ThemeFieldBorderContrastTests` fails the build if a declared value drops below 3:1 against its own block's `--asd-surface`, or if a skin overrides one token without the other.
+
 ## See also
 
 - [Localization](fundamentals/localization.md) · [Web Security](web-security.md)
