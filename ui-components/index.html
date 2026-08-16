@@ -1453,6 +1453,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Theming">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#border-tokens-decorative-vs-interactive-they-are-not-interchangeable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Border tokens — decorative vs. interactive (they are NOT interchangeable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1918,6 +1935,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Theming">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#border-tokens-decorative-vs-interactive-they-are-not-interchangeable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Border tokens — decorative vs. interactive (they are NOT interchangeable)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2415,6 +2449,30 @@
 <p><strong>Why these are not FluentUI wrappers (isolation).</strong> Both components carry <strong>zero</strong> <code>Microsoft.FluentUI.*</code> references — they render a native <code>&lt;input&gt;</code> and read only the shared <code>--asd-*</code> / Fluent-2 design tokens. The goal is to let consumer code (generated apps, AppManagement pages) bind to a framework field <strong>without</strong> taking a dependency on the FluentUI component API, so the FluentUI surface can evolve (or be swapped) behind the framework boundary without touching every page. Visually they sit alongside the FluentUI fields unchanged: same tokens, same focus ring/hover, same error treatment, same label alignment.</p>
 <h2 id="theming">Theming<a class="headerlink" href="#theming" title="Permanent link">&para;</a></h2>
 <p>Themes ship as CSS (<code>light</code>, <code>dark</code>, <code>high-contrast</code>) with design tokens; <code>ThemeService</code> switches them at runtime. Static assets are served as <strong>static web assets</strong> (no embedded-resource manifest needed).</p>
+<h3 id="border-tokens-decorative-vs-interactive-they-are-not-interchangeable">Border tokens — decorative vs. interactive (they are NOT interchangeable)<a class="headerlink" href="#border-tokens-decorative-vs-interactive-they-are-not-interchangeable" title="Permanent link">&para;</a></h3>
+<p>There are two border tokens and picking the wrong one is an accessibility defect, not a taste question:</p>
+<table>
+<thead>
+<tr>
+<th>Token</th>
+<th>Use it for</th>
+<th>Contrast rule</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--asd-border-strong</code></td>
+<td><strong>Decorative structure</strong> — panel/card outlines, table rules, modal and toast edges, dividers</td>
+<td>none (it is a tone, not a boundary)</td>
+</tr>
+<tr>
+<td><code>--asd-border-field</code></td>
+<td><strong>The boundary of anything the user operates</strong> — text/number inputs, buttons, pager boxes, the grid search, file dropzones, the signature pad</td>
+<td><strong>≥ 3:1</strong> against the adjacent surface (WCAG 2.1 SC 1.4.11)</td>
+</tr>
+</tbody>
+</table>
+<p><code>--asd-border-strong</code> is <code>#e3e8f1</code>, which is <strong>1.23:1</strong> on white. Used as a control boundary it is one rounding error away from invisible — a correctly rendered login field was reported as "the input box does not render" for exactly this reason. Every skin that re-tones <code>--asd-border-strong</code> <strong>must</strong> re-tone <code>--asd-border-field</code> in the same block; <code>ThemeFieldBorderContrastTests</code> fails the build if a declared value drops below 3:1 against its own block's <code>--asd-surface</code>, or if a skin overrides one token without the other.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../fundamentals/localization/">Localization</a> · <a href="../web-security/">Web Security</a></li>
