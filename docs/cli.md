@@ -23,7 +23,7 @@ dotnet tool install -g Asdamir.Tools
 | `Asdamir.Data` | `1.5.0` | — |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
 | `Asdamir.Tools` | `1.8.0` | — |
-| `Asdamir.Web` | `2.1.0` | `2.1.1` built, pending publish |
+| `Asdamir.Web` | `2.1.1` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*

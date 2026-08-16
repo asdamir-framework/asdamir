@@ -19,7 +19,7 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Data` | `1.5.0` | — |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
 | `Asdamir.Tools` | `1.8.0` | — |
-| `Asdamir.Web` | `2.1.0` | `2.1.1` built, pending publish |
+| `Asdamir.Web` | `2.1.1` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -31,7 +31,7 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Web 2.1.1] — 2026-08-16 — *pending publish*
+## [Web 2.1.1] — 2026-08-16 — published 2026-08-17
 
 Two defects found while diagnosing a report that turned out **not** to be a product bug (a login screen's
 input boxes looked missing in one particular viewer; the rendered DOM, geometry and styles were correct at
