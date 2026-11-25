@@ -15,11 +15,11 @@ sentence that was, when this was written, three releases stale.
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `1.9.0` | `1.10.0` built, pending publish |
-| `Asdamir.Data` | `1.5.0` | `1.6.0` built, pending publish |
-| `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
-| `Asdamir.Tools` | `1.8.0` | `1.9.0` built, pending publish |
-| `Asdamir.Web` | `2.1.1` | `2.2.0` built, pending publish |
+| `Asdamir.Core` | `1.10.0` | — |
+| `Asdamir.Data` | `1.6.0` | — |
+| `Asdamir.Payments` | `1.3.0` | — |
+| `Asdamir.Tools` | `1.9.0` | — |
+| `Asdamir.Web` | `2.2.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -31,7 +31,7 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Core 1.10.0 · Data 1.6.0 · Web 2.2.0 · Payments 1.3.0 · Tools 1.9.0] — 2026-11-25 — *pending publish*
+## [Core 1.10.0 · Data 1.6.0 · Web 2.2.0 · Payments 1.3.0 · Tools 1.9.0] — 2026-11-25 — published
 
 A whole-tree review: security, correctness and generated-app fixes. All five packages move together.
 
