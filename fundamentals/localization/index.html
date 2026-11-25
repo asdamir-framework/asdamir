@@ -1783,6 +1783,7 @@
 <li>An <code>IStringLocalizer</code>-compatible localizer (<code>ApiStringLocalizer</code>) resolves keys against a central localization API.</li>
 <li>Results are cached (<code>LocalizationCacheRefresher</code>) and refreshed when the source version changes.</li>
 <li>Authority lives in the AdminConsole's database; managed apps read from it and cache locally.</li>
+<li>The localization API client validates the server's TLS certificate. Validation is skipped <strong>only in Development</strong> — when <code>ASPNETCORE_ENVIRONMENT</code> is exactly <code>Development</code> <em>and</em> the host's <code>IHostEnvironment</code> (when one is registered) also reports Development — so a developer's self-signed certificate works, and a <strong>warning is logged</strong> whenever it is skipped. That warning must never appear outside a developer machine.</li>
 </ul>
 <h2 id="usage-in-components">Usage in components<a class="headerlink" href="#usage-in-components" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>@inject IStringLocalizer&lt;MyComponent&gt; L

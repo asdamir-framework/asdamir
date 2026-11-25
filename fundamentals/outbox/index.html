@@ -978,6 +978,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sending-mail-directly-iemailservice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sending mail directly (IEmailService)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#fail-closed-by-design" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1655,6 +1666,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#sending-mail-directly-iemailservice" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sending mail directly (IEmailService)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#fail-closed-by-design" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1722,7 +1744,7 @@
 <a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">}</span>
 </code></pre></div>
 <ul>
-<li><code>MailDispatcher</code> (MailKit) — multi-To/Cc/Bcc, ReplyTo, per-message From, HTML and attachments.</li>
+<li><code>MailDispatcher</code> (MailKit) — multi-To/Cc/Bcc, ReplyTo, per-message From, HTML and attachments. Once the SMTP server has accepted a message, a failure while closing the session is logged and <strong>not</strong> surfaced as a dispatch failure — the message is sent, and reporting otherwise would make the worker retry it and deliver a duplicate.</li>
 <li><code>SmsDispatcher</code> — a stub you replace with your provider; a Twilio dispatcher is provided in the management app.</li>
 </ul>
 <p>Throw a <code>PermanentDispatchException</code> to skip retries and dead-letter immediately (e.g. an unparseable address); throw anything else to schedule a retry.</p>
@@ -1742,6 +1764,15 @@
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>}
 </code></pre></div>
 <p>SMTP transport is configured under <code>Smtp</code>; SMS provider selection under <code>Sms</code> (<code>Stub</code> | <code>Twilio</code>) with credentials under <code>Twilio</code>.</p>
+<h2 id="sending-mail-directly-iemailservice">Sending mail directly (<code>IEmailService</code>)<a class="headerlink" href="#sending-mail-directly-iemailservice" title="Permanent link">&para;</a></h2>
+<p><code>IEmailService</code> sends through SMTP inline, without the outbox — prefer the outbox for anything that must not be lost. Two behaviours are worth knowing when you do call it:</p>
+<ul>
+<li><strong><code>SendBulkAsync</code> throws <code>BulkEmailSendException</code> when any recipient fails.</strong> Every recipient is attempted first; the exception then carries <code>FailedRecipients</code> (retry these, not the whole list — the rest were mailed), <code>TotalRecipients</code> and <code>AllFailed</code>. The addresses are deliberately not part of the exception message, so logging it does not write them to the log. Cancellation propagates as <code>OperationCanceledException</code>, not as a per-recipient failure.</li>
+<li>As with <code>MailDispatcher</code>, a failure while disconnecting <strong>after</strong> a successful send is logged, not thrown.</li>
+</ul>
+<blockquote>
+<p><strong>Upgrade note.</strong> <code>SendBulkAsync</code> used to complete normally even when sends had failed. Callers that relied on that must now catch <code>BulkEmailSendException</code> (and can retry just <code>FailedRecipients</code>).</p>
+</blockquote>
 <h2 id="fail-closed-by-design">Fail-closed by design<a class="headerlink" href="#fail-closed-by-design" title="Permanent link">&para;</a></h2>
 <p>An unconfigured gateway is treated as a <strong>permanent failure</strong>, not a silent success — the row surfaces in the AdminConsole "Failed" view instead of pretending it was sent.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>

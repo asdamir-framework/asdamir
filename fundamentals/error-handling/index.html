@@ -1764,6 +1764,7 @@
 <li>localizes the <code>Title</code> via the error-translation service,</li>
 <li><strong>never leaks</strong> raw exception messages, stack traces or backend/library versions.</li>
 </ul>
+<p>If the response has <strong>already started</strong> when the exception surfaces (a streamed body, flushed headers), no error document can be written any more: the middleware still logs the exception in full and then <strong>rethrows</strong>, so the server aborts the connection rather than appending JSON to a half-sent body.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">throw</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="nf">DomainException</span><span class="p">(</span><span class="s">&quot;orders.not_found&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Order was not found.&quot;</span><span class="p">);</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1">// → 404 ProblemDetails { type, title (localized), extensions.code = &quot;orders.not_found&quot; }</span>
 </code></pre></div>
@@ -1783,6 +1784,7 @@
 <p>Failures that cannot be retried inline are written through <code>IDlqWriter</code> (a file-backed writer ships by default) so they can be inspected and replayed rather than silently dropped.</p>
 <h2 id="correlation">Correlation<a class="headerlink" href="#correlation" title="Permanent link">&para;</a></h2>
 <p>Every request carries a correlation ID (see <a href="../observability/">Observability</a>); it flows into logs, ProblemDetails and outbound HTTP calls so a single failure can be traced end-to-end.</p>
+<p>An inbound <code>X-Correlation-Id</code> header is reused only when it looks like an id: <strong>at most 64 characters</strong> of ASCII letters, digits, <code>.</code>, <code>_</code> or <code>-</code>. Anything else — an oversized value, control characters, a comma-joined multi-value header — is discarded and a new id is generated, because the value is echoed into the response header and every log line. A rejected value is replaced, not sanitised: a "cleaned" id would correlate with nothing upstream.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../validation/">Validation</a> · <a href="../observability/">Observability</a> · <a href="../localization/">Localization</a></li>

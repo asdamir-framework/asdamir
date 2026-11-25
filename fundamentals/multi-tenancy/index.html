@@ -1750,6 +1750,14 @@
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">app</span><span class="p">.</span><span class="n">UseMultiTenancy</span><span class="p">();</span><span class="w">   </span><span class="c1">// resolves the tenant early in the pipeline</span>
 </code></pre></div>
 <p><code>UseMultiTenancy</code> runs the configured resolver and populates <code>ITenantContext</code> for the rest of the request.</p>
+<p><strong>Order matters, and <code>AddMultiTenancy()</code> alone does nothing.</strong> Without <code>UseMultiTenancy()</code> nothing throws —
+<code>ITenantContext</code> silently resolves to <code>"default"</code> for every request. And a resolver that reads the authenticated
+user (<code>ClaimsTenantResolver</code>) only sees a populated <code>HttpContext.User</code> <strong>after</strong> <code>UseAuthentication()</code>, so place
+<code>UseMultiTenancy()</code> after it:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">app</span><span class="p">.</span><span class="n">UseAuthentication</span><span class="p">();</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">app</span><span class="p">.</span><span class="n">UseMultiTenancy</span><span class="p">();</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">app</span><span class="p">.</span><span class="n">UseAuthorization</span><span class="p">();</span>
+</code></pre></div>
 <h2 id="resolving-the-tenant">Resolving the tenant<a class="headerlink" href="#resolving-the-tenant" title="Permanent link">&para;</a></h2>
 <p>A resolver implements <code>ITenantResolver</code>. Two implementations ship out of the box:</p>
 <table>
@@ -1772,19 +1780,19 @@
 </table>
 <p>Provide your own by registering a custom <code>ITenantResolver</code>.</p>
 <h2 id="using-the-tenant-context">Using the tenant context<a class="headerlink" href="#using-the-tenant-context" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">ReportService</span><span class="p">(</span><span class="n">ITenantContext</span><span class="w"> </span><span class="n">tenant</span><span class="p">)</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="p">{</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Report</span><span class="o">&gt;</span><span class="w"> </span><span class="n">BuildAsync</span><span class="p">()</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">tenantId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tenant</span><span class="p">.</span><span class="n">TenantId</span><span class="p">;</span><span class="w">   </span><span class="c1">// ambient, per-request</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">        </span><span class="c1">// scope queries / configuration to this tenant …</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">ReportService</span><span class="p">(</span><span class="n">ITenantContext</span><span class="w"> </span><span class="n">tenant</span><span class="p">)</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p">{</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Report</span><span class="o">&gt;</span><span class="w"> </span><span class="n">BuildAsync</span><span class="p">()</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">tenantId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tenant</span><span class="p">.</span><span class="n">TenantId</span><span class="p">;</span><span class="w">   </span><span class="c1">// ambient, per-request</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="c1">// scope queries / configuration to this tenant …</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>&quot;Tenancy&quot;: {
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  &quot;HeaderName&quot;: &quot;X-Tenant-Id&quot;
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>&quot;Tenancy&quot;: {
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  &quot;HeaderName&quot;: &quot;X-Tenant-Id&quot;
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>}
 </code></pre></div>
 <p>Bind options through <code>AddMultiTenancy</code> (it accepts an optional <code>Action&lt;TenancyOptions&gt;</code>).</p>
 <h2 id="tenant-aware-features">Tenant-aware features<a class="headerlink" href="#tenant-aware-features" title="Permanent link">&para;</a></h2>
@@ -1793,10 +1801,10 @@
 <p>The framework primitives above (<code>ITenantResolver</code>/<code>ITenantContext</code>) are the generic, request-scoped
 tenant abstraction. <strong>AppManagement</strong> builds a concrete multi-company control plane on top of them —
 one management database per company, every app's admin data sliced by <code>AppId</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>Company (firma)                         one management DB per company
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  └── App            (Apps row)         CLI-registered; `asdamir app register`
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>        └── User                        company-unique identity
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>              └── Permissions           role + menu, scoped by AppId (Tier-2)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Company (firma)                         one management DB per company
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  └── App            (Apps row)         CLI-registered; `asdamir app register`
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        └── User                        company-unique identity
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>              └── Permissions           role + menu, scoped by AppId (Tier-2)
 </code></pre></div>
 <p>How a request resolves its slice:</p>
 <table>

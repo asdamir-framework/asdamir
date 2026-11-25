@@ -1753,20 +1753,25 @@
 </blockquote>
 <h2 id="scheduling">Scheduling<a class="headerlink" href="#scheduling" title="Permanent link">&para;</a></h2>
 <p>Use the scheduler abstraction to enqueue or schedule recurring jobs by type:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">Bootstrap</span><span class="p">(</span><span class="n">IHangfireJobService</span><span class="w"> </span><span class="n">jobs</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">Bootstrap</span><span class="p">(</span><span class="n">IJobScheduler</span><span class="w"> </span><span class="n">jobs</span><span class="p">)</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p">{</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="k">void</span><span class="w"> </span><span class="nf">Configure</span><span class="p">()</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">jobs</span><span class="p">.</span><span class="n">AddOrUpdateRecurring</span><span class="o">&lt;</span><span class="n">NightlyReconcileJob</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;0 2 * * *&quot;</span><span class="p">);</span><span class="w"> </span><span class="c1">// 02:00 daily</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">Task</span><span class="w"> </span><span class="nf">ConfigureAsync</span><span class="p">()</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">jobs</span><span class="p">.</span><span class="n">RecurringAsync</span><span class="o">&lt;</span><span class="n">NightlyReconcileJob</span><span class="o">&gt;</span><span class="p">(</span><span class="s">&quot;0 2 * * *&quot;</span><span class="p">);</span><span class="w"> </span><span class="c1">// 02:00 daily</span>
 <a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="p">}</span>
 </code></pre></div>
-<p>(Exact scheduling helpers live on the framework's job scheduler / <code>IHangfireJobService</code>.)</p>
+<p><code>IJobScheduler</code> (<code>Asdamir.Data.HangfireJobs</code>) schedules by job <strong>type</strong> — <code>RecurringAsync&lt;T&gt;</code>, <code>ScheduleAsync</code>,
+<code>RemoveRecurringAsync</code>. The lower-level <code>IHangfireJobService</code> (<code>Asdamir.Core.Contracts</code>) takes a method-call
+expression instead: <code>Enqueue&lt;T&gt;(x =&gt; x.Run())</code>, <code>Schedule&lt;T&gt;(…, delay)</code>, <code>Recurring&lt;T&gt;(jobId, x =&gt; x.Run(), cron)</code>.</p>
 <h2 id="per-app-isolation-multi-company">Per-app isolation (multi-company)<a class="headerlink" href="#per-app-isolation-multi-company" title="Permanent link">&para;</a></h2>
 <p>When several apps share one company's Hangfire schema, configure <code>HangfireJobsOptions</code> so each app
 stays isolated (per the AppManagement multi-company design):</p>
 <ul>
-<li><strong><code>AppQueue</code></strong> (e.g. the app's <code>Code</code>) — enqueued and recurring jobs route to this queue and the
-  app's worker listens only on it, so one app's job surge can't starve another.</li>
+<li><strong><code>AppQueue</code></strong> (e.g. the app's <code>Code</code>) — enqueued, <strong>delayed (scheduled)</strong> and recurring jobs all route
+  to this queue and the app's worker listens only on it, so one app's job surge can't starve another and
+  another app's worker never picks up this app's delayed job.</li>
 <li><strong><code>RecurringJobIdPrefix</code></strong> — recurring ids become <code>{prefix}:{jobId}</code>, so two apps can both define
-  e.g. <code>daily-cleanup</code> without colliding.</li>
+  e.g. <code>daily-cleanup</code> without colliding. <code>RemoveRecurringAsync</code> applies the same prefix: pass either the
+  id you gave <code>RecurringAsync</code> or the effective (already prefixed) id it returned — the prefix is never
+  applied twice.</li>
 </ul>
 <p>Both default to empty → Hangfire's <code>default</code> queue (unchanged single-app behaviour). Each generated
 app runs its own Hangfire server; cross-company isolation is automatic (separate company DB =

@@ -905,6 +905,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#adddatabaseconfiguration-scope-protected-keys-failure-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AddDatabaseConfiguration — scope, protected keys, failure behaviour
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1683,6 +1694,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#adddatabaseconfiguration-scope-protected-keys-failure-behaviour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AddDatabaseConfiguration — scope, protected keys, failure behaviour
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1759,11 +1781,64 @@
 <h2 id="dynamic-configuration-provider">Dynamic configuration provider<a class="headerlink" href="#dynamic-configuration-provider" title="Permanent link">&para;</a></h2>
 <p><code>AddFeatureManager</code> also contributes an <code>IConfigurationProvider</code> that surfaces database values through <code>IConfiguration</code>, so existing <code>IOptions&lt;T&gt;</code> bindings can read DB-managed settings. Refreshes are cached to keep the hot path cheap.</p>
 <h3 id="per-app-db-configuration-appconfigurations">Per-app DB configuration (<code>AppConfigurations</code>)<a class="headerlink" href="#per-app-db-configuration-appconfigurations" title="Permanent link">&para;</a></h3>
-<p>Each app keeps its runtime settings <strong>per application</strong> in <code>dbo.AppConfigurations</code> (<code>[Key]</code>/<code>[Value]</code>/<code>[Category]</code>, AppId-scoped). The API tier registers that table into <code>IConfiguration</code> at startup with <code>builder.Configuration.AddDatabaseConfiguration(...)</code> (loads every <code>IsActive=1</code> row, refreshes on an interval), so the values are reachable like any other config (<code>Configuration["Key"]</code>, <code>Configure&lt;TOptions&gt;(GetSection(...))</code>). The UI/client tier never touches the DB — a small endpoint serves the client-facing subset over HTTP (<code>/gateway/client-settings</code>).</p>
+<p>Each app keeps its runtime settings <strong>per application</strong> in <code>dbo.AppConfigurations</code> (<code>[Key]</code>/<code>[Value]</code>/<code>[Category]</code>, AppId-scoped). The API tier registers that table into <code>IConfiguration</code> at startup with <code>builder.Configuration.AddDatabaseConfiguration(...)</code> (loads the active rows of the configured scope, refreshes on an interval — see below), so the values are reachable like any other config (<code>Configuration["Key"]</code>, <code>Configure&lt;TOptions&gt;(GetSection(...))</code>). The UI/client tier never touches the DB — a small endpoint serves the client-facing subset over HTTP (<code>/gateway/client-settings</code>).</p>
 <p>Seeded keys include <code>Session:IdleSeconds</code>/<code>Session:CountdownSeconds</code> and the <strong>token lifetimes</strong>
 <code>Jwt:AccessTokenLifetimeMinutes</code> / <code>Jwt:RefreshTokenLifetimeDays</code>. AppManagement reads the latter from
 the <strong>issuing app's</strong> <code>AppConfigurations</code> when minting that app's JWTs (re-read per login/refresh, so a
 change applies without redeploy) — see <a href="../authentication/">Authentication</a>.</p>
+<h3 id="adddatabaseconfiguration-scope-protected-keys-failure-behaviour"><code>AddDatabaseConfiguration</code> — scope, protected keys, failure behaviour<a class="headerlink" href="#adddatabaseconfiguration-scope-protected-keys-failure-behaviour" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">.</span><span class="n">AddDatabaseConfiguration</span><span class="p">(</span><span class="n">connectionFactory</span><span class="p">,</span><span class="w"> </span><span class="n">o</span><span class="w"> </span><span class="o">=&gt;</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p">{</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="n">o</span><span class="p">.</span><span class="n">AppId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">myAppId</span><span class="p">;</span><span class="w">                              </span><span class="c1">// load only this application&#39;s rows (+ global rows)</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="n">o</span><span class="p">.</span><span class="n">RefreshInterval</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">TimeSpan</span><span class="p">.</span><span class="n">FromMinutes</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span><span class="w">    </span><span class="c1">// default</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="c1">// o.IncludeGlobal = true;                      // default — also load AppId IS NULL rows</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">    </span><span class="c1">// o.ProtectedKeys.Add(&quot;MyHost:Secret&quot;);        // keys a database row may never supply</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="p">});</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="kt">var</span><span class="w"> </span><span class="n">app</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">builder</span><span class="p">.</span><span class="n">Build</span><span class="p">();</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="n">app</span><span class="p">.</span><span class="n">Configuration</span><span class="p">.</span><span class="n">AttachDatabaseConfigurationLogging</span><span class="p">(</span><span class="n">app</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">GetRequiredService</span><span class="o">&lt;</span><span class="n">ILoggerFactory</span><span class="o">&gt;</span><span class="p">());</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th><code>DatabaseConfigurationOptions</code></th>
+<th>Default</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AppId</code></td>
+<td><code>null</code></td>
+<td><strong>Set it whenever the table is shared between applications.</strong> Only rows with this <code>AppId</code> are loaded, plus the global (<code>AppId IS NULL</code>) rows; when both define a key, <strong>the application's own row wins</strong>. Another application's rows are never read. <code>null</code> reads the table unscoped (every active row, ordered by key) and does not reference the <code>AppId</code> column at all — for a table that belongs to one host alone.</td>
+</tr>
+<tr>
+<td><code>IncludeGlobal</code></td>
+<td><code>true</code></td>
+<td>With <code>AppId</code> set, also load the global rows.</td>
+</tr>
+<tr>
+<td><code>ProtectedKeys</code></td>
+<td><code>Jwt:Key</code>, <code>Security:EncryptionKey</code>, <code>ConnectionStrings:*</code>, <code>Persistence:UseInMemory</code></td>
+<td>Keys a database row can <strong>never</strong> supply — matching rows are dropped and reported through the logger. The DB source outranks appsettings / user-secrets / environment variables, so without this anyone able to write a config row could replace the signing key or a connection string. Matching is case-insensitive; an entry ending in <code>:*</code> protects the whole section. Add host-specific keys, or <code>Clear()</code> the set to opt out.</td>
+</tr>
+<tr>
+<td><code>RefreshInterval</code></td>
+<td>5 minutes</td>
+<td>How often the table is re-read.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>AddDatabaseConfiguration(connectionFactory, refreshInterval)</code> overload is the unscoped form with the same default protected keys.</p>
+<ul>
+<li><strong>Only <code>IsActive = 1</code> rows are loaded</strong>, and keys are <strong>case-insensitive</strong> (as <code>IConfiguration</code> keys are).</li>
+<li><strong>The first load is synchronous</strong> (one attempt, made when the configuration is built), so startup code that reads a DB-backed key sees it. If that first attempt fails the host still starts — without DB-backed values — and the refresh loop retries.</li>
+<li><strong>A failed reload keeps the last-known-good values.</strong> A transient database error never replaces good configuration with an empty set; the provider keeps serving what it has, retries on the next interval and logs the failure.</li>
+<li><strong>Logging is attached after <code>Build()</code>.</strong> Configuration is built before the host's logging exists, so call <code>AttachDatabaseConfigurationLogging(...)</code> once the host is built; it reports a load failure that happened in the meantime and any protected keys that were dropped. It is a no-op when no DB-backed provider is registered.</li>
+</ul>
+<blockquote>
+<p><strong><code>IsEncrypted</code> is not acted on by this provider.</strong> A row's <code>Value</code> is loaded exactly as stored — there is no decrypt-on-load (and no encrypt-on-write). Keep real secrets in user-secrets / environment variables, which is also why the bootstrap secrets above are protected keys.</p>
+</blockquote>
 <h2 id="layering-precedence">Layering precedence<a class="headerlink" href="#layering-precedence" title="Permanent link">&para;</a></h2>
 <p>Standard .NET precedence applies — later sources win. The database provider sits above static JSON so an operator override takes effect without touching files.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>

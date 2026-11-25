@@ -1400,6 +1400,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#grid-export-copy-and-print-asdamirgrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grid export, copy and print (AsdamirGrid)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csv-export-and-formula-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CSV export and formula injection
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1883,6 +1905,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#grid-export-copy-and-print-asdamirgrid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Grid export, copy and print (AsdamirGrid)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#csv-export-and-formula-injection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CSV export and formula injection
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2273,6 +2317,11 @@
 <a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="n">Notify</span><span class="p">.</span><span class="n">ShowLoading</span><span class="p">(</span><span class="s">&quot;Importing…&quot;</span><span class="p">);</span><span class="w"> </span><span class="cm">/* … */</span><span class="w"> </span><span class="n">Notify</span><span class="p">.</span><span class="n">HideLoading</span><span class="p">();</span>
 </code></pre></div>
 <p>The host is FluentUI-free, so it works inside a Blazor Web App interactive island and the MAUI Blazor-Hybrid app. <strong>Without a host rendered, <code>ConfirmAsync</code>/<code>ConfirmDangerAsync</code> return <code>false</code></strong> (deny) — a destructive action never proceeds un-confirmed.</p>
+<p><strong>Accessibility.</strong> An <strong>error</strong> toast is rendered with <code>role="alert"</code> (assertive — a screen reader interrupts to announce it); success and info toasts are <code>role="status"</code> (polite). <code>AsdamirModal</code> is a labelled dialog (<code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code> its title): it <strong>takes focus when it opens</strong> and <strong>Escape closes it</strong>, through the same path as the ✕ button and the backdrop click.</p>
+<h3 id="grid-export-copy-and-print-asdamirgrid">Grid export, copy and print (<code>AsdamirGrid</code>)<a class="headerlink" href="#grid-export-copy-and-print-asdamirgrid" title="Permanent link">&para;</a></h3>
+<p><code>AsdamirGrid</code>'s Copy / Print / Download actions load the package's own ES module, <code>_content/Asdamir.Web/js/asdamir-grid.js</code>, on first use (an export click — never at render). A host therefore needs <strong>no script tag and no global functions</strong> for the grid; the module is a real file served under <code>script-src 'self'</code>, so it works under an enforced CSP. The other package scripts live beside it under <code>_content/Asdamir.Web/js/</code> — including <code>auth-guard.js</code>, the back-button guard imported by <code>AuthenticationGuard</code>.</p>
+<h3 id="csv-export-and-formula-injection">CSV export and formula injection<a class="headerlink" href="#csv-export-and-formula-injection" title="Permanent link">&para;</a></h3>
+<p>CSV produced by <code>IExportService</code> (and the grid's CSV download) neutralises cells a spreadsheet would evaluate as a formula: a <strong>text</strong> cell starting with <code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>, TAB or CR is prefixed with a single quote (<code>'</code>), which makes Excel, LibreOffice and Google Sheets treat it as text. Two things are deliberately left alone: typed numeric values, and text made up only of an optional sign, digits, <code>.</code>/<code>,</code> separators and spaces (<code>-12.50</code>, <code>+90 532 123 45 67</code>) — prefixing those would deface every negative amount and phone number in an export.</p>
 <h2 id="framework-ui-components-fluentui-isolation-inputs">Framework UI Components (FluentUI-isolation inputs)<a class="headerlink" href="#framework-ui-components-fluentui-isolation-inputs" title="Permanent link">&para;</a></h2>
 <p><code>AsdamirTextInput</code> and <code>AsdamirNumberInput&lt;T&gt;</code> are <strong>isolation</strong> form fields: a native <code>&lt;input&gt;</code> styled with the shared design tokens, deliberately <strong>not</strong> wrapping any FluentUI component. Binding to them keeps consumer code free of a <code>Microsoft.FluentUI.*</code> dependency while staying visually consistent (same tokens, focus/hover/disabled, error display, label alignment) with the FluentUI fields alongside. Both derive from Blazor's <code>InputBase&lt;TValue&gt;</code>, so <code>Value</code> / <code>ValueChanged</code> / <code>ValueExpression</code> flow through the ambient <code>EditContext</code> and DataAnnotations validation works with zero extra wiring (put a <code>&lt;DataAnnotationsValidator/&gt;</code> in your <code>EditForm</code>). No JS interop is used anywhere in either component.</p>
 <p>All user-facing text (<code>Label</code>, <code>Placeholder</code>) is an <strong>English-defaulted parameter</strong> — a framework component cannot assume a DB-seeded localization key exists, so the caller passes <code>@L["…"]</code> values in. On a validation error the field sets <code>aria-invalid="true"</code>, links <code>aria-describedby</code> to a <code>role="alert"</code> message, and renders the message below; the <code>&lt;label for&gt;</code> associates the label to the input for full keyboard/screen-reader use.</p>

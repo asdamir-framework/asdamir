@@ -1740,7 +1740,7 @@
 <h2 id="two-tier-rbac-adminconsole">Two-tier RBAC (AdminConsole)<a class="headerlink" href="#two-tier-rbac-adminconsole" title="Permanent link">&para;</a></h2>
 <p>The management application layers two independent RBAC scopes:</p>
 <ol>
-<li><strong>Admin-pool RBAC</strong> — gates which <em>managed apps</em> an operator may administer. SuperAdmins reach every app; everyone else reaches only the apps assigned to them.</li>
+<li><strong>Admin-pool RBAC</strong> — gates which <em>managed apps</em> an operator may administer. SuperAdmins reach every app; everyone else reaches only the apps assigned to them. Being assigned to an app grants <strong>read</strong> access; changing its configuration, localization, roles, role assignments, outbox messages or jobs additionally requires the matching write permission.</li>
 <li><strong>Managed-app RBAC</strong> — each managed app defines its own roles, permissions and role assignments for its end users.</li>
 </ol>
 <p>See <a href="../../ARCHITECTURE/#security-multi-tenancy">Architecture → Security &amp; multi-tenancy</a>.</p>

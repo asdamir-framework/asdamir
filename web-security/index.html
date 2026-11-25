@@ -1783,11 +1783,12 @@ than importing them from a CDN.</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="na">[RateLimit(3, 300)]</span><span class="w">   </span><span class="c1">// limit, windowSeconds — e.g. ForgotPassword</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">public</span><span class="w"> </span><span class="k">async</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">IActionResult</span><span class="o">&gt;</span><span class="w"> </span><span class="n">ForgotPassword</span><span class="p">(...)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">}</span>
 </code></pre></div>
+<p>A request over budget is short-circuited with <strong>HTTP 429</strong> and a <strong><code>Retry-After</code></strong> header carrying the limit's window in seconds (the longest a caller can need to wait). The bucket key combines the caller (client IP / authenticated user) with the request <strong>path, normalised</strong> — lower-cased, trailing slashes removed — so <code>/Api/Login</code>, <code>/api/login</code> and <code>/api/login/</code> share one budget instead of each spelling getting its own.</p>
 <p><code>IRateLimitService</code> is a fixed-window limiter. The default <code>InMemoryRateLimitService</code> is <strong>per-process</strong> —
 fine for a single instance, but behind a load balancer each replica counts independently (a brute-force
 attacker gets <code>N × limit</code>). For <strong>scale-out</strong>, back it with a <strong>shared store</strong> so counters aggregate
 across instances. AppManagement does this in Dapper mode: a <code>SqlRateLimitService</code> (counters in
-<code>dbo.RateLimitCounters</code>, atomic via the <code>dbo.RateLimit_TryAcquire</code> proc) guards the login / 2FA endpoints
+<code>dbo.RateLimitCounters</code>, atomic via the <code>dbo.RateLimit_TryAcquire</code> proc) guards the login, 2FA, token-refresh, forgot-password and reset-password endpoints
 so the limit holds across all API instances. Swap the registered <code>IRateLimitService</code> to choose per-host
 vs. shared.</p>
 <h2 id="data-protection-keys-cookies-antiforgery">Data Protection keys (cookies + antiforgery)<a class="headerlink" href="#data-protection-keys-cookies-antiforgery" title="Permanent link">&para;</a></h2>

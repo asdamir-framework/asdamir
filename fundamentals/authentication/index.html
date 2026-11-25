@@ -712,6 +712,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Refresh tokens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sign-out-and-forced-session-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sign-out and forced session end
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -752,6 +769,17 @@
     <span class="md-ellipsis">
       
         Login failure hygiene
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrade-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrade notes
       
     </span>
   </a>
@@ -1663,6 +1691,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Refresh tokens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sign-out-and-forced-session-end" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sign-out and forced session end
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1703,6 +1748,17 @@
     <span class="md-ellipsis">
       
         Login failure hygiene
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#upgrade-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrade notes
       
     </span>
   </a>
@@ -1776,9 +1832,16 @@ effect without a redeploy. The <code>Jwt:*</code> config above is only the fallb
 <p>The management app demonstrates the recommended pattern (see <code>Asdamir.AdminConsole.Api/Auth</code>):</p>
 <ul>
 <li>Refresh tokens are <strong>SHA-256 hashed before storage</strong> — the raw token never touches the database.</li>
-<li><strong>Rotation on use:</strong> every refresh issues a new token and invalidates the old one.</li>
-<li><strong>Reuse detection:</strong> presenting an already-rotated token revokes the user's entire token tree (theft response).</li>
+<li><strong>Rotation on use:</strong> every refresh issues a new token and invalidates the old one. The spend is <strong>atomic</strong> — when two requests present the same token at once, exactly one is rotated.</li>
+<li><strong>Reuse detection:</strong> presenting an already-rotated token revokes the user's entire token tree (theft response). The loser of a concurrent race is a second spend like any other and is handled the same way, so a client must serialize its own refreshes (one refresh in flight per session).</li>
+<li><strong>Context binding:</strong> a refresh token is redeemable only where it was issued — a console token at the console refresh endpoint, an app token at that app's <code>app-refresh</code>.</li>
 <li>Expiry is checked against <code>DateTime.UtcNow</code>.</li>
+</ul>
+<h3 id="sign-out-and-forced-session-end">Sign-out and forced session end<a class="headerlink" href="#sign-out-and-forced-session-end" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>POST api/admin/auth/logout</code> takes an optional <code>{ "refreshToken": "…" }</code> body. <strong>With</strong> it, only that session's refresh token is revoked (the user's other browsers/devices stay signed in); <strong>without</strong> a body, every refresh token of the user is revoked ("sign out everywhere").</li>
+<li>An administrator <strong>resetting a user's password</strong> or <strong>deactivating a user</strong> revokes all of that user's refresh tokens and ends their live console sessions immediately — the account stops working at once rather than when its tokens expire. Re-activating a user grants nothing back; they sign in again.</li>
+<li>A self-service password reset (<code>reset-password</code>) and a password change also revoke every refresh token of the user.</li>
 </ul>
 <h2 id="per-app-login-mobile-token-flow">Per-app login (mobile token flow)<a class="headerlink" href="#per-app-login-mobile-token-flow" title="Permanent link">&para;</a></h2>
 <p>Managed apps (web + mobile) don't own users — identity is <strong>central</strong>. Each app's Gateway proxies
@@ -1826,7 +1889,12 @@ and routes to <code>/login</code>. See <a href="../../mobile/">Mobile App</a>.</
 <ul>
 <li>Challenge tokens use a <strong>128-bit CSPRNG</strong> value (<code>RandomNumberGenerator</code>), Base64URL-encoded — not a GUID.</li>
 <li>A successful password step returns <code>Required = true</code> + a challenge token; the client completes the second factor against the 2FA endpoint.</li>
-<li>Codes are delivered through the <a href="../outbox/">transactional outbox</a> (SMS/email).</li>
+<li><strong>A challenge is bound to the sign-in surface that created it</strong> — <code>console</code>, or <code>app:&lt;code&gt;</code> for a managed app. It can only be redeemed at that surface's verify endpoint: a code issued for an app sign-in can never complete a console sign-in (or another app's), and is refused exactly like an unknown token.</li>
+<li><strong>The console verify step re-checks the operator gate</strong> and the lockout state itself — it is the endpoint that issues the token, so it does not rely on the password step having asked.</li>
+<li><strong>A wrong code counts toward account lockout</strong> exactly like a wrong password, and the failed-attempt counter is cleared only when authentication is complete (after the code step for a 2FA user).</li>
+<li><strong>Delivery:</strong> outside <code>Development</code> the code is sent by <strong>SMS</strong> through the <a href="../outbox/">transactional outbox</a>; the message body is the <code>TwoFactor:SmsTemplate</code> setting (<code>{0}</code> = the code), with a built-in default. In <code>Development</code> the code is only logged, never sent.</li>
+<li><strong>A 2FA-enabled user without a phone number cannot sign in</strong> outside <code>Development</code>: a challenge nobody can answer is not issued, and the login is refused with the same opaque failure as a wrong password.</li>
+<li><strong>Code lifetime</strong> defaults to <strong>180 seconds</strong> (<code>Security.Otp.TtlMinutes</code>, default <code>3</code>, clamped to 30 s – 30 min) — the same value the login page counts down.</li>
 </ul>
 <h2 id="blazor-auth-state-token-propagation">Blazor: auth state &amp; token propagation<a class="headerlink" href="#blazor-auth-state-token-propagation" title="Permanent link">&para;</a></h2>
 <p>In a Blazor app, <code>Asdamir.Web</code> provides the authentication-state provider and bearer-token propagation:</p>
@@ -1835,8 +1903,52 @@ and routes to <code>/login</code>. See <a href="../../mobile/">Mobile App</a>.</
 <a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddSecurityAutoLogout</span><span class="p">();</span><span class="w">   </span><span class="c1">// idle/auto-logout + session activity tracking</span>
 </code></pre></div>
 <p>The AdminConsole stores the access token in an HttpOnly cookie and attaches it as a bearer on outbound API calls via a cookie→bearer handler.</p>
+<p>The Blazor host holds <strong>no <code>Jwt:Key</code></strong> (secrets live on the API tier), so it never trusts a claim it reads out of a token it was handed. Before it creates the cookie session it presents the token to the API (<code>GET api/admin/auth/me</code>) and builds the cookie principal from the <strong>API's answer</strong>; a rejected token — or an API that cannot be reached — means no session (fail closed). Each cookie session is identified by a random, server-minted session id (the <code>sid</code> claim), not by the user id, so two browsers of the same user are independent sessions: each keeps its own rotating refresh token, and signing out of one leaves the other alone. The server-side session map is in-memory and single-node; after a restart it is rebuilt from the cookies.</p>
 <h2 id="login-failure-hygiene">Login failure hygiene<a class="headerlink" href="#login-failure-hygiene" title="Permanent link">&para;</a></h2>
 <p>All login failures (unknown email, locked account, wrong password) return the <strong>same opaque response</strong> to avoid username-enumeration. Lockout state is enforced server-side but never disclosed in the response body.</p>
+<p>The anonymous auth endpoints are rate limited per client IP, each in its own bucket, overridable through <code>RateLimiting:&lt;Bucket&gt;:PermitLimit</code> / <code>RateLimiting:&lt;Bucket&gt;:WindowSeconds</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Bucket</th>
+<th>Endpoints</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Login</code></td>
+<td><code>login</code>, <code>app-login</code></td>
+<td>5 per 60 s</td>
+</tr>
+<tr>
+<td><code>TwoFactorSend</code></td>
+<td><code>twofactor/verify</code>, <code>app-twofactor/verify</code></td>
+<td>3 per 60 s</td>
+</tr>
+<tr>
+<td><code>Refresh</code></td>
+<td><code>refresh</code>, <code>app-refresh</code></td>
+<td>10 per 60 s</td>
+</tr>
+<tr>
+<td><code>ForgotPassword</code></td>
+<td><code>forgot-password</code></td>
+<td>5 per 60 s</td>
+</tr>
+<tr>
+<td><code>ResetPassword</code></td>
+<td><code>reset-password</code></td>
+<td>5 per 60 s</td>
+</tr>
+</tbody>
+</table>
+<h2 id="upgrade-notes">Upgrade notes<a class="headerlink" href="#upgrade-notes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Operators sign in once more after upgrading the AdminConsole.</strong> A console cookie issued before sessions carried a <code>sid</code> claim is rejected; the next request lands on the login page.</li>
+<li><strong>Apply the database migrations before deploying the new API build.</strong> Atomic refresh rotation and context-bound 2FA challenges rely on schema objects the new build calls; a 2FA challenge started by the previous build is not redeemable by the new one (it expires within minutes — the user simply signs in again).</li>
+<li><strong>A 2FA-enabled account needs a phone number</strong> outside <code>Development</code>, or it can no longer sign in.</li>
+</ul>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="../authorization/">Authorization</a> · <a href="../../web-security/">Web Security</a> · <a href="../outbox/">Outbox</a></li>
