@@ -15,25 +15,28 @@ namespace Asdamir.Tools.Commands;
 /// <summary>
 /// <c>asdamir add field &lt;EntityName&gt; --field "Name:type" [--output dir]</c>
 ///
-/// Extends a previously-scaffolded entity slice with one new field. The two files
-/// that are mechanical enough to patch automatically are touched in-place; the
-/// non-mechanical files (Repository / Service / Validator) get printed snippets
-/// the caller can paste in by hand — patching SQL strings would be too brittle
-/// once consumers start editing them.
+/// Adds ONE column to a previously-scaffolded entity — and is deliberately a PARTIAL operation. It says so,
+/// loudly, every time it runs (see <see cref="NotUpdated"/>).
 ///
-/// Touched in place:
+/// Done automatically:
 ///   - <c>Domain/&lt;Entity&gt;.cs</c>        — new property inserted before <c>CreatedAtUtc</c>
 ///   - <c>Dtos/&lt;Entity&gt;Dto.cs</c>       — new property + DataAnnotations inserted before <c>CreatedAtUtc</c>
-///   - <c>db/migrations/V&lt;stamp&gt;__add_&lt;field&gt;_to_&lt;plural&gt;.sql</c> — new ALTER TABLE script
+///   - <c>db/migrations/V&lt;stamp&gt;__add_&lt;field&gt;_to_&lt;plural&gt;.sql</c> — an IDEMPOTENT
+///     <c>ALTER TABLE … ADD</c> (guarded by <c>COL_LENGTH</c>, so re-applying it is a no-op), applied unless
+///     <c>--no-db</c>.
 ///
-/// Printed for manual integration:
-///   - Repository SELECT / INSERT / UPDATE column list updates
-///   - Validator rule
+/// NOT done — and until it is, the new field's value is silently DROPPED on every save:
+///   - the <c>_Insert</c> / <c>_Update</c> stored procedures (they take an explicit parameter list)
+///   - the repository (two anonymous parameter objects) and the service (three mappings)
+///   - the validator, the Server-side DTO copy, the page grid + editor dialog, and the localization key
 ///
-/// Both file patches are anchor-based on the <c>public DateTime CreatedAtUtc</c> line
-/// that every freshly-generated entity carries. If a target file has lost the
-/// anchor (heavily edited), the command refuses to patch it and prints the snippet
-/// instead — fail-closed, never produce broken code.
+/// These are not patched because each is a file the developer is expected to have edited: splicing a
+/// parameter list into a hand-tuned procedure, or a column into a hand-arranged grid, is the kind of edit that
+/// is right nine times and silently wrong the tenth. The command prints the exact edits instead.
+///
+/// Both file patches are anchor-based on the <c>public DateTime CreatedAtUtc</c> line that every
+/// freshly-generated entity carries. If a target file has lost the anchor (heavily edited), the command
+/// refuses to patch it and prints the snippet instead — fail-closed, never produce broken code.
 /// </summary>
 public static class AddFieldCommand
 {
@@ -54,7 +57,7 @@ public static class AddFieldCommand
             description: "Generate the ALTER migration only — don't apply it. (By default `add field` applies it via `db apply`.)",
             getDefaultValue: () => false);
 
-        var fieldCmd = new Command("field", "Append one field to an existing entity scaffold (patches Entity.cs + Dto.cs, generates + applies a new ALTER TABLE migration, prints the snippets you still need to add by hand).")
+        var fieldCmd = new Command("field", "Add one column to an existing entity: patches Entity.cs + Dto.cs and generates + applies an idempotent ALTER TABLE. PARTIAL — the stored procedures, repository, service, validator, page and localization are NOT updated (the value is dropped on save until you apply the printed edits).")
         {
             nameArg, fieldOpt, outputOpt, noDbOpt,
         };
@@ -151,23 +154,14 @@ public static class AddFieldCommand
         Report("Domain/" + entityName + ".cs", entityResult, RenderEntityProperty(field));
         Report("Dtos/" + entityName + "Dto.cs", dtoResult, RenderDtoProperty(field));
 
-        // Repository / Service / Validator: print snippets, don't try to splice SQL ourselves.
-        Console.WriteLine();
-        Console.WriteLine($"Manual edits still needed:");
-        Console.WriteLine();
-        Console.WriteLine($"  Repositories/{entityName}Repository.cs — add '{field.Name}' to SELECT, INSERT, UPDATE column lists:");
-        Console.WriteLine($"    SELECT  …, {field.Name}, …");
-        Console.WriteLine($"    INSERT  (…, {field.Name}, …) VALUES (…, @{field.Name}, …)");
-        Console.WriteLine($"    UPDATE  SET …, {field.Name} = @{field.Name}, …");
-        Console.WriteLine();
-        Console.WriteLine($"  Validators/{entityName}DtoValidator.cs — append rule inside the ctor:");
-        Console.WriteLine("    " + RenderValidatorRule(field).Replace("\n", "\n    "));
         Console.WriteLine();
         Console.WriteLine($"Done. {(entityResult == PatchOutcome.Patched ? 1 : 0) + (dtoResult == PatchOutcome.Patched ? 1 : 0)} files patched, {(migrationWritten ? 1 : 0)} migration written.");
+        Console.WriteLine();
+        foreach (var line in NotUpdated(entityName, field)) Console.WriteLine(line);
 
         // Auto-apply the ALTER migration by DEFAULT (unless --no-db), reusing `db apply`'s journaled runner and
-        // resolving the connection from the Gateway user-secret (same as `new entity`). Idempotent; if no
-        // connection resolves, the file is written and the manual command is printed — never a hard failure.
+        // resolving the connection from the Gateway user-secret (same as `new entity`). If no connection
+        // resolves, the file is written and the manual command is printed (the soft path, exit 0).
         if (!migrationWritten) return ExitCodes.Success;
         var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
         var appRoot = FeatureCommand.FindAppRoot(output);
@@ -185,10 +179,55 @@ public static class AddFieldCommand
         }
         Console.WriteLine();
         var exit = await DbApplyCommand.RunAsync("", "localhost", "", "", "", migDir, createDatabase: false);
-        if (exit != 0) Console.Error.WriteLine($"  ⚠️  ALTER not applied (exit {exit}) — apply it with:  {applyCmd}");
-        else FeatureCommand.PrintRestartHint(appRoot);   // schema + code changed → rebuild/restart to pick it up
+        if (exit != 0)
+        {
+            // Attempted and failed → a negative result, not "success". The code now has a property the table
+            // does not have a column for; reporting 0 hid that from every script.
+            Console.Error.WriteLine($"  ✗ ALTER NOT applied (db apply exit {exit}) — the column does not exist yet. Fix the cause, then:  {applyCmd}");
+            return ExitCodes.Findings;
+        }
 
+        FeatureCommand.PrintRestartHint(appRoot);   // schema + code changed → rebuild/restart to pick it up
         return ExitCodes.Success;
+    }
+
+    /// <summary>
+    /// The exact list of what <c>add field</c> did NOT update, with the edit each place needs — printed on
+    /// every run.
+    /// </summary>
+    /// <remarks>
+    /// The previous text told the user to add the column to the repository's "SELECT / INSERT / UPDATE column
+    /// lists". The generated repository has no such lists — it calls stored procedures — so the instruction
+    /// could not be followed, and the pieces that actually drop the value (the two procedures and the
+    /// service mappings) were not mentioned at all.
+    /// </remarks>
+    /// <param name="entityName">The entity.</param>
+    /// <param name="field">The field that was added.</param>
+    /// <returns>The lines to print.</returns>
+    internal static IReadOnlyList<string> NotUpdated(string entityName, FieldSpec field)
+    {
+        var table = NameHelper.Pluralize(entityName);
+        var n = field.Name;
+        return
+        [
+            $"⚠️  NOT UPDATED — '{n}' is in the entity, the DTO and the table, and NOWHERE ELSE.",
+            $"    Until the edits below are made, the value of '{n}' is silently DROPPED on every create and update",
+            "    (the stored procedures do not take it), and it does not appear in the UI.",
+            "",
+            $"  1. Stored procedures — add a NEW migration that re-creates dbo.{table}_Insert and dbo.{table}_Update",
+            $"     (CREATE OR ALTER) with one more parameter `@{n} {field.SqlType}`, the column [{n}] in the INSERT",
+            $"     column/VALUES lists, and `[{n}] = @{n}` in the UPDATE SET list. (_GetById/_List use SELECT * — no change.)",
+            $"  2. Repositories/{entityName}Repository.cs — add `entity.{n},` to BOTH anonymous parameter objects",
+            "     (InsertAsync and UpdateAsync). Do step 1 first: Dapper sends a parameter the procedure must accept.",
+            $"  3. Services/{entityName}Service.cs — three places: `existing.{n} = dto.{n};` in UpdateAsync,",
+            $"     `{n} = entity.{n},` in MapToDto, `{n} = dto.{n},` in MapToEntity.",
+            $"  4. Validators/{entityName}DtoValidator.cs — " + RenderValidatorRule(field).Replace("\n", "\n     "),
+            $"  5. Server (UI) project — Dtos/{entityName}Dto.cs (the UI keeps its own DTO copy): add the same property;",
+            $"     Components/Pages/{table}List.razor: a <th>@L[\"Field.{entityName}.{n}\"]</th> + its <td>;",
+            $"     Components/Pages/{entityName}EditorDialog.razor: an input bound to Model.{n}.",
+            $"  6. Localization — seed the key `Field.{entityName}.{n}` in tr-TR / en-US / ru-RU (the canonical @Seed +",
+            "     LocalizationResource_UpsertValue form), in a new seed next to the page's localize_* / freemode_localize_* file.",
+        ];
     }
 
     private enum PatchOutcome { Patched, AnchorMissing, FileMissing, AlreadyPresent }
@@ -267,16 +306,16 @@ public static class AddFieldCommand
     {
         if (f.IsRequired && f.CSharpType == "string")
         {
-            return $"RuleFor(x => x.{f.Name})\n    .NotEmpty().WithMessage(\"{f.Name} is required.\")\n    .MaximumLength(500);";
+            return $"append inside the ctor: RuleFor(x => x.{f.Name}).NotEmpty().WithMessage(\"{f.Name} is required.\").MaximumLength(500);";
         }
-        if (f.IsRequired)
+        if (f.IsRequired && f.CSharpType is "Guid" or "DateTime")
         {
-            return $"RuleFor(x => x.{f.Name}).NotEmpty();";
+            return $"append inside the ctor: RuleFor(x => x.{f.Name}).NotEmpty();";
         }
-        return $"// {f.Name} is optional — no validator rule needed by default.";
+        return $"no rule needed for '{f.Name}' ({f.CSharpType}): a bool/number has no \"empty\" value (NotEmpty would reject false/0), and an optional field needs none.";
     }
 
-    private static string RenderMigration(string entityName, FieldSpec f, string stamp)
+    internal static string RenderMigration(string entityName, FieldSpec f, string stamp)
     {
         var table = NameHelper.Pluralize(entityName);
         var nullClause = f.IsNullable ? "NULL" : "NOT NULL";
@@ -286,25 +325,36 @@ public static class AddFieldCommand
         // existing rows. Other non-nullable types use type-appropriate defaults too.
         if (!f.IsNullable)
         {
+            var constraint = $" CONSTRAINT DF_{table}_{f.Name}";
             defaultClause = f.CSharpType switch
             {
-                "string" => " DEFAULT ('')",
-                "int" or "long" or "decimal" or "double" => " DEFAULT (0)",
-                "bool" => " DEFAULT (0)",
-                "DateTime" => " DEFAULT (SYSUTCDATETIME())",
-                "Guid" => " DEFAULT (NEWID())",
+                "string" => constraint + " DEFAULT ('')",
+                "int" or "long" or "decimal" => constraint + " DEFAULT (0)",
+                "bool" => constraint + " DEFAULT (0)",
+                "DateTime" => constraint + " DEFAULT (SYSUTCDATETIME())",
+                "Guid" => constraint + " DEFAULT (NEWID())",
                 _ => "",
             };
         }
 
+        // IDEMPOTENT: guarded by COL_LENGTH, so applying the script twice (a re-run after a partial failure, a
+        // database restored from a backup taken after it) is a no-op instead of
+        // "Column names in each table must be unique". The DEFAULT constraint is NAMED for the same reason a
+        // rollback needs it: an anonymous one gets a random name and cannot be dropped by script.
         return $"""
             -- <auto-generated>
             --   Migration: add `{f.Name}` ({f.CSharpType}) to dbo.{table}
             --   Generated by `asdamir add field {entityName} --field "{f.Name}:{f.CSharpType.TrimEnd('?')}{(f.IsNullable ? "?" : "")}"` on {DateTime.UtcNow:u}.
             --   Stamp: V{stamp}
+            --
+            --   NOTE: this adds the COLUMN only. dbo.{table}_Insert / dbo.{table}_Update do not take @{f.Name}
+            --   until you re-create them in a follow-up migration (see the command's "NOT UPDATED" output).
             -- </auto-generated>
 
-            ALTER TABLE dbo.[{table}] ADD [{f.Name}] {f.SqlType} {nullClause}{defaultClause};
+            IF COL_LENGTH(N'dbo.{table}', N'{f.Name}') IS NULL
+            BEGIN
+                ALTER TABLE dbo.[{table}] ADD [{f.Name}] {f.SqlType} {nullClause}{defaultClause};
+            END;
             GO
 
             """;

@@ -246,6 +246,20 @@ public static class AppCommand
         if (!gatewayUrl.EndsWith('/')) gatewayUrl += "/";
 
         var ns = string.IsNullOrWhiteSpace(raw.NsOverride) ? name : raw.NsOverride;
+
+        // EVERY name-like input is validated before anything is written. They all flow, verbatim, into file
+        // paths (project folders), C# (namespaces), SQL (the registration + seed scripts), JSON (appsettings)
+        // and shell command lines (the generated restart script, the printed next steps). Only the app name
+        // used to be checked — and only its first character — so `--server-name ../../x` wrote outside the
+        // output directory and `--database "x;Password=…"` rewrote the connection string.
+        var inputError = ValidateInputs(serverProject, gatewayProject, database, dbServer, ns, gatewayUrl, raw.ConnString);
+        if (inputError is not null)
+        {
+            Console.Error.WriteLine(inputError);
+            Console.Error.WriteLine("Nothing was written.");
+            return ExitCodes.Usage;
+        }
+
         var appRoot = Path.Combine(raw.Output.FullName, name);
         if (Directory.Exists(appRoot) && Directory.EnumerateFileSystemEntries(appRoot).Any())
         {
@@ -256,6 +270,11 @@ public static class AppCommand
         // Starter admin — seeded into AsdamirVault (scoped by this app's AppId) by the generated
         // register_<app>.sql. Only the PBKDF2 hash is stored; the password is printed once below.
         var adminEmail = FirstNonEmpty(raw.AdminEmail, () => $"admin@{name.ToLowerInvariant()}.local");
+        if (!IsPlausibleEmail(adminEmail))
+        {
+            Console.Error.WriteLine($"--admin-email '{adminEmail}' is not a usable e-mail address (one '@', no spaces or control characters, at most 256 characters). Nothing was written.");
+            return ExitCodes.Usage;
+        }
         var adminPassword = FirstNonEmpty(raw.AdminPassword, SeedPasswordHasher.GeneratePassword);
         var adminPasswordHash = SeedPasswordHasher.Hash(adminPassword);
 
@@ -263,7 +282,11 @@ public static class AppCommand
         var model = new
         {
             AppName = name,
-            AdminEmail = adminEmail,
+            // SQL-escaped: every template that uses AdminEmail places it inside an N'…' literal
+            // (register_<app>.sql / the free-mode management seed). An apostrophe is legal in an address
+            // (o'brien@example.com) and used to terminate the literal, breaking the seed. The console output
+            // below prints the RAW address.
+            AdminEmail = NameArgument.SqlLiteral(adminEmail),
             AdminPasswordHash = adminPasswordHash,
             AppNameLower = name.ToLowerInvariant(),
             AppNameUpper = name.ToUpperInvariant(),
@@ -380,6 +403,9 @@ public static class AppCommand
             ($"src/{serverProject}/Components/Pages/AccessDenied.razor",  "ServerAccessDeniedPage"),
             ($"src/{serverProject}/Auth/AuthEndpoints.cs",                "ServerAuthEndpoints"),
             ($"src/{serverProject}/Auth/AppUserSessionStore.cs",          "ServerAppUserSessionStore"),
+            // Keeps the `access_token` claim CURRENT (renews it via gateway/auth/refresh) — pages read it for
+            // every Gateway call. Registered in ServerProgram as the app's AuthenticationStateProvider.
+            ($"src/{serverProject}/Auth/GatewayTokenAuthenticationStateProvider.cs", "ServerGatewayTokenAuthStateProvider"),
             ($"src/{serverProject}/Auth/ThemeEndpoints.cs",               "ServerThemeEndpoints"),
             ($"src/{serverProject}/Services/LocalizationWarmupService.cs", "ServerLocalizationWarmup"),
             ($"src/{serverProject}/appsettings.json",                     "ServerAppsettings"),
@@ -604,6 +630,11 @@ public static class AppCommand
         {
             Console.WriteLine($"  {step++}. asdamir db apply --create-database --migrations db/migrations   # creates the app's own (business) DB (reads ConnectionStrings:Default from the secret, or pass -S -d -U -P)");
         }
+        // The registration script ships with a placeholder client secret and REFUSES to run (THROW) until it
+        // is replaced — so the step that replaces it has to be here, before the step that runs the script.
+        Console.WriteLine($"  {step++}. Put the app's ENCRYPTED client secret into db/admin-onboarding/register_{model.AppNameLower}.sql");
+        Console.WriteLine($"     (replace the <REPLACE_ME …> value of @ClientSecretEnc — the script aborts while the placeholder is there):");
+        Console.WriteLine($"       asdamir secrets encrypt --value \"<a raw client secret, 20+ chars>\" --key \"<AppManagement's Security:EncryptionKey>\"");
         Console.WriteLine($"  {step++}. Register + seed in AppManagement: run db/admin-onboarding/register_{model.AppNameLower}.sql");
         Console.WriteLine($"     against AsdamirVault — registers the app + seeds its users/roles/permissions/menus/config/localization (AppId-scoped).");
         Console.WriteLine($"  {step++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {model.ServerUrl}/ (the UI)");
@@ -731,6 +762,60 @@ public static class AppCommand
         File.WriteAllText(target, TemplateRenderer.Render(templateName, model));
         Console.WriteLine($"  WROTE: {relPath}");
         return 1;
+    }
+
+    /// <summary>
+    /// Validates every name-like <c>new app</c> input; returns the message for the first one that is not
+    /// usable, or null when all are.
+    /// </summary>
+    /// <param name="serverProject">The Server project name (also its folder and namespace).</param>
+    /// <param name="gatewayProject">The Gateway project name (also its folder and namespace).</param>
+    /// <param name="database">The app database name.</param>
+    /// <param name="dbServer">The SQL Server host.</param>
+    /// <param name="ns">The root namespace.</param>
+    /// <param name="gatewayUrl">The Gateway base URL.</param>
+    /// <param name="explicitConnString">A full <c>--connection-string</c>, or empty when it is composed from the parts.</param>
+    /// <returns>An error message, or null.</returns>
+    internal static string? ValidateInputs(
+        string serverProject, string gatewayProject, string database, string dbServer, string ns, string gatewayUrl,
+        string explicitConnString)
+    {
+        if (!NameArgument.IsValidDotted(serverProject))
+            return $"--server-name '{serverProject}' is not a valid project name (dot-separated PascalCase identifiers, e.g. Orders.Server).";
+        if (!NameArgument.IsValidDotted(gatewayProject))
+            return $"--api-name '{gatewayProject}' is not a valid project name (dot-separated PascalCase identifiers, e.g. Orders.Gateway).";
+        if (string.Equals(serverProject, gatewayProject, StringComparison.OrdinalIgnoreCase))
+            return $"--server-name and --api-name are both '{serverProject}' — the two tiers need different project names.";
+        if (!NameArgument.IsValidDotted(ns))
+            return $"--namespace '{ns}' is not a valid namespace (dot-separated PascalCase identifiers, e.g. Acme.Orders).";
+
+        // The database name and host are only COMPOSED into a connection string when no full
+        // --connection-string was given; with one, the name is display-only but still printed into shell
+        // commands, so it is validated either way.
+        if (!NameArgument.IsValidDatabaseName(database))
+            return $"--database '{database}' is not a valid database name (letters, digits and underscores; a letter or underscore first).";
+        if (string.IsNullOrWhiteSpace(explicitConnString)
+            && !System.Text.RegularExpressions.Regex.IsMatch(dbServer, @"^[A-Za-z0-9_.\\,:-]+$"))
+            return $"--db-server '{dbServer}' is not a valid SQL Server host (host, host\\instance or host,port).";
+
+        if (!Uri.TryCreate(gatewayUrl, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            || gatewayUrl.IndexOfAny(['"', '\'', ' ', '\\', '`', '$', ';']) >= 0)
+            return $"--gateway-url '{gatewayUrl}' is not a valid absolute http(s) URL.";
+
+        return null;
+    }
+
+    /// <summary>A deliberately loose e-mail check: enough to keep the value inside a SQL literal and a console
+    /// box, not an RFC 5322 validator (the account's real validation is the sign-in itself).</summary>
+    /// <param name="email">The candidate address.</param>
+    /// <returns>True when the address has one <c>@</c> with text on both sides and no whitespace/control characters.</returns>
+    internal static bool IsPlausibleEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email) || email.Length > 256) return false;
+        if (email.Any(c => char.IsWhiteSpace(c) || char.IsControl(c))) return false;
+        var at = email.IndexOf('@');
+        return at > 0 && at == email.LastIndexOf('@') && at < email.Length - 1;
     }
 
     // SQL auth (portable to Linux/macOS/containers) — NOT Trusted_Connection, which is Windows-only and breaks

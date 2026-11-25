@@ -5,18 +5,23 @@
 @inject NavigationManager Nav
 @inject IHttpClientFactory Http
 @inject ILogger<SessionTimeout> Logger
+@inject Asdamir.Web.Localization.ApiStringLocalizer L
 
 @* Inactivity guard. After IdleSeconds with no activity it shows a countdown asking the user to stay;
-   "Stay" resets the clock, while the countdown hitting zero — or "Sign out" — redirects to /login.
+   "Stay" resets the clock, while the countdown hitting zero — or "Sign out" — goes to /logout, which ENDS
+   the session (server-side entry removed + cookie cleared) and then lands on /login. It used to navigate
+   straight to /login: the cookie and the server session both stayed valid, so "your session has ended" was
+   one Back-button press away from a live dashboard.
    Idle/countdown values come from the Gateway (gateway/client-settings → AppConfigurations); the UI
-   never reads the DB. See the "Client/runtime settings" rule in the framework documentation. *@
-<AsdamirModal Open="_show" OpenChanged="OnOpenChanged" Title="Session timeout">
+   never reads the DB. Every string is a DB-backed localization key (App.Session.*), seeded in tr/en/ru by
+   the app's onboarding seed. *@
+<AsdamirModal Open="_show" OpenChanged="OnOpenChanged" Title="@L["App.Session.Title"].Value">
     <ChildContent>
-        <p>You've been inactive for a while. Your session will end in @_remaining seconds. Would you like to stay signed in?</p>
+        <p>@string.Format(System.Globalization.CultureInfo.CurrentCulture, L["App.Session.Body"].Value, _remaining)</p>
     </ChildContent>
     <Footer>
-        <button type="button" class="asd-btn" @onclick="LogoutAsync">Sign out</button>
-        <button type="button" class="asd-btn asd-btn-primary" @onclick="StayAsync">Stay signed in</button>
+        <button type="button" class="asd-btn" @onclick="LogoutAsync">@L["App.Session.SignOut"]</button>
+        <button type="button" class="asd-btn asd-btn-primary" @onclick="StayAsync">@L["App.Session.Stay"]</button>
     </Footer>
 </AsdamirModal>
 
@@ -86,7 +91,8 @@
         StopCountdown();
         _show = false;
         try { await JS.InvokeVoidAsync("asdIdle.stop"); } catch { /* circuit tearing down */ }
-        Nav.NavigateTo("/login", forceLoad: true);
+        // /logout, not /login: the session must actually END (see the note at the top of this file).
+        Nav.NavigateTo("/logout", forceLoad: true);
     }
 
     private Task OnOpenChanged(bool open) => open ? Task.CompletedTask : StayAsync();

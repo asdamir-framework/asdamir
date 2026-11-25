@@ -12,7 +12,11 @@
 {{ else if f.InputKind == "number" ~}}
     <AsdamirNumberInput TValue="{{ f.CSharpType }}" @bind-Value="Model.{{ f.Name }}" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" Decimals="{{ f.NumberDecimals }}" autocomplete="off" Class="asd-form-w" />
 {{ else if f.InputKind == "bool" ~}}
+{{ if f.IsNullable ~}}
+    <AsdamirSwitch @bind-Value="{{ f.Name }}Switch" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" />
+{{ else ~}}
     <AsdamirSwitch @bind-Value="Model.{{ f.Name }}" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" />
+{{ end ~}}
 {{ else if f.InputKind == "date" ~}}
     <AsdamirDatePicker @bind-Value="{{ f.Name }}Picker" Label="@L["Field.{{ EntityName }}.{{ f.Name }}"].Value" />
 {{ else if f.InputKind == "guid" ~}}
@@ -33,6 +37,17 @@
         get => Model.{{ f.Name }};
         set => Model.{{ f.Name }} = value{{ if f.IsNullable }}{{ else }}.GetValueOrDefault(){{ end }};
     }
+{{ end ~}}
+{{ if f.InputKind == "bool" ~}}
+{{ if f.IsNullable ~}}
+
+    // AsdamirSwitch.Value is bool; bridge it to the DTO's bool? {{ f.Name }} (null reads as off).
+    private bool {{ f.Name }}Switch
+    {
+        get => Model.{{ f.Name }} ?? false;
+        set => Model.{{ f.Name }} = value;
+    }
+{{ end ~}}
 {{ end ~}}
 {{ end ~}}
 }

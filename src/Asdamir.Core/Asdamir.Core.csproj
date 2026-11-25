@@ -22,7 +22,10 @@
          AgentActionRecord + its three enums, AgentAuditOptions and AgentAuditServiceToken. Purely ADDITIVE —
          no existing public type is removed or renamed — and co-versioned with Asdamir.Data 1.5.0, which
          carries the client sink that consumes them. -->
-    <Version>1.9.0</Version>
+    <!-- MINOR bump 1.9.0 -> 1.10.0: fixes (cron day-of-week ranges, exception middleware on a started
+         response, correlation-id validation, masked phone/e-mail in WhiteListService logs) plus one additive
+         option, AgentAuditOptions.SpoolReplayInterval, consumed by Asdamir.Data 1.6.0. No type removed. -->
+    <Version>1.10.0</Version>
     <Description>Core foundation for Asdamir: shared models, abstractions, modules, error handling, and Serilog/Polly wiring.</Description>
     <PackageTags>blazor;fluentui;shared;models;dtos;constants;utilities;abstractions;error-handling;modules</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>

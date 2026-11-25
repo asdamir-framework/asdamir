@@ -46,23 +46,28 @@ public sealed class NightlyReconcileJob : IJob
 Use the scheduler abstraction to enqueue or schedule recurring jobs by type:
 
 ```csharp
-public sealed class Bootstrap(IHangfireJobService jobs)
+public sealed class Bootstrap(IJobScheduler jobs)
 {
-    public void Configure() => jobs.AddOrUpdateRecurring<NightlyReconcileJob>("0 2 * * *"); // 02:00 daily
+    public Task ConfigureAsync() => jobs.RecurringAsync<NightlyReconcileJob>("0 2 * * *"); // 02:00 daily
 }
 ```
 
-(Exact scheduling helpers live on the framework's job scheduler / `IHangfireJobService`.)
+`IJobScheduler` (`Asdamir.Data.HangfireJobs`) schedules by job **type** — `RecurringAsync<T>`, `ScheduleAsync`,
+`RemoveRecurringAsync`. The lower-level `IHangfireJobService` (`Asdamir.Core.Contracts`) takes a method-call
+expression instead: `Enqueue<T>(x => x.Run())`, `Schedule<T>(…, delay)`, `Recurring<T>(jobId, x => x.Run(), cron)`.
 
 ## Per-app isolation (multi-company)
 
 When several apps share one company's Hangfire schema, configure `HangfireJobsOptions` so each app
 stays isolated (per the AppManagement multi-company design):
 
-- **`AppQueue`** (e.g. the app's `Code`) — enqueued and recurring jobs route to this queue and the
-  app's worker listens only on it, so one app's job surge can't starve another.
+- **`AppQueue`** (e.g. the app's `Code`) — enqueued, **delayed (scheduled)** and recurring jobs all route
+  to this queue and the app's worker listens only on it, so one app's job surge can't starve another and
+  another app's worker never picks up this app's delayed job.
 - **`RecurringJobIdPrefix`** — recurring ids become `{prefix}:{jobId}`, so two apps can both define
-  e.g. `daily-cleanup` without colliding.
+  e.g. `daily-cleanup` without colliding. `RemoveRecurringAsync` applies the same prefix: pass either the
+  id you gave `RecurringAsync` or the effective (already prefixed) id it returned — the prefix is never
+  applied twice.
 
 Both default to empty → Hangfire's `default` queue (unchanged single-app behaviour). Each generated
 app runs its own Hangfire server; cross-company isolation is automatic (separate company DB =

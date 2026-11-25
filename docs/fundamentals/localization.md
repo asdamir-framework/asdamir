@@ -11,6 +11,7 @@ Asdamir localizes UI strings through an **API-backed** store rather than static 
 - An `IStringLocalizer`-compatible localizer (`ApiStringLocalizer`) resolves keys against a central localization API.
 - Results are cached (`LocalizationCacheRefresher`) and refreshed when the source version changes.
 - Authority lives in the AdminConsole's database; managed apps read from it and cache locally.
+- The localization API client validates the server's TLS certificate. Validation is skipped **only in Development** — when `ASPNETCORE_ENVIRONMENT` is exactly `Development` *and* the host's `IHostEnvironment` (when one is registered) also reports Development — so a developer's self-signed certificate works, and a **warning is logged** whenever it is skipped. That warning must never appear outside a developer machine.
 
 ## Usage in components
 

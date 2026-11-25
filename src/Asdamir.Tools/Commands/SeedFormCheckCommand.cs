@@ -330,7 +330,7 @@ public static class SeedFormCheckCommand
 /// comment, and every entry is expected to carry a comment saying WHY it is exempt and WHEN it goes.
 ///
 /// <para>Entry format: <c>&lt;RULE&gt;&#160;&lt;repo-relative path&gt;</c>, e.g.
-/// <c>AUD017  AppManagement/db/migrations/AsdamirVault_003__admin_pool_extras.sql</c>. An entry exempts that
+/// <c>AUD017  AppManagement/db/migrations/MSSQL/AsdamirVault_003__admin_pool_extras.sql</c>. An entry exempts that
 /// ONE file from that ONE rule.</para>
 ///
 /// <para><b>Why a file-level exemption is safe here.</b> Nearly every entry is an APPLIED migration, and an

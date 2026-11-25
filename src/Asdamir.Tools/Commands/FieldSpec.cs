@@ -36,6 +36,16 @@ public sealed record FieldSpec(
 /// </summary>
 public static class FieldSpecParser
 {
+    private static readonly HashSet<string> ReservedFieldNames =
+        new(StringComparer.OrdinalIgnoreCase) { "Id", "TenantId", "CreatedAtUtc", "UpdatedAtUtc" };
+
+    /// <summary>
+    /// Parses a <c>--fields</c> / <c>--field</c> spec. Throws <see cref="ArgumentException"/> — with a message
+    /// naming the offending token — for a malformed pair, a name that is not an identifier, a reserved or
+    /// duplicated name, or an unsupported type.
+    /// </summary>
+    /// <param name="input">The comma-separated <c>Name:type</c> list.</param>
+    /// <returns>The parsed fields, names PascalCased.</returns>
     public static IReadOnlyList<FieldSpec> Parse(string input)
     {
         if (string.IsNullOrWhiteSpace(input))
@@ -50,8 +60,24 @@ public static class FieldSpecParser
 
             var name = parts[0].Trim();
             var rawType = parts[1].Trim();
-            if (name.Length == 0 || !char.IsLetter(name[0]))
-                throw new ArgumentException($"Field name '{name}' must start with a letter.");
+
+            // The field name becomes a C# property, a SQL column, a stored-procedure parameter (@Name) and a
+            // localization key segment. "Starts with a letter" (the previous rule) let `Na me`, `Total]; DROP
+            // TABLE x--` and `A.B` through to all four. PascalCase is applied first, then the same identifier
+            // rule the entity/app name uses.
+            var pascal = PascalCase(name);
+            if (!NameArgument.IsValid(pascal))
+                throw new ArgumentException(
+                    $"Field name '{name}' is not a valid identifier — a letter first, then letters, digits or underscores only (no spaces, dots, brackets or quotes).");
+
+            // Columns every generated entity already has. A field with one of these names produces a duplicate
+            // property (CS0102) and a duplicate column — refuse it here rather than at compile/apply time.
+            if (ReservedFieldNames.Contains(pascal))
+                throw new ArgumentException(
+                    $"Field name '{pascal}' is reserved — every generated entity already has Id, TenantId, CreatedAtUtc and UpdatedAtUtc.");
+
+            if (result.Any(f => string.Equals(f.Name, pascal, StringComparison.OrdinalIgnoreCase)))
+                throw new ArgumentException($"Field name '{pascal}' is listed more than once.");
 
             var (csharpType, sqlType, isNullable) = MapType(rawType);
             // "Required" defaults to "not nullable AND not Id-like". The template uses this
@@ -59,7 +85,7 @@ public static class FieldSpecParser
             var isRequired = !isNullable;
 
             result.Add(new FieldSpec(
-                Name: PascalCase(name),
+                Name: pascal,
                 CSharpType: csharpType,
                 SqlType: sqlType,
                 IsNullable: isNullable,
@@ -80,11 +106,15 @@ public static class FieldSpecParser
             "long" => ("long", "BIGINT"),
             "bool" => ("bool", "BIT"),
             "decimal" => ("decimal", "DECIMAL(18, 4)"),
-            "double" => ("double", "FLOAT"),
+            // `double` was accepted here and then failed later: the generated edit dialog binds numeric fields
+            // to AsdamirNumberInput, which rejects double/float at RUNTIME (binary floating point cannot hold
+            // exact decimals), so the page threw the first time it was opened. Rejected up front, with the fix.
+            "double" or "float" => throw new ArgumentException(
+                $"Field type '{bare}' is not supported — use 'decimal' (the generated UI's number input rejects binary floating point, and a money/quantity column should not be FLOAT)."),
             "datetime" => ("DateTime", "DATETIME2"),
             "guid" => ("Guid", "UNIQUEIDENTIFIER"),
             _ => throw new ArgumentException(
-                $"Unsupported field type '{bare}'. Supported: string, int, long, bool, decimal, double, DateTime, Guid (add ? for nullable, e.g. 'Note:string?').")
+                $"Unsupported field type '{bare}'. Supported: string, int, long, bool, decimal, DateTime, Guid (add ? for nullable, e.g. 'Note:string?').")
         };
 
         // string is reference-type so the "?" is purely a hint; non-nullable string is "string" with NOT NULL.

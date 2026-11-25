@@ -103,7 +103,7 @@ public sealed class LocalDbBillingStore : IBillingStore
         using var conn = await _factory.CreateAsync(ct);
         var recorded = await conn.ExecuteScalarAsync<int>("dbo.BillingWebhookEvent_TryRecord",
             new { provider, providerEventId, type, payload }, commandType: CommandType.StoredProcedure);
-        return recorded == 1;   // 1 = newly recorded, 0 = duplicate
+        return recorded == 1;   // 1 = process it (new, or a stale unprocessed claim re-taken), 0 = processed / in progress
     }
 
     /// <inheritdoc/>
@@ -111,6 +111,14 @@ public sealed class LocalDbBillingStore : IBillingStore
     {
         using var conn = await _factory.CreateAsync(ct);
         await conn.ExecuteScalarAsync<int>("dbo.BillingWebhookEvent_MarkProcessed",
+            new { provider, providerEventId }, commandType: CommandType.StoredProcedure);
+    }
+
+    /// <inheritdoc/>
+    public async Task ReleaseWebhookAsync(string provider, string providerEventId, CancellationToken ct = default)
+    {
+        using var conn = await _factory.CreateAsync(ct);
+        await conn.ExecuteScalarAsync<int>("dbo.BillingWebhookEvent_Release",
             new { provider, providerEventId }, commandType: CommandType.StoredProcedure);
     }
 

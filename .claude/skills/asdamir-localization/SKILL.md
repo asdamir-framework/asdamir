@@ -19,7 +19,7 @@ for `Persistence:UseInMemory=true` (dev/test). Deep reference: `docs/fundamental
 1. **Pick a dot-namespaced key** — e.g. `Apps.Subtitle`, `App.Dash.Welcome`. Reuse an existing namespace.
 
 2. **Seed it in a migration** (AsdamirVault). Add a new file
-   `AppManagement/db/migrations/AsdamirVault_0XX__<slug>_localization.sql` (next number — see the
+   `AppManagement/db/migrations/MSSQL/AsdamirVault_0XX__<slug>_localization.sql` (next number — see the
    `asdamir-migration` skill) inserting the key for **all three cultures**, idempotently. Scope by
    `AppId`: `NULL` for global / admin-pool strings; the app's `AppId` for an app-specific string.
    ```sql
@@ -32,7 +32,7 @@ for `Persistence:UseInMemory=true` (dev/test). Deep reference: `docs/fundamental
      ON t.[Key]=s.[Key] AND t.[Culture]=s.[Culture] AND t.[AppId] IS NULL
    WHEN NOT MATCHED THEN INSERT([Key],[Culture],[Value],[AppId]) VALUES(s.[Key],s.[Culture],s.[Value],NULL);
    ```
-   (Match the exact column/proc shapes already in `AppManagement/db/migrations/AsdamirVault_001…` and the
+   (Match the exact column/proc shapes already in `AppManagement/db/migrations/MSSQL/AsdamirVault_001…` and the
    most recent `*_localization.sql`.)
 
 3. **Add the same key to the in-memory seed mirror** so `UseInMemory` (dev/test, and the AdminConsole's

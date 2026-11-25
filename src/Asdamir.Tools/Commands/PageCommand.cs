@@ -80,6 +80,12 @@ public static class PageCommand
         return pageCmd;
     }
 
+    /// <summary>Generates the CRUD page + its menu/localization seeds and, in free mode, applies the seeds.</summary>
+    /// <remarks>
+    /// Returns <see cref="ExitCodes.Findings"/> when the free-mode seed apply was attempted and FAILED (the
+    /// files are written; the result is negative). No connection resolving is the soft path and stays
+    /// <see cref="ExitCodes.Success"/>, with the manual command printed.
+    /// </remarks>
     internal static async Task<int> Run(string name, string fieldsRaw, string route, DirectoryInfo output, string nsOverride, string policy, string icon, bool noDb = false, bool restartHint = true)
     {
         if (!NameArgument.IsValid(name))
@@ -112,6 +118,30 @@ public static class PageCommand
         if (fields.Count == 0)
         {
             Console.Error.WriteLine("At least one field is required via --fields.");
+            return ExitCodes.Usage;
+        }
+
+        if (!string.IsNullOrWhiteSpace(nsOverride) && !NameArgument.IsValidDotted(nsOverride))
+        {
+            Console.Error.WriteLine($"--namespace '{nsOverride}' is not a valid namespace (dot-separated PascalCase identifiers, e.g. Acme.Orders).");
+            return ExitCodes.Usage;
+        }
+
+        // The route, the icon and the policy are written into a .razor file AND into SQL string literals (the
+        // menu seed). Each is restricted to the characters its own grammar needs, so none can close a literal.
+        if (!string.IsNullOrWhiteSpace(route) && !System.Text.RegularExpressions.Regex.IsMatch(route, @"^/?[A-Za-z0-9][A-Za-z0-9/_-]*$"))
+        {
+            Console.Error.WriteLine($"--route '{route}' is not a valid page route — letters, digits, '-', '_' and '/' only (e.g. /order-items).");
+            return ExitCodes.Usage;
+        }
+        if (!string.IsNullOrWhiteSpace(icon) && !System.Text.RegularExpressions.Regex.IsMatch(icon, @"^[A-Za-z0-9_-]+$"))
+        {
+            Console.Error.WriteLine($"--icon '{icon}' is not a valid icon name — letters, digits, '-' and '_' only (e.g. list).");
+            return ExitCodes.Usage;
+        }
+        if (!string.IsNullOrWhiteSpace(policy) && !System.Text.RegularExpressions.Regex.IsMatch(policy, @"^[A-Za-z0-9_.-]+$"))
+        {
+            Console.Error.WriteLine($"--policy '{policy}' is not a valid policy name — letters, digits, '.', '-' and '_' only (e.g. AdminAccess).");
             return ExitCodes.Usage;
         }
 
@@ -212,8 +242,15 @@ public static class PageCommand
                 Console.WriteLine("  applying the menu/localization seeds via db apply…");
                 Console.WriteLine();
                 var exit = await DbApplyCommand.RunAsync("", "localhost", "", "", "", rootMigDir, createDatabase: false);
-                if (exit != 0) Console.Error.WriteLine("  ⚠️  Seeds not applied — apply with: asdamir db apply --migrations db/migrations");
-                else if (restartHint) FeatureCommand.PrintRestartHint(appRoot);   // menu/localization applied → cached at startup
+                if (exit != 0)
+                {
+                    // Attempted and failed → a negative result. Returning 0 here made `new feature` print
+                    // "ready" for a page whose menu row + localization keys were never written.
+                    Console.Error.WriteLine($"  ✗ Menu/localization seeds NOT applied (db apply exit {exit}). The files ARE generated — fix the cause, then: asdamir db apply --migrations db/migrations");
+                    return ExitCodes.Findings;
+                }
+
+                if (restartHint) FeatureCommand.PrintRestartHint(appRoot);   // menu/localization applied → cached at startup
             }
             else
                 Console.WriteLine("  no connection resolved — apply with `asdamir db apply --migrations db/migrations` (or set the Gateway ConnectionStrings:Default secret)");
@@ -226,7 +263,7 @@ public static class PageCommand
                 Console.WriteLine("        NOTE: app Code unresolved (no .sln) — set @AppCode at the top of those SQL files before running them");
             Console.WriteLine("        then restart the app — its menu/localization is cached at startup, so the new page won't appear until you do");
         }
-        return 0;
+        return ExitCodes.Success;
     }
 
     // Maps a template name to the human-readable layer label shown in the grouped output table.

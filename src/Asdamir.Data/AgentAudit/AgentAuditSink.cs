@@ -33,6 +33,14 @@ namespace Asdamir.Data.AgentAudit;
 /// a newer server returns a status this client does not recognise, it retries it to the configured cap and only
 /// then dead-letters it. Guessing "permanent" would silently discard a record the server considered
 /// retryable — a silent audit gap, which is the one outcome this design refuses.</para>
+///
+/// <para><b>An outage is not a poison message.</b> The retry cap exists to stop ONE record circulating for
+/// ever. A connection failure, a timeout or a 5xx says nothing about any record, so it does not spend that
+/// budget: the batch is retried with exponential backoff for as long as the control plane is away. Counting
+/// outages against the cap used to turn a one-minute outage into a permanent "AUDIT GAP" dead letter.</para>
+///
+/// <para><b>Shutdown keeps the batch in flight.</b> A batch the pump has taken off the queue is in neither the
+/// queue nor the spool, so it is tracked separately and spooled when the pump stops mid-delivery.</para>
 /// </summary>
 internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDisposable
 {
@@ -49,6 +57,11 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
     private Task? _pump;
     private Task? _alarm;
     private volatile string? _lastFailure;   // only consulted in Throw mode
+
+    // The batch the pump has taken OFF the queue and not yet routed. It is in neither the queue nor the spool,
+    // so shutdown has to account for it explicitly; Interlocked.Exchange makes that happen exactly once.
+    private PendingRecord[]? _inFlight;
+    private bool _outageLogged;              // pump-thread only: one warning per outage, not one per retry
 
     /// <summary>Creates the sink.</summary>
     /// <param name="options">Client options.</param>
@@ -166,40 +179,115 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         _queue.Writer.TryComplete();
         await _cts.CancelAsync();
 
-        // Whatever is still queued at shutdown goes to the spool rather than evaporating.
-        var leftovers = new List<SpooledRecord>();
-        while (_queue.Reader.TryRead(out var pending)) leftovers.Add(new SpooledRecord(pending.Record, pending.Attempts));
-        if (leftovers.Count > 0) _spool.Write(leftovers);
-
+        // The pump goes FIRST: it owns the batch in flight, and it hands that batch to the spool as it
+        // unwinds. Draining the queue before it has stopped would race it for records it is about to re-queue.
         foreach (var task in new[] { _pump, _alarm })
         {
             if (task is null) continue;
             try { await task.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken); }
             catch (Exception ex) when (ex is OperationCanceledException or TimeoutException) { /* best effort */ }
         }
+
+        // If the pump did not stop in time it still holds its batch; take it rather than lose it. Should the
+        // pump finish its delivery afterwards, the record is merely sent twice — ingest is idempotent.
+        PersistInFlight();
+
+        // Whatever is still queued at shutdown goes to the spool rather than evaporating.
+        var leftovers = new List<PendingRecord>();
+        while (_queue.Reader.TryRead(out var pending)) leftovers.Add(pending);
+        PersistAtShutdown(leftovers);
+    }
+
+    /// <summary>Spools the batch the pump was holding, if it has not been routed. Safe to call from both sides.</summary>
+    private void PersistInFlight()
+    {
+        var inFlight = Interlocked.Exchange(ref _inFlight, null);
+        if (inFlight is { Length: > 0 }) PersistAtShutdown(inFlight);
+    }
+
+    /// <summary>
+    /// Applies the configured failure policy to records the process is still holding as it stops, and — once
+    /// they are safely in a NEW spool file — retires the older spool file they were replayed from, so a restart
+    /// during an outage does not replay both copies and double the spool each time.
+    /// </summary>
+    private void PersistAtShutdown(IReadOnlyList<PendingRecord> records)
+    {
+        if (records.Count == 0) return;
+
+        var spooled = records.Select(r => new SpooledRecord(r.Record, r.Attempts)).ToList();
+
+        if (_options.OnSinkFailure == AgentAuditOptions.SinkFailureMode.DropAndWarn)
+        {
+            HandleUndeliverable(spooled, "shutdown", "the process stopped before delivery");
+            return;   // a replayed record's original spool file is left alone: dropping is not deleting evidence
+        }
+
+        if (!_spool.Write(spooled)) return;   // the write failed: keep the original file as the only copy
+
+        foreach (var record in records) record.Claim?.Complete();
     }
 
     /// <summary>Replays the spool, then batches and posts for the process's lifetime.</summary>
     private async Task PumpAsync()
     {
-        ReplaySpool();
-
-        var batch = new List<PendingRecord>(_options.BatchSize);
         var backoff = TimeSpan.Zero;
+        var replayInterval = _options.SpoolReplayInterval < MinSpoolReplayInterval
+            ? MinSpoolReplayInterval
+            : _options.SpoolReplayInterval;
+
+        ReplaySpool();
+        var nextReplay = DateTime.UtcNow + replayInterval;
 
         try
         {
-            while (await _queue.Reader.WaitToReadAsync(_cts.Token).ConfigureAwait(false))
+            while (!_cts.IsCancellationRequested)
             {
-                batch.Clear();
+                // The spool is not only a startup concern: records spooled during an outage (queue overflow)
+                // would otherwise wait for the next restart. Replay only while delivery is healthy, so an
+                // outage does not shuffle the same files in and out of the queue.
+                if (backoff == TimeSpan.Zero && DateTime.UtcNow >= nextReplay)
+                {
+                    ReplaySpool();
+                    nextReplay = DateTime.UtcNow + replayInterval;
+                }
+
+                if (!await WaitForRecordsAsync(nextReplay).ConfigureAwait(false))
+                {
+                    if (_queue.Reader.Completion.IsCompleted) break;
+                    continue;   // the replay timer fired with nothing queued
+                }
+
                 var cap = Math.Clamp(_options.BatchSize, 1, ServerBatchCap);
+                var batch = new List<PendingRecord>(cap);
                 while (batch.Count < cap && _queue.Reader.TryRead(out var item)) batch.Add(item);
                 if (batch.Count == 0) continue;
+
+                // From here until the batch is routed it exists nowhere else.
+                Volatile.Write(ref _inFlight, batch.ToArray());
 
                 if (backoff > TimeSpan.Zero)
                     await Task.Delay(backoff, _cts.Token).ConfigureAwait(false);
 
-                var delivered = await SendAsync(batch).ConfigureAwait(false);
+                bool delivered;
+                try
+                {
+                    delivered = await SendAsync(batch).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    // An unexpected fault while routing ONE batch must not end delivery for the life of the
+                    // process. Give the batch back through the budgeted path (so a batch that faults every time
+                    // still terminates in the dead letter) and carry on.
+                    _logger.LogError(ex, "Agent-audit: a batch of {Count} record(s) could not be processed; retrying it.",
+                        batch.Count);
+                    if (Interlocked.Exchange(ref _inFlight, null) is not null)
+                        Retry(batch, "client-side processing failure", ex.Message, consumesBudget: true);
+                    delivered = false;
+                }
 
                 // Exponential backoff on the transport, reset the moment a batch gets through. It starts at the
                 // flush interval rather than a hard-coded second, so the sink's pacing is governed by ONE
@@ -218,6 +306,32 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         {
             _logger.LogError(ex, "Agent-audit: the delivery pump stopped; records will be spooled on shutdown.");
         }
+        finally
+        {
+            // Cancelled between taking the batch and routing it: it is this method's to save.
+            PersistInFlight();
+        }
+    }
+
+    /// <summary>
+    /// Waits until a record is queued or the next spool replay is due. Returns false on the timer (or when the
+    /// queue has been completed); shutdown surfaces as <see cref="OperationCanceledException"/>.
+    /// </summary>
+    private async Task<bool> WaitForRecordsAsync(DateTime nextReplayUtc)
+    {
+        var wait = nextReplayUtc - DateTime.UtcNow;
+        if (wait < TimeSpan.FromMilliseconds(1)) wait = TimeSpan.FromMilliseconds(1);
+
+        using var timer = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+        timer.CancelAfter(wait);
+        try
+        {
+            return await _queue.Reader.WaitToReadAsync(timer.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!_cts.IsCancellationRequested)
+        {
+            return false;
+        }
     }
 
     /// <summary>Re-raises the dead-letter alarm on a timer, for as long as anything is dead-lettered.</summary>
@@ -232,16 +346,23 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         catch (OperationCanceledException) { /* shutting down */ }
     }
 
+    /// <summary>
+    /// Moves spooled records back into the queue — as many whole files as fit in the room the queue has now.
+    /// Runs at startup and then periodically; the spool remembers which files are still in flight.
+    /// </summary>
     private void ReplaySpool()
     {
-        foreach (var (path, records) in _spool.Claim())
+        var room = Math.Max(16, _options.QueueCapacity) - _queue.Reader.Count;
+        if (room <= 0) return;
+
+        foreach (var (path, records) in _spool.Claim(room))
         {
             var claim = new SpoolClaim(path, records.Count, _spool);
             foreach (var record in records)
             {
                 if (!_queue.Writer.TryWrite(new PendingRecord(record.Record, record.Attempts, claim)))
                 {
-                    // The queue is already full: leave the file for the next startup rather than lose it.
+                    // The queue filled underneath us: leave the file for a later pass rather than lose it.
                     claim.Abandon();
                     break;
                 }
@@ -249,11 +370,14 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         }
     }
 
-    /// <summary>Posts one batch and routes each item by its status. Returns false when the transport failed.</summary>
+    /// <summary>
+    /// Posts one batch and routes each item. Returns false when the batch did not get through.
+    /// </summary>
     private async Task<bool> SendAsync(List<PendingRecord> batch)
     {
         AgentAuditIngestWire.Response? response = null;
         string? transportError = null;
+        var outage = false;   // true = the failure says nothing about these records
 
         try
         {
@@ -280,6 +404,7 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
             else
             {
                 transportError = $"ingest returned {(int)http.StatusCode}";
+                outage = IsOutageStatus(http.StatusCode);
             }
         }
         catch (OperationCanceledException) when (_cts.IsCancellationRequested)
@@ -289,24 +414,59 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         catch (Exception ex)
         {
             transportError = ex.Message;
+
+            // A connection failure or a timeout (HttpClient reports its own timeout as a cancellation that is
+            // NOT ours). Anything else — an unreadable body, a token that could not be minted — is not known to
+            // be an outage, so it keeps spending the budget and cannot loop for ever.
+            outage = ex is HttpRequestException or OperationCanceledException or IOException
+                or System.Net.Sockets.SocketException;
         }
 
         if (response is null)
         {
             _lastFailure = transportError ?? "the ingest response could not be read";
-            Retry(batch, "transport", _lastFailure);
+
+            if (outage && !_outageLogged)
+            {
+                _outageLogged = true;
+                _logger.LogWarning(
+                    "Agent-audit: the ledger ingest is unreachable ({Reason}). Records are being held and "
+                    + "retried with backoff; they are NOT dead-lettered for an outage.", _lastFailure);
+            }
+
+            Retry(batch, "transport", _lastFailure, consumesBudget: !outage);
+            Interlocked.Exchange(ref _inFlight, null);   // routed: it is the queue's or the spool's again
             return false;
+        }
+
+        if (_outageLogged)
+        {
+            _outageLogged = false;
+            _logger.LogInformation("Agent-audit: the ledger ingest is reachable again; delivery has resumed.");
         }
 
         _lastFailure = null;
         Classify(batch, response);
+        Interlocked.Exchange(ref _inFlight, null);   // routed: every item is delivered, re-queued or on disk
         return true;
     }
+
+    /// <summary>
+    /// Whether a non-success status describes the SERVICE rather than the request: any 5xx, a timeout or
+    /// throttle (408/429), and 401/403 — a wrong or expired key that an operator fixes. A 400/404/413 may be
+    /// caused by the batch itself, so those keep spending the retry budget.
+    /// </summary>
+    private static bool IsOutageStatus(System.Net.HttpStatusCode status) =>
+        (int)status >= 500
+        || status is System.Net.HttpStatusCode.RequestTimeout
+            or System.Net.HttpStatusCode.TooManyRequests
+            or System.Net.HttpStatusCode.Unauthorized
+            or System.Net.HttpStatusCode.Forbidden;
 
     /// <summary>Routes each item by the server's per-item status.</summary>
     private void Classify(List<PendingRecord> batch, AgentAuditIngestWire.Response response)
     {
-        var byEvent = response.Results?.ToDictionary(r => r.EventId) ?? [];
+        var byEvent = IndexResults(response.Results);
         var permanent = new List<(SpooledRecord, string, string?)>();
         var retry = new List<PendingRecord>();
 
@@ -348,20 +508,52 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
             _spool.DeadLetter(permanent, "the ledger permanently refused the record");
 
         if (retry.Count > 0)
-            Retry(retry, "server-side transient failure", null);
+            Retry(retry, "server-side transient failure", null, consumesBudget: true);
     }
 
-    /// <summary>Re-queues items that may still succeed, dead-lettering those that have exhausted their budget.</summary>
-    private void Retry(List<PendingRecord> items, string reason, string? detail)
+    /// <summary>
+    /// Indexes the per-item results by EventId, tolerating a repeated id.
+    /// </summary>
+    /// <remarks>
+    /// The same EventId can legitimately come back twice: the same record recorded twice lands in one batch and
+    /// the server answers <c>appended</c> for one copy and <c>duplicate</c> for the other. A plain
+    /// <c>ToDictionary</c> threw on that and ended the pump for the life of the process. When the answers for
+    /// one id differ, the one that says the record IS in the ledger wins — that is a fact about the id, and it
+    /// holds for every copy of it.
+    /// </remarks>
+    internal static Dictionary<Guid, AgentAuditIngestWire.ItemResult> IndexResults(
+        IReadOnlyList<AgentAuditIngestWire.ItemResult>? results)
+    {
+        var byEvent = new Dictionary<Guid, AgentAuditIngestWire.ItemResult>();
+        if (results is null) return byEvent;
+
+        foreach (var result in results)
+        {
+            if (result is null) continue;
+            if (!byEvent.TryGetValue(result.EventId, out var existing) || (!IsInLedger(existing) && IsInLedger(result)))
+                byEvent[result.EventId] = result;
+        }
+        return byEvent;
+
+        static bool IsInLedger(AgentAuditIngestWire.ItemResult r) =>
+            r.Status is AgentAuditIngestWire.Appended or AgentAuditIngestWire.Duplicate;
+    }
+
+    /// <summary>
+    /// Re-queues items that may still succeed. When <paramref name="consumesBudget"/> is set, each pass spends
+    /// one delivery attempt and an item that has exhausted its budget is dead-lettered; an outage passes
+    /// <see langword="false"/>, so it can last as long as it lasts without dead-lettering anything.
+    /// </summary>
+    private void Retry(List<PendingRecord> items, string reason, string? detail, bool consumesBudget)
     {
         var exhausted = new List<(SpooledRecord, string, string?)>();
         var undeliverable = new List<SpooledRecord>();
 
         foreach (var item in items)
         {
-            var attempts = item.Attempts + 1;
+            var attempts = consumesBudget ? item.Attempts + 1 : item.Attempts;
 
-            if (attempts >= _options.MaxDeliveryAttempts)
+            if (consumesBudget && attempts >= _options.MaxDeliveryAttempts)
             {
                 // The second, and only other, route into the dead letter: not permanent by declaration, but
                 // undeliverable in practice. Either way an operator has to know.
@@ -424,6 +616,9 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
     /// <summary>Ceiling for the transport backoff, so a long outage settles at a steady retry rate.</summary>
     private const double MaxBackoffMs = 60_000;
 
+    /// <summary>Floor for the periodic spool replay, so a zero or negative setting cannot spin the pump.</summary>
+    private static readonly TimeSpan MinSpoolReplayInterval = TimeSpan.FromSeconds(1);
+
     /// <summary>A queued record, its attempt count, and the spool file it came from (if any).</summary>
     private sealed record PendingRecord(AgentActionRecord Record, int Attempts, SpoolClaim? Claim);
 
@@ -441,8 +636,12 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
             if (Interlocked.Decrement(ref _outstanding) <= 0) spool.ReleaseClaim(path);
         }
 
-        /// <summary>Leaves the file in place for a later replay.</summary>
-        internal void Abandon() => Interlocked.Exchange(ref _outstanding, int.MaxValue);
+        /// <summary>Leaves the file in place for a later replay, and lets a later pass claim it again.</summary>
+        internal void Abandon()
+        {
+            Interlocked.Exchange(ref _outstanding, int.MaxValue);
+            spool.AbandonClaim(path);
+        }
     }
 }
 

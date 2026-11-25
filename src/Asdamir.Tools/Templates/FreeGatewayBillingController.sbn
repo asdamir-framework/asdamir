@@ -61,9 +61,10 @@ public sealed class BillingController : ControllerBase
     }
 
     /// <summary>
-    /// Subscribe the caller to a plan. Creates the billing account on first use and starts a
-    /// <c>trialing</c> subscription (trial length from the plan). Used for free/zero-price plans; a paid
-    /// plan goes through <see cref="Checkout"/>.
+    /// Subscribe the caller to a <b>free</b> plan (price 0); creates the billing account on first use.
+    /// A priced plan is refused with <c>billing.checkout_required</c> — it can only be started through
+    /// <see cref="Checkout"/>, because this endpoint takes no payment and would otherwise hand out a paid
+    /// plan's entitlements to anyone who asks.
     /// </summary>
     [HttpPost("subscribe")]
     public async Task<ActionResult<SubscriptionDto>> Subscribe([FromBody] SubscribeRequest request, CancellationToken ct)
@@ -74,6 +75,9 @@ public sealed class BillingController : ControllerBase
         var plan = await _store.GetPlanByCodeAsync(request.PlanCode, ct);
         if (plan is null)
             throw new DomainException("billing.plan_not_found", $"Plan '{request.PlanCode}' not found.");
+
+        if (plan.Price > 0m)
+            throw new DomainException("billing.checkout_required", $"Plan '{plan.Code}' is a paid plan and must be started through checkout.");
 
         var account = await _store.GetAccountByOwnerAsync(userId, ct);
         Guid accountId;
@@ -89,8 +93,8 @@ public sealed class BillingController : ControllerBase
                 throw new DomainException("billing.already_subscribed", "The account already has an active subscription.");
         }
 
-        var trialEndsAtUtc = plan.TrialDays > 0 ? DateTime.UtcNow.AddDays(plan.TrialDays) : (DateTime?)null;
-        await _store.CreateSubscriptionAsync(accountId, plan.Id, "trialing", trialEndsAtUtc, ct);
+        var (status, trialEndsAtUtc) = InitialState(plan);
+        await _store.CreateSubscriptionAsync(accountId, plan.Id, status, trialEndsAtUtc, ct);
 
         var created = await _store.GetActiveSubscriptionAsync(accountId, ct);
         return Ok(created);
@@ -136,6 +140,10 @@ public sealed class BillingController : ControllerBase
             account = await _store.GetAccountByOwnerAsync(userId, ct);
         }
 
+        // Refuse BEFORE a provider session is created: paying for a plan the account cannot move to would
+        // charge the customer for nothing.
+        await EnsureCheckoutAllowedAsync(account!.Id, plan, ct);
+
         var checkoutReq = new CreateCheckoutRequest(
             PlanPriceRef: plan.PaddlePriceId ?? "",
             ProviderCustomerId: account?.PaddleCustomerRef ?? "",
@@ -149,15 +157,76 @@ public sealed class BillingController : ControllerBase
         if (!result.IsSuccess || result.Value is null)
             throw new DomainException(result.Error?.Code ?? "billing.checkout_failed", "Checkout could not be started.");
 
-        // Ensure a subscription for the plan and link it to this checkout's provider reference, so the
+        // Ensure a subscription for THIS plan and link it to this checkout's provider reference, so the
         // payment-confirmed webhook (BillingWebhookProcessor) can find and activate it.
-        var existing = await _store.GetActiveSubscriptionAsync(account!.Id, ct);
-        var subscriptionId = existing?.Id
-            ?? await _store.CreateSubscriptionAsync(account.Id, plan.Id, "trialing",
-                   plan.TrialDays > 0 ? DateTime.UtcNow.AddDays(plan.TrialDays) : (DateTime?)null, ct);
+        var subscriptionId = await EnsureSubscriptionForCheckoutAsync(account!.Id, plan, ct);
         await _store.LinkSubscriptionToProviderAsync(subscriptionId, provider.Name, result.Value.SessionId, ct);
 
         return Ok(new CheckoutResult(result.Value.SessionId, result.Value.CheckoutUrl, result.Value.ClientToken, provider.Name));
+    }
+
+    /// <summary>
+    /// The status + trial end REQUESTED for a new subscription. A free plan keeps its long-standing shape
+    /// (<c>trialing</c> with no trial end — nothing expires it and it consumes no trial). A paid plan (only
+    /// ever reached from <see cref="Checkout"/>) asks for <c>trialing</c> for the plan's trial length, or
+    /// <c>incomplete</c> when the plan has no trial; <c>incomplete</c> grants nothing until the payment
+    /// webhook activates it. The <c>Subscription_Create</c> proc then enforces ONE TRIAL PER ACCOUNT: a
+    /// repeat trial is stored as <c>incomplete</c>, so cancel + resubscribe cannot repeat it.
+    /// </summary>
+    private static (string Status, DateTime? TrialEndsAtUtc) InitialState(PlanDto plan)
+    {
+        if (plan.Price <= 0m)
+            return ("trialing", null);
+
+        return plan.TrialDays > 0
+            ? ("trialing", DateTime.UtcNow.AddDays(plan.TrialDays))
+            : ("incomplete", null);
+    }
+
+    /// <summary>
+    /// A checkout may proceed when the account has no current subscription, when it is finishing payment
+    /// for the plan it is already trialing / past-due on, or when it is moving up from a free plan.
+    /// Anything else (already <c>active</c> on this plan, or on a different PAID plan — plan changes are
+    /// not implemented) is <c>billing.already_subscribed</c>.
+    /// </summary>
+    private async Task EnsureCheckoutAllowedAsync(Guid accountId, PlanDto plan, CancellationToken ct)
+    {
+        var existing = await _store.GetActiveSubscriptionAsync(accountId, ct);
+        if (existing is null) return;
+
+        if (existing.PlanId == plan.Id)
+        {
+            if (string.Equals(existing.Status, "active", StringComparison.OrdinalIgnoreCase))
+                throw new DomainException("billing.already_subscribed", "The account already has an active subscription.");
+            return;
+        }
+
+        var existingPlan = await _store.GetPlanByCodeAsync(existing.PlanCode, ct);
+        if (existingPlan is null || existingPlan.Price > 0m)
+            throw new DomainException("billing.already_subscribed", "The account already has an active subscription.");
+    }
+
+    /// <summary>
+    /// The subscription the checkout's provider reference is linked to. The current subscription is reused
+    /// only when it is for the SAME plan (a trial being paid for). A free-plan subscription is closed and a
+    /// new one opened for the purchased plan — linking the payment to the free subscription would activate
+    /// it and leave a paying customer on the free plan.
+    /// </summary>
+    private async Task<Guid> EnsureSubscriptionForCheckoutAsync(Guid accountId, PlanDto plan, CancellationToken ct)
+    {
+        var existing = await _store.GetActiveSubscriptionAsync(accountId, ct);
+        if (existing is not null)
+        {
+            if (existing.PlanId == plan.Id)
+                return existing.Id;
+
+            // EnsureCheckoutAllowedAsync only lets a FREE plan through here. Closing it loses nothing:
+            // an account without a current subscription is entitled to the free plan anyway.
+            await _store.UpdateSubscriptionStatusAsync(existing.Id, "canceled", ct);
+        }
+
+        var (status, trialEndsAtUtc) = InitialState(plan);
+        return await _store.CreateSubscriptionAsync(accountId, plan.Id, status, trialEndsAtUtc, ct);
     }
 
     private string CallerEmail(int userId)

@@ -8,7 +8,9 @@
 -- UI localization keys (tr-TR / en-US / ru-RU). The app then reads ALL of this through AppManagement's
 -- API at runtime. Manage further users/roles/menus from the AppManagement UI.
 --
--- Idempotent (MERGE). Replace the encrypted client secret before running.
+-- Idempotent (MERGE). Replace the encrypted client secret before running — the script ABORTS (THROW) while
+-- the <REPLACE_ME …> placeholder is still there, because the MERGE below would otherwise overwrite a valid
+-- stored secret with the placeholder text and break orchestration for an app that was working.
 SET ANSI_NULLS ON;
 GO
 SET QUOTED_IDENTIFIER ON;
@@ -17,9 +19,21 @@ GO
 DECLARE @AppCode         NVARCHAR(64)  = N'{{ AppName }}';
 DECLARE @AppDisplayName  NVARCHAR(200) = N'{{ AppName }}';
 DECLARE @GatewayBaseUrl  NVARCHAR(500) = N'{{ GatewayBaseUrl }}';
--- Encrypt the raw client secret with AppManagement's encryption key, then paste it here:
+-- Encrypt the raw client secret with AppManagement's encryption key, then paste the ciphertext here:
+--   asdamir secrets encrypt --value "<a raw client secret, 20+ chars>" --key "<AppManagement's Security:EncryptionKey>"
 DECLARE @ClientSecretEnc NVARCHAR(MAX) = N'<REPLACE_ME — encrypted client secret>';
 DECLARE @EnvironmentName  NVARCHAR(50)  = N'Development';
+
+-- FAIL CLOSED on the placeholder (or an empty value). Without this the MERGE below writes the literal
+-- placeholder into dbo.Apps.EncryptedClientSecret — on a RE-run that silently destroys a working secret.
+-- THROW (not RAISERROR+RETURN): it aborts the batch, and with XACT_ABORT nothing in it is half-applied.
+-- sqlcmd users: run with -b so the script stops here instead of continuing into the seed batches below
+-- (those batches re-check that the app is registered and refuse to seed if it is not).
+SET XACT_ABORT ON;
+IF @ClientSecretEnc IS NULL OR LTRIM(RTRIM(@ClientSecretEnc)) = N'' OR @ClientSecretEnc LIKE N'%REPLACE[_]ME%'
+BEGIN
+    ;THROW 51000, 'register_{{ AppNameLower }}.sql: @ClientSecretEnc still holds the <REPLACE_ME> placeholder. Encrypt the client secret (asdamir secrets encrypt --value <raw> --key <AppManagement Security:EncryptionKey>) and paste the ciphertext before running. Nothing was changed.', 1;
+END;
 
 MERGE dbo.Apps AS t
 USING (SELECT @AppCode AS Code) AS s ON t.Code = s.Code
@@ -177,6 +191,18 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'App.Login.Failed',             N'tr-TR', N'Giriş başarısız. Lütfen tekrar deneyin.'),
     (N'App.Login.Failed',             N'en-US', N'Sign-in failed. Please try again.'),
     (N'App.Login.Failed',             N'ru-RU', N'Не удалось войти. Попробуйте снова.'),
+    (N'App.Session.Title',            N'tr-TR', N'Oturum zaman aşımı'),
+    (N'App.Session.Title',            N'en-US', N'Session timeout'),
+    (N'App.Session.Title',            N'ru-RU', N'Тайм-аут сеанса'),
+    (N'App.Session.Body',             N'tr-TR', N'Bir süredir işlem yapmadınız. Oturumunuz {0} saniye içinde sonlanacak. Oturumunuz açık kalsın mı?'),
+    (N'App.Session.Body',             N'en-US', N'You have been inactive for a while. Your session will end in {0} seconds. Would you like to stay signed in?'),
+    (N'App.Session.Body',             N'ru-RU', N'Вы некоторое время неактивны. Сеанс завершится через {0} сек. Остаться в системе?'),
+    (N'App.Session.SignOut',          N'tr-TR', N'Çıkış yap'),
+    (N'App.Session.SignOut',          N'en-US', N'Sign out'),
+    (N'App.Session.SignOut',          N'ru-RU', N'Выйти'),
+    (N'App.Session.Stay',             N'tr-TR', N'Oturumu sürdür'),
+    (N'App.Session.Stay',             N'en-US', N'Stay signed in'),
+    (N'App.Session.Stay',             N'ru-RU', N'Остаться в системе'),
     (N'App.Login.Forgot',             N'tr-TR', N'Şifremi unuttum'),
     (N'App.Login.Forgot',             N'en-US', N'Forgot password?'),
     (N'App.Login.Forgot',             N'ru-RU', N'Забыли пароль?'),

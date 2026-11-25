@@ -12,12 +12,16 @@
       _toaster.Show("Saved.", AsdamirToaster.Kind.Ok);
 
     Each toast auto-dismisses; styling comes from the shared design-system CSS (.asd-toast*).
+
+    Accessibility: an ERROR toast is role="alert" (assertive — a screen reader interrupts to announce it);
+    success/info toasts are role="status" (polite). Announcing a failure politely meant it could be queued
+    behind other speech, or missed entirely before the toast auto-dismissed.
 *@
 
 <div class="asd-toaster">
     @foreach (var t in _toasts)
     {
-        <div class="asd-toast @t.CssKind" @key="t.Id" role="status">
+        <div class="asd-toast @t.CssKind" @key="t.Id" role="@t.Role">
             <span class="asd-toast-msg">@t.Message</span>
             <button type="button" class="asd-toast-x" @onclick="@(() => Dismiss(t.Id))" aria-label="Close">✕</button>
         </div>
@@ -28,43 +32,53 @@
     public enum Kind { Ok, Err, Info }
 
     private readonly List<ToastItem> _toasts = new();
-    private readonly List<CancellationTokenSource> _timers = new();
     private bool _disposed;
 
     /// <summary>Show a toast; it auto-dismisses after <paramref name="durationMs"/> ms.</summary>
     public void Show(string message, Kind kind = Kind.Ok, int durationMs = 3500)
     {
-        var item = new ToastItem(Guid.NewGuid(), message, kind);
+        // The timer's cancellation source travels WITH the toast, so it is released when that toast goes —
+        // by timeout or by the close button. It used to be parked in a list that was only emptied when the
+        // whole component was disposed: one leaked source per toast for the life of the page.
+        var item = new ToastItem(Guid.NewGuid(), message, kind, new CancellationTokenSource());
         _toasts.Add(item);
         StateHasChanged();
 
-        var cts = new CancellationTokenSource();
-        _timers.Add(cts);
-        _ = AutoDismissAsync(item.Id, durationMs, cts);
+        _ = AutoDismissAsync(item, durationMs);
     }
 
-    private async Task AutoDismissAsync(Guid id, int durationMs, CancellationTokenSource cts)
+    private async Task AutoDismissAsync(ToastItem item, int durationMs)
     {
-        try { await Task.Delay(durationMs, cts.Token); }
-        catch (TaskCanceledException) { return; }
-        if (!_disposed) await InvokeAsync(() => Dismiss(id));
+        try { await Task.Delay(durationMs, item.Timer.Token); }
+        catch (OperationCanceledException) { return; }
+        catch (ObjectDisposedException) { return; }
+        if (!_disposed) await InvokeAsync(() => Dismiss(item.Id));
     }
 
     private void Dismiss(Guid id)
     {
+        foreach (var toast in _toasts.Where(t => t.Id == id)) Release(toast);
         _toasts.RemoveAll(t => t.Id == id);
         StateHasChanged();
+    }
+
+    private static void Release(ToastItem toast)
+    {
+        try { toast.Timer.Cancel(); }
+        catch (ObjectDisposedException) { /* already released */ }
+        toast.Timer.Dispose();
     }
 
     public void Dispose()
     {
         _disposed = true;
-        foreach (var t in _timers) { t.Cancel(); t.Dispose(); }
-        _timers.Clear();
+        foreach (var t in _toasts) Release(t);
+        _toasts.Clear();
     }
 
-    private sealed record ToastItem(Guid Id, string Message, Kind Kind)
+    private sealed record ToastItem(Guid Id, string Message, Kind Kind, CancellationTokenSource Timer)
     {
         public string CssKind => Kind switch { Kind.Ok => "ok", Kind.Err => "err", _ => "info" };
+        public string Role => Kind == Kind.Err ? "alert" : "status";
     }
 }

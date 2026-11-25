@@ -43,8 +43,10 @@ internal sealed class AgentAuditSpool
     private readonly AgentAuditOptions _options;
     private readonly ILogger _logger;
     private readonly object _gate = new();
+    private readonly HashSet<string> _activeClaims = new(StringComparer.Ordinal);   // guarded by _gate
     private int _warnedOverflow;   // 0/1 latch: the spool-overflow warning is genuinely once-per-process
     private long _deadLetterCount;
+    private long _fileSequence;    // keeps two files written in the same 100 ns tick apart
 
     /// <summary>Creates the spool over its directory.</summary>
     /// <param name="options">Client options (directory, size cap).</param>
@@ -78,11 +80,23 @@ internal sealed class AgentAuditSpool
         }
     }
 
-    /// <summary>Appends records to a fresh spool file, enforcing the size cap.</summary>
+    /// <summary>
+    /// The most records one spool file holds: half the in-memory queue, so a replayed file always fits back
+    /// into a queue that has drained, and never more than one ingest request can carry.
+    /// </summary>
+    internal int MaxRecordsPerFile => Math.Clamp(Math.Max(16, _options.QueueCapacity) / 2, 1, 200);
+
+    /// <summary>
+    /// Writes records to fresh spool files (at most <see cref="MaxRecordsPerFile"/> each), enforcing the size cap.
+    /// </summary>
     /// <param name="records">The undelivered records.</param>
-    internal void Write(IReadOnlyList<SpooledRecord> records)
+    /// <returns>
+    /// <see langword="true"/> when every record reached the disk; <see langword="false"/> when the write
+    /// failed (already logged as an audit gap), so a caller holding another copy must not discard it.
+    /// </returns>
+    internal bool Write(IReadOnlyList<SpooledRecord> records)
     {
-        if (records.Count == 0) return;
+        if (records.Count == 0) return true;
 
         lock (_gate)
         {
@@ -90,14 +104,8 @@ internal sealed class AgentAuditSpool
             {
                 Directory.CreateDirectory(_options.SpoolDirectory);
                 EnforceCap();
-
-                var name = string.Create(CultureInfo.InvariantCulture,
-                    $"agent-audit-{DateTime.UtcNow:yyyyMMdd-HHmmss-fffffff}{SpoolExtension}");
-                var builder = new StringBuilder();
-                foreach (var record in records)
-                    builder.Append(JsonSerializer.Serialize(record)).Append('\n');
-
-                File.AppendAllText(Path.Combine(_options.SpoolDirectory, name), builder.ToString(), Encoding.UTF8);
+                WriteChunked(records);
+                return true;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -105,7 +113,27 @@ internal sealed class AgentAuditSpool
                 _logger.LogError(ex,
                     "Agent-audit: {Count} record(s) could NOT be spooled to {Directory} and are lost. "
                     + "This is an audit gap.", records.Count, _options.SpoolDirectory);
+                return false;
             }
+        }
+    }
+
+    /// <summary>Writes the records as one or more spool files. Caller holds <see cref="_gate"/>.</summary>
+    private void WriteChunked(IReadOnlyList<SpooledRecord> records)
+    {
+        var perFile = MaxRecordsPerFile;
+        for (var offset = 0; offset < records.Count; offset += perFile)
+        {
+            // The sequence suffix keeps files written within one clock tick apart; without it a second chunk
+            // could append to the first and rebuild the oversized file the chunking exists to prevent.
+            var name = string.Create(CultureInfo.InvariantCulture,
+                $"agent-audit-{DateTime.UtcNow:yyyyMMdd-HHmmss-fffffff}-{++_fileSequence:D6}{SpoolExtension}");
+            var builder = new StringBuilder();
+            var end = Math.Min(records.Count, offset + perFile);
+            for (var i = offset; i < end; i++)
+                builder.Append(JsonSerializer.Serialize(records[i])).Append('\n');
+
+            File.AppendAllText(Path.Combine(_options.SpoolDirectory, name), builder.ToString(), Encoding.UTF8);
         }
     }
 
@@ -142,15 +170,23 @@ internal sealed class AgentAuditSpool
     }
 
     /// <summary>
-    /// Claims every spool file for replay by renaming it, then returns its records.
+    /// Claims spool files for replay by renaming them, then returns their records — as many whole files as fit
+    /// into <paramref name="room"/> queue slots.
     ///
     /// <para>Renaming first is what makes a crash mid-replay safe: a <c>.replaying</c> file is picked up again
     /// by the next startup, and a re-sent record is harmless because ingest is idempotent on EventId. The file
     /// is only deleted once every record it held has reached a terminal state, which is what "successfully-sent
     /// lines are removed" means in practice — anything still undelivered is written to a NEW spool file.</para>
+    ///
+    /// <para><b>This runs repeatedly, not only at startup</b>, so it must not hand out the same file twice: a
+    /// file whose records are still in flight in THIS process is remembered and skipped until
+    /// <see cref="ReleaseClaim"/> or <see cref="AbandonClaim"/>. A file that does not fit stays on disk for a
+    /// later pass, and one holding more than <see cref="MaxRecordsPerFile"/> records (written by an older
+    /// version) is split into files that do fit, rather than being half-replayed for ever.</para>
     /// </summary>
+    /// <param name="room">How many records the caller can take right now.</param>
     /// <returns>One entry per claimed file: its path and the records it held.</returns>
-    internal IReadOnlyList<(string Path, IReadOnlyList<SpooledRecord> Records)> Claim()
+    internal IReadOnlyList<(string Path, IReadOnlyList<SpooledRecord> Records)> Claim(int room = int.MaxValue)
     {
         lock (_gate)
         {
@@ -167,9 +203,14 @@ internal sealed class AgentAuditSpool
 
                 foreach (var path in pending)
                 {
+                    if (room <= 0) break;
+
                     var target = path.EndsWith(ReplayingExtension, StringComparison.Ordinal)
                         ? path
                         : path[..^SpoolExtension.Length] + ReplayingExtension;
+
+                    // Still in flight in this process (or its un-renamed twin is): not ours to hand out again.
+                    if (_activeClaims.Contains(target)) continue;
 
                     if (!string.Equals(path, target, StringComparison.Ordinal))
                         File.Move(path, target, overwrite: true);
@@ -191,6 +232,21 @@ internal sealed class AgentAuditSpool
                     }
 
                     if (records.Count == 0) { TryDelete(target); continue; }
+
+                    if (records.Count > MaxRecordsPerFile)
+                    {
+                        // Too big to ever fit the queue in one piece. Re-spool it as files that do, and let a
+                        // later pass pick those up. Written BEFORE the original is removed: a crash in between
+                        // leaves both, and a duplicate is harmless where a missing record is not.
+                        WriteChunked(records);
+                        TryDelete(target);
+                        continue;
+                    }
+
+                    if (records.Count > room) break;   // leave it (as .replaying) for a pass with more room
+
+                    room -= records.Count;
+                    _activeClaims.Add(target);
                     claimed.Add((target, records));
                 }
             }
@@ -207,7 +263,21 @@ internal sealed class AgentAuditSpool
     /// <param name="path">The claimed file's path.</param>
     internal void ReleaseClaim(string path)
     {
-        lock (_gate) TryDelete(path);
+        lock (_gate)
+        {
+            _activeClaims.Remove(path);
+            TryDelete(path);
+        }
+    }
+
+    /// <summary>
+    /// Gives a claimed file back WITHOUT deleting it, so a later pass replays it again. Used when its records
+    /// could not all be queued; whatever was queued is simply delivered twice, which ingest tolerates.
+    /// </summary>
+    /// <param name="path">The claimed file's path.</param>
+    internal void AbandonClaim(string path)
+    {
+        lock (_gate) _activeClaims.Remove(path);
     }
 
     /// <summary>

@@ -18,7 +18,11 @@
          for a Data release. -->
     <!-- MINOR bump 1.4.0 -> 1.5.0: the agent-audit client sink + AddAgentAudit, co-versioned with
          Asdamir.Core 1.7.0 which carries the contracts it implements. Additive only. -->
-    <Version>1.5.0</Version>
+    <!-- MINOR bump 1.5.0 -> 1.6.0, co-versioned with Asdamir.Core 1.10.0. Additive: DatabaseConfigurationOptions
+         (AppId scope, protected keys) and AttachDatabaseConfigurationLogging. BEHAVIOUR CHANGES a consumer must
+         know: AddDatabaseConfiguration loads synchronously first and keeps last-known-good on a failed reload;
+         SendBulkAsync throws BulkEmailSendException when any recipient fails. See CHANGELOG. -->
+    <Version>1.6.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Data + background processing for Asdamir: Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox (mail/SMS dispatch).</Description>
     <PackageTags>dapper;outbox;hangfire;sql-server;oracle;postgresql;mail;sms;background-jobs</PackageTags>

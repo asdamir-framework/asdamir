@@ -14,9 +14,7 @@ using Serilog.Events;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-{{ if IsFreeMode ~}}
 using System.Threading.RateLimiting;
-{{ end ~}}
 {{ if HasLocalBilling ~}}
 using Asdamir.Payments;
 {{ end ~}}
@@ -159,6 +157,9 @@ var jwtAudience = builder.Configuration["Jwt:Audience"]
     ?? throw new InvalidOperationException("Jwt:Audience is required.");
 if (jwtKey.Length < 64)
     throw new InvalidOperationException("Jwt:Key must be at least 64 bytes (use a CSPRNG-generated value).");
+// This app's code — the value the issuer stamps into `app_code` (dbo.Apps.Code in the commercial model;
+// App:Code in free mode). Used below to refuse another app's tokens.
+var appCode = builder.Configuration["App:Code"] ?? "{{ AppName }}";
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -174,6 +175,35 @@ builder.Services
             ValidAudience = jwtAudience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromSeconds(30),
+        };
+
+        // APP BOUNDARY. Key + issuer + audience are the same for EVERY app that shares a signing key (in the
+        // commercial model that is every app AppManagement manages), so on their own they accept app A's
+        // end-user token at app B's Gateway — a user of one app could call another app's API. A user token
+        // is stamped `token_use=app` + `app_code=<the app it was issued for>` by the issuer; require that
+        // code to be THIS app's.
+        //
+        // Service tokens are NOT user tokens and are left to their own policy: AppManagement's orchestration
+        // token is identified by its `client_id` claim and authorized by the "AppMgmtClient" policy below.
+        // Everything else — including a token with no `app_code` at all — is rejected: fail closed.
+        opts.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = ctx =>
+            {
+                var principal = ctx.Principal;
+                if (principal is null || principal.HasClaim(c => c.Type == "client_id"))
+                    return Task.CompletedTask;
+
+                var tokenUse = principal.FindFirst("token_use")?.Value;
+                var tokenApp = principal.FindFirst("app_code")?.Value;
+                if (!string.Equals(tokenUse, "app", StringComparison.Ordinal)
+                    || !string.Equals(tokenApp, appCode, StringComparison.OrdinalIgnoreCase))
+                {
+                    ctx.Fail($"The token was not issued for this app ('{appCode}').");
+                }
+
+                return Task.CompletedTask;
+            },
         };
     });
 
@@ -191,6 +221,24 @@ builder.Services.AddAuthorization(opts =>
         .Build();
 });
 
+// Rate limiting for the credential endpoints ([EnableRateLimiting("auth")] on the AuthController) — a
+// PER-IP fixed window so brute-force / credential-stuffing on gateway/auth/* is throttled HERE, before any
+// credential work. Registered in BOTH modes: the commercial AuthController carries the same
+// [EnableRateLimiting("auth")] attribute, and an attribute naming a policy that was never registered is not
+// "no limiting" — it throws on the first request to that endpoint. (In commercial mode AppManagement runs
+// its own limiter too, but it sees every proxied login as coming from this Gateway's address, so the
+// per-client cap has to be applied here.) Defaults 10 requests / 60s; override via RateLimiting:Auth:*
+// (free mode: this app's own AppConfigurations; commercial: appsettings / env).
+builder.Services.AddRateLimiter(rl =>
+{
+    rl.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    var permit = builder.Configuration.GetValue<int?>("RateLimiting:Auth:PermitLimit") ?? 10;
+    var window = builder.Configuration.GetValue<int?>("RateLimiting:Auth:WindowSeconds") ?? 60;
+    rl.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = permit, Window = TimeSpan.FromSeconds(window), QueueLimit = 0 }));
+});
+
 {{ if IsFreeMode ~}}
 // FREE MODE — self-contained identity: this app owns its users/roles/permissions in its OWN database, so
 // the Gateway ISSUES the JWT locally (JwtService) instead of proxying to a central AppManagement. The
@@ -204,19 +252,6 @@ builder.Services.AddAuthorization(opts =>
 if (string.IsNullOrWhiteSpace(builder.Configuration["Security:EncryptionKey"]))
     throw new InvalidOperationException("Security:EncryptionKey is required in free mode (set via env SECURITY__ENCRYPTIONKEY).");
 builder.Services.AddSingleton<Asdamir.Core.Contracts.IJwtService, Asdamir.Core.Services.JwtService>();
-// Rate limiting for the credential endpoints ([EnableRateLimiting("auth")] on the free AuthController) —
-// a PER-IP fixed window so brute-force / credential-stuffing on gateway/auth/* is throttled. Defaults match
-// the seeded RateLimiting:Auth:* (10 requests / 60s); override via appsettings/env RateLimiting:Auth:*.
-// (Commercial mode proxies auth to AppManagement, which runs its own limiter — so this is free-mode only.)
-builder.Services.AddRateLimiter(rl =>
-{
-    rl.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    var permit = builder.Configuration.GetValue<int?>("RateLimiting:Auth:PermitLimit") ?? 10;
-    var window = builder.Configuration.GetValue<int?>("RateLimiting:Auth:WindowSeconds") ?? 60;
-    rl.AddPolicy("auth", ctx => RateLimitPartition.GetFixedWindowLimiter(
-        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = permit, Window = TimeSpan.FromSeconds(window), QueueLimit = 0 }));
-});
 {{ else ~}}
 // Central identity: the login UI is local but credentials are validated by AppManagement's
 // auth API (it owns users/roles/permissions in AsdamirVault). The Gateway's AuthController
@@ -259,6 +294,15 @@ builder.Services.AddHttpClient(AppLogForwardSink.HttpClientName, c =>
 builder.Services.AddDataAccess(dbConnString ?? string.Empty);
 
 // Multi-tenancy: the generated repositories inject ITenantContext to scope every query by TenantId.
+//
+// The tenant comes from the SIGNED token's `tid` claim (ClaimsTenantResolver), never from a request header:
+// AddMultiTenancy's default resolver trusts `X-Tenant-Id`, which any authenticated caller can set to another
+// tenant's id. It is registered FIRST so AddMultiTenancy (TryAdd) keeps it, with NO header fallback.
+// A token without a `tid` claim resolves to the tenant "default" — which is what the tokens issued today
+// carry (single-tenant app; the generated sample seed uses TenantId 'default' for the same reason). To run
+// several tenants, have the issuer stamp `tid` and the same code scopes by it with no change here.
+// app.UseMultiTenancy() below is the other half: without it this registration alone resolves NOTHING.
+builder.Services.AddSingleton<ITenantResolver>(new ClaimsTenantResolver());
 builder.Services.AddMultiTenancy();
 
 // Background-run primitive (Asdamir.Core/Data.BackgroundRuns) — the API-tier long-running-operation
@@ -285,6 +329,18 @@ foreach (var impl in typeof(Program).Assembly.GetTypes()
 {
     var iface = impl.GetInterface("I" + impl.Name);
     if (iface is not null) builder.Services.AddScoped(iface, impl);
+}
+
+// Auto-register the FluentValidation validators the same way — every `asdamir new entity` emits a
+// <Name>DtoValidator, and its controller runs whatever IValidator<<Name>Dto> is registered. Without this
+// scan the validator classes compiled and were never invoked.
+foreach (var impl in typeof(Program).Assembly.GetTypes().Where(t => t is { IsClass: true, IsAbstract: false }))
+{
+    foreach (var iface in impl.GetInterfaces().Where(i =>
+                 i.IsGenericType && i.GetGenericTypeDefinition() == typeof(FluentValidation.IValidator<>)))
+    {
+        builder.Services.AddScoped(iface, impl);
+    }
 }
 {{ if IsFreeMode ~}}
 
@@ -319,12 +375,15 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 // Early — wraps everything downstream so any unhandled exception is caught + logged.
 app.UseGlobalExceptionHandling();
-{{ if IsFreeMode ~}}
 // Before auth so a brute-force burst is rejected (429) BEFORE any credential/JWT work. Endpoint routing has
-// already run (MapControllers), so the [EnableRateLimiting("auth")] policy on the credential endpoints applies.
+// already run (WebApplication inserts it first), so the [EnableRateLimiting("auth")] policy on the
+// credential endpoints applies. BOTH modes — the policy is registered unconditionally above.
 app.UseRateLimiter();
-{{ end ~}}
 app.UseAuthentication();
+// AFTER authentication, deliberately: ClaimsTenantResolver reads the tenant from ctx.User, which is only
+// populated once UseAuthentication has run. (Placed before it, every request resolves to "default".)
+// This call is what puts the resolved tenant into the request — AddMultiTenancy() alone does not.
+app.UseMultiTenancy();
 app.UseAuthorization();
 app.MapControllers();
 

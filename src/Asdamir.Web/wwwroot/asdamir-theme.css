@@ -851,6 +851,9 @@ h1:focus { outline: none; }
 /* reusable AsdamirModal */
 .asd-modal-overlay { position: fixed; inset: 0; background: rgba(15,18,28,.46); display: grid; place-items: center; z-index: 1000; padding: 24px; }
 .asd-modal { width: min(580px, 100%); max-height: 82vh; display: flex; flex-direction: column; background: var(--asd-surface); border: 1px solid var(--asd-border-strong); border-radius: var(--asd-radius); box-shadow: 0 18px 50px rgba(0,0,0,.28); overflow: hidden; }
+/* The dialog container takes programmatic focus on open (so Escape and a screen reader land inside it); it is
+   not itself an operable control, so it shows no focus ring — the controls inside keep theirs. */
+.asd-modal:focus { outline: none; }
 .asd-modal-head { display: flex; align-items: center; gap: 12px; padding: 13px 18px; border-bottom: 1px solid var(--asd-border); }
 .asd-modal-title { flex: 1; font-weight: 600; font-size: .98rem; color: var(--asd-ink); }
 .asd-modal-body { padding: 18px; overflow: auto; color: var(--asd-ink); font-size: .88rem; line-height: 1.6; }

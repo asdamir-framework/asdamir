@@ -100,6 +100,10 @@ GO
 -- Subscriptions
 ------------------------------------------------------------------------------------------------------
 -- Single-tenant: NO AppId column to inherit.
+-- ONE TRIAL PER ACCOUNT, enforced here (not in each caller): a request for 'trialing' WITH a trial end, on
+-- an account that has EVER had a subscription with a trial end, is stored as 'incomplete' with no trial.
+-- 'incomplete' is outside the active set, so it grants nothing until a payment webhook activates it —
+-- cancel + resubscribe cannot repeat a trial. A free plan's 'trialing' with a NULL trial end is unaffected.
 CREATE OR ALTER PROCEDURE [dbo].[Subscription_Create]
     @billingAccountId UNIQUEIDENTIFIER,
     @planId           UNIQUEIDENTIFIER,
@@ -108,6 +112,13 @@ CREATE OR ALTER PROCEDURE [dbo].[Subscription_Create]
 AS
 BEGIN
     SET NOCOUNT ON;
+    IF @status = N'trialing' AND @trialEndsAtUtc IS NOT NULL
+       AND EXISTS (SELECT 1 FROM dbo.Subscriptions
+                    WHERE BillingAccountId = @billingAccountId AND TrialEndsAtUtc IS NOT NULL)
+    BEGIN
+        SET @status = N'incomplete';
+        SET @trialEndsAtUtc = NULL;
+    END
     DECLARE @id UNIQUEIDENTIFIER = NEWID();
     INSERT INTO dbo.Subscriptions (Id, BillingAccountId, PlanId, Status, TrialEndsAtUtc)
     VALUES (@id, @billingAccountId, @planId, @status, @trialEndsAtUtc);
@@ -281,24 +292,61 @@ GO
 ------------------------------------------------------------------------------------------------------
 -- Webhook idempotency journal
 ------------------------------------------------------------------------------------------------------
--- Idempotent record: inserts the event iff (Provider, ProviderEventId) is new.
--- Returns 1 when newly recorded (caller should process), 0 when it's a duplicate (caller must SKIP).
+-- Record a provider webhook and say whether it must be processed. The row is a CLAIM; only ProcessedAtUtc
+-- makes it final:
+--   new event                                -> 1 (process)
+--   processed                                -> 0 (skip)
+--   unprocessed, claimed < @leaseSeconds ago -> 0 (another delivery is on it — a burst of concurrent
+--                                               deliveries still yields exactly ONE "process")
+--   unprocessed, claim older than the lease  -> 1 (re-claimed: the earlier attempt failed or died)
+-- Deduping on RECEIPT alone would discard the provider's retry of an event whose processing threw, and the
+-- event (an activation, a cancellation) would be lost for good. ReceivedAtUtc doubles as the claim time.
 CREATE OR ALTER PROCEDURE [dbo].[BillingWebhookEvent_TryRecord]
     @provider        NVARCHAR(20),
     @providerEventId NVARCHAR(200),
     @type            NVARCHAR(100) = NULL,
-    @payload         NVARCHAR(MAX) = NULL
+    @payload         NVARCHAR(MAX) = NULL,
+    @leaseSeconds    INT           = 60
 AS
 BEGIN
     SET NOCOUNT ON;
-    IF EXISTS (SELECT 1 FROM dbo.BillingWebhookEvents WHERE Provider = @provider AND ProviderEventId = @providerEventId)
+
+    -- Seen before but never processed, and its claim has gone stale: take the claim over (atomically —
+    -- of N concurrent callers exactly one UPDATE matches) and process it.
+    UPDATE dbo.BillingWebhookEvents
+       SET ReceivedAtUtc = SYSUTCDATETIME()
+     WHERE Provider = @provider AND ProviderEventId = @providerEventId
+       AND ProcessedAtUtc IS NULL
+       AND ReceivedAtUtc <= DATEADD(SECOND, -@leaseSeconds, SYSUTCDATETIME());
+    IF @@ROWCOUNT = 1
     BEGIN
-        SELECT 0;   -- duplicate → skip
+        SELECT 1;   -- stale unprocessed event re-claimed → process
         RETURN;
     END
+
+    IF EXISTS (SELECT 1 FROM dbo.BillingWebhookEvents WHERE Provider = @provider AND ProviderEventId = @providerEventId)
+    BEGIN
+        SELECT 0;   -- processed, or being processed right now by another delivery → skip
+        RETURN;
+    END
+
     INSERT INTO dbo.BillingWebhookEvents (Provider, ProviderEventId, [Type], Payload)
     VALUES (@provider, @providerEventId, @type, @payload);
     SELECT 1;       -- newly recorded → process
+END
+GO
+
+-- Give up the claim on an event whose processing FAILED, so the provider's retry is processed at once
+-- instead of waiting out the lease. Never touches a processed event. Returns the affected row count.
+CREATE OR ALTER PROCEDURE [dbo].[BillingWebhookEvent_Release]
+    @provider        NVARCHAR(20),
+    @providerEventId NVARCHAR(200)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DELETE FROM dbo.BillingWebhookEvents
+     WHERE Provider = @provider AND ProviderEventId = @providerEventId AND ProcessedAtUtc IS NULL;
+    SELECT @@ROWCOUNT;
 END
 GO
 

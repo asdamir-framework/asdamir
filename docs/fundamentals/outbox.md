@@ -34,7 +34,7 @@ public interface IOutboxDispatcher
 }
 ```
 
-- `MailDispatcher` (MailKit) — multi-To/Cc/Bcc, ReplyTo, per-message From, HTML and attachments.
+- `MailDispatcher` (MailKit) — multi-To/Cc/Bcc, ReplyTo, per-message From, HTML and attachments. Once the SMTP server has accepted a message, a failure while closing the session is logged and **not** surfaced as a dispatch failure — the message is sent, and reporting otherwise would make the worker retry it and deliver a duplicate.
 - `SmsDispatcher` — a stub you replace with your provider; a Twilio dispatcher is provided in the management app.
 
 Throw a `PermanentDispatchException` to skip retries and dead-letter immediately (e.g. an unparseable address); throw anything else to schedule a retry.
@@ -59,6 +59,15 @@ The worker is bound from `Outbox:Worker`:
 ```
 
 SMTP transport is configured under `Smtp`; SMS provider selection under `Sms` (`Stub` | `Twilio`) with credentials under `Twilio`.
+
+## Sending mail directly (`IEmailService`)
+
+`IEmailService` sends through SMTP inline, without the outbox — prefer the outbox for anything that must not be lost. Two behaviours are worth knowing when you do call it:
+
+- **`SendBulkAsync` throws `BulkEmailSendException` when any recipient fails.** Every recipient is attempted first; the exception then carries `FailedRecipients` (retry these, not the whole list — the rest were mailed), `TotalRecipients` and `AllFailed`. The addresses are deliberately not part of the exception message, so logging it does not write them to the log. Cancellation propagates as `OperationCanceledException`, not as a per-recipient failure.
+- As with `MailDispatcher`, a failure while disconnecting **after** a successful send is logged, not thrown.
+
+> **Upgrade note.** `SendBulkAsync` used to complete normally even when sends had failed. Callers that relied on that must now catch `BulkEmailSendException` (and can retry just `FailedRecipients`).
 
 ## Fail-closed by design
 

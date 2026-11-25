@@ -89,7 +89,9 @@ public static class AppRegisterCommand
             return ExitCodes.Usage;
         }
 
-        using var http = new HttpClient { BaseAddress = apiBase };
+        // A one-shot CLI process: there is no DI container, no IHttpClientFactory and exactly one request, so
+        // the socket-exhaustion argument behind AUD001 does not apply here.
+        using var http = new HttpClient { BaseAddress = apiBase }; // audit-lint:ignore AUD001 one-shot CLI, single request, no DI host
         http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var payload = new

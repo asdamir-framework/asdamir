@@ -27,6 +27,12 @@ public class CorrelationIdMiddleware
     /// outbound (echoed on the response and forwarded on downstream calls).
     /// </summary>
     public const string HeaderName = "X-Correlation-Id";
+
+    /// <summary>
+    /// The longest inbound correlation id that is accepted. Long enough for a GUID in any format, a W3C
+    /// trace id or a ULID; short enough that a caller cannot use the header to inflate every log line.
+    /// </summary>
+    public const int MaxLength = 64;
     private readonly RequestDelegate _next;
 
     /// <summary>Creates the middleware with the next delegate in the request pipeline.</summary>
@@ -35,7 +41,9 @@ public class CorrelationIdMiddleware
 
     /// <summary>
     /// Resolves the correlation id for the request (reusing an inbound header/context value or
-    /// generating a new one), publishes it to the scoped mutator and the response header, and pushes
+    /// generating a new one — an inbound value is reused only when it is at most
+    /// <see cref="MaxLength"/> characters of letters, digits, <c>-</c>, <c>_</c> or <c>.</c>; anything else
+    /// is discarded and replaced, because the value is echoed into the response and every log line), publishes it to the scoped mutator and the response header, and pushes
     /// it onto the Serilog log context so every log line emitted while handling the request is tagged.
     /// </summary>
     /// <param name="ctx">The current HTTP context.</param>
@@ -61,8 +69,11 @@ public class CorrelationIdMiddleware
     private static string GetOrCreateCorrelationId(HttpContext ctx)
     {
         // Try to get from request headers first
-        if (ctx.Request.Headers.TryGetValue(HeaderName, out var headerValue) && 
-            !string.IsNullOrWhiteSpace(headerValue))
+        // The value is CALLER-CONTROLLED and goes straight into the response header and the log context, so
+        // it is reused only when it looks like an id. An oversized or oddly-charactered value (log forging via
+        // control characters, megabyte headers, a comma-joined multi-value header) is dropped, not sanitised:
+        // a "cleaned" id would correlate with nothing upstream anyway.
+        if (ctx.Request.Headers.TryGetValue(HeaderName, out var headerValue) && IsAcceptable(headerValue.ToString()))
         {
             return headerValue.ToString();
         }
@@ -79,5 +90,16 @@ public class CorrelationIdMiddleware
         var newCorrelationId = Guid.NewGuid().ToString("N");
         ctx.Items[HeaderName] = newCorrelationId;
         return newCorrelationId;
+    }
+
+    /// <summary>Whether an inbound correlation id is safe to echo: 1–<see cref="MaxLength"/> ASCII letters, digits, <c>-</c>, <c>_</c>, <c>.</c>.</summary>
+    internal static bool IsAcceptable(string? value)
+    {
+        if (string.IsNullOrEmpty(value) || value.Length > MaxLength) return false;
+        foreach (var c in value)
+        {
+            if (!(char.IsAsciiLetterOrDigit(c) || c is '-' or '_' or '.')) return false;
+        }
+        return true;
     }
 }

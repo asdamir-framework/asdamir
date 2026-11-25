@@ -15,11 +15,11 @@ sentence that was, when this was written, three releases stale.
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `1.9.0` | — |
-| `Asdamir.Data` | `1.5.0` | — |
+| `Asdamir.Core` | `1.9.0` | `1.10.0` built, pending publish |
+| `Asdamir.Data` | `1.5.0` | `1.6.0` built, pending publish |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
-| `Asdamir.Tools` | `1.8.0` | — |
-| `Asdamir.Web` | `2.1.1` | — |
+| `Asdamir.Tools` | `1.8.0` | `1.9.0` built, pending publish |
+| `Asdamir.Web` | `2.1.1` | `2.2.0` built, pending publish |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -30,6 +30,61 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Core 1.10.0 · Data 1.6.0 · Web 2.2.0 · Payments 1.3.0 · Tools 1.9.0] — 2026-11-25 — *pending publish*
+
+A whole-tree review: security, correctness and generated-app fixes. All five packages move together.
+
+### Build
+- **A clean restore works again.** `System.Security.Cryptography.Xml` re-pinned `10.0.10 → 10.0.15` and a new
+  transitive pin added for `System.Security.Cryptography.Pkcs` `10.0.15` (five NuGet advisories had turned every
+  fresh `dotnet restore` — and every freshly generated app — into 39 errors). Same pins in the generated-app CPM
+  template.
+
+### Data
+- **`AddDatabaseConfiguration` (behaviour change):** first load is synchronous; a failed reload keeps the
+  last-known-good values (it used to replace them with an empty set); keys are case-insensitive; a DB row can no
+  longer supply `Jwt:Key`, `Security:EncryptionKey`, `ConnectionStrings:*` or `Persistence:UseInMemory`. New scoped
+  overload (`DatabaseConfigurationOptions.AppId`) and `AttachDatabaseConfigurationLogging`.
+- Agent-audit sink: the in-flight batch is no longer lost at shutdown; a repeated `EventId` no longer stops delivery;
+  outages no longer consume `MaxDeliveryAttempts`; the spool is replayed while running
+  (`AgentAudit:SpoolReplayInterval`). *Changed:* `DropAndWarn` also drops at shutdown.
+- Mail: a disconnect failure after a successful send no longer causes a duplicate e-mail. *Changed:*
+  `SendBulkAsync` throws `BulkEmailSendException` when any recipient fails (it used to report success).
+- `HangfireJobScheduler`: delayed jobs honour `AppQueue`; `RemoveRecurringAsync` applies the id prefix.
+
+### Core
+- Cron day-of-week `5-7`, `*/7`, `1,7` parse correctly. `GlobalExceptionMiddleware` no longer writes into a started
+  response. `X-Correlation-Id` is accepted only as ≤64 chars of `[A-Za-z0-9._-]`. `WhiteListService` masks phone and
+  e-mail in logs.
+
+### Payments
+- Paddle: a subscription is matched by subscription **or** transaction id and the real subscription id is persisted
+  (a paid subscription used to stay `trialing`); `data.status` is honoured; a canceled subscription is terminal;
+  refund amounts are rounded, not truncated. New `IBillingStore.ReleaseWebhookAsync` (default no-op).
+
+### Web
+- Security: CSV export neutralises formula cells; the rate-limit key is normalised (case / trailing slash) and a
+  429 carries `Retry-After`; the localization client skips TLS validation only in Development, and logs it.
+- `AsdamirGrid` ships its own export script and `AuthenticationGuard`'s script is actually served (both called JS
+  the package did not ship). Error toasts are `role="alert"`; `AsdamirModal` closes on Escape.
+
+### Tools (CLI + templates)
+- **`audit verify-signatures` exited 0 on INVALID signatures**; now 1 (64 when the ledger cannot be read).
+  `new entity` / `new page` / `add field` / `new feature` exit 1 when an attempted database step fails; `--apply`
+  now requires a connection.
+- **`db apply` no longer adopts another app's Gateway secret** (search bounded at `.sln`/`.git`) and prints its
+  target first; concurrent runs are serialised, a script that leaves a transaction open is not journaled, `GO n`
+  and `GO` inside comments/strings are handled.
+- **`rollback <Name>` no longer drops framework tables** or tables it did not create; database steps run before
+  files are deleted.
+- *Breaking:* names must be ASCII identifiers; `double`/`float` fields and entity names colliding with framework
+  tables are refused. `add field` writes an idempotent ALTER and prints what it did not update.
+- audit-lint: AUD005 and AUD010 could never fire; AUD001/AUD002 missed initializers and target-typed `new()`.
+- Templates: the Gateway rejects another app's token (`app_code`), wires `UseMultiTenancy`, registers the `auth`
+  rate-limit policy in commercial mode and runs DTO validators; the Server refreshes its access token, keys sessions
+  by session id and really signs out on idle timeout; `register_<app>.sql` aborts on the placeholder secret; pages
+  compile for nullable fields; free-mode billing gets the paid-plan / one-trial / webhook-retry rules.
 
 ## [Web 2.1.1] — 2026-08-16 — published 2026-08-17
 

@@ -51,11 +51,13 @@ than importing them from a CDN.
 public async Task<IActionResult> ForgotPassword(...) { ... }
 ```
 
+A request over budget is short-circuited with **HTTP 429** and a **`Retry-After`** header carrying the limit's window in seconds (the longest a caller can need to wait). The bucket key combines the caller (client IP / authenticated user) with the request **path, normalised** — lower-cased, trailing slashes removed — so `/Api/Login`, `/api/login` and `/api/login/` share one budget instead of each spelling getting its own.
+
 `IRateLimitService` is a fixed-window limiter. The default `InMemoryRateLimitService` is **per-process** —
 fine for a single instance, but behind a load balancer each replica counts independently (a brute-force
 attacker gets `N × limit`). For **scale-out**, back it with a **shared store** so counters aggregate
 across instances. AppManagement does this in Dapper mode: a `SqlRateLimitService` (counters in
-`dbo.RateLimitCounters`, atomic via the `dbo.RateLimit_TryAcquire` proc) guards the login / 2FA endpoints
+`dbo.RateLimitCounters`, atomic via the `dbo.RateLimit_TryAcquire` proc) guards the login, 2FA, token-refresh, forgot-password and reset-password endpoints
 so the limit holds across all API instances. Swap the registered `IRateLimitService` to choose per-host
 vs. shared.
 

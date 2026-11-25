@@ -13,6 +13,7 @@
 @inject ILogger<{{ EntityPlural }}List> Logger
 @inject Asdamir.Web.Localization.ApiStringLocalizer L
 @inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
 
 <PageTitle>@L["Page.{{ EntityName }}.Title"]</PageTitle>
 
@@ -55,9 +56,17 @@
             <RowTemplate Context="row">
 {{ for f in Fields ~}}
 {{ if f.InputKind == "bool" ~}}
+{{ if f.IsNullable ~}}
+                <td><span class="asd-pill @(row.{{ f.Name }} == true ? "ok" : "neutral")">@(row.{{ f.Name }} is null ? "" : row.{{ f.Name }} == true ? L["Common.Yes"].Value : L["Common.No"].Value)</span></td>
+{{ else ~}}
                 <td><span class="asd-pill @(row.{{ f.Name }} ? "ok" : "neutral")">@(row.{{ f.Name }} ? L["Common.Yes"].Value : L["Common.No"].Value)</span></td>
+{{ end ~}}
 {{ else if f.InputKind == "date" ~}}
+{{ if f.IsNullable ~}}
+                <td>@(row.{{ f.Name }}?.ToString("dd.MM.yyyy HH:mm"))</td>
+{{ else ~}}
                 <td>@row.{{ f.Name }}.ToString("dd.MM.yyyy HH:mm")</td>
+{{ end ~}}
 {{ else ~}}
                 <td>@row.{{ f.Name }}</td>
 {{ end ~}}
@@ -240,14 +249,22 @@
 {{ end ~}}
     };
 
-    // Authenticated Gateway client: attaches the signed-in user's access token (the `access_token`
-    // claim minted at login) as Bearer. Works on the interactive circuit (HttpContext is null there).
+    // Authenticated Gateway client: attaches the signed-in user's access token (the `access_token` claim) as
+    // Bearer. The app's AuthenticationStateProvider keeps that claim CURRENT — it renews the token server-side
+    // before it expires — so it is read fresh for every call. Works on the interactive circuit (HttpContext is
+    // null there).
     private async Task<HttpClient> AuthedApiAsync()
     {
         var client = Http.CreateClient("AdminApi");
         var token = (await AuthState.GetAuthenticationStateAsync()).User.FindFirst("access_token")?.Value;
-        if (!string.IsNullOrWhiteSpace(token))
-            client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            // No usable token = the session is over (signed out elsewhere, refresh refused, app restarted).
+            // End it cleanly instead of sending anonymous calls that would each answer 401.
+            Nav.NavigateTo("/logout", forceLoad: true);
+            return client;
+        }
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         // Localize Gateway error messages in the user's CURRENT culture: its GlobalExceptionHandling reads
         // Accept-Language (there's no culture JWT claim), so forward the live UI culture (CultureCircuitHandler).
         client.DefaultRequestHeaders.AcceptLanguage.Add(

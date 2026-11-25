@@ -30,7 +30,9 @@ same passwordless resolution as `db apply`; explicit `--connection`/`-S`/`-d`/`-
 `cd`, no separate `db apply`. Running from inside the Gateway dir still works (backward-compatible).
 Pass **`--no-db`** to scaffold files only; if no connection is resolvable the migration is still generated
 and the command prints the `db apply` recovery line. It does not create the DB.
-(`asdamir add field <Entity> --fields "…"` later appends a field across the whole set — also auto-applied.)
+(`asdamir add field <Entity> --field "Name:type"` later adds ONE column: it patches the entity + DTO and applies an idempotent ALTER. It is PARTIAL — the `_Insert`/`_Update` procedures, repository, service, validator, page and localization key are NOT updated, and the value is dropped on save until you apply the edits it prints under `NOT UPDATED`.)
+
+Names are identifiers (ASCII letter A–Z first, then letters/digits/`_`); `double`/`float` fields are rejected (use `decimal`); an entity whose plural is a framework table (`Invoice`, `Plan`, `Subscription`, `User`, `Role`, `Permission`, `Menu`) is refused. A migration apply that is attempted and FAILS exits `1`; `--apply` makes "no connection resolves" a usage error (`64`, nothing written).
 
 ## After scaffolding
 

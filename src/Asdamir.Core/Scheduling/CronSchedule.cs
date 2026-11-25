@@ -171,9 +171,14 @@ public sealed class CronSchedule
 
     private static bool[] ParseDayOfWeek(string field)
     {
-        // Accept 7 as Sunday by normalizing to 0 before parsing into the 0-6 set.
-        var normalized = field.Replace("7", "0");
-        return ParseField(normalized, 0, 6);
+        // Accept 7 as Sunday. Parse the field over 0-7 and fold the VALUE 7 onto 0 afterwards — never rewrite
+        // the text: a textual Replace("7","0") turned "5-7" into "5-0" (rejected), "*/7" into "*/0" (rejected)
+        // and touched every other 7 in the field, including a step.
+        var parsed = ParseField(field, 0, 7);
+        var set = new bool[7];
+        for (var day = 0; day <= 7; day++)
+            if (parsed[day]) set[day % 7] = true;
+        return set;
     }
 
     private static int ParseInt(string s, string what)

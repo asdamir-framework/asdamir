@@ -8,6 +8,7 @@
 // version. It is distributed WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
 
+using Asdamir.Core.Sanitization;
 using Asdamir.Core.Contracts;
 using Asdamir.Core.Dtos;
 using Microsoft.Extensions.Configuration;
@@ -81,7 +82,7 @@ public sealed class WhiteListService : IWhiteListService
             }
 
             _logger.LogInformation("[WhiteListService] InsertWhiteListAsync - Phone: {Phone}, Email: {Email}, CreateUser: {CreateUser}",
-                request.Phone, request.Email, request.CreateUser);
+                RecipientMasker.MaskPhone(request.Phone), RecipientMasker.Mask(request.Email), request.CreateUser);
 
             var payload = new
             {
@@ -106,7 +107,7 @@ public sealed class WhiteListService : IWhiteListService
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("[WhiteListService] Successfully added to whitelist - Phone: {Phone}", request.Phone);
+                _logger.LogInformation("[WhiteListService] Successfully added to whitelist - Phone: {Phone}", RecipientMasker.MaskPhone(request.Phone));
                 return new InsertWhiteListResponse
                 {
                     Result = InsertWhiteListResult.Created,
@@ -115,7 +116,7 @@ public sealed class WhiteListService : IWhiteListService
             }
             else if (response.StatusCode == HttpStatusCode.Conflict)
             {
-                _logger.LogInformation("[WhiteListService] Phone already exists in whitelist - Phone: {Phone}", request.Phone);
+                _logger.LogInformation("[WhiteListService] Phone already exists in whitelist - Phone: {Phone}", RecipientMasker.MaskPhone(request.Phone));
                 return new InsertWhiteListResponse
                 {
                     Result = InsertWhiteListResult.AlreadyExists,
@@ -125,7 +126,7 @@ public sealed class WhiteListService : IWhiteListService
             else
             {
                 _logger.LogWarning("[WhiteListService] Failed to add to whitelist - Phone: {Phone}, Status: {StatusCode}, Response: {Response}",
-                    request.Phone, response.StatusCode, responseContent);
+                    RecipientMasker.MaskPhone(request.Phone), response.StatusCode, responseContent);
                 return new InsertWhiteListResponse
                 {
                     Result = InsertWhiteListResult.Failed,
@@ -135,7 +136,7 @@ public sealed class WhiteListService : IWhiteListService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WhiteListService] Exception in InsertWhiteListAsync - Phone: {Phone}", request.Phone);
+            _logger.LogError(ex, "[WhiteListService] Exception in InsertWhiteListAsync - Phone: {Phone}", RecipientMasker.MaskPhone(request.Phone));
             return new InsertWhiteListResponse
             {
                 Result = InsertWhiteListResult.Failed,
@@ -156,7 +157,7 @@ public sealed class WhiteListService : IWhiteListService
             }
 
             _logger.LogInformation("[WhiteListService] DeactivateWhiteListAsync - Phone: {Phone}, UpdateUser: {UpdateUser}",
-                request.Phone, request.UpdateUser);
+                RecipientMasker.MaskPhone(request.Phone), request.UpdateUser);
 
             var payload = new
             {
@@ -179,20 +180,20 @@ public sealed class WhiteListService : IWhiteListService
 
             if (response.IsSuccessStatusCode)
             {
-                _logger.LogInformation("[WhiteListService] Successfully deactivated from whitelist - Phone: {Phone}", request.Phone);
+                _logger.LogInformation("[WhiteListService] Successfully deactivated from whitelist - Phone: {Phone}", RecipientMasker.MaskPhone(request.Phone));
                 return true;
             }
             else
             {
                 var responseContent = await response.Content.ReadAsStringAsync(cts.Token).ConfigureAwait(false);
                 _logger.LogWarning("[WhiteListService] Failed to deactivate from whitelist - Phone: {Phone}, Status: {StatusCode}, Response: {Response}",
-                    request.Phone, response.StatusCode, responseContent);
+                    RecipientMasker.MaskPhone(request.Phone), response.StatusCode, responseContent);
                 return false;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[WhiteListService] Exception in DeactivateWhiteListAsync - Phone: {Phone}", request.Phone);
+            _logger.LogError(ex, "[WhiteListService] Exception in DeactivateWhiteListAsync - Phone: {Phone}", RecipientMasker.MaskPhone(request.Phone));
             return false;
         }
     }

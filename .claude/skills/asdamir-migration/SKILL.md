@@ -42,7 +42,7 @@ reference: `AppManagement/db/README.md`, `docs/cli.md` → `db apply`, memory `2
 ## Applying + verifying (cross-platform)
 ```bash
 asdamir db apply --server <sql> --database AsdamirVault --user <login> --password <pwd> \
-  --migrations AppManagement/db/migrations
+  --migrations AppManagement/db/migrations/MSSQL
 #   add --create-database for a fresh catalog; on Windows you may drop --user for integrated auth.
 # For a GENERATED APP's migrations (db/migrations under its Gateway), omit the connection entirely —
 #   `asdamir db apply --migrations db/migrations` resolves ConnectionStrings:Default from the Gateway

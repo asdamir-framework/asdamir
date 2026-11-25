@@ -131,7 +131,7 @@
         await EstablishSessionAsync(body);
     }
 
-    /// <summary>Mints the cookie session from the central JWT (sub/name/email + one perm claim each).</summary>
+    /// <summary>Mints the cookie session from the issued JWT (sub/name/email + one perm claim each).</summary>
     private async Task EstablishSessionAsync(LoginResponse body)
     {
         if (HttpContext is null || body.Tokens is null) { _error = L["App.Login.Failed"]; return; }
@@ -144,21 +144,24 @@
         var sub = jwt.Claims.FirstOrDefault(c => c.Type == "sub")?.Value ?? "";
         claims.Add(new Claim(ClaimTypes.NameIdentifier, sub));
         claims.Add(new Claim(ClaimTypes.Name, jwt.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? sub));
-        // Carry the access token as a claim so interactive (circuit) pages can attach it as Bearer on
-        // Gateway API calls — HttpContext/cookies aren't available on the Blazor Server circuit.
-        claims.Add(new Claim("access_token", body.Tokens.AccessToken));
 
-        // Register the server-side session so OnValidatePrincipal accepts this cookie until the next restart.
-        Sessions.Register(sub);
+        // Register the server-side session and bind the cookie to it by a random session id. The Gateway
+        // tokens are kept in the store — NOT in the cookie — so they can be renewed: the access token expires
+        // long before this cookie does, and GatewayTokenAuthenticationStateProvider swaps in a current one
+        // (as the `access_token` claim) every time a page asks for the authentication state.
+        var sid = Sessions.Register(sub, new {{ ServerNamespace }}.Auth.AppUserSessionStore.Tokens(
+            body.Tokens.AccessToken, body.Tokens.RefreshToken, body.Tokens.ExpiresAtUtc));
+        claims.Add(new Claim({{ ServerNamespace }}.Auth.AuthEndpoints.SessionIdClaim, sid));
 
+        // The cookie outlives one access token: it lasts as long as the session CAN be renewed (the refresh
+        // token's lifetime), capped at 8 hours (the cookie options' ExpireTimeSpan; sliding). It used to be
+        // tied to the ACCESS token's expiry. Inactivity is ended separately by the SessionTimeout component.
+        var cookieExpires = DateTime.UtcNow.AddHours(8);
+        if (body.Tokens.RefreshExpiresAtUtc < cookieExpires) cookieExpires = body.Tokens.RefreshExpiresAtUtc;
         var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal,
-            new AuthenticationProperties { ExpiresUtc = jwt.ValidTo, IsPersistent = false, AllowRefresh = true });
+            new AuthenticationProperties { ExpiresUtc = cookieExpires, IsPersistent = false, AllowRefresh = true });
 
-        HttpContext.Response.Cookies.Append("asd_access_token", body.Tokens.AccessToken, new CookieOptions
-        {
-            HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, IsEssential = true, Expires = jwt.ValidTo,
-        });
         Nav.NavigateTo("/", forceLoad: true);
     }
 

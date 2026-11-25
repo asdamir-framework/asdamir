@@ -1,47 +1,144 @@
 #!/bin/bash
 # Temiz test çıktısı: her test PASS/FAIL/SKIP, sıfır gürültü. TRX üretir, parse eder, render eder.
-cd "$(dirname "$0")"
+#
+# Bu betiğin YEŞİL demesi için ÜÇ şeyin birden doğru olması gerekir (eskiden yalnız ilki kontrol ediliyordu):
+#   1. hiçbir test FAIL değil;
+#   2. `dotnet test` 0 ile çıktı — sıfırdan farklı çıkıp TRX'te tek bir FAIL yoksa hata testlerin DIŞINDADIR
+#      (derleme / restore / testhost çökmesi) ve eski sürüm bu çıkış kodunu ATIYORDU;
+#   3. her test projesi bir sonuç dosyası üretti — derlenmeyen proje TRX yazmaz, FAIL satırı da üretmez.
+# Ayrıca: SKIP bir PASS değildir. Atlanan her test, GEREKÇESİYLE birlikte yüksek sesle listelenir.
+cd "$(dirname "$0")" || exit 1
+
+# --- Çalışan bir Python 3 bul (PROBE: gerçekten çalıştır). macOS'ta `python3`, Xcode lisansı kabul
+# edilmemişse hata veren bir SHIM olabilir; `command -v` onu "var" sayar. Yorumlayıcı yoksa parser hiç
+# koşmaz ve özet basılmaz → sessiz bir boşluk. `PYTHON=/path/to/python3 ./run-tests.sh` ile elle seçilebilir.
+PY=""
+for cand in "$PYTHON" python3 python "$HOME"/.local/share/uv/python/*/bin/python3.[0-9]* \
+            /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+  [ -n "$cand" ] || continue
+  if [ "$("$cand" -c 'import sys; print(sys.version_info[0])' 2>/dev/null)" = "3" ]; then PY="$cand"; break; fi
+done
+if [ -z "$PY" ]; then
+  echo "RUN-TESTS FAILED — çalışan bir Python 3 yorumlayıcısı bulunamadı (python3 bir Xcode shim'i olabilir)."
+  echo "  PYTHON=/path/to/python3 ./run-tests.sh ile belirtin. Testler KOŞMADI, sonuç YOK."
+  exit 1
+fi
+
 # Bayat-TRX temizliği: TRX her test projesinin kendi TestResults/ klasörüne yazılır (kök ./TestResults'a
 # değil). Yalnız kökü silmek, derlemesi kırılan bir projenin ESKİ results.trx'ini bırakır → parser onu
 # yanlışlıkla "yeşil" sayar. Bu yüzden koşumdan önce TÜM per-project results.trx'leri sil (bin/ hariç).
 find . -path "*/TestResults/*" -name "results.trx" -not -path '*/bin/*' -delete 2>/dev/null
+
 # Varsayılan koşum HIZLI + Docker'sız: Category=Integration (Testcontainers/gerçek SQL) ve Category=E2E
 # (gerçek tarayıcı) hariç. Bunları açıkça çalıştır:
 #   dotnet test --filter "Category=Integration"   (Docker gerekir)
 # (Hariç tutmayı --filter ile yapıyoruz; RunSettingsFilePath'i Directory.Build.props'a koymak bazı SDK
 #  sürümlerinde solution restore'a dokunabildiğinden tercih edilmez.)
-dotnet test --filter "Category!=Integration&Category!=E2E" --logger "trx;LogFileName=results.trx" > /tmp/asd-test-build.log 2>&1
-TRX=$(find . -path "*/TestResults/*" -name "results.trx" -not -path '*/bin/*' 2>/dev/null)
-if [ -z "$TRX" ]; then
-  echo "BUILD/TEST FAILED — derleme veya test çalışmadı. Detay:"
-  tail -30 /tmp/asd-test-build.log
-  exit 1
-fi
-python3 - $TRX <<'PYEOF'
-import sys, xml.etree.ElementTree as ET
+LOG="${ASD_TEST_LOG:-/tmp/asd-test-build.log}"
+dotnet test --filter "Category!=Integration&Category!=E2E" --logger "trx;LogFileName=results.trx" > "$LOG" 2>&1
+DOTNET_RC=$?
+
+# TRX dosyalarını ve beklenen test projelerini Python KENDİSİ bulur — kabuk değişkenine konup tırnaksız
+# açılan bir yol listesi (eski `$TRX`), içinde boşluk olan bir dizinde parçalanıyordu.
+ASD_DOTNET_RC="$DOTNET_RC" ASD_TEST_LOG_PATH="$LOG" "$PY" - <<'PYEOF'
+import os, sys, xml.etree.ElementTree as ET
 ns = {'t': 'http://microsoft.com/schemas/VisualStudio/TeamTest/2010'}
 G, R, Y, B, Z = '\033[32m', '\033[31m', '\033[33m', '\033[1m', '\033[0m'
-# Skip (NotExecuted/Inconclusive) bir HATA DEĞİLDİR — ayrı say; koşumu KIRMIZIYA çevirmemeli.
+SKIPDIRS = {'bin', 'obj', '.git', 'node_modules'}
+dotnet_rc = int(os.environ.get('ASD_DOTNET_RC', '0') or 0)
+log_path = os.environ.get('ASD_TEST_LOG_PATH', '')
+
+def log_tail(n=40):
+    try:
+        with open(log_path, errors='replace') as f:
+            for line in f.readlines()[-n:]:
+                print('    ' + line.rstrip())
+    except OSError as e:
+        print(f"    (log okunamadı: {e})")
+
+trx_files, expected = [], []
+for root, dirs, files in os.walk('.'):
+    dirs[:] = [d for d in dirs if d not in SKIPDIRS]
+    if os.path.basename(root) == 'TestResults' and 'results.trx' in files:
+        trx_files.append(os.path.join(root, 'results.trx'))
+    for f in files:
+        if f.endswith(('.csproj', '.fsproj', '.vbproj')):
+            try:
+                with open(os.path.join(root, f), errors='replace') as fh:
+                    text = fh.read()
+            except OSError:
+                continue
+            # A test project = one that references the test SDK. Each MUST produce a TRX.
+            if 'Microsoft.NET.Test.Sdk' in text or '<IsTestProject>true' in text.replace(' ', ''):
+                expected.append(os.path.normpath(root))
+
+if not expected:
+    print(f"{B}{R}RUN-TESTS FAILED — hiç test projesi bulunamadı. Sıfır proje üzerinde yeşil, yeşil değildir.{Z}")
+    sys.exit(1)
+if not trx_files:
+    print(f"{B}{R}BUILD/TEST FAILED — derleme veya test çalışmadı (dotnet test exit {dotnet_rc}). Detay ({log_path}):{Z}")
+    log_tail(30)
+    sys.exit(1)
+
+# Skip (NotExecuted/Inconclusive) bir HATA DEĞİLDİR — ayrı say; koşumu KIRMIZIYA çevirmez. Ama bir PASS
+# de değildir: gerekçesiyle birlikte aşağıda yüksek sesle raporlanır.
 SKIP = {'NotExecuted', 'Inconclusive'}
 results = []
-for path in sys.argv[1:]:
-    root = ET.parse(path).getroot()
-    for r in root.findall('.//t:UnitTestResult', ns):
-        results.append((r.get('testName',''), r.get('outcome','')))
+for path in trx_files:
+    tree = ET.parse(path).getroot()
+    for r in tree.findall('.//t:UnitTestResult', ns):
+        msg = r.find('./t:Output/t:ErrorInfo/t:Message', ns)
+        reason = ' '.join((msg.text or '').split()) if msg is not None else ''
+        results.append((r.get('testName', ''), r.get('outcome', ''), reason))
 results.sort(key=lambda x: x[0])
+
 passed = failed = skipped = 0
-for name, outcome in results:
-    parts = name.split('.')
-    short = parts[-2] + '.' + parts[-1] if len(parts) >= 2 else name
+skips = []
+for name, outcome, reason in results:
+    # Class.Method [+ theory args]. Split the ARGS off first: theory data often contains dots.
+    head, sep, args = name.partition('(')
+    parts = head.split('.')
+    short = (parts[-2] + '.' + parts[-1] if len(parts) >= 2 else head) + (sep + args if sep else '')
     if outcome == 'Passed':
         print(f"{G}PASS{Z}  {short}"); passed += 1
     elif outcome in SKIP:
-        print(f"{Y}SKIP{Z}  {short}"); skipped += 1
+        print(f"{Y}SKIP{Z}  {short}"); skipped += 1; skips.append((short, reason))
     else:
         print(f"{R}FAIL{Z}  {short}  [{outcome}]"); failed += 1
 total = passed + failed + skipped
-c = G if failed == 0 else R
-tail = f", {skipped} skipped" if skipped else ""
-print(f"\n{B}{c}{passed} passed, {failed} failed{tail} — {total} total{Z}")
-sys.exit(0 if failed == 0 else 1)
+
+# LOUD SKIP REPORT — a run that skipped must be distinguishable AT A GLANCE from a run that passed.
+if skipped:
+    print(f"\n{B}{Y}⚠️  {skipped} TEST(S) SKIPPED — NOT VERIFIED (a skip is not a pass){Z}")
+    for short, reason in skips:
+        print(f"{Y}    · {short}{Z}")
+        print(f"      {reason[:400] if reason else '(no reason recorded)'}")
+
+# GATE: every expected test project produced a TRX (a project that failed to COMPILE writes none).
+trx_dirs = {os.path.normpath(os.path.dirname(os.path.dirname(p))) for p in trx_files}
+missing = sorted(p for p in set(expected) if p not in trx_dirs)
+infra_failed = False
+if missing:
+    infra_failed = True
+    print(f"\n{B}{R}✗ {len(missing)} TEST PROJECT(S) PRODUCED NO RESULTS — did not build or did not run:{Z}")
+    for p in missing:
+        print(f"{R}    · {p}{Z}")
+
+# GATE: `dotnet test` exited non-zero but no test failed → the failure is OUTSIDE the tests (compile error,
+# restore error, testhost crash). Zero failed tests is not a pass when the runner itself failed.
+if dotnet_rc != 0 and failed == 0:
+    infra_failed = True
+    print(f"\n{B}{R}✗ dotnet test exited {dotnet_rc} with NO failed test in the results — build/host failure, not a test failure.{Z}")
+if infra_failed:
+    print(f"{R}  Log tail ({log_path}):{Z}")
+    log_tail()
+
+ok = failed == 0 and not infra_failed
+c = G if ok else R
+tail = f", {Y}{skipped} skipped{Z}{B}{c}" if skipped else ""
+infra = f" — {len(missing)} project(s) without results" if missing else ""
+if dotnet_rc != 0 and failed == 0 and not missing:
+    infra = f" — dotnet test exit {dotnet_rc}"
+print(f"\n{B}{c}{passed} passed, {failed} failed{tail} — {total} total{infra}{Z}")
+sys.exit(0 if ok else 1)
 PYEOF

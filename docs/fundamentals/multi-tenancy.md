@@ -16,6 +16,17 @@ app.UseMultiTenancy();   // resolves the tenant early in the pipeline
 
 `UseMultiTenancy` runs the configured resolver and populates `ITenantContext` for the rest of the request.
 
+**Order matters, and `AddMultiTenancy()` alone does nothing.** Without `UseMultiTenancy()` nothing throws —
+`ITenantContext` silently resolves to `"default"` for every request. And a resolver that reads the authenticated
+user (`ClaimsTenantResolver`) only sees a populated `HttpContext.User` **after** `UseAuthentication()`, so place
+`UseMultiTenancy()` after it:
+
+```csharp
+app.UseAuthentication();
+app.UseMultiTenancy();
+app.UseAuthorization();
+```
+
 ## Resolving the tenant
 
 A resolver implements `ITenantResolver`. Two implementations ship out of the box:

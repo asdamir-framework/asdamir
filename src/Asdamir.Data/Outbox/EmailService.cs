@@ -42,6 +42,9 @@ public class EmailService : IEmailService
         _logger = logger;
     }
 
+    /// <summary>Creates the SMTP client for one send. A seam for tests; production uses MailKit's client.</summary>
+    internal Func<ISmtpClient> SmtpClientFactory { get; set; } = static () => new SmtpClient();
+
     /// <inheritdoc/>
     public Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default)
         => SendInternalAsync(to, subject, htmlBody, isHtml: true, cancellationToken);
@@ -51,6 +54,12 @@ public class EmailService : IEmailService
         => SendInternalAsync(to, subject, textBody, isHtml: false, cancellationToken);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Every recipient is attempted; a failure for one does not stop the others. If ANY send failed, a
+    /// <see cref="BulkEmailSendException"/> is thrown once all have been attempted — it names the recipients
+    /// that failed so a caller can retry those alone (retrying the whole list would mail the rest twice).
+    /// Before this, the method completed normally even when every single send had failed.
+    /// </remarks>
     public async Task SendBulkAsync(IEnumerable<string> to, string subject, string htmlBody, CancellationToken cancellationToken = default)
     {
         var recipients = to.ToList();
@@ -60,7 +69,7 @@ public class EmailService : IEmailService
         // connections at once. 4 is a reasonable default; tune later via options.
         const int maxConcurrency = 4;
         using var semaphore = new SemaphoreSlim(maxConcurrency);
-        var failures = 0;
+        var failed = new System.Collections.Concurrent.ConcurrentBag<string>();
 
         var tasks = recipients.Select(async recipient =>
         {
@@ -69,9 +78,13 @@ public class EmailService : IEmailService
             {
                 await SendInternalAsync(recipient, subject, htmlBody, isHtml: true, cancellationToken);
             }
+            catch (OperationCanceledException)
+            {
+                throw;   // cancellation is not a per-recipient failure
+            }
             catch (Exception ex)
             {
-                Interlocked.Increment(ref failures);
+                failed.Add(recipient);
                 _logger.LogError(ex, "Bulk-email send failed for {Recipient}", RecipientMasker.Mask(recipient));
             }
             finally
@@ -81,8 +94,12 @@ public class EmailService : IEmailService
         });
 
         await Task.WhenAll(tasks);
+        var failures = failed.Count;
         _logger.LogInformation("Bulk email finished: {Sent} sent, {Failed} failed of {Total}",
             recipients.Count - failures, failures, recipients.Count);
+
+        if (failures > 0)
+            throw new BulkEmailSendException(failed.ToArray(), recipients.Count);
     }
 
     private async Task SendInternalAsync(string to, string subject, string body, bool isHtml, CancellationToken cancellationToken)
@@ -99,10 +116,8 @@ public class EmailService : IEmailService
             else builder.TextBody = body;
             message.Body = builder.ToMessageBody();
 
-            using var client = new SmtpClient
-            {
-                Timeout = (int)TimeSpan.FromSeconds(_opt.TimeoutSeconds).TotalMilliseconds
-            };
+            using var client = SmtpClientFactory();
+            client.Timeout = (int)TimeSpan.FromSeconds(_opt.TimeoutSeconds).TotalMilliseconds;
             await client.ConnectAsync(
                 _opt.SmtpHost,
                 _opt.SmtpPort,
@@ -115,7 +130,17 @@ public class EmailService : IEmailService
             }
 
             await client.SendAsync(message, cancellationToken);
-            await client.DisconnectAsync(quit: true, cancellationToken);
+
+            // The server has accepted the message; a failure while hanging up cannot un-send it and must not
+            // be reported as "Failed to send email" (a caller that retries would deliver a duplicate).
+            try
+            {
+                await client.DisconnectAsync(quit: true, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "The SMTP session could not be closed cleanly after a successful send");
+            }
 
             // Audit fix: log a masked recipient instead of the raw address. Logs ship
             // to centralized stores; full addresses are unnecessary PII for a successful
@@ -141,6 +166,35 @@ public class EmailService : IEmailService
     // Asdamir.Core.Sanitization.RecipientMasker so it can be regression-tested AND
     // reused by other services (audit middleware, SMS sender) that need to log a
     // recipient without leaking PII.
+}
+
+/// <summary>
+/// Thrown by <see cref="IEmailService.SendBulkAsync"/> when one or more recipients could not be mailed. Every
+/// recipient has been attempted by the time it is thrown.
+/// </summary>
+public sealed class BulkEmailSendException : InvalidOperationException
+{
+    /// <summary>Creates the exception.</summary>
+    /// <param name="failedRecipients">The addresses whose send failed.</param>
+    /// <param name="totalRecipients">How many recipients the bulk send was asked to mail.</param>
+    public BulkEmailSendException(IReadOnlyList<string> failedRecipients, int totalRecipients)
+        : base($"Bulk email failed for {failedRecipients.Count} of {totalRecipients} recipient(s).")
+    {
+        FailedRecipients = failedRecipients;
+        TotalRecipients = totalRecipients;
+    }
+
+    /// <summary>
+    /// The addresses whose send failed — retry these, not the whole list. Deliberately NOT part of
+    /// <see cref="Exception.Message"/>, so logging the exception does not write addresses to the log.
+    /// </summary>
+    public IReadOnlyList<string> FailedRecipients { get; }
+
+    /// <summary>How many recipients the bulk send was asked to mail.</summary>
+    public int TotalRecipients { get; }
+
+    /// <summary>True when not a single recipient was mailed.</summary>
+    public bool AllFailed => FailedRecipients.Count == TotalRecipients;
 }
 
 /// <summary>

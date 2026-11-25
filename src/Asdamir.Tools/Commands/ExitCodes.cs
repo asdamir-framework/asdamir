@@ -114,11 +114,69 @@ public sealed class HandlerReached
 /// </remarks>
 public static class NameArgument
 {
-    /// <summary>True when the value is a usable PascalCase identifier and is not an option.</summary>
+    /// <summary>True when the value is a usable PascalCase identifier (and therefore not an option).</summary>
     /// <param name="value">The candidate name.</param>
     /// <returns>True when the value may be used as a name.</returns>
+    /// <remarks>
+    /// <para><b>An identifier, not merely "starts with a capital".</b> The name flows verbatim into file
+    /// paths, C# type names, SQL object names and shell command lines, so the previous check (first character
+    /// upper-case, anything after it) accepted <c>A/../../x</c> (a path that leaves the output directory),
+    /// <c>A'; DROP TABLE x--</c> (SQL) and <c>A$(id)</c> (shell). The rule is now the intersection of what is
+    /// safe in all four places: an ASCII letter A–Z first, then ASCII letters, digits or underscores, at most
+    /// <see cref="MaxLength"/> characters. ASCII on purpose — a Unicode letter is a legal C# identifier but
+    /// not a safe unquoted SQL identifier or file name on every platform.</para>
+    /// </remarks>
     public static bool IsValid(string? value)
-        => !string.IsNullOrWhiteSpace(value) && !value.StartsWith('-') && char.IsUpper(value[0]);
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > MaxLength) return false;
+        if (value[0] is < 'A' or > 'Z') return false;
+
+        foreach (var c in value)
+        {
+            var ok = c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_';
+            if (!ok) return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>The longest name accepted — well inside SQL Server's 128-character identifier limit once a
+    /// plural suffix and a <c>PK_</c>/<c>IX_</c> prefix are added, and inside every file system's name limit.</summary>
+    public const int MaxLength = 100;
+
+    /// <summary>
+    /// True when <paramref name="value"/> is a dotted sequence of PascalCase identifiers (<c>Acme.Orders</c>) —
+    /// the shape of a namespace or a project name. Each segment must satisfy <see cref="IsValid"/>.
+    /// </summary>
+    /// <param name="value">The candidate namespace / project name.</param>
+    /// <returns>True when every dot-separated segment is a valid name.</returns>
+    public static bool IsValidDotted(string? value)
+        => !string.IsNullOrWhiteSpace(value)
+           && value.Length <= 200
+           && value.Split('.').All(IsValid);
+
+    /// <summary>
+    /// True when <paramref name="value"/> is usable as a SQL Server database name without quoting: an ASCII
+    /// letter or underscore first, then letters, digits or underscores. It is composed into a connection
+    /// string (where <c>;</c> starts a new keyword) and printed into shell commands, so nothing else is allowed.
+    /// </summary>
+    /// <param name="value">The candidate database name.</param>
+    /// <returns>True when the value is a plain identifier.</returns>
+    public static bool IsValidDatabaseName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Length > 128) return false;
+        if (!(value[0] is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or '_')) return false;
+        return value.All(c => c is >= 'A' and <= 'Z' or >= 'a' and <= 'z' or >= '0' and <= '9' or '_');
+    }
+
+    /// <summary>
+    /// Escapes <paramref name="value"/> for use INSIDE a T-SQL string literal (<c>N'…'</c>) — doubles every
+    /// single quote. The only correct way to place user text in a generated <c>.sql</c> file, which cannot be
+    /// parameterised: <c>--admin-email o'brien@x.com</c> used to terminate the literal and break the seed.
+    /// </summary>
+    /// <param name="value">The raw text.</param>
+    /// <returns>The text with each <c>'</c> doubled.</returns>
+    public static string SqlLiteral(string value) => value.Replace("'", "''", StringComparison.Ordinal);
 
     /// <summary>
     /// The message to print when <see cref="IsValid"/> is false — it distinguishes "you mistyped an option"
@@ -132,7 +190,9 @@ public static class NameArgument
         => value is not null && value.StartsWith('-')
             ? $"'{value}' looks like an option, not {Article(what)} {what}. If you meant an option, check its "
               + $"spelling; the name is the first positional argument: {usage}"
-            : $"{char.ToUpperInvariant(what[0])}{what[1..]} must be PascalCase, e.g. {usage}";
+            : $"{char.ToUpperInvariant(what[0])}{what[1..]} must be a PascalCase identifier — an ASCII letter A–Z "
+              + $"first, then letters, digits or underscores only (no spaces, dots, slashes or quotes; at most "
+              + $"{MaxLength} characters), e.g. {usage}";
 
     /// <summary>"a" or "an" for <paramref name="noun"/> — by its first SOUND, not by its first letter.</summary>
     /// <remarks>

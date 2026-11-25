@@ -23,7 +23,8 @@ public sealed class AgentAuditOptions
     public enum SinkFailureMode
     {
         /// <summary>
-        /// DEFAULT. Write undelivered records to a bounded local NDJSON spool and replay them at startup.
+        /// DEFAULT. Write undelivered records to a bounded local NDJSON spool and replay them at startup and,
+        /// while the process runs, every <see cref="SpoolReplayInterval"/> once delivery is healthy again.
         /// Availability is preserved and nothing is lost while the spool has room; if the spool fills, the
         /// OLDEST file is dropped with a warning — so the cap is a real, if last-resort, data-loss boundary.
         /// </summary>
@@ -92,7 +93,20 @@ public sealed class AgentAuditOptions
     public long SpoolMaxBytes { get; set; } = 64L * 1024 * 1024;
 
     /// <summary>
+    /// How often the running process looks at the spool again and replays what it finds, once delivery is
+    /// healthy and the in-memory queue has room. Without this the spool was replayed only at startup, so
+    /// records spooled during an outage waited for the next restart. Values below one second are raised to it.
+    /// </summary>
+    public TimeSpan SpoolReplayInterval { get; set; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>
     /// How many times a record may be re-attempted before it is treated as undeliverable and dead-lettered.
+    ///
+    /// <para><b>Only a failure that is ABOUT THE RECORD spends this budget</b> — a per-item transient status,
+    /// a missing per-item result, or a request the server refused as malformed. An OUTAGE does not: a
+    /// connection failure, a timeout, a 5xx, a 408/429 or a 401/403 (a misconfigured or expired key) says
+    /// nothing about the record, so the batch is retried with exponential backoff for as long as the outage
+    /// lasts, without ever being dead-lettered for it.</para>
     ///
     /// <para>This cap is what stops an UNKNOWN per-item status from retrying forever. An unrecognised status is
     /// always treated as transient first (a newer server may consider it retryable), so without a cap such a

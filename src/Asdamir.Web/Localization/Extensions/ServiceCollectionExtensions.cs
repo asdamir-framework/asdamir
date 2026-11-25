@@ -9,6 +9,8 @@
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU LGPL for more details.
 
 using Asdamir.Web.Localization.Client;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Http.Resilience;
 using Microsoft.Extensions.DependencyInjection;
 using Asdamir.Web.Localization.Abstractions;
@@ -27,6 +29,15 @@ public static class ServiceCollectionExtensions
     /// <param name="services">Service collection</param>
     /// <param name="apiBaseUrl">API base URL (e.g., "https://localhost:7001")</param>
     /// <returns>Service collection for chaining</returns>
+    /// <remarks>
+    /// <para><b>TLS certificate validation is on, except in Development — and never silently.</b> So that a
+    /// developer's self-signed certificate works, validation is skipped only when BOTH hold: the
+    /// <c>ASPNETCORE_ENVIRONMENT</c> variable is exactly <c>Development</c>, and the host's own
+    /// <c>IHostEnvironment</c> (when one is registered) also reports Development. The environment variable
+    /// alone used to decide this, so a process that inherited <c>ASPNETCORE_ENVIRONMENT=Development</c>
+    /// while actually hosted as Staging/Production talked to its API without verifying the certificate, and
+    /// nothing said so. Every time validation is skipped a warning is logged.</para>
+    /// </remarks>
     public static IServiceCollection AddFrameworkLocalization(
         this IServiceCollection services,
         string apiBaseUrl)
@@ -40,14 +51,22 @@ public static class ServiceCollectionExtensions
             client.BaseAddress = new Uri(apiBaseUrl);
             client.Timeout = TimeSpan.FromSeconds(30);
         })
-        .ConfigurePrimaryHttpMessageHandler(() =>
+        .ConfigurePrimaryHttpMessageHandler(sp =>
         {
             var handler = new HttpClientHandler();
-            // Skip SSL validation in development for self-signed certificates
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
+
+            // Skip TLS validation in development for self-signed certificates — see the remarks above.
+            if (IsDevelopment(sp))
             {
                 handler.ServerCertificateCustomValidationCallback =
                     HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+
+                sp.GetService<ILoggerFactory>()?
+                    .CreateLogger("Asdamir.Web.Localization")
+                    .LogWarning(
+                        "TLS certificate validation is DISABLED for the localization API client ({BaseUrl}) because "
+                        + "the environment is Development. This must never appear outside a developer machine.",
+                        apiBaseUrl);
             }
             return handler;
         })
@@ -69,5 +88,18 @@ public static class ServiceCollectionExtensions
         });
 
         return services;
+    }
+
+    /// <summary>
+    /// Development by BOTH definitions: the process environment variable and, when the host registers one,
+    /// its <see cref="IHostEnvironment"/>. Requiring both can only narrow the old variable-only rule.
+    /// </summary>
+    private static bool IsDevelopment(IServiceProvider services)
+    {
+        var variable = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        if (!string.Equals(variable, "Development", StringComparison.Ordinal)) return false;
+
+        var host = services.GetService<IHostEnvironment>();
+        return host is null || host.IsDevelopment();
     }
 }

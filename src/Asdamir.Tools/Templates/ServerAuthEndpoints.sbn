@@ -7,15 +7,19 @@ namespace {{ ServerNamespace }}.Auth;
 /// <summary>Cookie sign-out. Sign-IN happens in the Login page (SSR form post).</summary>
 public static class AuthEndpoints
 {
+    /// <summary>The cookie claim that names the server-side session (see <see cref="AppUserSessionStore"/>).</summary>
+    public const string SessionIdClaim = "sid";
+
     public static void MapAuthEndpoints(IEndpointRouteBuilder app)
     {
+        // The ONE way a session ends from the browser: the profile menu, the idle timeout and a page that
+        // finds its Gateway token dead all navigate here. It removes the server-side session FIRST, so the
+        // cookie is rejected immediately even if the browser keeps it.
         app.MapGet("/logout", async (HttpContext http, {{ ServerNamespace }}.Auth.AppUserSessionStore sessions) =>
         {
-            // End the server-side session first so the cookie is rejected immediately (even if it lingers).
-            var sub = http.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                   ?? http.User.FindFirst("sub")?.Value;
-            sessions.Remove(sub);
+            sessions.Remove(http.User.FindFirst(SessionIdClaim)?.Value);
             await http.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            // Legacy cookie from apps generated before the tokens moved server-side — clear it if present.
             http.Response.Cookies.Delete("asd_access_token");
             return Results.Redirect("/login");
         }).AllowAnonymous();

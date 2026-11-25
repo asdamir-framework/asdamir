@@ -46,4 +46,27 @@ public static class RecipientMasker
             ? "*" + domain
             : local[0] + "***" + domain;
     }
+
+    /// <summary>
+    /// Returns a log-safe rendering of a phone number: <c>***</c> plus its last two digits
+    /// (<c>+90 532 123 45 67</c> → <c>***67</c>), enough to tell two log lines apart without recording the
+    /// number. Fewer than four digits collapse to <c>***</c> — a tail of a very short value IS the value.
+    /// </summary>
+    /// <param name="phone">The raw phone number, in any formatting.</param>
+    public static string MaskPhone(string? phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone)) return "(empty)";
+
+        Span<char> tail = stackalloc char[2];
+        var digits = 0;
+        foreach (var c in phone)
+        {
+            if (!char.IsAsciiDigit(c)) continue;
+            tail[0] = tail[1];
+            tail[1] = c;
+            digits++;
+        }
+
+        return digits < 4 ? "***" : string.Concat("***", tail);
+    }
 }

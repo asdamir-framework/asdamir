@@ -13,9 +13,22 @@ scoped by `AppId`** — a generated app does **NOT** keep its own `AppConfigurat
 ## Where config lives + how it's read (two cases)
 - **AppManagement (the control plane)** owns AsdamirVault as its OWN database, so its API registers the table
   into `IConfiguration` at startup via Core's DB-backed source —
-  `builder.Configuration.AddDatabaseConfiguration(...)` (`Asdamir.Data.Configuration`; loads every `IsActive=1`
-  row, refreshes on an interval). Reachable as `builder.Configuration["Key"]`, `GetSection(...)`, and
-  strongly-typed `Configure<TOptions>(GetSection(...))`.
+  `builder.Configuration.AddDatabaseConfiguration(factory, o => o.AppId = SelfApp.Id)` (`Asdamir.Data.Configuration`).
+  It is **SCOPED**: it loads the `IsActive=1` rows of the **SelfApp** scope plus the global `AppId IS NULL` rows
+  (own row wins on a key clash) and never another app's rows; refreshes on an interval. Reachable as
+  `builder.Configuration["Key"]`, `GetSection(...)`, and strongly-typed `Configure<TOptions>(GetSection(...))`.
+  Loader facts (`DatabaseConfigurationOptions`): keys are case-insensitive; the first load is synchronous; a
+  failed reload keeps the last-known-good values; `ProtectedKeys` (default `Jwt:Key`, `Security:EncryptionKey`,
+  `ConnectionStrings:*`, `Persistence:UseInMemory`) can **never** be supplied by a DB row — they are dropped and
+  logged; `app.Configuration.AttachDatabaseConfigurationLogging(loggerFactory)` after `Build()` gives the
+  provider its logger.
+- **Console config rows live at `AppId = SelfApp`, not `NULL`** (`AsdamirVault_145` moved the NULL-scoped rows
+  and dropped the SelfApp→NULL rewrite from the `AppConfiguration_*` procs). `NULL` now means *global*, as it
+  does for localization — seed a console tunable at SelfApp.
+- **Secrets on the App Config API:** a row flagged `IsSecret` is returned with an **empty** `Value`; an upsert
+  with `IsSecret=true` and an empty value **keeps the stored value** (so re-saving the masked row does not wipe
+  it). **`IsEncrypted` is NOT implemented on this path** — there is no encrypt-on-write and the DB configuration
+  provider does not decrypt on load; do not rely on it.
 - **A generated app** does **NOT** read `AppConfigurations` from its own DB (it has none) and does **NOT** call
   `AddDatabaseConfiguration` against its own DB. Its settings live in AsdamirVault **AppId-scoped** and are
   reached **through AppManagement's API** — exactly like menus/localization (the Gateway proxies
@@ -45,3 +58,6 @@ scoped by `AppId`** — a generated app does **NOT** keep its own `AppConfigurat
   `AddDatabaseConfiguration` is for **AppManagement** reading its OWN AsdamirVault DB.
 - **Don't seed the key into the app's `DbSeed.sql`** — seed it into AsdamirVault via `register_<app>.sql`.
 - **Don't read `AppConfigurations` from the UI tier** — surface it via the client-settings API endpoint.
+- **Don't put a protected key in `AppConfigurations`** (`Jwt:Key`, `Security:EncryptionKey`, `ConnectionStrings:*`,
+  `Persistence:UseInMemory`) — the loader drops it; those come from user-secrets / environment only.
+- **Don't call `AddDatabaseConfiguration` unscoped on a table shared between apps** — set `AppId`.

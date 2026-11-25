@@ -29,7 +29,9 @@ public interface IRateLimitService
 
 /// <summary>
 /// Middleware that rate-limits inbound requests via <see cref="IRateLimitService"/>, keyed by tenant, the
-/// authenticated user (or client IP), and request path. Requests over budget get an HTTP 429 short-circuit.
+/// authenticated user (or client IP), and request path. Requests over budget get an HTTP 429 short-circuit
+/// with a <c>Retry-After</c> header (the window, in seconds). The path is normalised (lower-cased, trailing
+/// slashes removed) so a different spelling of the same endpoint does not get its own budget.
 /// </summary>
 public class RateLimitMiddleware
 {
@@ -59,6 +61,8 @@ public class RateLimitMiddleware
         if (!allowed)
         {
             context.Response.StatusCode = 429;
+            context.Response.Headers.RetryAfter = Math.Max(1, (int)Math.Ceiling(_options.Window.TotalSeconds))
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
             await context.Response.WriteAsync("Rate limit exceeded");
             return;
         }
@@ -72,7 +76,7 @@ public class RateLimitMiddleware
         var ip = context.Connection.RemoteIpAddress?.ToString();
         var tenantId = context.Items["TenantContext"] as ITenantContext;
         
-        return $"{tenantId?.TenantId}:{userId ?? ip}:{context.Request.Path}";
+        return $"{tenantId?.TenantId}:{userId ?? ip}:{Middleware.RateLimitingMiddleware.NormalizePath(context.Request.Path.Value)}";
     }
 }
 

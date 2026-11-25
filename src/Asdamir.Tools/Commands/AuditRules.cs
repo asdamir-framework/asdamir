@@ -25,10 +25,17 @@ public enum AuditSeverity { Info, Warning, Error }
 /// One pattern the audit lint scans for.
 ///
 /// <para>
-/// Each rule is intentionally simple — a line-level regex. The lint is a
-/// fast smoke check, not a Roslyn-grade analyzer. False positives are tolerable
-/// as long as the <see cref="Rationale"/> + <see cref="Fix"/> guidance is
-/// actionable enough that the reader can suppress with confidence.
+/// Each rule is intentionally simple — a regex, or (for the two rules about a BLOCK, see
+/// <see cref="BlockMatcher"/>) a small brace-matching scan. The lint is a fast smoke check, not a
+/// Roslyn-grade analyzer. False positives are tolerable as long as the <see cref="Rationale"/> +
+/// <see cref="Fix"/> guidance is actionable enough that the reader can suppress with confidence.
+/// </para>
+/// <para>
+/// <b>A rule is matched per LINE unless it says otherwise.</b> That default silently disabled every rule
+/// whose anti-pattern spans lines: AUD005 (a loop and the <c>Task.Delay</c> inside it) and AUD010 (a
+/// <c>catch</c> and the assignment inside it) were written as multi-line patterns and then fed one line at
+/// a time, so neither could ever fire on normally formatted code — two rules that reported zero for the
+/// life of the gate. <see cref="WholeFile"/> / <see cref="BlockMatcher"/> opt a rule into file scope.
 /// </para>
 /// </summary>
 public sealed record AuditRule(
@@ -44,6 +51,19 @@ public sealed record AuditRule(
     /// target C# anti-patterns. Markup rules (e.g. the inline-style gate) override with <c>.razor</c>/<c>.sbn</c>.
     /// </summary>
     public string[] FileExtensions { get; init; } = new[] { ".cs" };
+
+    /// <summary>
+    /// When true, <see cref="Pattern"/> is matched against the WHOLE file (line comments already stripped),
+    /// so it can span a line break — <c>new HttpClient</c> followed by an object initializer on the next line.
+    /// </summary>
+    public bool WholeFile { get; init; }
+
+    /// <summary>
+    /// An optional custom scan over the whole (comment-stripped) file, returning the character offset of each
+    /// finding. Used where the anti-pattern is "X somewhere inside a <c>{ … }</c> block", which a regex cannot
+    /// delimit once blocks nest. When set it replaces <see cref="Pattern"/>, which then only documents intent.
+    /// </summary>
+    public Func<string, IEnumerable<int>>? BlockMatcher { get; init; }
 }
 
 /// <summary>
@@ -61,18 +81,24 @@ public static class AuditRuleSet
         new AuditRule(
             Id: "AUD001",
             Severity: AuditSeverity.Error,
-            Pattern: R(@"\bnew\s+HttpClient\s*\("),
+            // `new HttpClient(` AND `new HttpClient {` (object initializer — the form that was invisible) AND the
+            // target-typed `HttpClient x = new(…)`. `HttpClientHandler` / `IHttpClientFactory` do not match:
+            // the type name must be followed directly by `(`, `{` or a declarator.
+            Pattern: R(@"\bnew\s+HttpClient\s*[({]|\bHttpClient\??\s+\w+\s*(?:\{[^{}]*\}\s*)?=\s*new\s*\("),
             Title: "Bare `new HttpClient()` — sockets exhausted under load.",
             Rationale: "`HttpClient` instances each open a connection pool. Constructing them ad-hoc leaks sockets and bypasses any DelegatingHandler chain (auth, retry, logging).",
-            Fix: "Inject `IHttpClientFactory` and call `factory.CreateClient(...)`, registered via `AddHttpClient(...)` in DI."),
+            Fix: "Inject `IHttpClientFactory` and call `factory.CreateClient(...)`, registered via `AddHttpClient(...)` in DI.")
+        { WholeFile = true },
 
         new AuditRule(
             Id: "AUD002",
             Severity: AuditSeverity.Error,
-            Pattern: R(@"\bnew\s+SqlConnection\s*\("),
+            // Same three spellings as AUD001. `SqlConnectionStringBuilder` does not match.
+            Pattern: R(@"\bnew\s+SqlConnection\s*[({]|\bSqlConnection\??\s+\w+\s*(?:\{[^{}]*\}\s*)?=\s*new\s*\("),
             Title: "Direct `new SqlConnection(...)` — bypasses tenant connection factory.",
             Rationale: "Constructing SQL connections inline leaks credentials, skips connection pooling tuning, and circumvents the multi-tenant `IDbConnectionFactory` that scopes connections per tenant.",
-            Fix: "Inject `IDbConnectionFactory` / `IDatabaseContext`. Use `await using var conn = factory.Create();`."),
+            Fix: "Inject `IDbConnectionFactory` / `IDatabaseContext`. Use `await using var conn = factory.Create();`.")
+        { WholeFile = true },
 
         new AuditRule(
             Id: "AUD003",
@@ -96,7 +122,8 @@ public static class AuditRuleSet
             Pattern: R(@"while\s*\([^)]+\)\s*\{[^}]*Task\.Delay\s*\(\s*\d+\s*\)|do\s*\{[^}]*Task\.Delay\s*\(\s*\d+\s*\)"),
             Title: "Polling loop using `Task.Delay(...)` — replace with event-driven async.",
             Rationale: "Polling loops waste cycles and add latency proportional to the delay. They're also a common source of test flakes when timeouts straddle CI clock skew.",
-            Fix: "Wait on a `TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously)` signalled when the condition flips. For Web.UI handlers, use Dispatcher.PostAsync."),
+            Fix: "Wait on a `TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously)` signalled when the condition flips. For Web.UI handlers, use Dispatcher.PostAsync.")
+        { BlockMatcher = AuditBlockScans.PollingLoops },
 
         new AuditRule(
             Id: "AUD006",
@@ -140,7 +167,8 @@ public static class AuditRuleSet
             Pattern: R(@"catch[^{}]*\{[^{}]*(?:isAuthorized|_authorized|allowAccess|_canAccess)\s*=\s*true"),
             Title: "Fail-open authorization — exception path grants access.",
             Rationale: "A bug or transient downstream failure must NEVER promote an anonymous caller to an authorized one. Defaulting `isAuthorized = true` in `catch` does exactly that.",
-            Fix: "Initialize the authorization flag to `false`. In `catch`, log and explicitly redirect to `/access-denied` (or return 401/403). Only the success path may set it `true`."),
+            Fix: "Initialize the authorization flag to `false`. In `catch`, log and explicitly redirect to `/access-denied` (or return 401/403). Only the success path may set it `true`.")
+        { BlockMatcher = AuditBlockScans.FailOpenCatches },
 
         new AuditRule(
             Id: "AUD011",
@@ -170,4 +198,143 @@ public static class AuditRuleSet
             Fix: "Move the declaration to a class in the co-located `<Component>.razor.css` (or a shared theme sheet) and use `class=\"...\"`. For a genuine per-item DYNAMIC value, pass it through a CSS custom property — `style=\"--x:@value\"` (this form is exempt). A justified exception (e.g. a pre-boot loading screen shown before the app CSS loads) may suppress with `audit-lint:ignore AUD013`.")
         { FileExtensions = new[] { ".razor", ".sbn" } },
     };
+}
+
+/// <summary>
+/// The two block-scoped scans (AUD005, AUD010). Each finds a construct, delimits its <c>{ … }</c> body by
+/// brace depth — skipping string and character literals, so a <c>"}"</c> does not close the block — and looks
+/// for the offending statement INSIDE that body only.
+/// </summary>
+public static class AuditBlockScans
+{
+    private static readonly Regex LoopHead = new(@"\b(while|do)\b", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    private static readonly Regex CatchHead = new(@"\bcatch\b", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // A FIXED delay: an integer literal (optionally followed by a cancellation token). `Task.Delay(interval, ct)`
+    // and `Task.Delay(TimeSpan…)` are a configured period, not the hardcoded poll this rule is about.
+    private static readonly Regex FixedDelay = new(
+        @"\bTask\s*\.\s*Delay\s*\(\s*\d[\d_]*\s*[,)]", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // An authorization flag being set to true. `== true` (a comparison) does not match.
+    private static readonly Regex GrantsAccess = new(
+        @"\b_?(?:isAuthorized|authorized|allowAccess|canAccess|hasAccess|isAllowed)\s*=\s*true\b",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    /// <summary>Offsets of every <c>while (…) { … }</c> / <c>do { … }</c> whose body contains a fixed <c>Task.Delay</c>.</summary>
+    /// <param name="text">The comment-stripped file text.</param>
+    /// <returns>The offset of each offending loop keyword.</returns>
+    public static IEnumerable<int> PollingLoops(string text)
+    {
+        foreach (Match m in LoopHead.Matches(text))
+        {
+            var i = SkipWhitespace(text, m.Index + m.Length);
+
+            if (m.Value == "while")
+            {
+                // `while (cond)` — step over the balanced condition. A `do { } while (cond);` tail lands here
+                // too; it has no `{` after the condition, so it yields nothing.
+                if (i >= text.Length || text[i] != '(') continue;
+                i = SkipBalanced(text, i, '(', ')');
+                if (i < 0) continue;
+                i = SkipWhitespace(text, i);
+            }
+
+            if (i >= text.Length || text[i] != '{') continue;
+            var end = SkipBalanced(text, i, '{', '}');
+            if (end < 0) continue;
+
+            if (FixedDelay.IsMatch(text, i) && FixedDelay.Match(text, i).Index < end) yield return m.Index;
+        }
+    }
+
+    /// <summary>Offsets of every authorization flag set to <c>true</c> inside a <c>catch</c> block.</summary>
+    /// <param name="text">The comment-stripped file text.</param>
+    /// <returns>The offset of each offending assignment.</returns>
+    public static IEnumerable<int> FailOpenCatches(string text)
+    {
+        foreach (Match m in CatchHead.Matches(text))
+        {
+            var i = SkipWhitespace(text, m.Index + m.Length);
+
+            // Optional `(Exception ex)` and optional `when (filter)`.
+            if (i < text.Length && text[i] == '(')
+            {
+                i = SkipBalanced(text, i, '(', ')');
+                if (i < 0) continue;
+                i = SkipWhitespace(text, i);
+            }
+
+            if (i + 4 <= text.Length && string.CompareOrdinal(text, i, "when", 0, 4) == 0)
+            {
+                i = SkipWhitespace(text, i + 4);
+                if (i >= text.Length || text[i] != '(') continue;
+                i = SkipBalanced(text, i, '(', ')');
+                if (i < 0) continue;
+                i = SkipWhitespace(text, i);
+            }
+
+            if (i >= text.Length || text[i] != '{') continue;
+            var end = SkipBalanced(text, i, '{', '}');
+            if (end < 0) continue;
+
+            for (var g = GrantsAccess.Match(text, i); g.Success && g.Index < end; g = g.NextMatch())
+            {
+                yield return g.Index;
+            }
+        }
+    }
+
+    private static int SkipWhitespace(string text, int i)
+    {
+        while (i < text.Length && char.IsWhiteSpace(text[i])) i++;
+        return i;
+    }
+
+    /// <summary>
+    /// Given the offset of an opening bracket, returns the offset just past its matching close, or -1 when the
+    /// file ends first. String and character literals are stepped over so a bracket inside one is not counted.
+    /// </summary>
+    private static int SkipBalanced(string text, int open, char openCh, char closeCh)
+    {
+        var depth = 0;
+        for (var i = open; i < text.Length; i++)
+        {
+            var c = text[i];
+            if (c == '"')
+            {
+                var verbatim = i > 0 && text[i - 1] == '@';
+                for (i++; i < text.Length; i++)
+                {
+                    if (verbatim)
+                    {
+                        if (text[i] == '"' && i + 1 < text.Length && text[i + 1] == '"') { i++; continue; }
+                        if (text[i] == '"') break;
+                    }
+                    else
+                    {
+                        if (text[i] == '\\') { i++; continue; }
+                        if (text[i] == '"' || text[i] == '\n') break;
+                    }
+                }
+
+                continue;
+            }
+
+            if (c == '\'')
+            {
+                // 'x' or '\x' — at most a few characters; bail out at a newline (an apostrophe in prose).
+                for (i++; i < text.Length && text[i] != '\'' && text[i] != '\n'; i++)
+                {
+                    if (text[i] == '\\') i++;
+                }
+
+                continue;
+            }
+
+            if (c == openCh) depth++;
+            else if (c == closeCh && --depth == 0) return i + 1;
+        }
+
+        return -1;
+    }
 }

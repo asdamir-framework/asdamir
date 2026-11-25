@@ -90,6 +90,19 @@ public static class MobileCommand
         }
 
         var ns = string.IsNullOrWhiteSpace(nsOverride) ? name : nsOverride;
+        if (!NameArgument.IsValidDotted(ns))
+        {
+            Console.Error.WriteLine($"--namespace '{ns}' is not a valid namespace (dot-separated PascalCase identifiers, e.g. Acme.Orders).");
+            return ExitCodes.Usage;
+        }
+        if (!Uri.TryCreate(gatewayUrl, UriKind.Absolute, out var gatewayUri)
+            || (gatewayUri.Scheme != Uri.UriSchemeHttp && gatewayUri.Scheme != Uri.UriSchemeHttps)
+            || gatewayUrl.IndexOfAny(['"', '\'', ' ', '\\', '<', '>']) >= 0)
+        {
+            Console.Error.WriteLine($"--gateway-url '{gatewayUrl}' is not a valid absolute http(s) URL.");
+            return ExitCodes.Usage;
+        }
+
         var appRoot = Path.Combine(output.FullName, name);
         if (Directory.Exists(appRoot) && Directory.EnumerateFileSystemEntries(appRoot).Any())
         {

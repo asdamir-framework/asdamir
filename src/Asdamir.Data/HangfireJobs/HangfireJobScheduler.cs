@@ -101,11 +101,13 @@ public class HangfireJobScheduler : IJobScheduler
         try
         {
             var jobTypeName = typeof(T).Name;
-            // Note: ScheduledState carries no queue in Hangfire 1.8 — a delayed job picks its queue
-            // only when it transitions to Enqueued. Per-app isolation is delivered via the Enqueue
-            // and Recurring paths (both queue-routed); delayed Schedule stays on the default queue.
-            var jobId = _backgroundJobClient.Schedule<JobExecutor>(
-                x => x.ExecuteAsync(jobTypeName), delay);
+            // Route to the app queue when configured, exactly like Enqueue and Recurring. Hangfire 1.8
+            // carries the queue ON THE JOB (the queue-taking Schedule overload), so it survives the
+            // Scheduled → Enqueued transition; before this a delayed job silently landed on the shared
+            // default queue, where another app's worker could pick it up.
+            var jobId = HasQueue
+                ? _backgroundJobClient.Schedule<JobExecutor>(_appQueue, x => x.ExecuteAsync(jobTypeName), delay)
+                : _backgroundJobClient.Schedule<JobExecutor>(x => x.ExecuteAsync(jobTypeName), delay);
 
             _logger.LogInformation("Job {JobType} scheduled with delay {Delay}, ID {JobId}",
                 jobTypeName, delay, jobId);
@@ -129,8 +131,9 @@ public class HangfireJobScheduler : IJobScheduler
         try
         {
             var jobTypeName = typeof(T).Name;
-            var jobId = _backgroundJobClient.Schedule<JobExecutor>(
-                x => x.ExecuteAsync(jobTypeName), executeAt);
+            var jobId = HasQueue
+                ? _backgroundJobClient.Schedule<JobExecutor>(_appQueue, x => x.ExecuteAsync(jobTypeName), executeAt)
+                : _backgroundJobClient.Schedule<JobExecutor>(x => x.ExecuteAsync(jobTypeName), executeAt);
 
             _logger.LogInformation("Job {JobType} scheduled for {ExecuteAt}, ID {JobId}", 
                 jobTypeName, executeAt, jobId);
@@ -246,16 +249,26 @@ public class HangfireJobScheduler : IJobScheduler
     }
 
     /// <summary>
-    /// Remove a recurring job
+    /// Remove a recurring job. Accepts either the id the caller passed to <c>RecurringAsync</c> or the
+    /// effective id that call returned: the configured recurring-id prefix is applied here exactly as it
+    /// is on add (and not applied twice), so the job that was created is the job that is removed.
     /// </summary>
-    /// <param name="jobId">Job ID</param>
+    /// <param name="jobId">Job ID — raw, or already prefixed.</param>
     /// <returns>True if removed successfully</returns>
     public Task<bool> RemoveRecurringAsync(string jobId)
     {
         try
         {
-            _recurringJobManager.RemoveIfExists(jobId);
-            _logger.LogInformation("Recurring job {JobId} removed successfully", jobId);
+            // Without the prefix this removed NOTHING when a prefix was configured (the stored id is
+            // "{prefix}:{jobId}") and still reported success. The already-prefixed form is accepted because
+            // RecurringAsync returns it.
+            var effectiveId = _recurringIdPrefix.Length > 0
+                              && jobId.StartsWith(_recurringIdPrefix + ":", StringComparison.Ordinal)
+                ? jobId
+                : PrefixedId(jobId);
+
+            _recurringJobManager.RemoveIfExists(effectiveId);
+            _logger.LogInformation("Recurring job {JobId} removed successfully", effectiveId);
             return Task.FromResult(true);
         }
         catch (Exception ex)

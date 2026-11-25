@@ -339,15 +339,17 @@ HSM/KMS integration is **not** part of this version.
 ## When delivery fails
 
 An audit record has no second copy, so the client never drops one quietly. Every path ends somewhere
-accountable: delivered, spooled for retry, or dead-lettered with a standing alarm.
+accountable: delivered, spooled for retry, or dead-lettered with a standing alarm. That includes shutdown:
+the batch the sink is in the middle of delivering when the process stops, and everything still queued behind
+it, are handled by the same policy as any other undelivered record.
 
 `AgentAuditOptions.OnSinkFailure` chooses the policy — a compliance decision, not a performance one:
 
 | Mode | Behaviour |
 |---|---|
-| `Spool` *(default)* | Undelivered records go to a bounded local NDJSON spool and are replayed at startup |
+| `Spool` *(default)* | Undelivered records go to a bounded local NDJSON spool and are replayed at startup **and while the process runs** — every `SpoolReplayInterval` (default 1 minute, floor 1 second), once delivery is healthy and the in-memory queue has room |
 | `Throw` | Fail-closed: once delivery is failing, subsequent calls throw rather than let an unauditable action proceed |
-| `DropAndWarn` | The gap is accepted and merely logged. Only for an advisory ledger — never for a record you may have to produce |
+| `DropAndWarn` | The gap is accepted and merely logged — **including records still held at shutdown**, which are dropped rather than spooled. Only for an advisory ledger — never for a record you may have to produce |
 
 Because delivery is asynchronous, `Throw` cannot fail the very record that could not be sent; it fails the
 **next** call. That is a real limitation of an asynchronous sink, and it is why `Spool` is the default.
@@ -372,8 +374,27 @@ contract version precisely so new statuses can be added; assuming an unknown one
 discard a record that a newer server considered retryable. The retry cap
 (`AgentAuditOptions.MaxDeliveryAttempts`) is what stops such a record circulating for ever.
 
-There are therefore exactly **two routes into the dead letter**: a status known to be permanent, and an
-unknown or transient status that exhausted the retry cap.
+The same event id may come back **twice** in one response — the same record recorded twice lands in one batch,
+and the server answers `appended` for one copy and `duplicate` for the other. The client accepts that; when
+the answers for one id differ, the one saying the record **is** in the ledger applies to every copy of it.
+
+### An outage does not spend the retry budget
+
+`MaxDeliveryAttempts` counts failures that are **about the record**: a per-item transient status, a missing
+per-item result, or a request the server refused as malformed (for example a `400`, `404` or `413`). A failure
+that is about the **service** says nothing about the record and spends nothing:
+
+- a connection failure or a timeout,
+- any `5xx`, a `408` or a `429`,
+- a `401` or `403` — almost always a misconfigured or expired key, which an operator fixes.
+
+In those cases the batch is held and retried with exponential backoff for as long as the outage lasts and is
+**never dead-lettered for it**; the sink logs once when the ingest becomes unreachable and once when delivery
+resumes. Discarding records because a key expired would turn a configuration mistake into permanent data loss.
+
+There are therefore exactly **two routes into the dead letter**: a status known to be permanent, and a
+failure about the record itself (an unknown or transient status, or a refused request) that exhausted the
+retry cap.
 
 ### The dead-letter alarm is persistent by design
 

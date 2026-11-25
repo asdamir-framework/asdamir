@@ -5,7 +5,10 @@
 //   - [Authorize] by default. Open it up with [AllowAnonymous] only if you really mean it.
 //   - [AuditLog(...)] hooks the request into the framework's audit pipeline.
 //   - CancellationToken is wired through to the service layer.
+//   - The DTO's FluentValidation validator(s) run on create/update; failures come back as a 400
+//     ValidationProblem alongside the DataAnnotations ones.
 using Asdamir.Core.Attributes;
+using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using {{ Namespace }}.Dtos;
@@ -20,8 +23,15 @@ namespace {{ Namespace }}.Controllers;
 public sealed class {{ EntityPlural }}Controller : ControllerBase
 {
     private readonly I{{ EntityName }}Service _service;
+    private readonly IEnumerable<IValidator<{{ EntityName }}Dto>> _validators;
 
-    public {{ EntityPlural }}Controller(I{{ EntityName }}Service service) => _service = service;
+    // IEnumerable<IValidator<…>>, not a single IValidator: it resolves to an empty set when no validator is
+    // registered (an app generated before the Gateway's validator scan existed) instead of failing activation.
+    public {{ EntityPlural }}Controller(I{{ EntityName }}Service service, IEnumerable<IValidator<{{ EntityName }}Dto>> validators)
+    {
+        _service = service;
+        _validators = validators;
+    }
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<{{ EntityName }}Dto>>> List(CancellationToken ct)
@@ -37,6 +47,7 @@ public sealed class {{ EntityPlural }}Controller : ControllerBase
     [HttpPost]
     public async Task<ActionResult<int>> Create([FromBody] {{ EntityName }}Dto dto, CancellationToken ct)
     {
+        await ValidateAsync(dto, ct);
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         var id = await _service.CreateAsync(dto, ct);
         return CreatedAtAction(nameof(Get), new { id }, id);
@@ -45,6 +56,7 @@ public sealed class {{ EntityPlural }}Controller : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> Update(int id, [FromBody] {{ EntityName }}Dto dto, CancellationToken ct)
     {
+        await ValidateAsync(dto, ct);
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         dto.Id = id;
         var ok = await _service.UpdateAsync(dto, ct);
@@ -56,5 +68,17 @@ public sealed class {{ EntityPlural }}Controller : ControllerBase
     {
         var ok = await _service.DeleteAsync(id, ct);
         return ok ? NoContent() : NotFound();
+    }
+
+    // Runs every registered validator for the DTO and folds its failures into ModelState, so one
+    // ValidationProblem carries both the DataAnnotations and the FluentValidation errors.
+    private async Task ValidateAsync({{ EntityName }}Dto dto, CancellationToken ct)
+    {
+        foreach (var validator in _validators)
+        {
+            var result = await validator.ValidateAsync(dto, ct);
+            foreach (var failure in result.Errors)
+                ModelState.AddModelError(failure.PropertyName, failure.ErrorMessage);
+        }
     }
 }

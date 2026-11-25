@@ -104,7 +104,8 @@ var gatewayUrl = builder.Configuration["Gateway:BaseUrl"]
     ?? throw new InvalidOperationException("Gateway:BaseUrl is required.");
 builder.Services.AddHttpClient("gatewayNoAuth", c => c.BaseAddress = new Uri(gatewayUrl));
 // Authenticated client used by the generated CRUD pages: same Gateway base address; each page attaches
-// the signed-in user's access token (the `access_token` claim) as Bearer per call.
+// the signed-in user's access token (the `access_token` claim — kept current by
+// GatewayTokenAuthenticationStateProvider) as Bearer per call.
 builder.Services.AddHttpClient("AdminApi", c => c.BaseAddress = new Uri(gatewayUrl));
 
 // DB-backed UI localization, consumed from the framework: the app's strings live CENTRALLY in
@@ -144,12 +145,13 @@ builder.Services
         // signs in again. Without this a self-contained cookie (still decryptable via the persisted Data
         // Protection keys) would land on the dashboard with no login after the app is torn down and recreated.
         // Same pattern as the AppManagement control plane (AdminUserSessionStore + OnValidatePrincipal).
+        // The cookie names its session by a random `sid` (not by the user): each browser is its own session,
+        // so signing out of one does not end — or revive — another.
         opts.Events.OnValidatePrincipal = ctx =>
         {
-            var sub = ctx.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
-                   ?? ctx.Principal?.FindFirst("sub")?.Value;
+            var sid = ctx.Principal?.FindFirst({{ ServerNamespace }}.Auth.AuthEndpoints.SessionIdClaim)?.Value;
             var sessions = ctx.HttpContext.RequestServices.GetService<{{ ServerNamespace }}.Auth.AppUserSessionStore>();
-            if (sessions is null || !sessions.IsActive(sub))
+            if (sessions is null || !sessions.IsActive(sid))
             {
                 ctx.RejectPrincipal();
                 return Microsoft.AspNetCore.Authentication.AuthenticationHttpContextExtensions
@@ -160,7 +162,13 @@ builder.Services
     });
 
 // Server-side session registry (in-memory singleton) — a restart clears it, ending every cookie session.
+// It also holds each session's Gateway tokens and renews the access token before it expires.
 builder.Services.AddSingleton<{{ ServerNamespace }}.Auth.AppUserSessionStore>();
+// The authentication state every page reads: the framework's server provider + a CURRENT Gateway access
+// token in the `access_token` claim (renewed via gateway/auth/refresh). Registered AFTER
+// AddRazorComponents so it replaces the default ServerAuthenticationStateProvider.
+builder.Services.AddScoped<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider,
+    {{ ServerNamespace }}.Auth.GatewayTokenAuthenticationStateProvider>();
 
 builder.Services.AddAuthorization(o =>
     o.AddPolicy("AdminAccess", p => p.RequireAuthenticatedUser()));

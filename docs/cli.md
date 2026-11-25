@@ -19,11 +19,11 @@ dotnet tool install -g Asdamir.Tools
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `1.9.0` | — |
-| `Asdamir.Data` | `1.5.0` | — |
+| `Asdamir.Core` | `1.9.0` | `1.10.0` built, pending publish |
+| `Asdamir.Data` | `1.5.0` | `1.6.0` built, pending publish |
 | `Asdamir.Payments` | `1.2.0` | `1.3.0` built, pending publish |
-| `Asdamir.Tools` | `1.8.0` | — |
-| `Asdamir.Web` | `2.1.1` | — |
+| `Asdamir.Tools` | `1.8.0` | `1.9.0` built, pending publish |
+| `Asdamir.Web` | `2.1.1` | `2.2.0` built, pending publish |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -69,6 +69,39 @@ wrong — which sent you to inspect a name that was never the problem.
 
 `3` is a **result**, not a usage error: a scaffolding command exits `3` when it refuses to write into a
 non-empty target. The invocation was fine; the command examined the target and declined.
+
+### A step that was attempted and FAILED is a result — `1`, never `0`
+
+The contract above is about invocations that reach no handler. This is the other half, and it was broken in
+a quieter way: commands that reached their handler, hit a real failure, **printed it, and exited `0`**.
+
+| Command | What used to exit `0` | Now |
+|---|---|---:|
+| `audit verify-signatures` | **INVALID signatures found** — the handler returned `1`, but it was bound through a `System.CommandLine` overload that *discards* a returned code, so the gate could not fail | `1` |
+| `new entity` | the migration was applied and **failed** ("generation succeeded regardless of the DB step") | `1` |
+| `new page` (free mode) | the menu/localization seed apply **failed** | `1` |
+| `add field` | the `ALTER TABLE` apply **failed** | `1` |
+| `new feature` | any of the above inside it — and it went on to print `✓ Feature … ready.` | the failing step's code; "ready" is not printed |
+
+In every case the files **are** generated; what changed is that the command no longer calls the result a
+success. The **soft path is unchanged and still `0`**: no connection resolves (and you did not pass
+`--apply`) → files only, with the exact `asdamir db apply …` line printed. `--no-db` is likewise `0` — nothing
+was attempted.
+
+**`--apply` now means something** (`new entity`, `new feature`). Applying is the default, so the flag adds
+nothing when a connection resolves. What it does is turn the soft path into a **usage error raised before
+anything is written**: `--apply` with no resolvable connection exits `64` with nothing on disk. It used to be
+parsed, documented as "deprecated — now the default", and never read — a script that said `--apply` ("this
+must reach the database") got `0` with nothing applied. `--apply --no-db` together is `64`: they contradict.
+
+**`audit verify-signatures` against a ledger it cannot read** (unreachable server, wrong login, a database
+without the ledger) exits **`64`** with *"could not read the ledger … Nothing was verified"*. It examined
+nothing, so it is neither a finding (`1` would read as "invalid signatures") nor an internal error (it used to
+escape as `70`, "please report it").
+
+Every command that has a handler is under this contract, and the test suite derives that list from the real
+command tree — `audit verify-signatures` had simply never been added to a hand-kept list, and was the one
+command whose exit code was wrong.
 
 ### Why the rule is worded positively
 
@@ -144,7 +177,7 @@ setup — see [free vs commercial mode](#asdamir-new-app-free-vs-commercial-mode
 | `new feature <Name>` | **The one-command path for a complete CRUD feature** — an entity slice (Gateway) + a CRUD page (Server) + the menu/permission & localization seeds, in one go. Runs from the app root and **applies the entity migration automatically** (`--no-db` to skip); `--vault-connection` also applies the AsdamirVault menu/permission seed. See [below](#asdamir-new-feature). |
 | `new module <Name>` | A self-registering [module](fundamentals/modules.md) project |
 | `new mobile <Name>` | A .NET MAUI **Blazor Hybrid** app — `.Mobile` (Android host) + `.Mobile.Shared` (UI) + `.Mobile.Data` (SQLite) + tests. Login, left nav drawer, dashboard; talks to the app's Gateway. See [Mobile App](mobile.md). |
-| `add field <Name>` | Adds a field across the entity/DTO/repository/migration set. Runs from the app root and **applies the ALTER migration automatically** (`--no-db` to skip). |
+| `add field <Name>` | Adds **one column**: patches the entity + DTO and writes + applies an **idempotent** `ALTER TABLE` (`--no-db` to skip). **A partial operation** — the stored procedures, repository, service, validator, page and localization are **not** updated, and until they are the new value is dropped on save. See [below](#asdamir-add-field-a-partial-operation). |
 
 > The verb comes first: **`asdamir new app|entity|page|feature|module|mobile`**, **`asdamir add field`**, **`asdamir rollback`** (the inverse of `new feature`), and **`asdamir rollback app`** (the inverse of `new app` — whole-app teardown).
 
@@ -154,6 +187,38 @@ Generated output uses the framework's templates (`src/Asdamir.Tools/Templates/*.
 > (`dotnet build … -t:InstallAndroidDependencies -f net10.0-android -p:AcceptAndroidSDKLicenses=true`),
 > then build a **single RID** — `dotnet build … -f net10.0-android -r android-arm64` (a plain multi-RID
 > build fails with `NETSDK1047`). Full recipe in [Mobile App → Build & run](mobile.md#build-run).
+
+### Names are identifiers — validated before anything is written
+
+Every name you pass flows, verbatim, into file paths, C# identifiers, SQL object names and shell command
+lines. They are therefore restricted to what is safe in all four, and a value that is not is a **usage error
+(`64`) with nothing written**:
+
+| Input | Rule |
+|---|---|
+| app / entity / module name (the positional `<Name>`) | An ASCII letter **A–Z** first, then ASCII letters, digits or `_` — at most 100 characters. No spaces, dots, slashes, quotes or hyphens. |
+| field names (`--fields`, `--field`) | The same rule after the first letter is upper-cased (`name:string` → `Name`). `Id`, `TenantId`, `CreatedAtUtc`, `UpdatedAtUtc` are reserved (every entity already has them); a name may not repeat. |
+| `--namespace`, `--server-name`, `--api-name` | Dot-separated identifiers of the same shape (`Acme.Orders`). The two project names must differ. |
+| `--database` | Letters, digits and `_`; a letter or `_` first. |
+| `--db-server` | A host, `host\instance` or `host,port` — no `;` (it is composed into a connection string). |
+| `--gateway-url` | An absolute `http(s)` URL. |
+| `--admin-email` | One `@`, no whitespace or control characters. An apostrophe is fine (`o'brien@example.com`) — it is SQL-escaped in the generated seed. |
+| `--route`, `--icon`, `--policy` (`new page` / `new feature`) | Route: letters, digits, `-`, `_`, `/`. Icon: letters, digits, `-`, `_`. Policy: letters, digits, `.`, `-`, `_`. |
+
+Before this, only the **first character** of the positional name was checked. `asdamir new app
+"A/../../x"` wrote outside the output directory, `--database "x;Password=…"` rewrote the connection string,
+and `--admin-email o'brien@x.com` produced a registration script that did not parse.
+
+**Field types:** `string`, `int`, `long`, `bool`, `decimal`, `DateTime`, `Guid` — append `?` for nullable.
+**`double` / `float` are rejected** with a message pointing at `decimal`: they were accepted and then failed
+when the generated page was first opened (the number input rejects binary floating point).
+
+**An entity may not take a framework table's name.** An entity's table is the plural of its name, so
+`new entity Invoice` would target `dbo.Invoices` — the billing table of a `--billing` app — and likewise
+`Plan`, `Subscription`, `User`, `Role`, `Permission`, `Menu`. Its `CREATE TABLE` is guarded by
+`IF OBJECT_ID … IS NULL`, so it would silently adopt the framework's table. Such a name is refused (`64`,
+nothing written); pick a domain-specific one (`SalesInvoice`, `PricingPlan`, `Member`). The refused set is
+derived from the schema templates the CLI emits, so a table added there is covered automatically.
 
 ### `asdamir new app`: free vs commercial mode
 
@@ -221,12 +286,76 @@ user is signed out to re-authenticate with the new password. Add features exactl
 
 **Session lifetime — a restart (or a delete + re-create) ends every session.** The generated Server ties
 each auth cookie to a **server-side session registry** (`Auth/AppUserSessionStore.cs`, an in-memory
-singleton): sign-in registers the session, sign-out removes it, and `OnValidatePrincipal` rejects any cookie
-whose user isn't in the registry. Because the registry is in-memory, **restarting the app (or tearing it down
-and re-creating it under the same name) clears it → every outstanding cookie is rejected until the user signs
-in again**. This closes a subtle gap: Data Protection keys persist outside the app folder
-(`~/.aspnet/DataProtection-Keys/`, keyed by `DataProtection:ApplicationName`), so without the registry a
-self-contained cookie would still decrypt after a re-create and land on the dashboard with no login.
+singleton): sign-in registers a session and puts its random id in the cookie (`sid`), sign-out removes it,
+and `OnValidatePrincipal` rejects any cookie whose session is not in the registry. Because the registry is
+in-memory, **restarting the app (or tearing it down and re-creating it under the same name) clears it →
+every outstanding cookie is rejected until the user signs in again**. This closes a subtle gap: Data
+Protection keys persist outside the app folder (`~/.aspnet/DataProtection-Keys/`, keyed by
+`DataProtection:ApplicationName`), so without the registry a self-contained cookie would still decrypt after
+a re-create and land on the dashboard with no login.
+
+- **One session per sign-in, not per user.** The registry used to be keyed by the user (`sub`), which made a
+  user's two browsers a single entry: signing out in one ended the other, and signing **in** again anywhere
+  re-validated a cookie that had been signed out. Each sign-in now has its own id.
+- **A password change ends every session of that user** — the page removes all of them from the registry
+  (the Gateway has already revoked every refresh token), not just the browser it was made from.
+- **The Gateway access token is renewed, not frozen into the cookie.** The token expires long before the
+  cookie does; it used to be copied into the cookie at sign-in and never refreshed, so about an hour after
+  signing in every CRUD call answered `401` while the cookie session still looked valid. The tokens now live
+  in the session registry, and the Server's `AuthenticationStateProvider`
+  (`Auth/GatewayTokenAuthenticationStateProvider.cs`) hands pages a **current** `access_token` claim, renewing
+  it through `gateway/auth/refresh` shortly before it expires — **single-flight per session**, because a
+  refresh token is single-use. When the Gateway refuses the renewal (refresh token expired or revoked) the
+  session is ended and pages send the browser to `/logout`. The cookie now lasts as long as the session can be
+  renewed, capped at 8 hours (sliding); the `asd_access_token` cookie is no longer issued.
+- **The idle timeout signs out.** The inactivity dialog used to navigate to `/login` when the countdown ran
+  out — leaving the cookie and the server session valid, one Back-button press from a live dashboard. It now
+  goes to `/logout`. Its text is DB-backed (`App.Session.Title|Body|SignOut|Stay`, seeded in tr-TR / en-US /
+  ru-RU by `register_<app>.sql` / the free-mode management seed) instead of hardcoded English.
+- *Single instance:* the registry is in-memory, so a scale-out deployment needs a shared store — the same
+  caveat as `DataProtection:KeyPath`.
+
+> **Known gap (commercial mode): the idle/countdown values are not app-configurable yet.** The dialog reads
+> `gateway/client-settings`. A free-mode Gateway serves it from the app's own `AppConfigurations`; a
+> **commercial** Gateway does not have that endpoint (and AppManagement has no per-app client-settings
+> endpoint to proxy to), so the request fails, a warning is logged and the built-in defaults apply (5 minutes
+> idle, 30 seconds countdown). The `Session:*` rows `register_<app>.sql` seeds for the app are therefore not
+> yet read at runtime.
+
+**What the generated Gateway enforces (BOTH modes).**
+
+- **Tokens issued for another app are refused.** Signing key, issuer and audience are shared by every app
+  under one control plane, so on their own they accept app A's user token at app B's Gateway. The Gateway now
+  also requires a user token's `app_code` claim to equal its own `App:Code` (default: the app name; compared
+  case-insensitively) and `token_use` to be `app`; a token without them fails authentication. Service tokens
+  are unaffected — AppManagement's orchestration token is identified by its `client_id` claim and authorized
+  by the `AppMgmtClient` policy.
+- **The tenant comes from the signed token, and the middleware is actually in the pipeline.** `Program.cs`
+  called `AddMultiTenancy()` without `app.UseMultiTenancy()`, so nothing resolved a tenant and every request
+  ran as `default`. It now registers `ClaimsTenantResolver` (the tenant is the token's `tid` claim — never the
+  `X-Tenant-Id` header, which any caller can set) and calls `app.UseMultiTenancy()` **after**
+  `UseAuthentication()` (the resolver reads the authenticated user). The tokens issued today carry no `tid`,
+  so a generated app is single-tenant and resolves to `default` — which is also the `TenantId` the entity
+  sample seed uses. To run several tenants, have the issuer stamp `tid`; no Gateway change is needed.
+- **The credential endpoints are rate-limited in both modes.** `gateway/auth/*` carries
+  `[EnableRateLimiting("auth")]` in both, but the policy was registered only in free mode — in commercial mode
+  the attribute named a policy that did not exist. The per-IP fixed window (`RateLimiting:Auth:PermitLimit` /
+  `WindowSeconds`, default 10 / 60 s) is now registered and `UseRateLimiter()` is in the pipeline in both.
+
+**`register_<app>.sql` refuses to run with the placeholder secret.** It ships with
+`@ClientSecretEnc = N'<REPLACE_ME …>'` and MERGE-updates `dbo.Apps.EncryptedClientSecret` — so running it
+as-is on an already-registered app used to overwrite a working secret with the placeholder text. It now
+`THROW`s before touching `dbo.Apps` while the placeholder (or an empty value) is still there; `new app`'s
+next steps list the step that replaces it (`asdamir secrets encrypt --value <raw> --key <AppManagement's
+Security:EncryptionKey>`) **before** the step that runs the script. With `sqlcmd`, pass `-b` so the script
+stops at the error.
+
+**`run-tests.sh` is green only when the run was clean.** The generated wrapper used to discard `dotnet
+test`'s exit code and print a skipped test as one quiet line. It now fails when `dotnet test` exits non-zero
+with no failed test in the results (a compile, restore or testhost failure — the log tail is printed), fails
+when a test project produced no results at all, lists every skipped test **with its reason** under a
+`⚠️ N TEST(S) SKIPPED — NOT VERIFIED` block, probes for a Python that actually runs, and works from a path
+containing spaces.
 
 **Background-run infrastructure (BOTH modes, default-on, since 1.4.0).** Every generated app scaffolds the
 API-tier [background-run primitive](fundamentals/background-runs.md) — the reusable way to run a heavy
@@ -312,6 +441,7 @@ hand. It locates the app from the nearest `.sln` and routes each part to the rig
 | `--output` / `-o` | App root (nearest ancestor with a `.sln`). Defaults to the current directory. |
 | `--gateway-dir` / `--server-dir` | Override the auto-detected Gateway / Server project directories. |
 | `--no-db` | Scaffold files only — don't apply the entity migration (offline / CI / review-first). |
+| `--apply` | **Require** the entity migration to be applied: with no resolvable app-DB connection the command exits `64` **before writing anything**, instead of falling back to files-only. Cannot be combined with `--no-db`. |
 | `--connection`/`-c`, `--server`/`-S`, `--database`/`-d`, `--user`/`-U`, `--password`/`-P` | App-DB connection override (the same flags as `db apply`; defaults to the Gateway user-secret). |
 | `--vault-connection` | AsdamirVault connection — applies the menu/permission + localization seeds to AsdamirVault too. |
 
@@ -344,7 +474,10 @@ asdamir new feature Supplier \
 ```
 
 **Fail-fast:** if the entity step fails the page is **not** generated — fix the error and re-run
-(generation is idempotent: existing files are skipped, never overwritten). Afterwards, translate the
+(generation is idempotent: existing files are skipped, never overwritten). "Fails" includes **the entity
+files were written but its migration did not apply**: the command exits `1` and does not print
+`✓ Feature … ready.` (a page over a table that does not exist is not ready). Under `--no-db` the closing line
+reads `generated (files only — nothing was applied to a database)`. Afterwards, translate the
 `tr-TR`/`ru-RU` values in `localize_<plural>.sql` (the generator seeds the English name as the default for
 all three cultures). To undo a feature, see [`rollback`](#rollback).
 
@@ -372,7 +505,10 @@ No `cd`, no separate `db apply` — the new table is ready when the command retu
 - **`--no-db`**: scaffold files only — don't touch SQL (offline / CI / review-first). It prints the exact
   `asdamir db apply --migrations <path>` line to run when you're ready.
 - **No connection resolvable** (no secret set, no flags): the migration is still **generated** — the command
-  prints the `db apply` recovery line instead of failing (never left blind).
+  prints the `db apply` recovery line instead of failing (never left blind). Pass **`--apply`** to make this
+  case a usage error (`64`, nothing written) when the migration *must* reach the database.
+- **The apply was attempted and failed** (server down, a bad login, a SQL error): the files are generated, the
+  command says the table does not exist yet, and it exits **`1`** — not `0`.
 - It does **not** create the database (the app DB already exists by the time you add entities). Idempotent:
   the journaled runner skips an already-applied migration.
 - **After it applies, restart the app.** A running generated app **caches its DB-backed menu + localization +
@@ -383,6 +519,44 @@ No `cd`, no separate `db apply` — the new table is ready when the command retu
 
 `asdamir db apply` isn't going away — it's what you run over the app's lifetime (a teammate clones the repo,
 CI, prod). `new entity` just runs it **once** for you at generation.
+
+**Validation is wired, and `NotEmpty` is only where "empty" is not a value.** The generated
+`<Name>DtoValidator` is registered automatically (the Gateway scans the assembly for `IValidator<T>`) and the
+controller runs it on create and update, returning its failures in the same `400` ValidationProblem as the
+DataAnnotations ones. It used to be generated and never invoked. Its rules: a required `string` → `NotEmpty`
++ `MaximumLength(500)`; an optional `string` → `MaximumLength(500)`; a required `Guid` / `DateTime` →
+`NotEmpty`. **No rule is emitted for `bool`, `int`, `long` or `decimal`** — `NotEmpty` rejects a type's
+default, i.e. `false` and `0`, which are ordinary values (an inactive record, a zero quantity).
+
+### `asdamir add field` — a PARTIAL operation
+
+```bash
+cd MyApp
+asdamir add field Supplier --field "TaxNo:string?"
+```
+
+`add field` does three things and **says, on every run, what it did not do**:
+
+| Done | Not done — until you do it, the new value is **dropped on every save** |
+|---|---|
+| `Domain/<Name>.cs` — the property | `dbo.<Plural>_Insert` / `_Update` — they take an explicit parameter list |
+| `Dtos/<Name>Dto.cs` — the property + annotations | `Repositories/<Name>Repository.cs` — two anonymous parameter objects |
+| an **idempotent** `ALTER TABLE` migration, applied unless `--no-db` | `Services/<Name>Service.cs` — three mappings; the validator |
+| | the Server's own `Dtos/<Name>Dto.cs`, the page grid + editor dialog |
+| | the `Field.<Name>.<Field>` localization key (3 cultures) |
+
+The right-hand column is not patched on purpose: each is a file you are expected to have edited, and splicing
+a parameter into a hand-tuned procedure or a column into a hand-arranged grid is the kind of edit that is
+right nine times and silently wrong the tenth. The command prints the exact edit for each place under a
+`⚠️ NOT UPDATED` banner. (The previous text told you to extend the repository's "SELECT / INSERT / UPDATE
+column lists" — the generated repository has none, it calls stored procedures.)
+
+The migration is guarded (`IF COL_LENGTH(N'dbo.<Plural>', N'<Field>') IS NULL`) so re-applying it is a no-op,
+and a non-nullable column's default is a **named** constraint (`DF_<Plural>_<Field>`). `rollback` does not
+remove `add field` migrations.
+
+Exit codes: `0` (patched; the ALTER applied, or nothing was attempted), `1` (the ALTER was attempted and
+**failed** — the code now has a property the table has no column for), `64` (usage).
 
 ### `asdamir new page` — localization, menu & permission seeds
 
@@ -403,6 +577,17 @@ Besides the page and its editor dialog, `new page` writes two idempotent, AppId-
 > **applies them automatically** (resolving the Gateway user-secret, like `new entity`) — pass **`--no-db`**
 > to scaffold files only.
 
+**Nullable fields.** The grid and the editor are null-safe for every supported type: a `bool?` renders through
+`== true` and binds its switch through a small bridge property, a `DateTime?` is formatted with `?.ToString`.
+(A page over a `bool?` or `DateTime?` field used not to compile.)
+
+**The page reads a current token on every call.** It takes the `access_token` claim from the authentication
+state — which the generated Server keeps renewed (see
+[session lifetime](#asdamir-new-app-free-vs-commercial-mode)) — and, if there is none, sends the browser to
+`/logout` rather than calling the Gateway anonymously.
+
+Exit codes: `0`, `1` (free mode: the seed apply was attempted and **failed**), `64` (usage).
+
 ## `audit-lint`
 
 `audit-lint` scans source for the framework's anti-pattern rule set (sync-over-async, silent failures, leaked API surface, unsafe defaults, …) and **fails on any error/warning**. Run it locally before pushing (CI runs it too when enabled).
@@ -421,10 +606,30 @@ Exit codes: `0` (clean — no finding at or above `--min-severity`), `1` (findin
 > Writing down what it did would have made that official; the contract above is what it *should* do, and the
 > code now does it.
 
+### What the rules see — and what they used not to
+
+| Rule | Change |
+|---|---|
+| **AUD001** (`HttpClient`), **AUD002** (`SqlConnection`) | Also match an **object initializer** (`new HttpClient { … }`, including one that starts on the next line) and **target-typed** construction (`HttpClient c = new(…)`, `private readonly SqlConnection _c = new();`). Only `new X(` used to match. `HttpClientHandler`, `SqlConnectionStringBuilder` and factory calls are not matched. |
+| **AUD005** (polling loop) | Matches a `while (…) { … }` / `do { … }` whose body contains a `Task.Delay` with a **literal** delay, across lines and nested blocks. A configured period (`Task.Delay(_interval, ct)`) is not matched. |
+| **AUD010** (fail-open authorization) | Matches an authorization flag set to `true` **inside a `catch` block** (with or without an exception declaration or a `when` filter). |
+| every rule | A first-line `// <auto-generated>` comment **no longer exempts the file.** |
+
+**AUD005 and AUD010 could never fire.** Both were written as multi-line patterns and matched one line at a
+time, so on normally formatted code they reported zero for as long as the gate existed — indistinguishable
+from a clean tree. They, and the two widened rules, are now matched over the whole file, and every rule
+(AUD001–AUD013) has a test that plants its violation and a set of look-alikes that must stay quiet.
+
+The `// <auto-generated>` skip was a universal off-switch: any file, hand-written or not, opted out of every
+rule with one comment line that nobody greps for. Generated code is still code that ships — if a template
+emits an anti-pattern, the template is what gets fixed.
+
 ### Suppressing a finding
 
-- Single line: `// audit-lint:ignore AUDxxx` — leave a sibling comment explaining *why*.
-- Whole file: `// audit-lint:skip-file` within the first 10 lines.
+- Single line: `// audit-lint:ignore AUDxxx` on the line the finding is reported on (for a construct that
+  spans lines, the line where it **starts**) — leave a comment explaining *why*.
+- Whole file: a comment line that begins with `audit-lint:skip-file`, anywhere in the file. This is the only
+  file-level opt-out.
 
 Suppressions are deliberate and reviewable; prefer fixing the finding.
 
@@ -875,6 +1080,28 @@ and [Canonicalization v1](fundamentals/agent-audit-canonicalization-v1.md) are n
 [golden vectors](fundamentals/agent-audit-golden-vectors-v1.json) let you check your own implementation before
 pointing it at real data. That it is *optional* is the point.
 
+## `audit verify-signatures` — check agent signatures in a live ledger
+
+```bash
+asdamir audit verify-signatures --connection "<AsdamirVault connstr>" [--app-code <Code>] [--tenant <id>]
+```
+
+Verifies the signatures of the agent-action records in the live ledger against the registered public keys,
+and reports four states separately — **valid**, **unsigned**, **not checked** (the signing key is unknown,
+expired or revoked: a skip, not a pass) and **INVALID**. It also lists records that are unsigned although the
+agent held a usable key at the time (a stripped signature leaves every chain hash intact, so nothing else can
+see it); those are reported, not counted as failures.
+
+It is separate from [`audit verify-archive`](#audit-verify-archive-verify-a-folded-agent-audit-segment-offline)
+on purpose: the archive format's specification says a conforming verifier must not treat the signature fields
+as evidence, and identifying a signer needs the key registry, which lives in the database and not in the
+archive.
+
+Exit codes: `0` (no invalid signature), `1` (**at least one INVALID signature**), `64` (usage — including a
+ledger that could not be read: nothing was verified). Before this release the command exited `0` even when it
+printed invalid signatures; see
+[a failed step is a result](#a-step-that-was-attempted-and-failed-is-a-result-1-never-0).
+
 ## `localization verify` — live apply-drift
 
 `audit localization` catches keys missing from the **seed files**. It cannot catch a key that *is* in a
@@ -908,6 +1135,22 @@ imposed (some migrations manage their own `BEGIN TRAN` and some carry DDL that c
 transaction); a migration is journaled only after all its batches succeed, so a partial failure is
 retried on the next run.
 
+- **`GO` is split the way `sqlcmd` splits it.** `GO 5` repeats the preceding batch five times (it used to be
+  sent to the server as text); a `GO` line inside a `/* … */` comment or inside a multi-line `'…'` string
+  literal is **not** a separator (it used to cut the comment/literal in half); `GO -- note` is.
+- **One apply at a time per database.** The run takes a session-owned application lock
+  (`sp_getapplock`, resource `asdamir:db-apply`). A second `db apply` against the same database waits for
+  it (up to 60 s) and then sees the journal the first one wrote, instead of both executing the same
+  not-yet-journaled migration.
+- **A script that leaves a transaction open is a failure.** If a file ends with `@@TRANCOUNT > 0` (a
+  `BEGIN TRAN` with no `COMMIT`), it is rolled back, **not** journaled, and the run exits `1`. Its journal row
+  used to be written *inside* that open transaction and vanish with it when the connection closed, while the
+  run reported the migration applied. A batch that fails after its own `BEGIN TRAN` is likewise rolled back
+  explicitly.
+- **It says where it is about to apply, and why.** Before the first migration: `Target: database '<db>' on
+  '<server>' — connection from <source>` (the command line, the Gateway user-secret **with the project path
+  it was read from**, or the environment variable) and the migrations directory.
+
 ```bash
 # Preferred — no SQL password on the command line: set the Gateway user-secret once, then apply.
 # db apply resolves ConnectionStrings:Default from the Gateway user-secret (see "Connection resolution" below).
@@ -930,9 +1173,22 @@ Options: `--connection/-c` (full string, wins over the parts), `--server/-S`, `-
 `--connection` / `--server` / `--database` / `--user` / `--password`), `db apply` falls back — in this order
 — to:
 
-1. the **Gateway project's user-secret** `ConnectionStrings:Default` (it walks up from `--migrations` to the
-   nearest `*.Gateway` project and reads its `<UserSecretsId>` store), then
+1. the **Gateway project's user-secret** `ConnectionStrings:Default` — the `*.Gateway.csproj` of the app that
+   **owns** `--migrations` (found by walking up, **never above the nearest `.sln` / `.git`**) and its
+   `<UserSecretsId>` store, then
 2. the **`ConnectionStrings__Default` environment variable**.
+
+**The lookup is bounded by the app root.** It used to walk all the way to the file-system root and adopt the
+first `*.Gateway.csproj` under any ancestor's `src/` — so `db apply` run on a folder with no Gateway of its
+own (the control-plane migrations, a loose folder of scripts) could pick up a **different app's** connection
+string and apply the migrations to that app's database. With no `.sln`/`.git` above the folder at all, only
+the folder itself is examined; an app with more than one `*.Gateway.csproj` resolves to nothing (pass explicit
+flags) rather than to "the first one found".
+
+**The migrations directory is not searched recursively.** A migrations root can hold one folder per database
+dialect (`MSSQL/`, `Oracle/`), and recursing would run every dialect's scripts against SQL Server. When the
+directory holds no `*.sql` directly, the error lists its sub-folders with their script counts and the path to
+pass — for the control-plane migrations that is `--migrations AppManagement/db/migrations/MSSQL`.
 
 It prints which source it used. This is what lets `asdamir db apply --create-database --migrations
 db/migrations` run with **no SQL password on the command line** once you've set the secret (see the free
@@ -951,10 +1207,21 @@ What it can remove:
 - **Code** (whichever files exist): the Gateway slice (`Domain`/`Dtos`/`Repositories`/`Services`/
   `Controllers`/`Validators`), the Server page (`<Plural>List.razor` + `<Name>EditorDialog.razor` + its DTO),
   the entity tests, the create/seed migrations, and the `localize_`/`seed_menu_` seeds.
-- **App DB** (only with a connection): `DROP TABLE dbo.<Plural>` (if present) + delete the matching
-  `dbo.__SchemaMigrations` journal rows, in one transaction.
+- **App DB** (only with a connection): `DROP TABLE dbo.<Plural>` + its five generated CRUD procedures
+  (`<Plural>_GetById|_List|_Insert|_Update|_Delete`) — **only when this entity created that table** (see
+  below) — and the matching `dbo.__SchemaMigrations` journal rows, in one transaction.
 - **AsdamirVault** (only with `--vault-connection`): the `<plural>.view` permission, its menu row(s), role
-  grants, and user-menu permissions — AppId-scoped, in FK order, in one transaction.
+  grants, and user-menu permissions — AppId-scoped (the confirmation screen's counts too), in FK order, in
+  one transaction. An app code that is not registered in that vault is reported as such.
+
+**It drops only a table this entity created.** The table name is just the plural of the entity name, so it can
+coincide with a table the framework owns: in a `--billing` app, `rollback Invoice` used to drop the billing
+`dbo.Invoices` (likewise `Plan`, `Subscription`, `User`, `Role`, `Menu`). Two conditions must now both hold:
+the table is **not** framework-owned, **and** there is evidence the entity's own migration created it — its
+`*__create_<plural>.sql` file on disk, or a journal row recording it. Otherwise the table is **kept**, the
+confirmation says why, and the `DROP TABLE` to run by hand (if it really is yours) is printed. A
+framework-owned table is kept whatever evidence exists — for such a name the entity's `CREATE TABLE` was
+skipped by its `IF OBJECT_ID` guard, so the table that exists is the framework's.
 
 ```bash
 asdamir rollback Supplier \
@@ -970,9 +1237,13 @@ Options: `<Name>`, `--output`/`-o` (app root), `--gateway-dir`/`--server-dir` (o
 **Conditional & safe:**
 
 - It removes only what's actually there (a missing table skips the `DROP`).
-- **Code is always deleted** (after confirmation); the **DB** step runs only with a connection and the
-  **Vault** step only with `--vault-connection` — a missing connection is reported as **skipped, never
-  silently dropped** (re-run later with the connection to finish).
+- **Databases first, code files last.** Each database step is one transaction; if one fails — or a connection
+  you gave cannot be reached — the command stops with **every code file still on disk** (including the
+  create-migration that proves the table is this entity's), so you can simply run it again. The order used to
+  be files-first, which left a failed run with the table still there and the evidence for dropping it gone.
+- **Code is deleted** (after confirmation, once the database steps succeeded); the **DB** step runs only with a
+  connection and the **Vault** step only with `--vault-connection` — a missing connection is reported as
+  **skipped, never silently dropped** (re-run later with the connection to finish).
 - **`add field` migrations are NOT rolled back** (`*__add_<field>_to_<plural>.sql`) — they're listed as a
   warning to handle by hand.
 - It warns that if other code still references `<Name>`, that code may stop compiling.
@@ -1026,6 +1297,10 @@ Options: `<Name>`, `--output`/`-o` (the app's parent dir OR the app dir itself),
   and `App_Purge` refuses the self-app (`EnvironmentName='Self'`, i.e. AppManagement itself).
 - Each step is conditional: a missing directory / database / registration is reported as **"already gone"**,
   never an error (re-run any time).
+- **The directory is removed LAST** — after the database drop and the vault purge. It holds the Gateway
+  project the connection is resolved from; it used to be deleted first, so a drop that then failed left an
+  orphan database and nothing to re-run the command from. A failed step now exits `1` with the directory
+  intact.
 - The **DB** drop runs when a connection resolves (flags **or** the Gateway user-secret); the **vault** purge
   runs only with `--vault-connection`. When neither resolves, the step is **skipped and reported** (with how to
   supply it), never silently dropped.

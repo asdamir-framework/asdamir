@@ -18,6 +18,10 @@ using Microsoft.AspNetCore.Http;
 /// Enforces per-endpoint rate limits declared via <see cref="RateLimitAttribute"/>. Builds a key from the
 /// client IP, user identity and request path, and returns <c>429 Too Many Requests</c> when the endpoint's
 /// limit for the rolling window is exceeded; endpoints without the attribute pass through untouched.
+/// <para>The path part of the key is NORMALISED (lower-cased, trailing slashes removed): routing matches
+/// <c>/Api/Login</c>, <c>/api/login</c> and <c>/api/login/</c> to the same endpoint, so keying on the raw
+/// path gave a caller a fresh budget per spelling. A rejected request carries a <c>Retry-After</c> header
+/// with the endpoint's window in seconds — the longest a caller can need to wait.</para>
 /// </summary>
 public sealed class RateLimitingMiddleware
 {
@@ -49,6 +53,10 @@ public sealed class RateLimitingMiddleware
                 if (!allowed)
                 {
                     context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    // The service does not expose how much of the window is left, so the window itself is
+                    // the honest upper bound: after that long the budget has certainly been refilled.
+                    context.Response.Headers.RetryAfter =
+                        Math.Max(1, rl.WindowSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
                     return;
                 }
             }
@@ -60,10 +68,19 @@ public sealed class RateLimitingMiddleware
     private static string BuildKey(HttpContext context)
     {
         var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        var path = context.Request.Path.ToString();
+        var path = NormalizePath(context.Request.Path.Value);
         var user = context.User?.Identity?.Name ?? "anon";
         return $"{ip}:{user}:{path}";
     }
+
+    /// <summary>
+    /// Folds the spellings routing treats as one endpoint into one key: case-insensitive, trailing slashes
+    /// ignored. The root path stays <c>/</c>.
+    /// </summary>
+    internal static string NormalizePath(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return "/";
+        var trimmed = path.TrimEnd('/');
+        return trimmed.Length == 0 ? "/" : trimmed.ToLowerInvariant();
+    }
 }
-
-

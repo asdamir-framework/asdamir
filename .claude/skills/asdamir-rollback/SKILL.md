@@ -16,7 +16,7 @@ broad globbing):
 - **Code** — the Gateway slice (`Domain`/`Dtos`/`Repositories`/`Services`/`Controllers`/`Validators`),
   the Server page (`<Plural>List.razor` + `<Name>EditorDialog.razor` + its DTO), the entity tests, the
   create/seed migrations, and the `localize_`/`seed_menu_` seeds.
-- **App DB** (only with a connection) — `DROP TABLE dbo.<Plural>` (if present) + delete the matching
+- **App DB** (only with a connection) — `DROP TABLE dbo.<Plural>` + its five CRUD procedures, **only when this entity created the table** (its `*__create_<plural>.sql` is on disk or journaled, and the table is not framework-owned — otherwise the table is KEPT and the reason printed); database steps run BEFORE code files are deleted, so a failed run can be retried. Also delete the matching
   `dbo.__SchemaMigrations` journal rows, in one transaction.
 - **AsdamirVault** (only with `--vault-connection`) — the `<plural>.view` permission, its menu row(s),
   role grants and user-menu permissions, AppId-scoped, in FK order, in one transaction.

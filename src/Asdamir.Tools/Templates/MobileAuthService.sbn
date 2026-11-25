@@ -61,37 +61,70 @@ public sealed class MobileAuthService
         return true;
     }
 
-    /// <summary>Exchange the stored refresh token for a fresh access token (rotates both). Returns
-    /// false when there is no refresh token or the Gateway rejects it (caller should send to login).</summary>
-    public async Task<bool> RefreshAsync()
-    {
-        var refresh = await _tokens.GetRefreshTokenAsync();
-        if (string.IsNullOrEmpty(refresh)) return false;
+    // One refresh at a time. A refresh token is SINGLE-USE: two calls that both answer 401 (a screen that
+    // loads three lists at once) used to each read the same refresh token and post it concurrently — the
+    // second post is a REUSE of a rotated token, which the Gateway treats as theft and answers by revoking
+    // the whole chain, signing the user out for doing nothing wrong. Instance-level (this service is a
+    // singleton), not static.
+    private readonly SemaphoreSlim _refreshGate = new(1, 1);
 
-        var client = _httpFactory.CreateClient("gateway");
-        HttpResponseMessage resp;
+    /// <summary>
+    /// Exchange the stored refresh token for a fresh access token (rotates both) — single-flight. Returns
+    /// false when there is no refresh token or the Gateway rejects it (caller should send to login).
+    /// </summary>
+    /// <param name="staleAccessToken">
+    /// The access token the caller just got a 401 for. If, once this call holds the gate, the stored token is
+    /// already a DIFFERENT one, another caller refreshed in the meantime — the refresh is skipped and the
+    /// caller simply retries with the new token.
+    /// </param>
+    public async Task<bool> RefreshAsync(string? staleAccessToken = null)
+    {
+        await _refreshGate.WaitAsync();
         try
         {
-            resp = await client.PostAsJsonAsync("gateway/auth/refresh", new { RefreshToken = refresh });
+            if (staleAccessToken is not null)
+            {
+                var current = await _tokens.GetAccessTokenAsync();
+                if (!string.IsNullOrEmpty(current) && !string.Equals(current, staleAccessToken, StringComparison.Ordinal))
+                    return true;
+            }
+
+            // Read the refresh token INSIDE the gate, so it is always the latest (post-rotation) one.
+            var refresh = await _tokens.GetRefreshTokenAsync();
+            if (string.IsNullOrEmpty(refresh)) return false;
+
+            var client = _httpFactory.CreateClient("gateway");
+            HttpResponseMessage resp;
+            try
+            {
+                resp = await client.PostAsJsonAsync("gateway/auth/refresh", new { RefreshToken = refresh });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Token refresh HTTP call failed");
+                return false;
+            }
+
+            using (resp)
+            {
+                if (!resp.IsSuccessStatusCode)
+                {
+                    _logger.LogInformation("Token refresh rejected with status {Status}", (int)resp.StatusCode);
+                    return false;
+                }
+
+                var body = await resp.Content.ReadFromJsonAsync<LoginResponse>();
+                var tokens = body?.Tokens;
+                if (tokens is null || string.IsNullOrEmpty(tokens.AccessToken)) return false;
+
+                await _tokens.SetTokensAsync(tokens.AccessToken, tokens.RefreshToken);
+                return true;
+            }
         }
-        catch (Exception ex)
+        finally
         {
-            _logger.LogWarning(ex, "Token refresh HTTP call failed");
-            return false;
+            _refreshGate.Release();
         }
-
-        if (!resp.IsSuccessStatusCode)
-        {
-            _logger.LogInformation("Token refresh rejected with status {Status}", (int)resp.StatusCode);
-            return false;
-        }
-
-        var body = await resp.Content.ReadFromJsonAsync<LoginResponse>();
-        var tokens = body?.Tokens;
-        if (tokens is null || string.IsNullOrEmpty(tokens.AccessToken)) return false;
-
-        await _tokens.SetTokensAsync(tokens.AccessToken, tokens.RefreshToken);
-        return true;
     }
 
     public Task LogoutAsync() => _tokens.ClearAsync();
@@ -114,7 +147,22 @@ public sealed class MobileAuthService
             var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
-            string? Get(string n) => root.TryGetProperty(n, out var v) ? v.GetString() : null;
+            // A JWT claim that occurs once is a JSON string; one that occurs several times is a JSON ARRAY.
+            // `perm` is one-per-permission, so any user with more than one permission has an array here —
+            // and GetString() on an array throws, which used to turn every such user into "not signed in".
+            string? Get(string n)
+            {
+                if (!root.TryGetProperty(n, out var v)) return null;
+                return v.ValueKind switch
+                {
+                    JsonValueKind.String => v.GetString(),
+                    JsonValueKind.Array => string.Join(", ", v.EnumerateArray()
+                        .Where(e => e.ValueKind == JsonValueKind.String)
+                        .Select(e => e.GetString())),
+                    JsonValueKind.Null or JsonValueKind.Undefined => null,
+                    _ => v.ToString(),
+                };
+            }
             return new MobileUser(Get("email"), Get("name"), Get("perm"));
         }
         catch (Exception ex)
@@ -128,5 +176,6 @@ public sealed class MobileAuthService
     private sealed record TokenPair(string AccessToken, string? RefreshToken);
 }
 
-/// <summary>The signed-in user's identity, decoded from the JWT.</summary>
+/// <summary>The signed-in user's identity, decoded from the JWT. <c>Perm</c> is the user's permission codes,
+/// comma-separated when there are several.</summary>
 public sealed record MobileUser(string? Email, string? Name, string? Perm);

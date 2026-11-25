@@ -32,6 +32,13 @@ else
     private bool _shouldRedirect = false;
     private IJSObjectReference? _authGuardModule;
 
+    /// <summary>
+    /// The guard's script, served as a static web asset of the <c>Asdamir.Web</c> package. The path used to
+    /// name a package id that does not exist (<c>Asdamir.Web.Security</c>) and the file sat outside
+    /// <c>wwwroot</c>, so the import always 404'd and the back-button protection never ran.
+    /// </summary>
+    public const string AuthGuardModulePath = "./_content/Asdamir.Web/js/auth-guard.js";
+
     protected override async Task OnInitializedAsync()
     {
         await CheckAuthenticationState();
@@ -50,7 +57,7 @@ else
         {
             _authGuardModule = await JS.InvokeAsync<IJSObjectReference>(
                 "import",
-                "./_content/Asdamir.Web.Security/js/auth-guard.js");
+                AuthGuardModulePath);
             await _authGuardModule.InvokeVoidAsync("preventBackButtonAfterLogout");
         }
         catch (JSDisconnectedException)
@@ -59,7 +66,8 @@ else
         }
         catch (Exception ex)
         {
-            Logger.LogDebug(ex, "[AuthenticationGuard] auth-guard module load failed");
+            // Warning, not Debug: at Debug a permanently failing import (the 404 this used to be) is invisible.
+            Logger.LogWarning(ex, "[AuthenticationGuard] auth-guard module load failed");
         }
     }
 

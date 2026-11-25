@@ -163,6 +163,16 @@ Notify.ShowLoading("Importing…"); /* … */ Notify.HideLoading();
 
 The host is FluentUI-free, so it works inside a Blazor Web App interactive island and the MAUI Blazor-Hybrid app. **Without a host rendered, `ConfirmAsync`/`ConfirmDangerAsync` return `false`** (deny) — a destructive action never proceeds un-confirmed.
 
+**Accessibility.** An **error** toast is rendered with `role="alert"` (assertive — a screen reader interrupts to announce it); success and info toasts are `role="status"` (polite). `AsdamirModal` is a labelled dialog (`role="dialog"`, `aria-modal`, `aria-labelledby` its title): it **takes focus when it opens** and **Escape closes it**, through the same path as the ✕ button and the backdrop click.
+
+### Grid export, copy and print (`AsdamirGrid`)
+
+`AsdamirGrid`'s Copy / Print / Download actions load the package's own ES module, `_content/Asdamir.Web/js/asdamir-grid.js`, on first use (an export click — never at render). A host therefore needs **no script tag and no global functions** for the grid; the module is a real file served under `script-src 'self'`, so it works under an enforced CSP. The other package scripts live beside it under `_content/Asdamir.Web/js/` — including `auth-guard.js`, the back-button guard imported by `AuthenticationGuard`.
+
+### CSV export and formula injection
+
+CSV produced by `IExportService` (and the grid's CSV download) neutralises cells a spreadsheet would evaluate as a formula: a **text** cell starting with `=`, `+`, `-`, `@`, TAB or CR is prefixed with a single quote (`'`), which makes Excel, LibreOffice and Google Sheets treat it as text. Two things are deliberately left alone: typed numeric values, and text made up only of an optional sign, digits, `.`/`,` separators and spaces (`-12.50`, `+90 532 123 45 67`) — prefixing those would deface every negative amount and phone number in an export.
+
 ## Framework UI Components (FluentUI-isolation inputs)
 
 `AsdamirTextInput` and `AsdamirNumberInput<T>` are **isolation** form fields: a native `<input>` styled with the shared design tokens, deliberately **not** wrapping any FluentUI component. Binding to them keeps consumer code free of a `Microsoft.FluentUI.*` dependency while staying visually consistent (same tokens, focus/hover/disabled, error display, label alignment) with the FluentUI fields alongside. Both derive from Blazor's `InputBase<TValue>`, so `Value` / `ValueChanged` / `ValueExpression` flow through the ambient `EditContext` and DataAnnotations validation works with zero extra wiring (put a `<DataAnnotationsValidator/>` in your `EditForm`). No JS interop is used anywhere in either component.

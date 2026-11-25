@@ -166,7 +166,7 @@ Create the schema with the journaled runner, then sign in as the seeded SuperAdm
 
 ```bash
 asdamir db apply --server <sql> --database AsdamirVault --user <login> --password <pwd> \
-  --create-database --migrations AppManagement/db/migrations
+  --create-database --migrations AppManagement/db/migrations/MSSQL
 ```
 
 Migration runbook + first-SuperAdmin seed are provided with AppManagement (the commercial control plane).

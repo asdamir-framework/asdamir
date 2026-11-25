@@ -2,6 +2,7 @@
 @using Asdamir.Web.UI.Services
 @inject IExportService Export
 @inject Microsoft.JSInterop.IJSRuntime JS
+@implements IAsyncDisposable
 
 @*
     AsdamirGrid — reusable, dependency-light INSPINIA-style data table.
@@ -324,10 +325,10 @@
             switch (format)
             {
                 case ExportFormat.Copy:
-                    await JS.InvokeVoidAsync("asdGridCopy", BuildTsv(headers, rows));
+                    await (await ExportModuleAsync()).InvokeVoidAsync("copy", BuildTsv(headers, rows));
                     break;
                 case ExportFormat.Print:
-                    await JS.InvokeVoidAsync("asdGridPrint", ExportSheetName, headers, rows.Select(r => r.Select(CellString).ToArray()).ToArray());
+                    await (await ExportModuleAsync()).InvokeVoidAsync("print", ExportSheetName, headers, rows.Select(r => r.Select(CellString).ToArray()).ToArray());
                     break;
                 case ExportFormat.Csv:
                     await Download(await Export.ExportToCsvAsync(headers, rows), "csv", "text/csv");
@@ -347,8 +348,37 @@
         }
     }
 
-    private Task Download(byte[] bytes, string ext, string mime)
-        => JS.InvokeVoidAsync("asdGridDownload", $"{ExportFileName}.{ext}", Convert.ToBase64String(bytes), mime).AsTask();
+    private async Task Download(byte[] bytes, string ext, string mime)
+        => await (await ExportModuleAsync()).InvokeVoidAsync(
+            "download", $"{ExportFileName}.{ext}", Convert.ToBase64String(bytes), mime);
+
+    /// <summary>
+    /// Where the grid's own copy / print / download script is served from: a static web asset of THIS
+    /// package. The grid used to call window globals that only one host defined, so the export menu threw
+    /// in every other app; importing the package's module makes the component self-sufficient.
+    /// </summary>
+    public const string ExportModulePath = "./_content/Asdamir.Web/js/asdamir-grid.js";
+
+    private Microsoft.JSInterop.IJSObjectReference? _exportModule;
+
+    // Imported on first use (an export click), never at render: no JS cost for a grid nobody exports from.
+    private async ValueTask<Microsoft.JSInterop.IJSObjectReference> ExportModuleAsync()
+        => _exportModule ??= await JS.InvokeAsync<Microsoft.JSInterop.IJSObjectReference>("import", ExportModulePath);
+
+    /// <summary>Releases the imported export module, if one was loaded.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (_exportModule is null) return;
+        try
+        {
+            await _exportModule.DisposeAsync();
+        }
+        catch (Microsoft.JSInterop.JSDisconnectedException)
+        {
+            // The circuit is already gone; the browser side went with it.
+        }
+        _exportModule = null;
+    }
 
     private static string CellString(object? v) => v switch
     {

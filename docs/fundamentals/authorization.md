@@ -35,7 +35,7 @@ Define permissions once and reference them everywhere — this keeps endpoint gu
 
 The management application layers two independent RBAC scopes:
 
-1. **Admin-pool RBAC** — gates which *managed apps* an operator may administer. SuperAdmins reach every app; everyone else reaches only the apps assigned to them.
+1. **Admin-pool RBAC** — gates which *managed apps* an operator may administer. SuperAdmins reach every app; everyone else reaches only the apps assigned to them. Being assigned to an app grants **read** access; changing its configuration, localization, roles, role assignments, outbox messages or jobs additionally requires the matching write permission.
 2. **Managed-app RBAC** — each managed app defines its own roles, permissions and role assignments for its end users.
 
 See [Architecture → Security & multi-tenancy](../ARCHITECTURE.md#security-multi-tenancy).

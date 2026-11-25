@@ -4,33 +4,127 @@ using System.Collections.Concurrent;
 namespace {{ ServerNamespace }}.Auth;
 
 /// <summary>
-/// Server-side session registry that binds a cookie's validity to a LIVE server session. The auth cookie is
-/// only a reference: a request is authenticated only while the user's <c>sub</c> still has an entry here
-/// (checked in <c>OnValidatePrincipal</c>). The store is IN-MEMORY (singleton), so it is EMPTY after a
-/// process restart — which invalidates every outstanding cookie until the user signs in again.
+/// Server-side session registry that binds a cookie's validity to a LIVE server session, and holds that
+/// session's Gateway tokens. The auth cookie is only a reference: a request is authenticated only while the
+/// cookie's <c>sid</c> (session id) still has an entry here (checked in <c>OnValidatePrincipal</c>). The store
+/// is IN-MEMORY (singleton), so it is EMPTY after a process restart — which invalidates every outstanding
+/// cookie until the user signs in again.
 ///
 /// This mirrors the AppManagement control plane's <c>AdminUserSessionStore</c>: sign-in registers, sign-out
 /// removes, a restart clears everything. Without it a generated app's cookie is self-contained and survives a
 /// teardown — the Data Protection keys that sign it persist OUTSIDE the app folder, so deleting and
 /// re-creating the app (same name → same key ring) leaves a stale cookie that lands on the dashboard with no
 /// login. Registering the session server-side closes that hole.
+///
+/// <para><b>Keyed by SESSION, not by user.</b> It used to be keyed by the user's <c>sub</c>, which made two
+/// browsers of one user a single entry: signing out in one ended the other, and — worse — signing IN again
+/// anywhere re-validated a cookie that had been signed out. Each sign-in now gets its own random
+/// <c>sid</c>; <see cref="Remove"/> ends exactly that browser's session and
+/// <see cref="RemoveAllForUser"/> ends every session of a user (a password change).</para>
+///
+/// <para><b>The Gateway tokens live HERE, not in the cookie.</b> The access token expires long before the
+/// cookie does; a token frozen into the cookie at sign-in left a session that looked valid while every API
+/// call answered 401. <see cref="GetAccessTokenAsync"/> hands out the current token and renews it with the
+/// refresh token shortly before it expires — single-flight per session, because a refresh token is
+/// single-use and two concurrent renewals would trip the Gateway's reuse detection and revoke the chain.</para>
+///
+/// (In-memory ⇒ single instance. A scale-out deployment needs a shared/distributed store — the same caveat as
+/// <c>DataProtection:KeyPath</c>.)
 /// </summary>
 public sealed class AppUserSessionStore
 {
-    private readonly ConcurrentDictionary<string, DateTime> _active = new(StringComparer.Ordinal);
+    /// <summary>Renew when the access token has less than this left — covers clock skew + the call itself.</summary>
+    private static readonly TimeSpan RenewAhead = TimeSpan.FromSeconds(60);
 
-    /// <summary>Registers (or refreshes) the user's active session at sign-in.</summary>
-    public void Register(string? sub)
+    private readonly ConcurrentDictionary<string, Session> _sessions = new(StringComparer.Ordinal);
+
+    /// <summary>The tokens the Gateway issued for one sign-in (or one renewal).</summary>
+    public sealed record Tokens(string AccessToken, string RefreshToken, DateTime AccessExpiresAtUtc);
+
+    /// <summary>Registers a new session at sign-in and returns its id (the cookie's <c>sid</c> claim).</summary>
+    public string Register(string sub, Tokens tokens)
     {
-        if (!string.IsNullOrEmpty(sub)) _active[sub] = DateTime.UtcNow;
+        var sid = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
+        _sessions[sid] = new Session(sub, tokens);
+        return sid;
     }
 
-    /// <summary>True while the user has a live server-side session (signed in since the last restart).</summary>
-    public bool IsActive(string? sub) => !string.IsNullOrEmpty(sub) && _active.ContainsKey(sub);
+    /// <summary>True while this session is live (signed in since the last restart, not signed out).</summary>
+    public bool IsActive(string? sid) => !string.IsNullOrEmpty(sid) && _sessions.ContainsKey(sid);
 
-    /// <summary>Ends the user's session (sign-out) so their cookie is rejected on the next request.</summary>
-    public void Remove(string? sub)
+    /// <summary>Ends ONE session (sign-out in this browser) so its cookie is rejected on the next request.</summary>
+    public void Remove(string? sid)
     {
-        if (!string.IsNullOrEmpty(sub)) _active.TryRemove(sub, out _);
+        if (!string.IsNullOrEmpty(sid)) _sessions.TryRemove(sid, out _);
+    }
+
+    /// <summary>Ends EVERY session of a user — after a password change, all of that user's browsers must sign in again.</summary>
+    public void RemoveAllForUser(string? sub)
+    {
+        if (string.IsNullOrEmpty(sub)) return;
+        foreach (var pair in _sessions)
+            if (string.Equals(pair.Value.Sub, sub, StringComparison.Ordinal))
+                _sessions.TryRemove(pair.Key, out _);
+    }
+
+    /// <summary>
+    /// Returns a currently-valid access token for the session, renewing it through
+    /// <paramref name="renew"/> (which exchanges the refresh token) when it is about to expire.
+    /// Returns null when the session is unknown, when the Gateway REFUSES the renewal (the session is then
+    /// ended here), or when the Gateway cannot be reached and the token has already expired — in every case
+    /// the caller signs the user out instead of carrying on with a dead token.
+    /// </summary>
+    /// <param name="sid">The session id from the cookie.</param>
+    /// <param name="renew">Exchanges a refresh token for new tokens; returns null when the Gateway refuses it.</param>
+    /// <param name="ct">Cancellation.</param>
+    public async Task<string?> GetAccessTokenAsync(
+        string? sid, Func<string, CancellationToken, Task<Tokens?>> renew, CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(sid) || !_sessions.TryGetValue(sid, out var session)) return null;
+
+        if (!NeedsRenewal(session.Current)) return session.Current.AccessToken;
+
+        // Single-flight: one renewal per session at a time. Everyone else waits, then re-reads the result.
+        await session.Gate.WaitAsync(ct);
+        try
+        {
+            if (!NeedsRenewal(session.Current)) return session.Current.AccessToken;
+
+            Tokens? renewed;
+            try
+            {
+                renewed = await renew(session.Current.RefreshToken, ct);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception)
+            {
+                // Transport failure (Gateway down): the refresh token was NOT consumed, so keep the session
+                // and let the caller surface the error; the next call tries again.
+                return session.Current.AccessExpiresAtUtc > DateTime.UtcNow ? session.Current.AccessToken : null;
+            }
+
+            if (renewed is null)
+            {
+                // The Gateway REFUSED the refresh token (expired, revoked, reused): the session is over.
+                _sessions.TryRemove(sid, out _);
+                return null;
+            }
+
+            session.Current = renewed;
+            return renewed.AccessToken;
+        }
+        finally
+        {
+            session.Gate.Release();
+        }
+    }
+
+    private static bool NeedsRenewal(Tokens t) => t.AccessExpiresAtUtc - DateTime.UtcNow < RenewAhead;
+
+    private sealed class Session(string sub, Tokens tokens)
+    {
+        public string Sub { get; } = sub;
+        public Tokens Current { get; set; } = tokens;
+        public SemaphoreSlim Gate { get; } = new(1, 1);
     }
 }

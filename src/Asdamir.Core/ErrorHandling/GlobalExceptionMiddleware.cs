@@ -61,6 +61,10 @@ public class GlobalExceptionMiddleware
     /// Runs the rest of the pipeline and, on any unhandled exception, logs the full error for operators
     /// and writes a localized <c>application/problem+json</c> response to the caller instead of letting
     /// the exception escape as a bare 500.
+    /// <para>If the response has ALREADY started (a streamed body, a flushed header), no error document can be
+    /// written any more: the exception is still logged in full and then rethrown, so the server aborts the
+    /// connection instead of this middleware appending JSON to a half-sent body or failing on a status code it
+    /// may no longer set.</para>
     /// </summary>
     /// <param name="context">The current request context; its aborted token and culture drive handling.</param>
     /// <returns>A task that completes once the request — or its error response — has been written.</returns>
@@ -72,6 +76,16 @@ public class GlobalExceptionMiddleware
         }
         catch (Exception ex)
         {
+            if (context.Response.HasStarted)
+            {
+                // Status and headers are on the wire; setting them would throw and mask the real error, and
+                // writing a body would corrupt whatever was already sent. Log (operator channel) and rethrow.
+                _logger.LogError(ex,
+                    "Unhandled exception AFTER the response started; no error response can be written - TraceId={TraceId}, Path={Path}, CaughtBy={CaughtBy}",
+                    context.TraceIdentifier, context.Request.Path, nameof(GlobalExceptionMiddleware));
+                throw;
+            }
+
             await HandleExceptionAsync(context, ex, _mapper);
         }
     }

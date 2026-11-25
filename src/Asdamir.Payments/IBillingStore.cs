@@ -39,21 +39,44 @@ public interface IBillingStore
     /// </summary>
     Task<Guid> CreateAccountAsync(string name, string email, int ownerUserId, Guid? appId, CancellationToken ct = default);
 
-    /// <summary>Create a subscription for an account on a plan; returns the new subscription id.</summary>
+    /// <summary>
+    /// Create a subscription for an account on a plan; returns the new subscription id.
+    /// <b>A trial is granted once per account:</b> when <paramref name="status"/> is <c>trialing</c> with a
+    /// non-null <paramref name="trialEndsAtUtc"/> and the account has EVER had a subscription with a trial
+    /// end (whatever its status now), the store creates the subscription as <c>incomplete</c> with no trial
+    /// instead — it grants nothing until a payment webhook activates it. Enforced by the store (the
+    /// <c>Subscription_Create</c> proc / the in-memory mirror) so cancel + resubscribe cannot repeat a trial
+    /// through any caller; read the subscription back to see the status actually stored.
+    /// </summary>
     Task<Guid> CreateSubscriptionAsync(Guid billingAccountId, Guid planId, string status, DateTime? trialEndsAtUtc, CancellationToken ct = default);
 
     /// <summary>Update a subscription's status (e.g. cancel); returns true if a row changed.</summary>
     Task<bool> UpdateSubscriptionStatusAsync(Guid subscriptionId, string status, CancellationToken ct = default);
 
     /// <summary>
-    /// Idempotently record a provider webhook by (provider, eventId). Returns true when newly recorded
-    /// (caller should process), false when it's a duplicate (caller must skip) — a replayed event can
-    /// never be processed twice.
+    /// Claim a provider webhook by (provider, eventId) and say whether the caller must process it. Returns
+    /// true when the event is new, or when it was claimed earlier but never marked processed and that claim
+    /// has gone stale (the earlier attempt failed or died — this delivery is the provider's retry). Returns
+    /// false when it has already been processed, or is being processed right now by another delivery — so a
+    /// burst of concurrent deliveries yields exactly one true. A processed event is never applied twice and
+    /// a failed one is never lost: call <see cref="MarkWebhookProcessedAsync"/> only after processing
+    /// succeeded, and <see cref="ReleaseWebhookAsync"/> when it failed.
     /// </summary>
     Task<bool> TryRecordWebhookAsync(string provider, string providerEventId, string? type, string? payload, CancellationToken ct = default);
 
-    /// <summary>Mark a recorded webhook as processed.</summary>
+    /// <summary>
+    /// Mark a claimed webhook as processed — call it only after processing SUCCEEDED. Until then the event
+    /// is offered again once its claim is released or goes stale.
+    /// </summary>
     Task MarkWebhookProcessedAsync(string provider, string providerEventId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Give up the claim on a webhook whose processing FAILED, so the provider's retry is processed at once
+    /// instead of waiting for the claim to go stale. Never affects a processed event. The default
+    /// implementation does nothing (a store written before this member existed still recovers through the
+    /// stale-claim path of <see cref="TryRecordWebhookAsync"/>, only later).
+    /// </summary>
+    Task ReleaseWebhookAsync(string provider, string providerEventId, CancellationToken ct = default) => Task.CompletedTask;
 
     /// <summary>Find a subscription by its provider reference (set at checkout), or null.</summary>
     Task<SubscriptionDto?> GetSubscriptionByProviderRefAsync(string provider, string providerRef, CancellationToken ct = default);

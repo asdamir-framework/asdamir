@@ -276,7 +276,10 @@ public sealed class ExportService : IExportService
         });
     }
 
-    /// <summary>Column-aware CSV export (UTF-8 with BOM, RFC-4180 quoting).</summary>
+    /// <summary>
+    /// Column-aware CSV export (UTF-8 with BOM, RFC-4180 quoting). Text cells that a spreadsheet would
+    /// evaluate as a formula are neutralised — see <see cref="NeutralizeFormula"/>.
+    /// </summary>
     public async Task<byte[]> ExportToCsvAsync(IReadOnlyList<string> headers, IEnumerable<IReadOnlyList<object?>> rows)
     {
         return await Task.Run(() =>
@@ -285,7 +288,7 @@ public sealed class ExportService : IExportService
             {
                 null => "",
                 DateTime dt => dt.ToString("yyyy-MM-dd HH:mm"),
-                _ => v.ToString() ?? ""
+                _ => CsvText(v)
             }).Replace("\"", "\"\"") + "\"";
 
             var sb = new StringBuilder();
@@ -451,7 +454,8 @@ public sealed class ExportService : IExportService
     }
 
     /// <summary>
-    /// Export to CSV (simple, no dependencies)
+    /// Export to CSV (simple, no dependencies). Text cells that a spreadsheet would evaluate as a formula
+    /// are neutralised — see <see cref="NeutralizeFormula"/>.
     /// </summary>
     public async Task<byte[]> ExportToCsvAsync<T>(IEnumerable<T> data, string? fileName = null) where T : class
     {
@@ -461,7 +465,8 @@ public sealed class ExportService : IExportService
             var sb = new StringBuilder();
 
             // Header
-            sb.AppendLine(string.Join(",", properties.Select(p => $"\"{GetDisplayName(p)}\"")));
+            sb.AppendLine(string.Join(",",
+                properties.Select(p => $"\"{NeutralizeFormula(GetDisplayName(p)).Replace("\"", "\"\"")}\"")));
 
             // Rows
             foreach (var item in data)
@@ -469,13 +474,57 @@ public sealed class ExportService : IExportService
                 var values = properties.Select(p =>
                 {
                     var value = p.GetValue(item);
-                    return $"\"{value?.ToString()?.Replace("\"", "\"\"")}\""; // Escape quotes
+                    return $"\"{(value is null ? "" : CsvText(value)).Replace("\"", "\"\"")}\""; // Escape quotes
                 });
                 sb.AppendLine(string.Join(",", values));
             }
 
             return Encoding.UTF8.GetBytes(sb.ToString());
         });
+    }
+
+    /// <summary>Renders one CSV value as text; anything that is not a number is formula-neutralised.</summary>
+    private static string CsvText(object value) => value switch
+    {
+        // A typed number can only ever render as a number (a leading '-' is a sign, not a formula).
+        sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal
+            => value.ToString() ?? "",
+        _ => NeutralizeFormula(value.ToString() ?? ""),
+    };
+
+    /// <summary>
+    /// Defuses CSV / formula injection: a cell whose text starts with <c>=</c>, <c>+</c>, <c>-</c>,
+    /// <c>@</c>, TAB or CR is evaluated as a FORMULA by Excel, LibreOffice and Google Sheets when the file is
+    /// opened — exported user input such as <c>=HYPERLINK(...)</c> or a DDE payload then runs on the
+    /// operator's machine. Such a cell is prefixed with a single quote (the OWASP mitigation), which makes
+    /// the spreadsheet treat it as text.
+    /// </summary>
+    /// <remarks>
+    /// A value made up only of an optional sign, digits, separators and spaces (<c>-12.50</c>,
+    /// <c>+90 532 123 45 67</c>) is left alone: it cannot carry a function call, and prefixing it would
+    /// deface every negative amount and phone number in an export.
+    /// </remarks>
+    /// <param name="text">The cell text, before CSV quoting.</param>
+    /// <returns>The text, prefixed with <c>'</c> when it would otherwise be read as a formula.</returns>
+    internal static string NeutralizeFormula(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text;
+        if (text[0] is not ('=' or '+' or '-' or '@' or '\t' or '\r')) return text;
+
+        if (text[0] is '+' or '-')
+        {
+            var digits = 0;
+            var plain = true;
+            for (var i = 1; i < text.Length && plain; i++)
+            {
+                var c = text[i];
+                if (char.IsAsciiDigit(c)) digits++;
+                else if (c is not ('.' or ',' or ' ')) plain = false;
+            }
+            if (plain && digits > 0) return text;
+        }
+
+        return "'" + text;
     }
 
     /// <summary>

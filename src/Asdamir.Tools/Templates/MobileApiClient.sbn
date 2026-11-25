@@ -78,13 +78,16 @@ public sealed class MobileApiClient
     // A null response means a transport failure (offline) OR a sign-out after a failed refresh.
     private async Task<HttpResponseMessage?> SendAsync(HttpMethod method, string path, object? body, CancellationToken ct)
     {
-        var resp = await SendOnceAsync(method, path, body, ct);
+        var (resp, usedToken) = await SendOnceAsync(method, path, body, ct);
         if (resp is null) return null;                                   // transport failure — caller falls back to cache
         if (resp.StatusCode != HttpStatusCode.Unauthorized) return resp;
 
         resp.Dispose();
-        if (await _auth.RefreshAsync())
-            return await SendOnceAsync(method, path, body, ct);
+        // Single-flight (see MobileAuthService.RefreshAsync): pass the token that was just rejected, so when
+        // several calls 401 at once only the first one actually exchanges the (single-use) refresh token and
+        // the rest retry with the token it obtained.
+        if (await _auth.RefreshAsync(usedToken ?? string.Empty))
+            return (await SendOnceAsync(method, path, body, ct)).Response;
 
         _logger.LogInformation("Refresh failed after 401 — signing out");
         await _auth.LogoutAsync();
@@ -92,7 +95,7 @@ public sealed class MobileApiClient
         return null;
     }
 
-    private async Task<HttpResponseMessage?> SendOnceAsync(HttpMethod method, string path, object? body, CancellationToken ct)
+    private async Task<(HttpResponseMessage? Response, string? Token)> SendOnceAsync(HttpMethod method, string path, object? body, CancellationToken ct)
     {
         using var req = new HttpRequestMessage(method, path);
         if (body is not null) req.Content = JsonContent.Create(body);   // fresh content each attempt (retry-safe)
@@ -103,18 +106,18 @@ public sealed class MobileApiClient
         var client = _httpFactory.CreateClient("gateway");
         try
         {
-            return await client.SendAsync(req, ct);
+            return (await client.SendAsync(req, ct), token);
         }
         catch (HttpRequestException ex)
         {
             _logger.LogInformation(ex, "{Method} {Path} failed (offline / unreachable)", method, path);
-            return null;
+            return (null, token);
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
         {
             // HttpClient.Timeout elapsed (not a caller cancellation).
             _logger.LogInformation("{Method} {Path} timed out", method, path);
-            return null;
+            return (null, token);
         }
     }
 }

@@ -57,9 +57,13 @@ public sealed class BillingWebhookController : ControllerBase
         }
 
         var evt = verified.Value;
-        var isNew = await _store.TryRecordWebhookAsync(gateway.Name, evt.ProviderEventId, evt.Type, evt.RawPayload, ct);
-        if (!isNew)
-            return Ok();   // duplicate → already handled, idempotent no-op
+        // The dedupe row is a CLAIM; only "processed" makes it final. TryRecord answers true for a new event
+        // or an unprocessed one whose claim went stale (the earlier attempt failed), and false for a processed
+        // one. If ProcessAsync throws, the exception propagates (5xx), MarkWebhookProcessed is not reached,
+        // and the provider's retry is processed once the claim lease (BillingWebhookEvent_TryRecord) lapses.
+        var shouldProcess = await _store.TryRecordWebhookAsync(gateway.Name, evt.ProviderEventId, evt.Type, evt.RawPayload, ct);
+        if (!shouldProcess)
+            return Ok();   // already processed (or in progress elsewhere) → idempotent no-op
 
         // Map the event to a subscription status transition (activate / past-due / cancel).
         await _processor.ProcessAsync(gateway.Name, evt, ct);

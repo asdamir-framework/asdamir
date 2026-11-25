@@ -66,9 +66,9 @@ public static class RollbackAppCommand
     private static async Task<int> RunAsync(string name, DirectoryInfo output, string connection, string server,
         string database, string user, string password, string vaultConnection, bool yes)
     {
-        if (string.IsNullOrWhiteSpace(name) || !char.IsUpper(name[0]))
+        if (!NameArgument.IsValid(name))
         {
-            Console.Error.WriteLine("App name must be PascalCase (e.g. CustomerOrders).");
+            Console.Error.WriteLine(NameArgument.Explain(name, "app name", "asdamir rollback app <Name>"));
             return ExitCodes.Usage;
         }
 
@@ -172,18 +172,22 @@ public static class RollbackAppCommand
             }
         }
 
-        // 7) Tear down — directory, then DB, then vault. Each idempotent.
-        if (appRoot is not null)
-        {
-            try { Directory.Delete(appRoot, recursive: true); Console.WriteLine($"Directory: removed {appRoot}."); }
-            catch (Exception ex) { Console.Error.WriteLine($"Directory delete failed: {ex.Message}"); return 1; }
-        }
-        else Console.WriteLine("Directory: nothing to remove (already gone).");
-
+        // 7) Tear down — DB, then vault, and the DIRECTORY LAST. Each idempotent.
+        //
+        // The directory is what a retry needs: it holds the Gateway csproj whose UserSecretsId is how the
+        // connection was resolved, and the migrations that say which mode the app is. It used to be deleted
+        // FIRST, so a database drop that then failed (server down, a permission, a typo in the password) left
+        // an orphan database and nothing to re-run the command from. Now a failed step returns with the
+        // directory intact.
         if (masterConn is not null)
         {
             try { var dropped = await DropDatabaseAsync(masterConn, dbName); Console.WriteLine(dropped ? $"App DB: dropped [{dbName}]." : $"App DB: [{dbName}] already absent."); }
-            catch (SqlException ex) { Console.Error.WriteLine($"App DB drop failed: {ex.Message}"); return 1; }
+            catch (SqlException ex)
+            {
+                Console.Error.WriteLine($"App DB drop failed: {ex.Message}");
+                Console.Error.WriteLine("The app directory was NOT deleted — fix the cause and re-run.");
+                return 1;
+            }
         }
         else Console.WriteLine("App DB: NOT dropped (no --connection/-S -d). Re-run with a connection to DROP the database.");
 
@@ -194,10 +198,22 @@ public static class RollbackAppCommand
             if (!string.IsNullOrWhiteSpace(vaultConnection))
             {
                 try { var n = await PurgeVaultAsync(vaultConnection, appCode); Console.WriteLine(n > 0 ? $"App registration (AsdamirVault): purged '{appCode}'." : $"App registration (AsdamirVault): '{appCode}' was not registered."); }
-                catch (SqlException ex) { Console.Error.WriteLine($"App registration purge failed: {ex.Message}"); return 1; }
+                catch (SqlException ex)
+                {
+                    Console.Error.WriteLine($"App registration purge failed: {ex.Message}");
+                    Console.Error.WriteLine("The app directory was NOT deleted — fix the cause and re-run.");
+                    return 1;
+                }
             }
             else Console.WriteLine("App registration (AsdamirVault): NOT purged (no --vault-connection). Re-run with --vault-connection to remove the app's registration (the AsdamirVault DB itself is never touched).");
         }
+
+        if (appRoot is not null)
+        {
+            try { Directory.Delete(appRoot, recursive: true); Console.WriteLine($"Directory: removed {appRoot}."); }
+            catch (Exception ex) { Console.Error.WriteLine($"Directory delete failed: {ex.Message}"); return 1; }
+        }
+        else Console.WriteLine("Directory: nothing to remove (already gone).");
 
         Console.WriteLine($"\n✓ Tore down app '{name}'.");
         return 0;

@@ -22,6 +22,9 @@ namespace Asdamir.Data.Outbox;
 /// + IsHtml + inline attachments are honored. SMTP host/auth come from <see cref="SmtpOptions"/>.
 /// Transient SMTP failures throw — worker schedules retry with backoff. Address-shape /
 /// MIME-build errors throw <see cref="PermanentDispatchException"/> so retries don't loop.
+/// <para>A failure while closing the SMTP session AFTER the server accepted the message is logged and
+/// swallowed: the message is sent, and letting that failure escape would make the worker retry it and
+/// deliver a duplicate.</para>
 /// </summary>
 public sealed class MailDispatcher : IOutboxDispatcher
 {
@@ -38,15 +41,16 @@ public sealed class MailDispatcher : IOutboxDispatcher
         _logger = logger;
     }
 
+    /// <summary>Creates the SMTP client for one dispatch. A seam for tests; production uses MailKit's client.</summary>
+    internal Func<ISmtpClient> SmtpClientFactory { get; set; } = static () => new SmtpClient();
+
     /// <inheritdoc/>
     public async Task DispatchAsync(ClaimedOutboxMessage message, CancellationToken ct)
     {
         var mime = BuildMimeMessage(message);
 
-        using var client = new SmtpClient
-        {
-            Timeout = (int)_smtp.Timeout.TotalMilliseconds,
-        };
+        using var client = SmtpClientFactory();
+        client.Timeout = (int)_smtp.Timeout.TotalMilliseconds;
 
         var secure = ParseSecurity(_smtp.Security);
         await client.ConnectAsync(_smtp.Host, _smtp.Port, secure, ct);
@@ -56,12 +60,38 @@ public sealed class MailDispatcher : IOutboxDispatcher
         try
         {
             await client.SendAsync(mime, ct);
-            _logger.LogInformation("MailDispatcher sent {MessageId} to {Count} recipients (cc={CcCount}, bcc={BccCount})",
-                message.Id, mime.To.Count, mime.Cc.Count, mime.Bcc.Count);
         }
-        finally
+        catch
         {
-            await client.DisconnectAsync(true, ct);
+            // The send failed: that is the error the worker must see. A second failure while hanging up must
+            // not replace it.
+            await DisconnectQuietlyAsync(client, message.Id);
+            throw;
+        }
+
+        _logger.LogInformation("MailDispatcher sent {MessageId} to {Count} recipients (cc={CcCount}, bcc={BccCount})",
+            message.Id, mime.To.Count, mime.Cc.Count, mime.Bcc.Count);
+
+        // The server has ACCEPTED the message. Nothing that happens while closing the session can un-send it,
+        // so it must not surface as a dispatch failure: the worker would retry and deliver a duplicate.
+        await DisconnectQuietlyAsync(client, message.Id);
+    }
+
+    /// <summary>
+    /// Closes the SMTP session, logging instead of throwing. Deliberately not bound to the dispatch's
+    /// cancellation token: a shutdown arriving right after a successful send must not turn it into a failure.
+    /// </summary>
+    private async Task DisconnectQuietlyAsync(ISmtpClient client, Guid messageId)
+    {
+        try
+        {
+            await client.DisconnectAsync(true, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "MailDispatcher could not close the SMTP session cleanly for {MessageId}; the outcome of the send is unaffected",
+                messageId);
         }
     }
 

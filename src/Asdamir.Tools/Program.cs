@@ -51,18 +51,7 @@ public static class Program
     internal static async Task<int> RunAsync(string[] args)
     {
         var handlerReached = new HandlerReached();
-
-        var root = new RootCommand("asdamir — scaffolding and code generation for Asdamir")
-        {
-            BuildNewCommand(),
-            BuildAddCommand(),
-            RollbackCommand.Build(),
-            BuildAuditCommand(handlerReached),
-            BuildDbCommand(),
-            BuildLocalizationCommand(),
-            BuildAppCommand(),
-            SecretsCommand.Build(),
-        };
+        var root = BuildRootCommand(handlerReached);
 
         // ONE parser, built with UseDefaults(), used for the whole invocation.
         //
@@ -137,6 +126,26 @@ public static class Program
 
         return handlerReached.Value ? exitCode : exitCode is ExitCodes.Internal ? exitCode : ExitCodes.Usage;
     }
+
+    /// <summary>
+    /// The whole command tree. Separate from <see cref="RunAsync"/> so a test can ENUMERATE every command that
+    /// has a handler and assert each one is under the exit-code contract — a list of commands kept by hand in
+    /// a test is a list a new command can be left off (as <c>audit verify-signatures</c> was).
+    /// </summary>
+    /// <param name="handlerReached">The per-invocation "a handler ran" flag.</param>
+    /// <returns>The root command.</returns>
+    internal static RootCommand BuildRootCommand(HandlerReached handlerReached)
+        => new("asdamir — scaffolding and code generation for Asdamir")
+        {
+            BuildNewCommand(),
+            BuildAddCommand(),
+            RollbackCommand.Build(),
+            BuildAuditCommand(handlerReached),
+            BuildDbCommand(),
+            BuildLocalizationCommand(),
+            BuildAppCommand(),
+            SecretsCommand.Build(),
+        };
 
     /// <summary>
     /// True when the exception came from System.CommandLine converting a token to the option's declared type

@@ -32,7 +32,23 @@ public static class VerifySignaturesCommand
 {
     /// <summary>Builds the command.</summary>
     /// <returns>The configured <c>verify-signatures</c> command.</returns>
-    public static Command Build()
+    public static Command Build() => Build(Run);
+
+    /// <summary>
+    /// Builds the command around an explicit verification delegate — the seam that lets a test drive the REAL
+    /// option binding and exit-code propagation without a database.
+    /// </summary>
+    /// <remarks>
+    /// <b>The handler assigns <c>ctx.ExitCode</c>; it does not return the code.</b> It used to be
+    /// <c>SetHandler((string cs, string? code, string? tn) =&gt; Run(cs, code, tn), …)</c>. System.CommandLine
+    /// 2.0.0-beta4 has no <c>Func&lt;T1,T2,T3,int&gt;</c> overload, so that lambda bound to the
+    /// <c>Action&lt;T1,T2,T3&gt;</c> one and the returned <see cref="int"/> was silently DISCARDED: a ledger
+    /// with INVALID signatures printed the finding and still exited <c>0</c> — a verification gate that could
+    /// not fail. The compiler says nothing, because discarding a lambda's result is legal.
+    /// </remarks>
+    /// <param name="verify">Runs the verification and returns the exit code (connection, app code, tenant).</param>
+    /// <returns>The configured <c>verify-signatures</c> command.</returns>
+    internal static Command Build(Func<string, string?, string?, int> verify)
     {
         var connection = new Option<string>("--connection", "AsdamirVault connection string.") { IsRequired = true };
         var appCode = new Option<string>("--app-code", "Restrict to one registered application code.");
@@ -45,14 +61,33 @@ public static class VerifySignaturesCommand
         cmd.AddOption(appCode);
         cmd.AddOption(tenant);
 
-        cmd.SetHandler(
-            (string cs, string? code, string? tn) => Run(cs, code, tn),
-            connection, appCode, tenant);
+        cmd.SetHandler(ctx => ctx.ExitCode = verify(
+            ctx.ParseResult.GetValueForOption(connection)!,
+            ctx.ParseResult.GetValueForOption(appCode),
+            ctx.ParseResult.GetValueForOption(tenant)));
 
         return cmd;
     }
 
     private static int Run(string connectionString, string? appCode, string? tenantId)
+    {
+        try
+        {
+            return Verify(connectionString, appCode, tenantId);
+        }
+        catch (Exception ex) when (ex is SqlException or ArgumentException or FormatException)
+        {
+            // An unreachable server, a wrong login, a malformed connection string, a database without the
+            // ledger: NOTHING was verified. That is not a finding (1 would read as "invalid signatures") and
+            // not an internal error (it used to escape as one, with "please report it") — the command could
+            // not examine what it was pointed at.
+            Console.Error.WriteLine($"verify-signatures: could not read the ledger — {ex.Message}");
+            Console.Error.WriteLine("Nothing was verified. Check --connection (it must point at AsdamirVault).");
+            return ExitCodes.Usage;
+        }
+    }
+
+    private static int Verify(string connectionString, string? appCode, string? tenantId)
     {
         var verifier = new EcdsaP256AgentActionSignatureVerifier();
         int unsigned = 0, valid = 0, invalid = 0, unavailable = 0, silentlyUnsigned = 0;

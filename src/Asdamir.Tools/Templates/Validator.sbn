@@ -5,17 +5,29 @@ using {{ Namespace }}.Dtos;
 
 namespace {{ Namespace }}.Validators;
 
+/// <summary>
+/// Request-shape rules for <see cref="{{ EntityName }}Dto"/>. Registered automatically by the Gateway's
+/// convention scan (every <c>IValidator&lt;T&gt;</c> in the assembly) and run by
+/// <c>{{ EntityPlural }}Controller</c> on create and update — add rules here and they are enforced.
+/// </summary>
 public sealed class {{ EntityName }}DtoValidator : AbstractValidator<{{ EntityName }}Dto>
 {
     public {{ EntityName }}DtoValidator()
     {
+        // NotEmpty is emitted ONLY where "empty" is not a legitimate value: a required string, Guid or
+        // DateTime. It is deliberately NOT emitted for bool / int / long / decimal — FluentValidation's
+        // NotEmpty rejects the type's default, so it would refuse `false` and `0` (an inactive record, a zero
+        // quantity), which are ordinary values. A required number/bool is already guaranteed present by its
+        // non-nullable type.
 {{ for f in Fields ~}}
 {{ if f.IsRequired && f.CSharpType == "string" ~}}
         RuleFor(x => x.{{ f.Name }})
             .NotEmpty().WithMessage("{{ f.Name }} is required.")
             .MaximumLength(500);
-{{ else if f.IsRequired ~}}
-        RuleFor(x => x.{{ f.Name }}).NotEmpty();
+{{ else if f.CSharpType == "string?" ~}}
+        RuleFor(x => x.{{ f.Name }}).MaximumLength(500);
+{{ else if f.CSharpType == "Guid" || f.CSharpType == "DateTime" ~}}
+        RuleFor(x => x.{{ f.Name }}).NotEmpty().WithMessage("{{ f.Name }} is required.");
 {{ end ~}}
 {{ end ~}}
     }

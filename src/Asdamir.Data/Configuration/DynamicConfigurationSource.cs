@@ -38,6 +38,12 @@ public sealed class DynamicConfigurationSource : IConfigurationSource
     public ILoggerFactory? LoggerFactory { get; set; }
 
     /// <summary>
+    /// The protected keys (see <see cref="DatabaseConfigurationOptions.ProtectedKeys"/>) the most recent
+    /// load found in the database and refused to apply. Set by the loader; reported by the provider.
+    /// </summary>
+    public IReadOnlyList<string> LastDroppedProtectedKeys { get; set; } = Array.Empty<string>();
+
+    /// <summary>
     /// Builds the configuration provider with optional logger support.
     /// </summary>
     /// <param name="builder">The configuration builder.</param>

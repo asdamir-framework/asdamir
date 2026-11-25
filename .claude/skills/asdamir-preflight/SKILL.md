@@ -40,6 +40,20 @@ dotnet test Asdamir.sln -c Release -p:RunSettingsFilePath= --filter "Category=Sc
 ```
 All assemblies must report `Passed!`.
 
+What `./run-tests.sh` treats as a FAILURE (exit 1), beyond a failed test:
+- **A test project that produced no results.** Every test project in the solution must write a TRX; one that
+  did not compile writes none and is reported by name (`✗ N TEST PROJECT(S) PRODUCED NO RESULTS`) instead of
+  silently dropping out of a green summary.
+- **`dotnet test` exited non-zero with no failed test** — a build/restore/testhost failure, not a test failure.
+- **No working Python 3.** The script probes candidates by *running* them (on macOS `python3` can be an Xcode
+  shim that exists and exits 69); pick one explicitly with `PYTHON=/path/to/python3 ./run-tests.sh`.
+
+Container-backed suites (`Category=Integration`, `Category=E2E`): **only an unreachable Docker daemon skips**
+them. Anything after a successful probe — image start, migrations (zero migrations found is a failure), host
+startup, app generation — FAILS with the real error. Set **`ASDAMIR_REQUIRE_DOCKER_GATES=1`** to make an
+unreachable daemon fail too (CI, or whenever a green must mean the SQL layer actually ran) — the sibling of
+`ASDAMIR_REQUIRE_NETWORK_GATES=1`.
+
 > Heads-up: don't stack multiple `dotnet test` runs in parallel — they contend and slow each other down.
 
 ### 3. audit-lint (static gate) — both scopes
@@ -50,13 +64,21 @@ dotnet run --project src/Asdamir.Tools -c Release --no-build -- audit lint --pat
 Must be `0 findings at or above warning`. Fix findings, or suppress deliberately with
 `// audit-lint:ignore AUDxxx` (+ a reason) — see the `asdamir-audit-lint` skill.
 
+Companion gates — each must report `0 finding(s)` (run them on the `AppManagement` scope, which is where the
+console's policies and the vault seeds live):
+```bash
+dotnet run --project src/Asdamir.Tools -c Release --no-build -- audit localization --path AppManagement
+dotnet run --project src/Asdamir.Tools -c Release --no-build -- audit permissions  --path AppManagement
+dotnet run --project src/Asdamir.Tools -c Release --no-build -- audit seeds        --path AppManagement
+```
+
 ### 4. (Only if you touched migrations / `db apply`) verify migrations apply
 Apply all migrations to a throwaway DB, then re-run to prove the journal skips them:
 ```bash
 asdamir db apply --server localhost --database AsdamirPreflight --user <login> --password <pwd> \
-  --create-database --migrations AppManagement/db/migrations          # fresh: N applied
+  --create-database --migrations AppManagement/db/migrations/MSSQL          # fresh: N applied
 asdamir db apply --server localhost --database AsdamirPreflight --user <login> --password <pwd> \
-  --migrations AppManagement/db/migrations                            # re-run: 0 new, N skipped
+  --migrations AppManagement/db/migrations/MSSQL                            # re-run: 0 new, N skipped
 # then drop AsdamirPreflight
 ```
 

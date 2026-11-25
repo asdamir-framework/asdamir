@@ -120,8 +120,29 @@ public static class RollbackCommand
 
         // 2) DB inventory (only when the matching connection is given).
         var appConn = BuildAppConnection(connection, server, database, user, password);
-        var (tableExists, journalRows) = appConn is null ? (false, 0) : await ProbeAppDbAsync(appConn, plural, pluralLower);
-        var (permExists, menuCount, grantCount) = string.IsNullOrWhiteSpace(vaultConnection) ? (false, 0, 0) : await ProbeVaultAsync(vaultConnection, permName);
+        var appCode = Path.GetFileNameWithoutExtension(Directory.GetFiles(appRoot, "*.sln").FirstOrDefault() ?? "");
+        bool tableExists, appRegistered, permExists;
+        int journalRows, menuCount, grantCount;
+        try
+        {
+            (tableExists, journalRows) = appConn is null ? (false, 0) : await ProbeAppDbAsync(appConn, plural, pluralLower);
+            (appRegistered, permExists, menuCount, grantCount) = string.IsNullOrWhiteSpace(vaultConnection)
+                ? (false, false, 0, 0)
+                : await ProbeVaultAsync(vaultConnection, appCode, permName);
+        }
+        catch (SqlException ex)
+        {
+            // A connection was GIVEN and cannot be used. Going on would delete the code files while leaving
+            // the table/menu behind — exactly the half-rollback the ordering below exists to prevent.
+            Console.Error.WriteLine($"Could not inspect the database: {ex.Message}");
+            Console.Error.WriteLine("Nothing was removed — fix the connection (or omit it to remove the code files only) and re-run.");
+            return 1;
+        }
+
+        // Is dbo.<Plural> THIS entity's table? Decided from evidence gathered BEFORE anything is deleted (the
+        // create-migration file is one of the code files removed below).
+        var hasCreateMigration = GlobMigrations(gatewayDir, $"__create_{pluralLower}.sql").Any();
+        var tableDrop = DecideTableDrop(plural, hasCreateMigration, journalRows);
         // Free mode: the management rows live in the app's OWN db, so they come off the app connection.
         var free = (isFree && appConn is not null) ? await ProbeFreeSeedsAsync(appConn, name, plural, pluralLower) : (perm: 0, menu: 0, loc: 0, journal: 0);
 
@@ -133,7 +154,9 @@ public static class RollbackCommand
         Console.WriteLine(appConn is null
             ? "  App DB: SKIP — no --connection (table/journal not removed)"
             : tableExists || journalRows > 0
-                ? $"  App DB: DROP TABLE dbo.{plural}{(tableExists ? "" : " (absent — skip)")} + {journalRows} journal row(s)"
+                ? tableDrop.Drop
+                    ? $"  App DB: DROP TABLE dbo.{plural}{(tableExists ? "" : " (absent — skip)")} + its 5 CRUD procedures + {journalRows} journal row(s)"
+                    : $"  App DB: dbo.{plural} is KEPT — {tableDrop.Reason}{(journalRows > 0 ? $" ({journalRows} journal row(s) are removed)" : "")}"
                 : $"  App DB: nothing to remove (table absent, no journal rows)");
         if (isFree)
         {
@@ -147,9 +170,11 @@ public static class RollbackCommand
         {
             Console.WriteLine(string.IsNullOrWhiteSpace(vaultConnection)
                 ? "  AsdamirVault: SKIP — no --vault-connection (menu/permission not removed)"
-                : permExists
-                    ? $"  AsdamirVault: permission '{permName}', {menuCount} menu(s), {grantCount} grant(s)"
-                    : $"  AsdamirVault: nothing to remove (permission '{permName}' absent)");
+                : !appRegistered
+                    ? $"  AsdamirVault: nothing to remove — app '{appCode}' is not registered in this vault"
+                    : permExists
+                        ? $"  AsdamirVault (app '{appCode}' only): permission '{permName}', {menuCount} menu(s), {grantCount} grant(s)"
+                        : $"  AsdamirVault: nothing to remove (permission '{permName}' absent for app '{appCode}')");
         }
         if (addFieldMigs.Count > 0)
         {
@@ -170,17 +195,20 @@ public static class RollbackCommand
             }
         }
 
-        // 4) Delete — code first, then app DB, then AsdamirVault.
-        var deleted = 0;
-        foreach (var f in codeFiles) { try { File.Delete(f); deleted++; } catch (IOException ex) { Console.Error.WriteLine($"  ! could not delete {f}: {ex.Message}"); } }
-        Console.WriteLine($"Removed {deleted} code file(s).");
-
+        // 4) Delete — DATABASES FIRST, code files LAST.
+        //
+        // The order is the retry story. Each database step is one transaction that either completes or rolls
+        // back; if one fails we stop with every code file — including the create-migration that proves the
+        // table is this entity's — still on disk, so the command can simply be run again. Files-first (the
+        // previous order) left a failed run with the table still there and the evidence for dropping it gone.
         if (appConn is not null)
         {
             try
             {
-                await RemoveFromAppDbAsync(appConn, plural, pluralLower);
-                Console.WriteLine($"App DB: dropped dbo.{plural} (if it existed) + cleaned journal.");
+                await RemoveFromAppDbAsync(appConn, plural, pluralLower, tableDrop.Drop);
+                Console.WriteLine(tableDrop.Drop
+                    ? $"App DB: dropped dbo.{plural} + its CRUD procedures (if they existed) + cleaned journal."
+                    : $"App DB: dbo.{plural} KEPT ({tableDrop.Reason}); journal cleaned.");
                 // Free mode: also remove the management rows the free-mode seeds wrote into THIS db.
                 if (isFree)
                 {
@@ -188,7 +216,12 @@ public static class RollbackCommand
                     Console.WriteLine("App DB (free-mode mgmt): removed menu/permission/grants + localization + seed-journal rows.");
                 }
             }
-            catch (SqlException ex) { Console.Error.WriteLine($"App DB cleanup failed (rolled back): {ex.Message}"); return 1; }
+            catch (SqlException ex)
+            {
+                Console.Error.WriteLine($"App DB cleanup failed (rolled back): {ex.Message}");
+                Console.Error.WriteLine("Nothing was deleted from disk — fix the cause and re-run.");
+                return 1;
+            }
         }
         else
         {
@@ -202,8 +235,19 @@ public static class RollbackCommand
         {
             if (!string.IsNullOrWhiteSpace(vaultConnection))
             {
-                try { var n = await RemoveFromVaultAsync(vaultConnection, appRoot, permName); Console.WriteLine($"AsdamirVault: removed menu/permission/grants ({n} row(s))."); }
-                catch (SqlException ex) { Console.Error.WriteLine($"AsdamirVault cleanup failed (rolled back): {ex.Message}"); return 1; }
+                try
+                {
+                    var n = await RemoveFromVaultAsync(vaultConnection, appCode, permName);
+                    Console.WriteLine(n < 0
+                        ? $"AsdamirVault: app '{appCode}' is not registered in this vault — nothing removed."
+                        : $"AsdamirVault: removed menu/permission/grants of app '{appCode}' ({n} row(s)).");
+                }
+                catch (SqlException ex)
+                {
+                    Console.Error.WriteLine($"AsdamirVault cleanup failed (rolled back): {ex.Message}");
+                    Console.Error.WriteLine("The code files were NOT deleted — fix the cause and re-run.");
+                    return 1;
+                }
             }
             else
             {
@@ -211,8 +255,48 @@ public static class RollbackCommand
             }
         }
 
+        var deleted = 0;
+        foreach (var f in codeFiles) { try { File.Delete(f); deleted++; } catch (IOException ex) { Console.Error.WriteLine($"  ! could not delete {f}: {ex.Message}"); } }
+        Console.WriteLine($"Removed {deleted} code file(s).");
+
         Console.WriteLine($"\n✓ Rolled back '{name}'.");
         return 0;
+    }
+
+    /// <summary>
+    /// Decides whether <c>rollback</c> may drop <c>dbo.&lt;table&gt;</c> — only when there is evidence that THIS
+    /// entity's own migration created it.
+    /// </summary>
+    /// <remarks>
+    /// <para>The table name is just the plural of the entity name, so it can coincide with a table the
+    /// framework owns: in a <c>--billing</c> app, <c>rollback Invoice</c> used to drop the billing
+    /// <c>dbo.Invoices</c> (likewise <c>Plan</c>, <c>Subscription</c>, <c>User</c>, <c>Role</c>, <c>Menu</c>).
+    /// Two independent conditions must hold:</para>
+    /// <list type="number">
+    /// <item><description>the table is NOT framework-owned (<see cref="ReservedEntityNames"/>). For such a
+    /// name even a create-migration file proves nothing — its <c>CREATE TABLE</c> is guarded by
+    /// <c>IF OBJECT_ID … IS NULL</c>, so it was skipped and the table that exists is the framework's;</description></item>
+    /// <item><description>the entity's <c>*__create_&lt;plural&gt;.sql</c> migration exists on disk, or the
+    /// migration journal records it as applied.</description></item>
+    /// </list>
+    /// </remarks>
+    /// <param name="table">The table name (the plural of the entity name).</param>
+    /// <param name="hasCreateMigrationFile">The entity's create migration is on disk.</param>
+    /// <param name="createJournalRows">Journal rows recording the entity's create/seed migrations.</param>
+    /// <returns>Whether to drop, and — when not — why.</returns>
+    internal static (bool Drop, string Reason) DecideTableDrop(string table, bool hasCreateMigrationFile, int createJournalRows)
+    {
+        if (ReservedEntityNames.IsFrameworkTable(table))
+        {
+            return (false, $"it is a framework-owned table, not this entity's (drop it by hand only if you are certain: DROP TABLE dbo.[{table}])");
+        }
+
+        if (!hasCreateMigrationFile && createJournalRows == 0)
+        {
+            return (false, $"no evidence this entity created it — no *__create_{table.ToLowerInvariant()}.sql migration on disk and no journal row (drop it by hand if it is yours: DROP TABLE dbo.[{table}])");
+        }
+
+        return (true, "");
     }
 
     private static IEnumerable<string> GlobMigrations(string? gatewayDir, string suffix)
@@ -245,7 +329,7 @@ public static class RollbackCommand
         await using var cmd = c.CreateCommand();
         cmd.CommandText =
             "SELECT (SELECT COUNT(*) FROM sys.tables WHERE name=@t), " +
-            "(SELECT COUNT(*) FROM dbo.__SchemaMigrations WHERE Id LIKE '%__create_'+@p+'.sql' OR Id LIKE '%__seed_'+@p+'.sql')";
+            "(SELECT COUNT(*) FROM dbo.__SchemaMigrations WHERE Id LIKE '%[_][_]create[_]'+@p+'.sql' OR Id LIKE '%[_][_]seed[_]'+@p+'.sql')";
         cmd.Parameters.AddWithValue("@t", plural);
         cmd.Parameters.AddWithValue("@p", pluralLower);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -253,16 +337,33 @@ public static class RollbackCommand
         return (r.GetInt32(0) > 0, r.GetInt32(1));
     }
 
-    private static async Task RemoveFromAppDbAsync(string conn, string plural, string pluralLower)
+    /// <summary>
+    /// The app-DB teardown batch: optionally the entity's table and its five generated CRUD procedures, always
+    /// its create/seed journal rows — one transaction (<c>XACT_ABORT ON</c>, so any error rolls all of it back).
+    /// </summary>
+    /// <param name="dropTable">False keeps the table and procedures (see <see cref="DecideTableDrop"/>).</param>
+    /// <returns>The parameterised T-SQL (<c>@t</c> = table, <c>@p</c> = lower-case plural).</returns>
+    internal static string BuildAppDbCleanupSql(bool dropTable)
+    {
+        var drop = dropTable
+            ? "DECLARE @sql nvarchar(max) = N'DROP TABLE IF EXISTS dbo.' + QUOTENAME(@t) + N';'"
+              + " + N' DROP PROCEDURE IF EXISTS dbo.' + QUOTENAME(@t + N'_GetById') + N';'"
+              + " + N' DROP PROCEDURE IF EXISTS dbo.' + QUOTENAME(@t + N'_List') + N';'"
+              + " + N' DROP PROCEDURE IF EXISTS dbo.' + QUOTENAME(@t + N'_Insert') + N';'"
+              + " + N' DROP PROCEDURE IF EXISTS dbo.' + QUOTENAME(@t + N'_Update') + N';'"
+              + " + N' DROP PROCEDURE IF EXISTS dbo.' + QUOTENAME(@t + N'_Delete') + N';'; EXEC sp_executesql @sql; "
+            : "";
+        return "SET QUOTED_IDENTIFIER ON; SET XACT_ABORT ON; BEGIN TRAN; " + drop
+               + "DELETE FROM dbo.__SchemaMigrations WHERE Id LIKE '%[_][_]create[_]'+@p+'.sql' OR Id LIKE '%[_][_]seed[_]'+@p+'.sql'; "
+               + "COMMIT;";
+    }
+
+    private static async Task RemoveFromAppDbAsync(string conn, string plural, string pluralLower, bool dropTable)
     {
         await using var c = new SqlConnection(conn); // audit-lint:ignore AUD002
         await c.OpenAsync();
         await using var cmd = c.CreateCommand();
-        cmd.CommandText =
-            "SET QUOTED_IDENTIFIER ON; BEGIN TRAN; " +
-            "DECLARE @sql nvarchar(max) = N'DROP TABLE IF EXISTS dbo.' + QUOTENAME(@t); EXEC sp_executesql @sql; " +
-            "DELETE FROM dbo.__SchemaMigrations WHERE Id LIKE '%__create_'+@p+'.sql' OR Id LIKE '%__seed_'+@p+'.sql'; " +
-            "COMMIT;";
+        cmd.CommandText = BuildAppDbCleanupSql(dropTable);
         cmd.Parameters.AddWithValue("@t", plural);
         cmd.Parameters.AddWithValue("@p", pluralLower);
         await cmd.ExecuteNonQueryAsync();
@@ -326,42 +427,55 @@ public static class RollbackCommand
         cmd.Parameters.AddWithValue("@p", pluralLower);
     }
 
-    private static async Task<(bool permExists, int menuCount, int grantCount)> ProbeVaultAsync(string vaultConn, string permName)
+    /// <summary>The AsdamirVault probe — every count is scoped to the app's AppId.</summary>
+    /// <remarks>
+    /// It used to look the permission up by NAME alone (<c>SELECT TOP 1 … WHERE Name=@n</c>). Permission
+    /// codes such as <c>orders.view</c> are per-app, so in a vault holding two apps with an <c>Order</c>
+    /// feature the confirmation screen counted — and described as about to be removed — ANOTHER app's menu
+    /// and grants.
+    /// </remarks>
+    internal const string VaultProbeSql =
+        "DECLARE @aid UNIQUEIDENTIFIER = (SELECT AppId FROM dbo.Apps WHERE Code=@code); " +
+        "DECLARE @pid INT = (SELECT TOP 1 Id FROM dbo.Permissions WHERE Name=@n AND AppId=@aid); " +
+        "SELECT CASE WHEN @aid IS NULL THEN 0 ELSE 1 END, CASE WHEN @pid IS NULL THEN 0 ELSE 1 END, " +
+        "(SELECT COUNT(*) FROM dbo.Menus WHERE PermissionId=@pid AND AppId=@aid), " +
+        "(SELECT COUNT(*) FROM dbo.RolePermissions WHERE PermissionId=@pid)";
+
+    /// <summary>The AsdamirVault teardown — AppId-scoped, FK order, one transaction. Returns -1 when the app is not registered.</summary>
+    internal const string VaultRemoveSql =
+        "SET QUOTED_IDENTIFIER ON; SET XACT_ABORT ON; " +
+        "DECLARE @aid UNIQUEIDENTIFIER = (SELECT AppId FROM dbo.Apps WHERE Code=@code); " +
+        "IF @aid IS NULL BEGIN SELECT -1; RETURN; END " +
+        "DECLARE @pid INT = (SELECT Id FROM dbo.Permissions WHERE Name=@pn AND AppId=@aid); " +
+        "IF @pid IS NULL BEGIN SELECT 0; RETURN; END " +
+        "DECLARE @cnt INT = 0; BEGIN TRAN; " +
+        "DELETE FROM dbo.UserMenuPermissions WHERE MenuId IN (SELECT Id FROM dbo.Menus WHERE PermissionId=@pid AND AppId=@aid); SET @cnt += @@ROWCOUNT; " +
+        "DELETE FROM dbo.RolePermissions WHERE PermissionId=@pid; SET @cnt += @@ROWCOUNT; " +
+        "DELETE FROM dbo.Menus WHERE PermissionId=@pid AND AppId=@aid; SET @cnt += @@ROWCOUNT; " +
+        "DELETE FROM dbo.Permissions WHERE Id=@pid AND AppId=@aid; SET @cnt += @@ROWCOUNT; " +
+        "COMMIT; SELECT @cnt;";
+
+    private static async Task<(bool appRegistered, bool permExists, int menuCount, int grantCount)> ProbeVaultAsync(string vaultConn, string appCode, string permName)
     {
         await using var c = new SqlConnection(vaultConn); // audit-lint:ignore AUD002
         await c.OpenAsync();
         await using var cmd = c.CreateCommand();
-        cmd.CommandText =
-            "DECLARE @pid INT = (SELECT TOP 1 Id FROM dbo.Permissions WHERE Name=@n); " +
-            "SELECT CASE WHEN @pid IS NULL THEN 0 ELSE 1 END, " +
-            "(SELECT COUNT(*) FROM dbo.Menus WHERE PermissionId=@pid), " +
-            "(SELECT COUNT(*) FROM dbo.RolePermissions WHERE PermissionId=@pid)";
+        cmd.CommandText = VaultProbeSql;
+        cmd.Parameters.AddWithValue("@code", appCode);
         cmd.Parameters.AddWithValue("@n", permName);
         await using var r = await cmd.ExecuteReaderAsync();
         await r.ReadAsync();
-        return (r.GetInt32(0) > 0, r.GetInt32(1), r.GetInt32(2));
+        return (r.GetInt32(0) > 0, r.GetInt32(1) > 0, r.GetInt32(2), r.GetInt32(3));
     }
 
     /// <summary>Removes the page's menu + permission + grants from AsdamirVault, AppId-scoped, in FK order
     /// (UserMenuPermissions → RolePermissions → Menus → Permissions), in one transaction.</summary>
-    private static async Task<int> RemoveFromVaultAsync(string vaultConn, string appRoot, string permName)
+    private static async Task<int> RemoveFromVaultAsync(string vaultConn, string appCode, string permName)
     {
-        var appCode = Path.GetFileNameWithoutExtension(Directory.GetFiles(appRoot, "*.sln").FirstOrDefault() ?? "");
         await using var c = new SqlConnection(vaultConn); // audit-lint:ignore AUD002
         await c.OpenAsync();
         await using var cmd = c.CreateCommand();
-        cmd.CommandText =
-            "SET QUOTED_IDENTIFIER ON; " +
-            "DECLARE @aid UNIQUEIDENTIFIER = (SELECT AppId FROM dbo.Apps WHERE Code=@code); " +
-            "IF @aid IS NULL RETURN; " +
-            "DECLARE @pid INT = (SELECT Id FROM dbo.Permissions WHERE Name=@pn AND AppId=@aid); " +
-            "IF @pid IS NULL RETURN; " +
-            "DECLARE @cnt INT = 0; BEGIN TRAN; " +
-            "DELETE FROM dbo.UserMenuPermissions WHERE MenuId IN (SELECT Id FROM dbo.Menus WHERE PermissionId=@pid AND AppId=@aid); SET @cnt += @@ROWCOUNT; " +
-            "DELETE FROM dbo.RolePermissions WHERE PermissionId=@pid; SET @cnt += @@ROWCOUNT; " +
-            "DELETE FROM dbo.Menus WHERE PermissionId=@pid AND AppId=@aid; SET @cnt += @@ROWCOUNT; " +
-            "DELETE FROM dbo.Permissions WHERE Id=@pid; SET @cnt += @@ROWCOUNT; " +
-            "COMMIT; SELECT @cnt;";
+        cmd.CommandText = VaultRemoveSql;
         cmd.Parameters.AddWithValue("@code", appCode);
         cmd.Parameters.AddWithValue("@pn", permName);
         var result = await cmd.ExecuteScalarAsync();

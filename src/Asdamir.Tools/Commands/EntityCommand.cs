@@ -33,7 +33,7 @@ public static class EntityCommand
 
         var fieldsOpt = new Option<string>(
             new[] { "--fields", "-f" },
-            description: "Comma-separated 'Name:type' list. Types: string, int, long, bool, decimal, double, DateTime, Guid. Add '?' for nullable. Example: \"Name:string,Email:string?,IsActive:bool\".")
+            description: "Comma-separated 'Name:type' list. Types: string, int, long, bool, decimal, DateTime, Guid. Add '?' for nullable. Example: \"Name:string,Email:string?,IsActive:bool\".")
         { IsRequired = true };
 
         var outputOpt = new Option<DirectoryInfo>(
@@ -48,15 +48,19 @@ public static class EntityCommand
 
         // By DEFAULT the generated migration is applied right away (reuses `db apply`'s journaled runner against
         // the Gateway's db/migrations; connection resolved like `db apply` — explicit flags → Gateway
-        // user-secret). `--no-db` skips it (offline / CI / review-first). `--apply` is kept (now a no-op — apply
-        // is the default) so existing scripts don't break.
+        // user-secret). `--no-db` skips it (offline / CI / review-first).
+        //
+        // `--apply` is NOT a no-op. Applying is the default, so the flag adds nothing when a connection
+        // resolves — but it turns the "no connection resolved → quietly generate files only" fallback into a
+        // usage error, raised BEFORE anything is written. It used to be parsed and never read: a script that
+        // said `--apply` (i.e. "this must reach the database") got exit 0 with nothing applied.
         var noDbOpt = new Option<bool>(
             "--no-db",
             description: "Generate files only — don't apply the migration. (By default `new entity` applies it via `db apply`.)",
             getDefaultValue: () => false);
         var applyOpt = new Option<bool>(
             "--apply",
-            description: "Deprecated (now the default): applying the migration is on by default. Pass --no-db to skip.",
+            description: "REQUIRE the migration to be applied: fail (before writing anything) when no connection resolves, instead of falling back to files-only. Applying is already the default; cannot be combined with --no-db.",
             getDefaultValue: () => false);
         var connOpt = new Option<string>(
             new[] { "--connection", "-c" },
@@ -88,6 +92,7 @@ public static class EntityCommand
                 ctx.ParseResult.GetValueForOption(outputOpt)!,
                 ctx.ParseResult.GetValueForOption(namespaceOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(noDbOpt),
+                ctx.ParseResult.GetValueForOption(applyOpt),
                 ctx.ParseResult.GetValueForOption(connOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(serverOpt) ?? "localhost",
                 ctx.ParseResult.GetValueForOption(databaseOpt) ?? "",
@@ -97,12 +102,53 @@ public static class EntityCommand
         return entityCmd;
     }
 
+    /// <summary>
+    /// Generates the entity slice and (unless <paramref name="noDb"/>) applies its migration.
+    /// </summary>
+    /// <remarks>
+    /// <b>Exit code.</b> <see cref="ExitCodes.Success"/> only when everything that was asked for happened.
+    /// A migration that was attempted and FAILED returns <see cref="ExitCodes.Findings"/> — the files are
+    /// written, but the command's result is negative. It used to return <c>0</c> ("generation succeeded
+    /// regardless of the DB step"), so a script, and <c>new feature</c> on top of it, went on to print
+    /// "ready" over a table that did not exist. The soft path is unchanged and still <c>0</c>: no connection
+    /// resolves and <paramref name="requireApply"/> was not requested → files only, with the manual command printed.
+    /// </remarks>
+    /// <param name="name">PascalCase entity name.</param>
+    /// <param name="fieldsRaw">The <c>--fields</c> spec.</param>
+    /// <param name="output">The app root or the Gateway project directory.</param>
+    /// <param name="nsOverride">Root namespace override, or empty.</param>
+    /// <param name="noDb">Generate files only.</param>
+    /// <param name="requireApply"><c>--apply</c>: a connection MUST resolve; otherwise a usage error before any file is written.</param>
+    /// <param name="connection">Explicit connection string, or empty.</param>
+    /// <param name="server">SQL Server instance when <paramref name="connection"/> is empty.</param>
+    /// <param name="database">Database name when <paramref name="connection"/> is empty.</param>
+    /// <param name="user">SQL login, or empty.</param>
+    /// <param name="password">Password for <paramref name="user"/>.</param>
+    /// <param name="restartHint">Print the restart reminder after a successful apply.</param>
+    /// <returns>The exit code.</returns>
     internal static async Task<int> RunAsync(string name, string fieldsRaw, DirectoryInfo output, string nsOverride,
-        bool noDb, string connection, string server, string database, string user, string password, bool restartHint = true)
+        bool noDb, bool requireApply, string connection, string server, string database, string user, string password, bool restartHint = true)
     {
         if (!NameArgument.IsValid(name))
         {
             Console.Error.WriteLine(NameArgument.Explain(name, "entity name", "asdamir new entity <Name> --fields <spec>"));
+            return ExitCodes.Usage;
+        }
+
+        if (requireApply && noDb)
+        {
+            Console.Error.WriteLine("--apply and --no-db contradict each other: --apply requires the migration to be applied, --no-db forbids it. Pass one.");
+            return ExitCodes.Usage;
+        }
+
+        // A name whose table would be one the FRAMEWORK owns must be refused here, at generation: the entity's
+        // CREATE TABLE is guarded by IF OBJECT_ID IS NULL, so it would silently adopt the existing table
+        // (different columns → every generated proc fails), and a later `rollback` would be pointed at a table
+        // this entity never created. See ReservedEntityNames.
+        if (ReservedEntityNames.TryGetReason(name, out var reservedReason))
+        {
+            Console.Error.WriteLine($"'{name}' cannot be used as an entity name: {reservedReason}");
+            Console.Error.WriteLine("Pick a name specific to your domain (e.g. SalesInvoice, PricingPlan, Member). Nothing was written.");
             return ExitCodes.Usage;
         }
 
@@ -130,6 +176,29 @@ public static class EntityCommand
         if (fields.Count == 0)
         {
             Console.Error.WriteLine("At least one field is required via --fields.");
+            return ExitCodes.Usage;
+        }
+
+        if (!string.IsNullOrWhiteSpace(nsOverride) && !NameArgument.IsValidDotted(nsOverride))
+        {
+            Console.Error.WriteLine($"--namespace '{nsOverride}' is not a valid namespace (dot-separated PascalCase identifiers, e.g. Acme.Orders).");
+            return ExitCodes.Usage;
+        }
+
+        // Resolve the connection BEFORE writing anything, so `--apply` with nothing to apply to is refused
+        // while the tree is still untouched (a usage error must have no side effects).
+        var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
+        var effectiveConn = connection;
+        if (!noDb && string.IsNullOrWhiteSpace(connection) && string.IsNullOrWhiteSpace(database)
+            && string.IsNullOrWhiteSpace(user) && string.IsNullOrWhiteSpace(password))
+        {
+            var resolved = DbApplyCommand.TryResolveConnectionFromApp(migDir, out _);
+            if (!string.IsNullOrWhiteSpace(resolved)) effectiveConn = resolved;
+        }
+        var canApply = !string.IsNullOrWhiteSpace(effectiveConn) || !string.IsNullOrWhiteSpace(database) || !string.IsNullOrWhiteSpace(user);
+        if (requireApply && !canApply)
+        {
+            Console.Error.WriteLine("--apply was given but no database connection resolves. Pass --connection (or -S -d -U -P), or set the Gateway's ConnectionStrings:Default user-secret. Nothing was written.");
             return ExitCodes.Usage;
         }
 
@@ -225,7 +294,6 @@ public static class EntityCommand
 
         // The generated migration lives in the Gateway's db/migrations. Its app-root-relative path is what the
         // user would pass to a manual `db apply` (shown in the skip / failure notes so they're never stuck).
-        var migDir = new DirectoryInfo(Path.Combine(output.FullName, "db", "migrations"));
         var appRoot = FeatureCommand.FindAppRoot(output);
         var migRel = appRoot is not null ? Path.GetRelativePath(appRoot, migDir.FullName).Replace('\\', '/') : "db/migrations";
         var applyCmd = $"asdamir db apply --migrations {migRel}";
@@ -233,25 +301,17 @@ public static class EntityCommand
         if (noDb)
         {
             Console.WriteLine($"  {prefix}--no-db: migration generated but NOT applied. Apply it with:  {applyCmd}");
-            return 0;
+            return ExitCodes.Success;
         }
 
         // Apply by DEFAULT — reuse `db apply`'s journaled runner (createDatabase:false — the app DB already
-        // exists). It resolves the connection like `db apply`: explicit flags → the Gateway user-secret
-        // (ConnectionStrings:Default). If nothing resolves, we don't hard-fail the generation — the files are
-        // written; we just print the manual apply command.
-        var effectiveConn = connection;
-        if (string.IsNullOrWhiteSpace(connection) && string.IsNullOrWhiteSpace(database)
-            && string.IsNullOrWhiteSpace(user) && string.IsNullOrWhiteSpace(password))
-        {
-            var resolved = DbApplyCommand.TryResolveConnectionFromApp(migDir, out _);
-            if (!string.IsNullOrWhiteSpace(resolved)) effectiveConn = resolved;
-        }
-        var canApply = !string.IsNullOrWhiteSpace(effectiveConn) || !string.IsNullOrWhiteSpace(database) || !string.IsNullOrWhiteSpace(user);
+        // exists). The connection was resolved above, like `db apply`: explicit flags → the Gateway user-secret
+        // (ConnectionStrings:Default). If nothing resolved (and --apply did not demand it) the generation is
+        // not failed — the files are written and the manual apply command is printed.
         if (!canApply)
         {
             Console.WriteLine($"  {prefix}no connection resolved — migration NOT applied. Set the Gateway ConnectionStrings:Default secret (or pass -S -d -U -P), then:  {applyCmd}");
-            return 0;
+            return ExitCodes.Success;
         }
 
         if (testNote.Length > 0) Console.WriteLine($"  {testNote} · applying migration via db apply…");
@@ -260,11 +320,13 @@ public static class EntityCommand
         if (dbExit != 0)
         {
             Console.Error.WriteLine();
-            Console.Error.WriteLine($"  ⚠️  Migration not applied (exit {dbExit}). The files ARE generated — apply it with:  {applyCmd}");
+            Console.Error.WriteLine($"  ✗ Migration NOT applied (db apply exit {dbExit}). The files ARE generated, but the table does not exist yet — fix the cause, then:  {applyCmd}");
+            return ExitCodes.Findings;   // attempted and failed → a negative result, never "success"
         }
-        else if (restartHint)
+
+        if (restartHint)
             FeatureCommand.PrintRestartHint(appRoot);   // migration applied → the running host caches at startup
-        return 0;   // generation succeeded regardless of the DB step
+        return ExitCodes.Success;
     }
 
     // Maps a template name to the human-readable layer label shown in the grouped output table.

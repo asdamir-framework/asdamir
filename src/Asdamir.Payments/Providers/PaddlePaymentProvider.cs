@@ -158,7 +158,7 @@ public sealed class PaddlePaymentProvider : IPaymentProvider
                 transaction_id = providerPaymentId,
                 reason = "requested_by_customer",
                 items = amount.HasValue
-                    ? (object)new[] { new { type = "partial", amount = ((long)(amount.Value * 100m)).ToString() } }
+                    ? (object)new[] { new { type = "partial", amount = ToMinorUnits(amount.Value) } }
                     : new[] { new { type = "full" } },
             };
             using var resp = await _http.PostAsJsonAsync("adjustments", body, ct);
@@ -166,6 +166,16 @@ public sealed class PaddlePaymentProvider : IPaymentProvider
         }
         catch (HttpRequestException ex) { return FailedVoid(ex, nameof(RefundAsync)); }
     }
+
+    /// <summary>
+    /// A major-unit amount as the minor-unit (1/100) integer string Paddle expects, ROUNDED half away from
+    /// zero. A cast truncates, so an amount carrying more than two decimals (a pro-rated or tax-derived
+    /// refund such as 10.999) used to be refunded one minor unit short. Assumes a two-decimal currency —
+    /// the refund contract carries no currency, so zero-decimal currencies (JPY, KRW) are not handled.
+    /// </summary>
+    public static string ToMinorUnits(decimal amount)
+        => decimal.ToInt64(decimal.Round(amount * 100m, 0, MidpointRounding.AwayFromZero))
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     /// <inheritdoc />
     public Task<Result<ProviderWebhookEvent>> VerifyWebhookAsync(WebhookVerificationRequest request, CancellationToken ct = default)

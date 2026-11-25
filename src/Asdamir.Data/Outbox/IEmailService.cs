@@ -43,5 +43,9 @@ public interface IEmailService
     /// <param name="htmlBody">HTML email body</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Task representing the async operation</returns>
+    /// <exception cref="BulkEmailSendException">
+    /// One or more recipients could not be mailed. Every recipient is attempted first; the exception lists the
+    /// ones that failed.
+    /// </exception>
     Task SendBulkAsync(IEnumerable<string> to, string subject, string htmlBody, CancellationToken cancellationToken = default);
 }

@@ -44,7 +44,7 @@ public static class FeatureCommand
         var noDbOpt = new Option<bool>("--no-db",
             description: "Generate files only — don't apply the entity migration or free-mode seeds. (By default `new feature` applies them via `db apply`.)", getDefaultValue: () => false);
         var applyOpt = new Option<bool>("--apply",
-            description: "Deprecated (now the default): applying is on by default. Pass --no-db to skip.", getDefaultValue: () => false);
+            description: "REQUIRE the entity migration to be applied: fail (before writing anything) when no app-DB connection resolves, instead of falling back to files-only. Applying is already the default; cannot be combined with --no-db.", getDefaultValue: () => false);
         var connOpt = new Option<string>(new[] { "--connection", "-c" },
             description: "App-DB connection string for --apply (entity migration). Overrides --server/--database/etc.", getDefaultValue: () => "");
         var serverOpt = new Option<string>(new[] { "--server", "-S" },
@@ -78,6 +78,7 @@ public static class FeatureCommand
                 ctx.ParseResult.GetValueForOption(gatewayDirOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(serverDirOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(noDbOpt),
+                ctx.ParseResult.GetValueForOption(applyOpt),
                 ctx.ParseResult.GetValueForOption(connOpt) ?? "",
                 ctx.ParseResult.GetValueForOption(serverOpt) ?? "localhost",
                 ctx.ParseResult.GetValueForOption(databaseOpt) ?? "",
@@ -90,7 +91,7 @@ public static class FeatureCommand
 
     private static async Task<int> RunAsync(string name, string fields, string route, string icon, string policy, string ns,
         DirectoryInfo output, string gatewayDirOverride, string serverDirOverride,
-        bool noDb, string connection, string server, string database, string user, string password, string vaultConnection)
+        bool noDb, bool requireApply, string connection, string server, string database, string user, string password, string vaultConnection)
     {
         var appRoot = FindAppRoot(output);
         if (appRoot is null)
@@ -110,9 +111,11 @@ public static class FeatureCommand
 
         // 1) entity slice (Gateway) — auto-applies its migration to the app DB (unless --no-db), resolving the
         // connection from the Gateway user-secret exactly like a standalone `new entity`.
-        var entityExit = await EntityCommand.RunAsync(name, fields, new DirectoryInfo(gatewayDir), ns, noDb, connection, server, database, user, password, restartHint: false);
+        var entityExit = await EntityCommand.RunAsync(name, fields, new DirectoryInfo(gatewayDir), ns, noDb, requireApply, connection, server, database, user, password, restartHint: false);
         if (entityExit != 0)
         {
+            // Includes "the entity files were generated but its migration failed to apply" — the page would
+            // render a grid over a table that does not exist, so the feature is NOT reported ready.
             Console.Error.WriteLine("\n✗ entity step failed — stopping (page not generated). Fix the error and re-run (generation is idempotent).");
             return entityExit;
         }
@@ -151,7 +154,9 @@ public static class FeatureCommand
         }
 
         Console.WriteLine();
-        Console.WriteLine($"✓ Feature '{name}' ready.");
+        Console.WriteLine(noDb
+            ? $"✓ Feature '{name}' generated (files only — nothing was applied to a database)."
+            : $"✓ Feature '{name}' ready.");
         // One restart reminder for the whole feature (the entity + page steps suppressed theirs). A migration was
         // applied unless --no-db, and the running host caches its menu/localization + registers new controllers at
         // startup — so the new page/menu won't appear until a restart.

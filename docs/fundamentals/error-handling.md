@@ -30,6 +30,8 @@ Uncaught exceptions are mapped to a ProblemDetails body by `IProblemDetailsMappe
 - localizes the `Title` via the error-translation service,
 - **never leaks** raw exception messages, stack traces or backend/library versions.
 
+If the response has **already started** when the exception surfaces (a streamed body, flushed headers), no error document can be written any more: the middleware still logs the exception in full and then **rethrows**, so the server aborts the connection rather than appending JSON to a half-sent body.
+
 ```csharp
 throw new DomainException("orders.not_found", "Order was not found.");
 // → 404 ProblemDetails { type, title (localized), extensions.code = "orders.not_found" }
@@ -60,6 +62,8 @@ Failures that cannot be retried inline are written through `IDlqWriter` (a file-
 ## Correlation
 
 Every request carries a correlation ID (see [Observability](observability.md)); it flows into logs, ProblemDetails and outbound HTTP calls so a single failure can be traced end-to-end.
+
+An inbound `X-Correlation-Id` header is reused only when it looks like an id: **at most 64 characters** of ASCII letters, digits, `.`, `_` or `-`. Anything else — an oversized value, control characters, a comma-joined multi-value header — is discarded and a new id is generated, because the value is echoed into the response header and every log line. A rejected value is replaced, not sanitised: a "cleaned" id would correlate with nothing upstream.
 
 ## See also
 
