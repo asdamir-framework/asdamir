@@ -701,6 +701,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="JWT issuance &amp; validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signing-keys-symmetric-or-asymmetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing keys: symmetric or asymmetric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Signing keys: symmetric or asymmetric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#publishing-and-following-keys-jwks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publishing and following keys (JWKS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#an-apps-own-service-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An app's own service key
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-orchestration-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The orchestration token
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-generated-app-is-given" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a generated app is given
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1680,6 +1747,73 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="JWT issuance &amp; validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#signing-keys-symmetric-or-asymmetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing keys: symmetric or asymmetric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Signing keys: symmetric or asymmetric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#publishing-and-following-keys-jwks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publishing and following keys (JWKS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#an-apps-own-service-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        An app's own service key
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-orchestration-token" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The orchestration token
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-a-generated-app-is-given" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What a generated app is given
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1828,6 +1962,243 @@ effect without a redeploy. The <code>Jwt:*</code> config above is only the fallb
 <blockquote>
 <p><strong>Issuer/Audience must match</strong> between the issuing service and every validator. Keep them identical across the API and any client that validates the token.</p>
 </blockquote>
+<h3 id="signing-keys-symmetric-or-asymmetric">Signing keys: symmetric or asymmetric<a class="headerlink" href="#signing-keys-symmetric-or-asymmetric" title="Permanent link">&para;</a></h3>
+<p><code>JwtKeyMaterial.FromConfiguration</code> (<code>Asdamir.Core.Services</code>) resolves what a host signs with and what it
+accepts, from the <code>Jwt</code> section. Which settings are present decides the shape:</p>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Host role</th>
+<th>Signs</th>
+<th>Validates</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Jwt:SigningKeyPem</code> (EC P-256 private key)</td>
+<td>the <strong>issuer</strong></td>
+<td><code>ES256</code>, with a <code>kid</code></td>
+<td><code>ES256</code></td>
+</tr>
+<tr>
+<td><code>Jwt:PublicKeyPem</code> (the issuer's public key)</td>
+<td>a <strong>validator</strong></td>
+<td>nothing — it cannot mint a token</td>
+<td><code>ES256</code></td>
+</tr>
+<tr>
+<td><code>Jwt:JwksUrl</code> (the issuer's key-set URL, https)</td>
+<td>a <strong>validator</strong> that follows key rotations</td>
+<td>nothing</td>
+<td><code>ES256</code>, with keys fetched from the issuer</td>
+</tr>
+<tr>
+<td><code>Jwt:Key</code> alone (≥ 32 bytes)</td>
+<td>issues <strong>and</strong> validates its own tokens</td>
+<td><code>HS256</code></td>
+<td><code>HS256</code></td>
+</tr>
+</tbody>
+</table>
+<p>Use the asymmetric pair whenever the host that validates a token is not the host that issued it: a
+symmetric key shared between hosts lets every holder mint any token, including one for a more privileged
+audience. <code>Jwt:Key</code> alone stays correct for a self-contained app that issues and validates its own tokens.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kt">var</span><span class="w"> </span><span class="n">keys</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">JwtKeyMaterial</span><span class="p">.</span><span class="n">FromConfiguration</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">);</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddAuthentication</span><span class="p">().</span><span class="n">AddJwtBearer</span><span class="p">(</span><span class="n">o</span><span class="w"> </span><span class="o">=&gt;</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="p">{</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="n">o</span><span class="p">.</span><span class="n">TokenValidationParameters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">TokenValidationParameters</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="n">ValidIssuer</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">issuer</span><span class="p">,</span><span class="w"> </span><span class="n">ValidAudience</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">audience</span><span class="p">,</span><span class="w"> </span><span class="n">ValidateLifetime</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">true</span><span class="p">,</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="w">    </span><span class="n">keys</span><span class="p">.</span><span class="n">ApplyTo</span><span class="p">(</span><span class="n">o</span><span class="p">.</span><span class="n">TokenValidationParameters</span><span class="p">);</span><span class="w">   </span><span class="c1">// keys + the pinned algorithm list</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="p">});</span>
+</code></pre></div>
+<ul>
+<li><code>ApplyTo</code> pins <code>ValidAlgorithms</code> to the algorithms of the keys actually loaded, so a token cannot pick
+  its own (<code>none</code>, or <code>HS256</code> presented against the public key).</li>
+<li>Once an asymmetric key is configured, <strong><code>Jwt:Key</code> is no longer accepted for validation</strong>, even if it is
+  still set. <code>Jwt:AcceptLegacySymmetric=true</code> re-admits it for a migration window; turn it off when the
+  tokens signed with the old key have expired.</li>
+<li>Startup fails on: more than one of the three asymmetric settings, a <code>Jwt:JwksUrl</code> that is not an
+  absolute https URL, a private key in <code>Jwt:PublicKeyPem</code>, a key that is not
+  P-256, or the legacy window switched on with no <code>Jwt:Key</code>.</li>
+<li>The DB-backed configuration source cannot supply <code>Jwt:SigningKeyPem</code>, <code>Jwt:PublicKeyPem</code>,
+  <code>Jwt:JwksUrl</code> or <code>Jwt:AcceptLegacySymmetric</code> (they are protected keys, like <code>Jwt:Key</code>).</li>
+</ul>
+<h4 id="publishing-and-following-keys-jwks">Publishing and following keys (JWKS)<a class="headerlink" href="#publishing-and-following-keys-jwks" title="Permanent link">&para;</a></h4>
+<p>An issuer publishes the public half of its signing key as a JSON Web Key Set; <code>ExportJwks()</code> returns the
+document (never private or symmetric material — a host signing with <code>Jwt:Key</code> publishes an empty set):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kt">var</span><span class="w"> </span><span class="n">jwks</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">keys</span><span class="p">.</span><span class="n">ExportJwks</span><span class="p">();</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="n">app</span><span class="p">.</span><span class="n">MapGet</span><span class="p">(</span><span class="s">&quot;/.well-known/jwks.json&quot;</span><span class="p">,</span><span class="w"> </span><span class="p">()</span><span class="w"> </span><span class="o">=&gt;</span><span class="w"> </span><span class="n">Results</span><span class="p">.</span><span class="n">Content</span><span class="p">(</span><span class="n">jwks</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;application/json&quot;</span><span class="p">)).</span><span class="n">AllowAnonymous</span><span class="p">();</span>
+</code></pre></div>
+<p>A validator sets <code>Jwt:JwksUrl</code> to that address instead of copying a PEM. What to expect:</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Normal operation</td>
+<td>The key set is fetched on first use, cached, and re-fetched hourly.</td>
+</tr>
+<tr>
+<td>A token arrives with an unknown <code>kid</code> (the issuer rotated)</td>
+<td><strong>That request gets 401</strong> and triggers a re-fetch (at most one every 30 s); the next request is accepted. To rotate without that one 401, publish the new key before signing with it.</td>
+</tr>
+<tr>
+<td>The issuer has withdrawn a key</td>
+<td>It stops being accepted as soon as the set is re-fetched — there is no fallback to the previous set.</td>
+</tr>
+<tr>
+<td>The issuer cannot be reached, a key set was fetched earlier</td>
+<td>The current set keeps working.</td>
+</tr>
+<tr>
+<td>The issuer cannot be reached, nothing was fetched yet</td>
+<td>Every token is refused (401) until a fetch succeeds.</td>
+</tr>
+<tr>
+<td>The document contains other keys (symmetric, RSA, another curve, a private part, <code>use</code> ≠ <code>sig</code>)</td>
+<td>They are ignored; a document with no usable key counts as a failed fetch.</td>
+</tr>
+</tbody>
+</table>
+<p><code>FromConfiguration(configuration, jwksClient)</code> takes the <code>HttpClient</code> used for the fetch — pass one to set
+a timeout or, in development, to accept a local certificate.</p>
+<ul>
+<li><strong><code>Jwt:AdditionalPublicKeysPem</code></strong> (up to four <code>PUBLIC KEY</code> blocks, beside <code>Jwt:SigningKeyPem</code> or
+  <code>Jwt:PublicKeyPem</code>) lists further accepted keys. An issuer also publishes them, which is how a signing
+  key is rotated without a failed request: publish the next key first, switch, keep the previous one
+  until its tokens have expired — see <a href="../../secret-rotation/">Secret rotation</a>. It is refused beside
+  <code>Jwt:JwksUrl</code> or a symmetric-only key, and a database config row cannot supply it.</li>
+<li>Generate a pair with <a href="../../cli/#secrets-new-signing-key"><code>asdamir secrets new-signing-key</code></a>. A PEM stored
+  on one line with literal <code>\n</code> separators (an environment variable) is read as-is.</li>
+</ul>
+<h4 id="an-apps-own-service-key">An app's own service key<a class="headerlink" href="#an-apps-own-service-key" title="Permanent link">&para;</a></h4>
+<p>A Gateway also authenticates <em>itself</em> to the control plane — for the central log and the agent-audit
+ledger — with a short-lived service token (<code>AppLogServiceToken</code>, <code>AgentAuditServiceToken</code>). Signed with
+the shared <code>Jwt:Key</code>, such a token could be produced by any holder of that key for any app. With a
+<strong>service key</strong>, it can only speak for the app that owns the key:</p>
+<ul>
+<li>The app generates its own EC P-256 pair (<code>asdamir secrets new-signing-key</code>). The private key goes to
+  that app's Gateway as <strong><code>App:ServiceKeyPem</code></strong> (a secret; a database config row cannot supply it). The
+  public key is registered with the control plane against the app.</li>
+<li><code>AppServiceKey.FromPem(pem).SigningCredentials</code> signs ES256, and both <code>Mint</code> methods have an overload
+  taking those credentials. The two sinks do this for you: set <code>AppLogForwardOptions.ServiceKeyPem</code> /
+  <code>AgentAuditOptions.ServiceKeyPem</code> (<code>AgentAudit:ServiceKeyPem</code>) and they stop using the shared key.</li>
+<li>The control plane verifies a service token against the key registered <strong>for the <code>app_code</code> the token
+  names</strong> — another app's key does not verify it, and neither does the control plane's own key.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Behaviour</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The app has no key registered</td>
+<td>Its service tokens under the shared key are accepted, as before.</td>
+</tr>
+<tr>
+<td>The app has a key registered</td>
+<td>Only tokens signed with that key are accepted. A token for this app under the shared key is refused.</td>
+</tr>
+<tr>
+<td>A token is signed with a key that is not registered for that app</td>
+<td>401.</td>
+</tr>
+<tr>
+<td>Two keys are registered</td>
+<td>Both are accepted — register the new key beside the old one, switch the Gateway, then remove the old one (up to four keys).</td>
+</tr>
+<tr>
+<td>A key is removed, or the app is deactivated</td>
+<td>Its tokens are refused from the next request.</td>
+</tr>
+<tr>
+<td><code>App:ServiceKeyPem</code> is set but unreadable</td>
+<td>The sink sends nothing and reports it; it does <strong>not</strong> fall back to the shared key.</td>
+</tr>
+</tbody>
+</table>
+<p>A service key signs service tokens only: it cannot produce an end-user or an operator token.</p>
+<h4 id="the-orchestration-token">The orchestration token<a class="headerlink" href="#the-orchestration-token" title="Permanent link">&para;</a></h4>
+<p>When the control plane calls a managed app's <code>gateway/admin/*</code> endpoints it presents an <strong>orchestration
+token</strong> (<code>OrchestrationToken</code>, Core). It signs the token with its own key, so the Gateway verifies it
+against the same published keys as a user token — no secret is exchanged and the Gateway stores none.</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Audience</td>
+<td><code>Jwt:OrchestrationAudience</code> (default <code>asdamir-app-orchestration</code>)</td>
+<td>Not the user audience and not the console audience: no user endpoint and no control-plane endpoint accepts it.</td>
+</tr>
+<tr>
+<td><code>token_use</code></td>
+<td><code>orchestration</code></td>
+<td>Marks what it is.</td>
+</tr>
+<tr>
+<td><code>app_code</code></td>
+<td>the one app being called</td>
+<td>A Gateway that receives it cannot replay it against another app.</td>
+</tr>
+<tr>
+<td><code>client_id</code></td>
+<td><code>admin-console</code> by default</td>
+<td>The Gateway's <code>AppMgmtClient</code> policy authorizes this value (<code>AdminConsole:ClientId</code>).</td>
+</tr>
+<tr>
+<td>Lifetime</td>
+<td>5 minutes</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>The token carries no tenant (<code>tid</code>): the control plane belongs to none. Under strict tenancy an endpoint it
+calls must be marked <code>[AllowWithoutTenant]</code>, or the tenant middleware answers 403 <code>tenant.unresolved</code> after
+authentication succeeds — see <a href="../multi-tenancy/#there-is-no-default-tenant">multi-tenancy</a>.</p>
+<p>A Gateway calls <code>OrchestrationToken.IsFor(principal, appCode, audience)</code> for any token carrying
+<code>client_id</code> and fails authentication when it returns <code>false</code>; a generated Gateway does this already.</p>
+<h4 id="what-a-generated-app-is-given">What a generated app is given<a class="headerlink" href="#what-a-generated-app-is-given" title="Permanent link">&para;</a></h4>
+<p><code>asdamir new app</code> wires the above for you:</p>
+<table>
+<thead>
+<tr>
+<th>App</th>
+<th>Token validation</th>
+<th>Service key</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Commercial (default)</td>
+<td>No key of its own. With none of <code>Jwt:JwksUrl</code> / <code>Jwt:PublicKeyPem</code> / <code>Jwt:Key</code> set, the Gateway uses <code>&lt;AdminConsole:BaseUrl&gt;/.well-known/jwks.json</code>.</td>
+<td>Generated: the private key is in the Gateway's user-secrets (<code>App:ServiceKeyPem</code>), the public key in <code>register_&lt;app&gt;.sql</code>.</td>
+</tr>
+<tr>
+<td>Free (<code>--mode free</code>)</td>
+<td>Its own <code>Jwt:Key</code> — it issues and validates its own tokens, and shares the key with nothing.</td>
+<td>None: there is no control plane to authenticate to.</td>
+</tr>
+</tbody>
+</table>
+<p>A commercial Gateway therefore holds nothing that can mint a user or operator token. It needs the control
+plane to sign with <code>Jwt:SigningKeyPem</code>; a control plane still signing with <code>Jwt:Key</code> publishes no key and
+the Gateway rejects every token.</p>
 <h2 id="refresh-tokens">Refresh tokens<a class="headerlink" href="#refresh-tokens" title="Permanent link">&para;</a></h2>
 <p>The management app demonstrates the recommended pattern (see <code>Asdamir.AdminConsole.Api/Auth</code>):</p>
 <ul>
@@ -1898,9 +2269,9 @@ and routes to <code>/login</code>. See <a href="../../mobile/">Mobile App</a>.</
 </ul>
 <h2 id="blazor-auth-state-token-propagation">Blazor: auth state &amp; token propagation<a class="headerlink" href="#blazor-auth-state-token-propagation" title="Permanent link">&para;</a></h2>
 <p>In a Blazor app, <code>Asdamir.Web</code> provides the authentication-state provider and bearer-token propagation:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddSecurityAuthenticationState</span><span class="p">();</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddSecurityHttpClient</span><span class="p">();</span><span class="w">   </span><span class="c1">// attaches the bearer token to outbound API calls</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddSecurityAutoLogout</span><span class="p">();</span><span class="w">   </span><span class="c1">// idle/auto-logout + session activity tracking</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddSecurityAuthenticationState</span><span class="p">();</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddSecurityHttpClient</span><span class="p">();</span><span class="w">   </span><span class="c1">// attaches the bearer token to outbound API calls</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddSecurityAutoLogout</span><span class="p">();</span><span class="w">   </span><span class="c1">// idle/auto-logout + session activity tracking</span>
 </code></pre></div>
 <p>The AdminConsole stores the access token in an HttpOnly cookie and attaches it as a bearer on outbound API calls via a cookie→bearer handler.</p>
 <p>The Blazor host holds <strong>no <code>Jwt:Key</code></strong> (secrets live on the API tier), so it never trusts a claim it reads out of a token it was handed. Before it creates the cookie session it presents the token to the API (<code>GET api/admin/auth/me</code>) and builds the cookie principal from the <strong>API's answer</strong>; a rejected token — or an API that cannot be reached — means no session (fail closed). Each cookie session is identified by a random, server-minted session id (the <code>sid</code> claim), not by the user id, so two browsers of the same user are independent sessions: each keeps its own rotating refresh token, and signing out of one leaves the other alone. The server-side session map is in-memory and single-node; after a restart it is rebuilt from the cookies.</p>

@@ -771,6 +771,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#there-is-no-default-tenant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        There is no default tenant
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="There is no default tenant">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-from-1x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from 1.x
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-the-tenant-context" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1666,6 +1694,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#there-is-no-default-tenant" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        There is no default tenant
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="There is no default tenant">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#upgrading-from-1x" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upgrading from 1.x
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-the-tenant-context" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1750,14 +1806,16 @@
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">app</span><span class="p">.</span><span class="n">UseMultiTenancy</span><span class="p">();</span><span class="w">   </span><span class="c1">// resolves the tenant early in the pipeline</span>
 </code></pre></div>
 <p><code>UseMultiTenancy</code> runs the configured resolver and populates <code>ITenantContext</code> for the rest of the request.</p>
-<p><strong>Order matters, and <code>AddMultiTenancy()</code> alone does nothing.</strong> Without <code>UseMultiTenancy()</code> nothing throws —
-<code>ITenantContext</code> silently resolves to <code>"default"</code> for every request. And a resolver that reads the authenticated
-user (<code>ClaimsTenantResolver</code>) only sees a populated <code>HttpContext.User</code> <strong>after</strong> <code>UseAuthentication()</code>, so place
+<p><strong>Order matters, and <code>AddMultiTenancy()</code> alone does nothing.</strong> A resolver that reads the authenticated user
+(<code>ClaimsTenantResolver</code>) only sees a populated <code>HttpContext.User</code> <strong>after</strong> <code>UseAuthentication()</code>, so place
 <code>UseMultiTenancy()</code> after it:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">app</span><span class="p">.</span><span class="n">UseAuthentication</span><span class="p">();</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">app</span><span class="p">.</span><span class="n">UseMultiTenancy</span><span class="p">();</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="n">app</span><span class="p">.</span><span class="n">UseAuthorization</span><span class="p">();</span>
 </code></pre></div>
+<p>If <code>UseMultiTenancy()</code> is missing, the first code that reads <code>ITenantContext.TenantId</code> during a request fails
+with <code>TenancyNotConfiguredException</code> (a 500 — it is a host wiring defect). It no longer runs every request as
+one tenant.</p>
 <h2 id="resolving-the-tenant">Resolving the tenant<a class="headerlink" href="#resolving-the-tenant" title="Permanent link">&para;</a></h2>
 <p>A resolver implements <code>ITenantResolver</code>. Two implementations ship out of the box:</p>
 <table>
@@ -1770,29 +1828,102 @@ user (<code>ClaimsTenantResolver</code>) only sees a populated <code>HttpContext
 <tbody>
 <tr>
 <td><code>ClaimsTenantResolver</code></td>
-<td>a <code>TenantId</code> claim on the authenticated principal</td>
+<td>the signed <code>tid</code> claim on the authenticated principal (<code>TenantIds.ClaimType</code>)</td>
 </tr>
 <tr>
 <td><code>HeaderTenantResolver</code></td>
-<td>a request header (e.g. <code>X-Tenant-Id</code>)</td>
+<td>a request header (e.g. <code>X-Tenant-Id</code>) — any caller can set it; do not use it as a security boundary</td>
 </tr>
 </tbody>
 </table>
-<p>Provide your own by registering a custom <code>ITenantResolver</code>.</p>
+<p>Provide your own by registering a custom <code>ITenantResolver</code> <strong>before</strong> <code>AddMultiTenancy()</code> (it registers the
+header resolver with <code>TryAdd</code>). A resolver that cannot identify a tenant returns an unresolved
+<code>new TenantContext()</code> — it does not invent one.</p>
+<h2 id="there-is-no-default-tenant">There is no default tenant<a class="headerlink" href="#there-is-no-default-tenant" title="Permanent link">&para;</a></h2>
+<p>A missing tenant is an error, not a fallback. With the default <code>TenancyOptions.MissingTenant = Reject</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Authenticated request, token has no <code>tid</code></td>
+<td><strong>403</strong>, error code <code>tenant.unresolved</code> (<code>TenantNotResolvedException</code>), refused by the middleware before any endpoint runs</td>
+</tr>
+<tr>
+<td>Anonymous request (health, login)</td>
+<td>continues; reading <code>TenantId</code> on that request throws the same 403</td>
+</tr>
+<tr>
+<td>Authenticated request, no <code>tid</code>, endpoint marked <code>[AllowWithoutTenant]</code></td>
+<td>continues with an unresolved tenant; reading <code>TenantId</code> behind it throws the same 403</td>
+</tr>
+<tr>
+<td><code>AddMultiTenancy()</code> without <code>UseMultiTenancy()</code></td>
+<td><strong>500</strong> <code>TenancyNotConfiguredException</code> on first tenant read</td>
+</tr>
+<tr>
+<td>Outside a request (background job)</td>
+<td><code>ITenantContext</code> is an unresolved, settable <code>TenantContext</code>; the job sets its tenant, reading it first throws</td>
+</tr>
+</tbody>
+</table>
+<p>Where the tenant is only advisory (a cache key, a log tag), check <code>ITenantContext.IsResolved</code> instead of
+reading <code>TenantId</code>.</p>
+<p><strong>The issuer states the tenant.</strong> <code>IJwtService.IssueTokens(..., tenantId: …)</code> writes the <code>tid</code> claim. A
+deliberately single-tenant application passes <code>TenantIds.Single</code> (<code>"default"</code>), so its tokens say so
+explicitly; <code>asdamir new app</code> emits exactly that, and the generated sample rows use the same value. To serve
+several tenants, pass each user's tenant — nothing downstream changes. Seed <code>error.tenant.unresolved</code> for
+the user-facing message (the scaffold does, in all three cultures).</p>
+<p><strong>An endpoint for a caller that belongs to no tenant.</strong> Some endpoints serve the application as a whole
+and are called by a principal no tenant owns — a control plane reading the app's audit trail, for example.
+Mark such an endpoint (controller or action) with <code>[AllowWithoutTenant]</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="na">[Authorize(Policy = &quot;AppMgmtClient&quot;)]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="na">[AllowWithoutTenant]</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="na">[Route(&quot;gateway/admin&quot;)]</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nc">AuditTrailController</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">ControllerBase</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="err">…</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<p>The attribute removes the up-front refusal for that endpoint only. It supplies no tenant (code behind it
+that reads <code>TenantId</code> still gets the 403) and it authorizes nothing, so pair it with a policy that names
+the tenant-less caller. The middleware reads it from the matched endpoint: routing must have run before
+<code>UseMultiTenancy()</code>, which is the case in a <code>WebApplication</code> that does not call <code>UseRouting()</code> itself.
+Where it has not, the attribute is not seen and the request is refused. The generated Gateway's
+<code>gateway/admin/audittrail</code> carries it.</p>
+<p><strong>Opting out.</strong> A host that is single-tenant by design and cannot change its issuer may restore the old
+behaviour explicitly:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Services</span><span class="p">.</span><span class="n">AddMultiTenancy</span><span class="p">(</span><span class="n">o</span><span class="w"> </span><span class="o">=&gt;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="p">{</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="n">o</span><span class="p">.</span><span class="n">MissingTenant</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">MissingTenantBehavior</span><span class="p">.</span><span class="n">UseDefault</span><span class="p">;</span><span class="w">   </span><span class="c1">// every scope without a tenant → DefaultTenantId</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="n">o</span><span class="p">.</span><span class="n">DefaultTenantId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;default&quot;</span><span class="p">;</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="p">});</span>
+</code></pre></div>
+<p>This removes the tenant boundary for any token that lacks the claim; do not use it in a multi-tenant host.</p>
+<h3 id="upgrading-from-1x">Upgrading from 1.x<a class="headerlink" href="#upgrading-from-1x" title="Permanent link">&para;</a></h3>
+<p>Before 2.0 a request without a tenant silently ran as <code>"default"</code>. After upgrading:</p>
+<ol>
+<li>Upgrade the <strong>token issuer first</strong> so tokens carry <code>tid</code> (for a commercial app that is AppManagement; a
+   free-mode app issues its own — regenerate or add the <code>tenantId:</code> argument in its <code>AuthController</code>).</li>
+<li>Then upgrade the API. Tokens issued before step 1 are refused until the session refreshes.</li>
+<li>Custom <code>ITenantContext</code> implementations keep compiling (<code>IsResolved</code> has a default implementation).
+   Code that relied on <code>TenantContext.TenantId</code> returning <code>""</code> now gets an exception — check <code>IsResolved</code>.</li>
+</ol>
 <h2 id="using-the-tenant-context">Using the tenant context<a class="headerlink" href="#using-the-tenant-context" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">ReportService</span><span class="p">(</span><span class="n">ITenantContext</span><span class="w"> </span><span class="n">tenant</span><span class="p">)</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="p">{</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Report</span><span class="o">&gt;</span><span class="w"> </span><span class="n">BuildAsync</span><span class="p">()</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">    </span><span class="p">{</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">tenantId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tenant</span><span class="p">.</span><span class="n">TenantId</span><span class="p">;</span><span class="w">   </span><span class="c1">// ambient, per-request</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="w">        </span><span class="c1">// scope queries / configuration to this tenant …</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="w">    </span><span class="p">}</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="p">}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="k">public</span><span class="w"> </span><span class="k">sealed</span><span class="w"> </span><span class="k">class</span><span class="w"> </span><span class="nf">ReportService</span><span class="p">(</span><span class="n">ITenantContext</span><span class="w"> </span><span class="n">tenant</span><span class="p">)</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="p">{</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">    </span><span class="k">public</span><span class="w"> </span><span class="n">Task</span><span class="o">&lt;</span><span class="n">Report</span><span class="o">&gt;</span><span class="w"> </span><span class="n">BuildAsync</span><span class="p">()</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">        </span><span class="kt">var</span><span class="w"> </span><span class="n">tenantId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tenant</span><span class="p">.</span><span class="n">TenantId</span><span class="p">;</span><span class="w">   </span><span class="c1">// ambient, per-request</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">        </span><span class="c1">// scope queries / configuration to this tenant …</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">    </span><span class="p">}</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="p">}</span>
 </code></pre></div>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>&quot;Tenancy&quot;: {
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>  &quot;HeaderName&quot;: &quot;X-Tenant-Id&quot;
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>}
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>&quot;Tenancy&quot;: {
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>  &quot;HeaderName&quot;: &quot;X-Tenant-Id&quot;
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>}
 </code></pre></div>
 <p>Bind options through <code>AddMultiTenancy</code> (it accepts an optional <code>Action&lt;TenancyOptions&gt;</code>).</p>
 <h2 id="tenant-aware-features">Tenant-aware features<a class="headerlink" href="#tenant-aware-features" title="Permanent link">&para;</a></h2>
@@ -1801,10 +1932,10 @@ user (<code>ClaimsTenantResolver</code>) only sees a populated <code>HttpContext
 <p>The framework primitives above (<code>ITenantResolver</code>/<code>ITenantContext</code>) are the generic, request-scoped
 tenant abstraction. <strong>AppManagement</strong> builds a concrete multi-company control plane on top of them —
 one management database per company, every app's admin data sliced by <code>AppId</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Company (firma)                         one management DB per company
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  └── App            (Apps row)         CLI-registered; `asdamir app register`
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>        └── User                        company-unique identity
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>              └── Permissions           role + menu, scoped by AppId (Tier-2)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>Company (firma)                         one management DB per company
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>  └── App            (Apps row)         CLI-registered; `asdamir app register`
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>        └── User                        company-unique identity
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a>              └── Permissions           role + menu, scoped by AppId (Tier-2)
 </code></pre></div>
 <p>How a request resolves its slice:</p>
 <table>

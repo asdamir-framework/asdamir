@@ -1826,6 +1826,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#secrets-new-signing-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        secrets new-signing-key
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2494,6 +2505,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#secrets-new-signing-key" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        secrets new-signing-key
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2552,12 +2574,12 @@
 <tbody>
 <tr>
 <td><code>Asdamir.Core</code></td>
-<td><code>1.10.0</code></td>
+<td><code>2.0.0</code></td>
 <td>—</td>
 </tr>
 <tr>
 <td><code>Asdamir.Data</code></td>
-<td><code>1.6.0</code></td>
+<td><code>2.0.0</code></td>
 <td>—</td>
 </tr>
 <tr>
@@ -2567,12 +2589,12 @@
 </tr>
 <tr>
 <td><code>Asdamir.Tools</code></td>
-<td><code>1.9.0</code></td>
+<td><code>2.0.0</code></td>
 <td>—</td>
 </tr>
 <tr>
 <td><code>Asdamir.Web</code></td>
-<td><code>2.2.0</code></td>
+<td><code>2.3.0</code></td>
 <td>—</td>
 </tr>
 </tbody>
@@ -2964,11 +2986,52 @@ creates the database + applies every migration</strong> (reusing the <code>db ap
 <li><strong><code>--no-secrets</code></strong>: skip the user-secrets auto-config (manage them yourself); combine with <code>--no-db</code> for a
   pure files-only scaffold. <strong><code>--yes</code>/CI</strong>: a password only via <code>--connection-string</code>; the CSPRNG keys are still
   generated.</li>
-<li><strong>Commercial mode</strong> is the same, minus one thing the CLI can't know: <code>Jwt:Key</code> <strong>must equal AppManagement's</strong>
-  signing key, so it stays a manual step (the Gateway only validates tokens AppManagement issued);
-  <code>Security:EncryptionKey</code> + <code>ConnectionStrings:Default</code> + the DB are still auto-set-up, and you also run
-  <code>register_&lt;app&gt;.sql</code> against AsdamirVault.</li>
+<li><strong>Commercial mode</strong> is the same, with different keys: the Gateway gets <strong>no <code>Jwt:Key</code></strong>. It only validates
+  the tokens AppManagement issued, against the public keys AppManagement publishes at
+  <code>&lt;AdminConsole:BaseUrl&gt;/.well-known/jwks.json</code>, so there is no key to copy between hosts. Instead <code>new app</code>
+  generates the app's <strong>own service key</strong>: the private half goes to the Gateway's user-secrets as
+  <code>App:ServiceKeyPem</code> (it signs the tokens the Gateway presents to AppManagement for central log forwarding),
+  the public half is written into <code>register_&lt;app&gt;.sql</code>. <code>Security:EncryptionKey</code> + <code>ConnectionStrings:Default</code></li>
+<li>the DB are still auto-set-up, and you also run <code>register_&lt;app&gt;.sql</code> against AsdamirVault.</li>
 </ul>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>What happens</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AppManagement signs with <code>Jwt:SigningKeyPem</code> (ES256)</td>
+<td>The Gateway validates its tokens with no key configured.</td>
+</tr>
+<tr>
+<td>AppManagement still signs with a shared <code>Jwt:Key</code></td>
+<td>It publishes no key, so the Gateway rejects every token: login succeeds, every call after it is a 401. Give AppManagement a signing key (<code>asdamir secrets new-signing-key</code>), or set the same <code>Jwt:Key</code> on the Gateway (the pre-2.0 mode, used only when it is set).</td>
+</tr>
+<tr>
+<td>AppManagement is unreachable when the Gateway starts</td>
+<td>No token validates until the first successful key fetch.</td>
+</tr>
+<tr>
+<td>AppManagement calls the app's <code>gateway/admin/*</code></td>
+<td>The Gateway accepts AppManagement's orchestration token: its own audience (<code>Jwt:OrchestrationAudience</code>), <code>token_use=orchestration</code>, and <strong>this</strong> app's code. A <code>client_id</code> token that is anything else fails authentication.</td>
+</tr>
+<tr>
+<td><code>--no-secrets</code></td>
+<td>No service key is generated and none is registered; central log forwarding stays off until you add one (<code>new app</code> prints the steps).</td>
+</tr>
+<tr>
+<td><code>register_&lt;app&gt;.sql</code> is re-run</td>
+<td>A key already registered for the app is left as it is.</td>
+</tr>
+<tr>
+<td><code>AdminConsole:BaseUrl</code> is not <code>https</code></td>
+<td>The Gateway refuses to start: keys are never fetched over plain http. Pin one key with <code>Jwt:PublicKeyPem</code> instead.</td>
+</tr>
+</tbody>
+</table>
 <blockquote>
 <p><code>asdamir db apply</code> isn't going away — it's what you run over the app's lifetime (after <code>new entity</code>, when a
 teammate clones the repo, in CI, in prod). <code>new app</code> just runs it <strong>once</strong> for you at creation.</p>
@@ -4066,8 +4129,9 @@ secret encryption are delegated to the API, so the CLI stays credential- and cry
 <p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>64</code> usage (see <a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>). The
 company is taken from the token's <code>company</code> claim. See the AppManagement console's multi-company (firma) operation.</p>
 <h2 id="secrets"><code>secrets</code><a class="headerlink" href="#secrets" title="Permanent link">&para;</a></h2>
-<p>Tooling for the at-rest encryption key (<code>Security:EncryptionKey</code>). Keys are read from environment
-variables by default (so they stay out of shell history); flags override for interactive use.</p>
+<p>Tooling for the at-rest encryption key (<code>Security:EncryptionKey</code>) and for JWT signing keys. Encryption
+keys are read from environment variables by default (so they stay out of shell history); flags override
+for interactive use.</p>
 <h3 id="secrets-rotate-key"><code>secrets rotate-key</code><a class="headerlink" href="#secrets-rotate-key" title="Permanent link">&para;</a></h3>
 <p>Re-encrypts every at-rest secret in AsdamirVault from an OLD key to a NEW key — <code>Apps.EncryptedClientSecret</code>
 and <code>AppConfigurations</code> rows with <code>IsEncrypted=1</code> — so you can rotate <code>Security:EncryptionKey</code> without
@@ -4089,6 +4153,16 @@ a stored secret back.)</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="nb">export</span><span class="w"> </span><span class="nv">ASDAMIR_ENCRYPTION_KEY</span><span class="o">=</span><span class="s1">&#39;&lt;key&gt;&#39;</span>
 <a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>encrypt<span class="w"> </span>--value<span class="w"> </span><span class="s1">&#39;the-plaintext&#39;</span><span class="w">     </span><span class="c1"># or: echo &#39;the-plaintext&#39; | asdamir secrets encrypt</span>
 </code></pre></div>
+<h3 id="secrets-new-signing-key"><code>secrets new-signing-key</code><a class="headerlink" href="#secrets-new-signing-key" title="Permanent link">&para;</a></h3>
+<p>Generates an EC P-256 key pair for <code>ES256</code> token signing. The <strong>private</strong> key is the issuer's
+<code>Jwt:SigningKeyPem</code>; the <strong>public</strong> key is every validating host's <code>Jwt:PublicKeyPem</code>. See
+<a href="../fundamentals/authentication/#signing-keys-symmetric-or-asymmetric">Authentication → Signing keys</a>.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>new-signing-key<span class="w"> </span>--out<span class="w"> </span>./keys<span class="w">   </span><span class="c1"># writes jwt-signing-key.pem (owner-only) + jwt-public-key.pem</span>
+<a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>new-signing-key<span class="w">                </span><span class="c1"># prints both PEMs instead</span>
+</code></pre></div>
+<p>With <code>--out</code>, existing key files are not overwritten unless <code>--force</code> is passed (replacing a signing key
+in use invalidates every token it signed). Exit codes: <code>0</code> written/printed · <code>1</code> generation or I/O failure ·
+<code>64</code> usage, including "key files already exist".</p>
 <p>Full procedures (incl. <code>Jwt:Key</code> and per-app client-secret rotation): <strong><a href="../secret-rotation/">Secret Management &amp; Key Rotation</a></strong>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
