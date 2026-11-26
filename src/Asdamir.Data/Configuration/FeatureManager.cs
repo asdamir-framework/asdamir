@@ -34,7 +34,7 @@ public sealed class FeatureManager : IFeatureManager
     /// <inheritdoc/>
     public Task<bool> IsEnabledAsync(string featureName, string? tenantId = null, CancellationToken ct = default)
     {
-        var tid = tenantId ?? _tenant.TenantId ?? "default";
+        var tid = tenantId ?? (_tenant.IsResolved ? _tenant.TenantId : null);
         var keyTenant = BuildKey($"Features:{featureName}", tid);
         var keyGlobal = $"Features:{featureName}";
         var val = _cfg[keyTenant] ?? _cfg[keyGlobal];
@@ -44,7 +44,7 @@ public sealed class FeatureManager : IFeatureManager
     /// <inheritdoc/>
     public Task<T?> GetConfigurationAsync<T>(string key, string? tenantId = null, CancellationToken ct = default)
     {
-        var tid = tenantId ?? _tenant.TenantId ?? "default";
+        var tid = tenantId ?? (_tenant.IsResolved ? _tenant.TenantId : null);
         var keyTenant = BuildKey(key, tid);
         // Decide presence via Exists(), NOT "Get<T>() is not null": a VALUE type binds to default(T) (e.g. 0
         // for int, false for bool) when the tenant key is ABSENT, which would wrongly shadow the global

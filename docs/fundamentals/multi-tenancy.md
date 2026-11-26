@@ -16,9 +16,8 @@ app.UseMultiTenancy();   // resolves the tenant early in the pipeline
 
 `UseMultiTenancy` runs the configured resolver and populates `ITenantContext` for the rest of the request.
 
-**Order matters, and `AddMultiTenancy()` alone does nothing.** Without `UseMultiTenancy()` nothing throws —
-`ITenantContext` silently resolves to `"default"` for every request. And a resolver that reads the authenticated
-user (`ClaimsTenantResolver`) only sees a populated `HttpContext.User` **after** `UseAuthentication()`, so place
+**Order matters, and `AddMultiTenancy()` alone does nothing.** A resolver that reads the authenticated user
+(`ClaimsTenantResolver`) only sees a populated `HttpContext.User` **after** `UseAuthentication()`, so place
 `UseMultiTenancy()` after it:
 
 ```csharp
@@ -27,16 +26,84 @@ app.UseMultiTenancy();
 app.UseAuthorization();
 ```
 
+If `UseMultiTenancy()` is missing, the first code that reads `ITenantContext.TenantId` during a request fails
+with `TenancyNotConfiguredException` (a 500 — it is a host wiring defect). It no longer runs every request as
+one tenant.
+
 ## Resolving the tenant
 
 A resolver implements `ITenantResolver`. Two implementations ship out of the box:
 
 | Resolver | Source |
 |---|---|
-| `ClaimsTenantResolver` | a `TenantId` claim on the authenticated principal |
-| `HeaderTenantResolver` | a request header (e.g. `X-Tenant-Id`) |
+| `ClaimsTenantResolver` | the signed `tid` claim on the authenticated principal (`TenantIds.ClaimType`) |
+| `HeaderTenantResolver` | a request header (e.g. `X-Tenant-Id`) — any caller can set it; do not use it as a security boundary |
 
-Provide your own by registering a custom `ITenantResolver`.
+Provide your own by registering a custom `ITenantResolver` **before** `AddMultiTenancy()` (it registers the
+header resolver with `TryAdd`). A resolver that cannot identify a tenant returns an unresolved
+`new TenantContext()` — it does not invent one.
+
+## There is no default tenant
+
+A missing tenant is an error, not a fallback. With the default `TenancyOptions.MissingTenant = Reject`:
+
+| Situation | Result |
+|---|---|
+| Authenticated request, token has no `tid` | **403**, error code `tenant.unresolved` (`TenantNotResolvedException`), refused by the middleware before any endpoint runs |
+| Anonymous request (health, login) | continues; reading `TenantId` on that request throws the same 403 |
+| Authenticated request, no `tid`, endpoint marked `[AllowWithoutTenant]` | continues with an unresolved tenant; reading `TenantId` behind it throws the same 403 |
+| `AddMultiTenancy()` without `UseMultiTenancy()` | **500** `TenancyNotConfiguredException` on first tenant read |
+| Outside a request (background job) | `ITenantContext` is an unresolved, settable `TenantContext`; the job sets its tenant, reading it first throws |
+
+Where the tenant is only advisory (a cache key, a log tag), check `ITenantContext.IsResolved` instead of
+reading `TenantId`.
+
+**The issuer states the tenant.** `IJwtService.IssueTokens(..., tenantId: …)` writes the `tid` claim. A
+deliberately single-tenant application passes `TenantIds.Single` (`"default"`), so its tokens say so
+explicitly; `asdamir new app` emits exactly that, and the generated sample rows use the same value. To serve
+several tenants, pass each user's tenant — nothing downstream changes. Seed `error.tenant.unresolved` for
+the user-facing message (the scaffold does, in all three cultures).
+
+**An endpoint for a caller that belongs to no tenant.** Some endpoints serve the application as a whole
+and are called by a principal no tenant owns — a control plane reading the app's audit trail, for example.
+Mark such an endpoint (controller or action) with `[AllowWithoutTenant]`:
+
+```csharp
+[Authorize(Policy = "AppMgmtClient")]
+[AllowWithoutTenant]
+[Route("gateway/admin")]
+public sealed class AuditTrailController : ControllerBase { … }
+```
+
+The attribute removes the up-front refusal for that endpoint only. It supplies no tenant (code behind it
+that reads `TenantId` still gets the 403) and it authorizes nothing, so pair it with a policy that names
+the tenant-less caller. The middleware reads it from the matched endpoint: routing must have run before
+`UseMultiTenancy()`, which is the case in a `WebApplication` that does not call `UseRouting()` itself.
+Where it has not, the attribute is not seen and the request is refused. The generated Gateway's
+`gateway/admin/audittrail` carries it.
+
+**Opting out.** A host that is single-tenant by design and cannot change its issuer may restore the old
+behaviour explicitly:
+
+```csharp
+builder.Services.AddMultiTenancy(o =>
+{
+    o.MissingTenant = MissingTenantBehavior.UseDefault;   // every scope without a tenant → DefaultTenantId
+    o.DefaultTenantId = "default";
+});
+```
+
+This removes the tenant boundary for any token that lacks the claim; do not use it in a multi-tenant host.
+
+### Upgrading from 1.x
+
+Before 2.0 a request without a tenant silently ran as `"default"`. After upgrading:
+
+1. Upgrade the **token issuer first** so tokens carry `tid` (for a commercial app that is AppManagement; a
+   free-mode app issues its own — regenerate or add the `tenantId:` argument in its `AuthController`).
+2. Then upgrade the API. Tokens issued before step 1 are refused until the session refreshes.
+3. Custom `ITenantContext` implementations keep compiling (`IsResolved` has a default implementation).
+   Code that relied on `TenantContext.TenantId` returning `""` now gets an exception — check `IsResolved`.
 
 ## Using the tenant context
 

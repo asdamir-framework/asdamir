@@ -27,7 +27,7 @@ Layered rules.
 
 ## Steps
 `new app` asks for the SQL user + a **masked** password, then makes the app run-ready end-to-end:
-auto-configures the Gateway dev user-secrets (CSPRNG `Jwt:Key` in free mode + `Security:EncryptionKey` +
+auto-configures the Gateway dev user-secrets (CSPRNG `Jwt:Key` in free mode / the app's own service key `App:ServiceKeyPem` in commercial mode + `Security:EncryptionKey` +
 `ConnectionStrings:Default` — in **user-secrets, NEVER appsettings.json**) **AND creates the DB + applies every
 migration** (reusing the idempotent `db apply --create-database` runner). So a **free** app is generate → run:
 ```bash
@@ -40,8 +40,10 @@ Notes:
   `cd <app> && asdamir db apply …` recovery command is printed. **`--no-secrets`** → skip user-secrets auto-config.
 - **`db apply` stays** — it's what you run over the app's lifetime (after `new entity`, on clone, in CI/prod);
   `new app` just runs it once at creation.
-- **Commercial mode** is the same **except `Jwt:Key`**: it MUST equal AppManagement's signing key (the CLI can't
-  know it), so it stays manual — and you also run `db/admin-onboarding/register_<app>.sql` against **AsdamirVault**
+- **Commercial mode** has **no `Jwt:Key`**: the Gateway validates against the keys AppManagement publishes
+  (`<AdminConsole:BaseUrl>/.well-known/jwks.json`), so AppManagement must sign with `Jwt:SigningKeyPem`
+  (if it still signs with a shared key, every call after login is a 401). The app's service key pair is
+  generated for you: private half → Gateway user-secrets, public half → `register_<app>.sql`. You also run `db/admin-onboarding/register_<app>.sql` against **AsdamirVault**
   (registers the app + seeds its users/roles/permissions/menus/config/localization, AppId-scoped).
 - Optional: `dotnet build/test MyPortal.sln`; add features **from the app root** (`cd MyPortal`, then
   `asdamir new feature <Name> --fields "…"` — entity + page + menu, migration applied automatically; or
@@ -83,5 +85,6 @@ asdamir rollback app MyPortal -o <parent-dir> -S localhost -U sa -P <pwd> --vaul
   into AsdamirVault.
 - **Don't put a connection string in `appsettings.json`** or in the Server (UI) tier — Gateway-only, via
   user-secrets/env.
-- **Don't diverge the `Jwt:Key`** from AppManagement's — the Gateway only validates tokens AppManagement
-  issued; keys/issuer/audience must match.
+- **Don't give a commercial Gateway a `Jwt:Key`** — it holds no token-signing key; issuer/audience must
+  match AppManagement's. **Don't regenerate the app and re-run an old `register_<app>.sql`**: the service
+  key in that file pairs with the user-secrets written in the same `new app` run.

@@ -48,6 +48,8 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
     internal const string HttpClientName = "agent-audit";
 
     private readonly AgentAuditOptions _options;
+    // Resolved on first send: a mis-set key is a delivery failure (records stay spooled), not a startup crash.
+    private readonly Lazy<Microsoft.IdentityModel.Tokens.SigningCredentials> _credentials;
     private readonly IHttpClientFactory _httpFactory;
     private readonly ILogger<AgentAuditSink> _logger;
     private readonly AgentAuditSpool _spool;
@@ -71,6 +73,7 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         IOptions<AgentAuditOptions> options, IHttpClientFactory httpFactory, ILogger<AgentAuditSink> logger)
     {
         _options = options.Value;
+        _credentials = new(() => Asdamir.Core.Services.AppServiceKey.CredentialsFor(_options.ServiceKeyPem, _options.SigningKey));
         _httpFactory = httpFactory;
         _logger = logger;
         _spool = new AgentAuditSpool(_options, logger);
@@ -382,7 +385,7 @@ internal sealed class AgentAuditSink : IAgentActionAuditor, IHostedService, IDis
         try
         {
             var token = AgentAuditServiceToken.Mint(
-                _options.SigningKey, _options.Issuer, _options.Audience, _options.AppCode, TimeSpan.FromMinutes(2));
+                _credentials.Value, _options.Issuer, _options.Audience, _options.AppCode, TimeSpan.FromMinutes(2));
 
             var client = _httpFactory.CreateClient(HttpClientName);
             using var request = new HttpRequestMessage(HttpMethod.Post, _options.IngestPath)

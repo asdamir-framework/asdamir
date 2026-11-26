@@ -30,18 +30,26 @@ public interface IJwtService
     /// as the app's code). Every token shares the same signing key/issuer/audience, so this claim is what
     /// lets control-plane endpoints reject app-login tokens. Null omits both claims (treated as console/legacy).
     /// </para>
+    /// <para>
+    /// <paramref name="tenantId"/> is stamped as the signed <c>tid</c> claim — the ONLY place a request's
+    /// tenant comes from under strict tenancy (<c>ClaimsTenantResolver</c>). An app token issued without it
+    /// is refused by a tenant-scoped API (403 <c>tenant.unresolved</c>) rather than served as a default
+    /// tenant, so an issuer of app tokens must pass it; a single-tenant app passes
+    /// <see cref="Asdamir.Core.MultiTenancy.TenantIds.Single"/> explicitly. Null/blank omits the claim
+    /// (control-plane tokens, which are not tenant-scoped).
+    /// </para>
     /// </summary>
     TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null,
-        string? tokenUse = null, string? appCode = null);
+        string? tokenUse = null, string? appCode = null, string? tenantId = null);
 
     /// <summary>
     /// Same as the default issuer but with explicit access/refresh lifetimes — used when the lifetime
     /// is resolved at runtime (e.g. per-app, from the app's DB-backed configuration) rather than the
-    /// host's startup configuration. See the other overload for <paramref name="tokenUse"/>/<paramref name="appCode"/>.
+    /// host's startup configuration. See the other overload for <paramref name="tokenUse"/>/<paramref name="appCode"/>/<paramref name="tenantId"/>.
     /// </summary>
     TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions,
         TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null,
-        string? tokenUse = null, string? appCode = null);
+        string? tokenUse = null, string? appCode = null, string? tenantId = null);
 }
 
 

@@ -224,9 +224,10 @@ public class AuditLoggingMiddleware
                           context.User?.FindFirst("name")?.Value;
 
             var tenantContext = context.RequestServices.GetService<ITenantContext>();
-            var tenantId = tenantContext?.TenantId
-                ?? context.User?.FindFirst("tenantId")?.Value
-                ?? "default";
+            var tenantId = (tenantContext is { IsResolved: true } t ? t.TenantId : null)
+                ?? context.User?.FindFirst(Asdamir.Core.MultiTenancy.TenantIds.ClaimType)?.Value
+                ?? context.User?.FindFirst(Asdamir.Core.MultiTenancy.TenantIds.MappedClaimType)?.Value
+                ?? "-";
 
             // Always strip the always-redact list FIRST, then attribute extras on top.
             // Order matters: if we ran attribute exclusion first against a missing list,

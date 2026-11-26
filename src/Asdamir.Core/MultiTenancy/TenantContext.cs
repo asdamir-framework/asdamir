@@ -20,13 +20,25 @@ namespace Asdamir.Core.MultiTenancy;
 /// </remarks>
 public sealed class TenantContext : ITenantContext
 {
+    private string _tenantId = string.Empty;
+
     /// <summary>
     /// Gets or sets the unique identifier for the current tenant.
     /// </summary>
     /// <value>
-    /// The tenant ID. Defaults to empty string.
+    /// The tenant ID. A context that was never given one is <b>unresolved</b>: reading it throws
+    /// <see cref="TenantNotResolvedException"/> instead of returning an empty string, so a query can never
+    /// be scoped by a tenant nobody chose. Check <see cref="IsResolved"/> where the tenant is optional.
     /// </value>
-    public string TenantId { get; set; } = string.Empty;
+    /// <exception cref="TenantNotResolvedException">Read while no tenant is set.</exception>
+    public string TenantId
+    {
+        get => IsResolved ? _tenantId : throw new TenantNotResolvedException();
+        set => _tenantId = value ?? string.Empty;
+    }
+
+    /// <summary>Gets whether this context carries a tenant (a non-blank <see cref="TenantId"/> was set).</summary>
+    public bool IsResolved => !string.IsNullOrWhiteSpace(_tenantId);
 
     /// <summary>
     /// Gets or sets the display name of the current tenant.

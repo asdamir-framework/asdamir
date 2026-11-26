@@ -56,6 +56,13 @@ public sealed class AgentAuditOptions
     /// </summary>
     public string SigningKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The app's own service private key (<c>App:ServiceKeyPem</c>, EC P-256 PEM). When set it replaces
+    /// <see cref="SigningKey"/>: the ingest token is signed ES256 and the control plane verifies it against
+    /// the public key registered for this app, so the token can only speak for this app. A secret.
+    /// </summary>
+    public string ServiceKeyPem { get; set; } = string.Empty;
+
     /// <summary>The token issuer (<c>Jwt:Issuer</c>) — must match the control plane's.</summary>
     public string? Issuer { get; set; }
 

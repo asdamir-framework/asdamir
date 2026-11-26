@@ -32,6 +32,7 @@ public sealed class TenantMiddleware
     private readonly RequestDelegate _next;
     private readonly ITenantResolver _resolver;
     private readonly ILogger<TenantMiddleware> _logger;
+    private readonly TenancyOptions _options;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TenantMiddleware"/> class.
@@ -39,8 +40,12 @@ public sealed class TenantMiddleware
     /// <param name="next">The next middleware in the pipeline.</param>
     /// <param name="resolver">The tenant resolver to use for identifying tenants.</param>
     /// <param name="logger">The logger for diagnostic information.</param>
-    public TenantMiddleware(RequestDelegate next, ITenantResolver resolver, ILogger<TenantMiddleware> logger)
+    /// <param name="options">Tenancy options (registered by <c>AddMultiTenancy</c>); when absent the
+    /// defaults apply, i.e. <see cref="MissingTenantBehavior.Reject"/>.</param>
+    public TenantMiddleware(RequestDelegate next, ITenantResolver resolver, ILogger<TenantMiddleware> logger,
+        TenancyOptions? options = null)
     {
+        _options = options ?? new TenancyOptions();
         _next = next;
         _resolver = resolver;
         _logger = logger;
@@ -56,8 +61,20 @@ public sealed class TenantMiddleware
     /// would either NRE or fall back to a default tenant. We now distinguish:
     ///   - <see cref="OperationCanceledException"/>: client gave up, propagate naturally
     ///   - Any other exception: log + return 500. Resolvers that gracefully cannot
-    ///     identify a tenant should RETURN a default <see cref="ITenantContext"/>, not throw.
+    ///     identify a tenant should RETURN an unresolved <see cref="TenantContext"/>, not throw.
+    /// <para>
+    /// An UNRESOLVED result is then handled here, in one place, per
+    /// <see cref="TenancyOptions.MissingTenant"/>. <see cref="MissingTenantBehavior.Reject"/> (default):
+    /// an <b>authenticated</b> request is refused with <see cref="TenantNotResolvedException"/> (403 via the
+    /// global exception handler) — a known caller that belongs to no tenant must not be served any tenant's
+    /// data; an <b>anonymous</b> request (health, login) continues with the unresolved context, which throws
+    /// only if something actually reads the tenant; so does an authenticated request to an endpoint marked
+    /// <see cref="AllowWithoutTenantAttribute"/> (seen only when routing ran before this middleware —
+    /// otherwise the request is refused as usual). <see cref="MissingTenantBehavior.UseDefault"/>: the
+    /// request runs as <see cref="TenancyOptions.DefaultTenantId"/>, as before 2.0.
+    /// </para>
     /// </remarks>
+    /// <exception cref="TenantNotResolvedException">Authenticated request, no tenant, <c>Reject</c>.</exception>
     public async Task InvokeAsync(HttpContext context)
     {
         ITenantContext tc;
@@ -76,6 +93,22 @@ public sealed class TenantMiddleware
                 "TENANT_RESOLVE_ERROR", "TenantMiddleware");
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             return;
+        }
+
+        if (!tc.IsResolved)
+        {
+            if (_options.MissingTenant == MissingTenantBehavior.UseDefault)
+            {
+                tc = new TenantContext { TenantId = _options.DefaultTenantId, IsMultiTenant = true };
+            }
+            else if (context.User?.Identity?.IsAuthenticated == true
+                     && context.GetEndpoint()?.Metadata.GetMetadata<AllowWithoutTenantAttribute>() is null)
+            {
+                _logger.LogWarning(
+                    "Authenticated request without a tenant refused. ErrorKey: {ErrorKey}, Source: {Source}, Path: {Path}",
+                    TenantNotResolvedException.ErrorCode, "TenantMiddleware", context.Request.Path.Value);
+                throw new TenantNotResolvedException();
+            }
         }
 
         context.Items[HttpItemsKey] = tc;

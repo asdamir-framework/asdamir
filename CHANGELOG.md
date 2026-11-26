@@ -15,11 +15,11 @@ sentence that was, when this was written, three releases stale.
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `1.10.0` | — |
-| `Asdamir.Data` | `1.6.0` | — |
+| `Asdamir.Core` | `2.0.0` | — |
+| `Asdamir.Data` | `2.0.0` | — |
 | `Asdamir.Payments` | `1.3.0` | — |
-| `Asdamir.Tools` | `1.9.0` | — |
-| `Asdamir.Web` | `2.2.0` | — |
+| `Asdamir.Tools` | `2.0.0` | — |
+| `Asdamir.Web` | `2.3.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -30,6 +30,105 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Core 2.0.0 · Data 2.0.0 · Web 2.3.0 · Tools 2.0.0] — 2026-11-27 — published — the 2.0 line: strict tenancy · asymmetric token signing
+
+Four packages move together: Data and Web read `ITenantContext.IsResolved`, which exists only in Core 2.0,
+and the Tools templates generate apps against Core/Data 2.0. `Asdamir.Payments` is unchanged and stays at
+`1.3.0`.
+
+### Core — BREAKING: there is no default tenant any more
+- **A missing tenant is refused instead of silently becoming `"default"`.** Three separate places produced
+  that fallback — `ClaimsTenantResolver`, `HeaderTenantResolver` and the `ITenantContext` DI factory — and
+  **no issuer ever stamped a tenant claim**, so every request of every app ran as one tenant while the code
+  read as multi-tenant. Now: an authenticated request without a tenant → **403 `tenant.unresolved`**
+  (`TenantNotResolvedException`); `AddMultiTenancy()` without `UseMultiTenancy()` → **500**
+  `TenancyNotConfiguredException` on first tenant read; a non-HTTP scope gets an unresolved, settable context.
+- New: `TenancyOptions.MissingTenant` (`Reject` default / `UseDefault` opt-out) + `DefaultTenantId`,
+  `ITenantContext.IsResolved` (default interface member — existing implementations compile unchanged),
+  `TenantIds.ClaimType` / `TenantIds.Single`, the two exceptions.
+- `TenantContext.TenantId` **throws** when unset (it used to return `""`).
+- `IJwtService.IssueTokens(..., tenantId:)` — a new optional parameter on both overloads; writes the signed
+  `tid` claim, never defaults it. **Binary-breaking** for callers compiled against 1.x; source-compatible.
+- `DefaultProblemDetailsMapper` maps `TenantNotResolvedException` to 403 (other domain exceptions stay 400).
+
+### Data / Web — follow the contract
+- `FeatureManager`, `AuthorizationCache`, `AuthorizationAuditService`, `AuditLoggingMiddleware`, the rate-limit
+  key and `ApiStringLocalizer` treat the tenant as advisory and check `IsResolved`; where they tagged
+  `"default"` for "no tenant" they now tag `"-"`. `AuditLoggingMiddleware` reads the `tid` claim (it read a
+  `tenantId` claim nobody issues).
+
+### Tools (templates)
+- Free-mode `AuthController` stamps `tid`; both onboarding seeds add `error.tenant.unresolved` (tr/en/ru).
+  **A generated app now needs Core 2.0** — until it is published, `Category=ScaffoldPublished` cannot pass.
+
+### Core — asymmetric token signing (step 1 of 5: the primitives)
+- `JwtKeyMaterial` — resolves signing and validation keys from `Jwt:*`: `Jwt:SigningKeyPem` (EC P-256
+  private key → signs `ES256` with a `kid`), `Jwt:PublicKeyPem` (validate-only host), or `Jwt:Key` alone
+  (`HS256`, unchanged). `ApplyTo(TokenValidationParameters)` sets the keys and pins `ValidAlgorithms`.
+- `JwtService` signs `ES256` when `Jwt:SigningKeyPem` is set; with only `Jwt:Key` it behaves as before.
+- With an asymmetric key configured, a token signed with `Jwt:Key` is **refused** unless
+  `Jwt:AcceptLegacySymmetric=true` (migration window).
+- **JWKS (step 2 of 5).** `JwtKeyMaterial.ExportJwks()` returns the issuer's public key set; a validator
+  configured with **`Jwt:JwksUrl`** (https only) fetches and follows it — hourly, and on an unknown `kid`.
+  The fallback to a previous key set is switched off, so a withdrawn key stops being trusted at the next
+  fetch. Only public EC P-256 signature keys are taken from the document. `FromConfiguration` gains an
+  optional `HttpClient`. New dependency: `Microsoft.IdentityModel.Protocols`.
+- **Per-app service key (step 3 of 5).** `AppServiceKey` (`App:ServiceKeyPem`) is an app's own ES256 key
+  for the `app-log` / `agent-audit-ingest` service tokens; both `Mint` methods gain an overload taking
+  `SigningCredentials`, and `AppLogForwardOptions.ServiceKeyPem` / `AgentAuditOptions.ServiceKeyPem` make
+  the sinks use it. An unreadable key never falls back to the shared key. `App:ServiceKeyPem` and
+  `AgentAudit:ServiceKeyPem` join the keys a database config row cannot supply.
+- **Rotation without a failed request, and the migration (step 5 of 5).**
+  `Jwt:AdditionalPublicKeysPem` (up to four public keys beside `Jwt:SigningKeyPem` or `Jwt:PublicKeyPem`)
+  lists further accepted keys; an issuer also publishes them in its key set, so the next key can be
+  announced before anything is signed with it and the previous one kept until its tokens expire. Refused
+  beside `Jwt:JwksUrl` or a symmetric-only key; a database config row cannot supply it.
+- **`OrchestrationToken`** — the token a control plane presents to one managed app's `gateway/admin/*`:
+  signed with the control plane's own key, under its own audience (`Jwt:OrchestrationAudience`),
+  `token_use=orchestration`, bound to the target app's `app_code`. `IsFor(principal, appCode, audience)`
+  is the check a Gateway makes. `Jwt:OrchestrationAudience` cannot be supplied by a database config row.
+- **`[AllowWithoutTenant]`** (Core) — marks an endpoint that an authenticated caller with no tenant may
+  reach. The tenant middleware lets such a request continue with an unresolved tenant instead of
+  answering 403 `tenant.unresolved`; reading `TenantId` behind it still fails, and nothing is defaulted.
+  Seen only when routing ran before `UseMultiTenancy()`. The generated Gateway's
+  `gateway/admin/audittrail` carries it: the orchestration token has no `tid`, so without it strict
+  tenancy refused every orchestration call.
+- **Apps generated before this line still hold and trust the shared `Jwt:Key`** until they are migrated.
+  The three-step procedure is in `docs/secret-rotation.md` → "Moving from the shared `Jwt:Key` to
+  asymmetric signing". Do not set `Jwt:SigningKeyPem` on a control plane before every Gateway it serves
+  has finished step 1.
+
+### Tools
+- **A commercial `asdamir new app` no longer uses a shared `Jwt:Key` (step 4 of 5).** The generated
+  Gateway validates through `JwtKeyMaterial`: with no key configured it trusts the keys AppManagement
+  publishes at `<AdminConsole:BaseUrl>/.well-known/jwks.json` (`Jwt:PublicKeyPem` pins one key instead;
+  a `Jwt:Key`, if set, keeps the pre-2.0 mode). It holds no key that can mint a token.
+- `new app` generates the app's own service key: the private half is written to the Gateway's
+  user-secrets (`App:ServiceKeyPem`), the public half into `register_<app>.sql`, which registers it when
+  the app has no key yet. The Gateway signs its central-log token with it. With `--no-secrets` no key is
+  generated or registered, and log forwarding stays off until one is added.
+- The "set `Jwt:Key` to match AppManagement's" step is gone from the printed next steps. **AppManagement
+  must sign with `Jwt:SigningKeyPem`**: against a control plane still signing with a shared key, a newly
+  generated commercial app logs in and then gets a 401 on every call.
+- **The generated commercial Gateway accepts AppManagement's orchestration token.** It lists the
+  orchestration audience beside the user audience and fails authentication for any `client_id` token
+  that is not an orchestration token for this app; a user token must carry the user audience. Before
+  this, nothing could authenticate to a generated app's `gateway/admin/*` (it never had a
+  `client-token` endpoint).
+- Free-mode apps are unchanged in behaviour (their own `Jwt:Key`), now read through `JwtKeyMaterial`.
+- The generated app needs Core 2.0 (`JwtKeyMaterial`, `AppServiceKey`).
+- `asdamir secrets new-signing-key [--out <dir>] [--force]` — generates the EC P-256 pair.
+
+### Data
+- `Jwt:SigningKeyPem`, `Jwt:PublicKeyPem`, `Jwt:JwksUrl` and `Jwt:AcceptLegacySymmetric` join the protected configuration
+  keys: a database row cannot supply them.
+
+### Upgrade order
+Tenancy: issuer first (AppManagement, or the free-mode app's own `AuthController`), then the API. See
+`docs/fundamentals/multi-tenancy.md` → "Upgrading from 1.x".
+Signing keys: the reverse — every Gateway first, then AppManagement, then remove the shared key. See
+`docs/secret-rotation.md` → "Moving from the shared `Jwt:Key` to asymmetric signing".
 
 ## [Core 1.10.0 · Data 1.6.0 · Web 2.2.0 · Payments 1.3.0 · Tools 1.9.0] — 2026-11-25 — published
 

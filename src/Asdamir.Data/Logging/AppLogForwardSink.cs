@@ -39,6 +39,9 @@ public sealed class AppLogForwardSink : ILogEventSink, IDisposable
     private const string ForwardLogCategory = "System.Net.Http.HttpClient." + HttpClientName;
 
     private readonly AppLogForwardOptions _opts;
+    // Resolved on first send, not in the constructor: a mis-set key must degrade central logging (the
+    // send path swallows and reports it), never stop the host from starting.
+    private readonly Lazy<Microsoft.IdentityModel.Tokens.SigningCredentials> _credentials;
     private readonly IHttpClientFactory _httpFactory;
     private readonly Channel<ForwardEntry> _queue;
     private readonly CancellationTokenSource _cts = new();
@@ -49,6 +52,7 @@ public sealed class AppLogForwardSink : ILogEventSink, IDisposable
     public AppLogForwardSink(AppLogForwardOptions options, IHttpClientFactory httpFactory)
     {
         _opts = options;
+        _credentials = new(() => Asdamir.Core.Services.AppServiceKey.CredentialsFor(options.ServiceKeyPem, options.SigningKey));
         _httpFactory = httpFactory;
         _queue = Channel.CreateBounded<ForwardEntry>(new BoundedChannelOptions(Math.Max(16, options.QueueCapacity))
         {
@@ -106,7 +110,7 @@ public sealed class AppLogForwardSink : ILogEventSink, IDisposable
         // logging is down; the local File sink already captured every line.
         try
         {
-            var token = AppLogServiceToken.Mint(_opts.SigningKey, _opts.Issuer, _opts.Audience, _opts.AppCode,
+            var token = AppLogServiceToken.Mint(_credentials.Value, _opts.Issuer, _opts.Audience, _opts.AppCode,
                 TimeSpan.FromMinutes(2));
             var client = _httpFactory.CreateClient(HttpClientName);
             using var req = new HttpRequestMessage(HttpMethod.Post, _opts.IngestPath)
@@ -162,8 +166,17 @@ public sealed class AppLogForwardOptions
 {
     /// <summary>The ingest endpoint path, relative to the <c>applog-forward</c> client's base address.</summary>
     public string IngestPath { get; init; } = "api/admin/applogs/ingest";
-    /// <summary>The shared HMAC signing key (<c>Jwt:Key</c>) used to mint the app-log service token.</summary>
+    /// <summary>
+    /// The shared HMAC signing key (<c>Jwt:Key</c>). Used only when <see cref="ServiceKeyPem"/> is empty;
+    /// pass an empty string when the app has its own service key.
+    /// </summary>
     public required string SigningKey { get; init; }
+    /// <summary>
+    /// The app's own service private key (<c>App:ServiceKeyPem</c>, EC P-256 PEM). When set, the app-log
+    /// token is signed ES256 with it and AppManagement verifies it against the public key registered for
+    /// this app, so the token can only speak for this app. A secret.
+    /// </summary>
+    public string? ServiceKeyPem { get; init; }
     /// <summary>The token issuer (<c>Jwt:Issuer</c>) — must match AppManagement.</summary>
     public string? Issuer { get; init; }
     /// <summary>The token audience (<c>Jwt:Audience</c>) — the managed-app audience.</summary>

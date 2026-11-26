@@ -40,9 +40,10 @@ public static class SecretsCommand
     public static Command Build()
     {
         var cmd = new Command("secrets",
-            "At-rest encryption-key tooling (Security:EncryptionKey): re-encrypt stored secrets on key rotation, or produce an encrypted value.");
+            "Secret tooling: re-encrypt stored secrets on Security:EncryptionKey rotation, produce an encrypted value, or generate a JWT signing key pair.");
         cmd.AddCommand(BuildRotateKey());
         cmd.AddCommand(BuildEncrypt());
+        cmd.AddCommand(BuildNewSigningKey());
         return cmd;
     }
 
@@ -250,6 +251,89 @@ public static class SecretsCommand
             catch (Exception ex) { Console.Error.WriteLine($"Encrypt failed: {ex.Message}"); ctx.ExitCode = 1; }
         });
         return cmd;
+    }
+
+    // ───────────────────────────── new-signing-key ─────────────────────────────
+
+    /// <summary>File name the private key is written to under <c>--out</c>.</summary>
+    internal const string SigningKeyFileName = "jwt-signing-key.pem";
+
+    /// <summary>File name the public key is written to under <c>--out</c>.</summary>
+    internal const string PublicKeyFileName = "jwt-public-key.pem";
+
+    /// <summary>
+    /// Generates an EC P-256 key pair for ES256 token signing: the private key (PKCS#8 PEM) for the issuer's
+    /// <c>Jwt:SigningKeyPem</c> and the public key (SubjectPublicKeyInfo PEM) for every validator's
+    /// <c>Jwt:PublicKeyPem</c>.
+    /// </summary>
+    internal static (string PrivatePem, string PublicPem) GenerateSigningKeyPair()
+    {
+        using var ecdsa = System.Security.Cryptography.ECDsa.Create(System.Security.Cryptography.ECCurve.NamedCurves.nistP256);
+        return (ecdsa.ExportPkcs8PrivateKeyPem(), ecdsa.ExportSubjectPublicKeyInfoPem());
+    }
+
+    private static Command BuildNewSigningKey()
+    {
+        var outOpt = new Option<string>(new[] { "--out", "-o" }, () => "",
+            $"Directory to write {SigningKeyFileName} (owner-only) and {PublicKeyFileName} into. Without it, both PEMs are printed.");
+        var forceOpt = new Option<bool>("--force", () => false, "Overwrite existing key files in --out.");
+
+        var cmd = new Command("new-signing-key",
+            "Generate an EC P-256 key pair for ES256 JWT signing: the private key goes to the token issuer only (Jwt:SigningKeyPem), the public key to every host that validates tokens (Jwt:PublicKeyPem).")
+        {
+            outOpt, forceOpt,
+        };
+
+        cmd.SetHandler(ctx =>
+        {
+            var outDir = ctx.ParseResult.GetValueForOption(outOpt) ?? "";
+            var force = ctx.ParseResult.GetValueForOption(forceOpt);
+            try
+            {
+                var (privatePem, publicPem) = GenerateSigningKeyPair();
+                if (string.IsNullOrWhiteSpace(outDir))
+                {
+                    Console.WriteLine("# Jwt:SigningKeyPem — the ISSUER only. Keep it secret; never commit it.");
+                    Console.WriteLine(privatePem);
+                    Console.WriteLine();
+                    Console.WriteLine("# Jwt:PublicKeyPem — every host that validates tokens. Not a secret.");
+                    Console.WriteLine(publicPem);
+                    ctx.ExitCode = 0;
+                    return;
+                }
+
+                Directory.CreateDirectory(outDir);
+                var privatePath = Path.Combine(outDir, SigningKeyFileName);
+                var publicPath = Path.Combine(outDir, PublicKeyFileName);
+                if (!force && (File.Exists(privatePath) || File.Exists(publicPath)))
+                {
+                    // Overwriting a signing key in use invalidates every token it signed.
+                    Console.Error.WriteLine($"Key files already exist in {outDir}. Pass --force to overwrite them.");
+                    ctx.ExitCode = ExitCodes.Usage;
+                    return;
+                }
+
+                WriteOwnerOnly(privatePath, privatePem);
+                File.WriteAllText(publicPath, publicPem + Environment.NewLine);
+                Console.WriteLine($"Private key: {privatePath}   → the issuer's Jwt:SigningKeyPem (keep secret)");
+                Console.WriteLine($"Public key:  {publicPath}   → each validator's Jwt:PublicKeyPem");
+                ctx.ExitCode = 0;
+            }
+            catch (Exception ex) { Console.Error.WriteLine($"Key generation failed: {ex.Message}"); ctx.ExitCode = 1; }
+        });
+        return cmd;
+    }
+
+    private static void WriteOwnerOnly(string path, string content)
+    {
+        if (File.Exists(path)) File.Delete(path);
+        var options = new FileStreamOptions { Mode = FileMode.CreateNew, Access = FileAccess.Write };
+        // Created 0600 from the start on Unix — never world-readable, not even briefly.
+        if (!OperatingSystem.IsWindows())
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        using var stream = new FileStream(path, options);
+        using var writer = new StreamWriter(stream);
+        writer.WriteLine(content);
     }
 
     // ───────────────────────────── helpers ─────────────────────────────

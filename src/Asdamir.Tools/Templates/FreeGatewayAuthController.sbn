@@ -197,7 +197,11 @@ public sealed class AuthController : ControllerBase
         var perms = await _identity.GetPermissionsAsync(user.Id, ct);
 
         // token_use=app + app_code stamp this as a managed-app end-user token (same shape as the central flow).
-        var tokens = _jwt.IssueTokens(user, perms, tokenUse: "app", appCode: AppCode);
+        // tid: the signed tenant. The tenant middleware REFUSES an authenticated request without it (it no
+        // longer falls back to "default"), so the issuer states it. Single-tenant app → the constant; to run
+        // several tenants, stamp the user's own tenant here and every repository scopes by it unchanged.
+        var tokens = _jwt.IssueTokens(user, perms, tokenUse: "app", appCode: AppCode,
+            tenantId: Asdamir.Core.MultiTenancy.TenantIds.Single);
 
         // Persist only the SHA-256 hash of the refresh token (never the raw value) — matches the free-mode
         // RefreshToken_Create proc + the validation path in gateway/auth/refresh.

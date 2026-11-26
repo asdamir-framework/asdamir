@@ -78,6 +78,10 @@
   <ItemGroup Label="Security / Tokens">
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
     <PackageVersion Include="Microsoft.IdentityModel.Tokens" Version="8.3.1" />
+    <!-- JWKS retrieval for a validate-only host (ConfigurationManager<T>). Kept on the same version as
+         Tokens: mixed IdentityModel versions are a known source of runtime MissingMethod failures. -->
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols" Version="8.3.1" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.3.1" />
   </ItemGroup>
 
   <ItemGroup Label="Validation">

@@ -26,7 +26,7 @@ namespace Asdamir.Web.Security.Services;
 ///  - The in-memory recent-failures cache is now instance-scoped (per DI scope), so
 ///    different request scopes don't see each other's denials.
 ///  - <c>TenantId</c> is resolved from <see cref="ITenantContext"/> (advisory tenant
-///    resolver in Asdamir.Core.MultiTenancy), falling back to "default" only when no tenant
+///    resolver in Asdamir.Core.MultiTenancy), falling back to "-" (no tenant) only when none
 ///    is established.
 ///  - Trim now uses a queue-style FIFO drop instead of <c>ConcurrentBag.TryTake</c>
 ///    (non-deterministic eviction in v1 evicted recent events and kept old ones).
@@ -49,7 +49,7 @@ public class AuthorizationAuditService : IAuthorizationAuditService
     /// <param name="logger">Logger; authorization grants log at Debug and denials at Warning.</param>
     /// <param name="auditService">Persistent audit sink; only denied attempts are written to the AuditLog table.</param>
     /// <param name="clientInfoService">Optional accessor for the caller's IP address and user agent.</param>
-    /// <param name="tenantContext">Optional tenant context; its tenant id tags each audit entry, falling back to "default" when none is established.</param>
+    /// <param name="tenantContext">Optional tenant context; its tenant id tags each audit entry, falling back to "-" when none is established.</param>
     public AuthorizationAuditService(
         ILogger<AuthorizationAuditService> logger,
         IAuditService auditService,
@@ -131,9 +131,9 @@ public class AuthorizationAuditService : IAuthorizationAuditService
                     UserId = auditEvent.UserId,
                     UserName = auditEvent.UserEmail,
                     // Audit fix: previously hardcoded "1". Resolve from the request's tenant
-                    // context; fall back to "default" only when no tenant is established
+                    // context; "-" marks an entry with no tenant established
                     // (background tasks, system audits).
-                    TenantId = _tenantContext?.TenantId ?? "default",
+                    TenantId = _tenantContext is { IsResolved: true } t ? t.TenantId : "-",
                     Ip = ipAddress,
                     UserAgent = userAgent,
                     ExtraJson = System.Text.Json.JsonSerializer.Serialize(new

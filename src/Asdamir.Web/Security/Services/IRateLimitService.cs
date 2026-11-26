@@ -76,7 +76,7 @@ public class RateLimitMiddleware
         var ip = context.Connection.RemoteIpAddress?.ToString();
         var tenantId = context.Items["TenantContext"] as ITenantContext;
         
-        return $"{tenantId?.TenantId}:{userId ?? ip}:{Middleware.RateLimitingMiddleware.NormalizePath(context.Request.Path.Value)}";
+        return $"{(tenantId is { IsResolved: true } t ? t.TenantId : null)}:{userId ?? ip}:{Middleware.RateLimitingMiddleware.NormalizePath(context.Request.Path.Value)}";
     }
 }
 

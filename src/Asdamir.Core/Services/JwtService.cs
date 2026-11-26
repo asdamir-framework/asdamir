@@ -22,20 +22,17 @@ namespace Asdamir.Core.Services;
 
 /// <summary>
 /// Mints signed access and refresh tokens (<see cref="IJwtService"/> implementation). Access tokens are
-/// HMAC-SHA256-signed JWTs carrying identity, tenant/company and permission claims; refresh tokens are
-/// opaque 256-bit CSPRNG values (the caller stores only their hash and rotates on use). The signing key,
-/// issuer/audience and lifetimes come from <c>Jwt:*</c> configuration.
+/// JWTs carrying identity, tenant/company and permission claims, signed <c>ES256</c> (with a <c>kid</c>) when
+/// <c>Jwt:SigningKeyPem</c> is configured and <c>HS256</c> with <c>Jwt:Key</c> otherwise; refresh tokens are
+/// opaque 256-bit CSPRNG values (the caller stores only their hash and rotates on use). The signing key
+/// (see <see cref="JwtKeyMaterial"/>), issuer/audience and lifetimes come from <c>Jwt:*</c> configuration.
 /// </summary>
 public class JwtService : IJwtService
 {
-    /// <summary>Minimum byte length for the HMAC-SHA256 signing key (≥256 bits).</summary>
-    private const int MinKeyByteLength = 32;
-
     /// <summary>Default lifetimes if Jwt:AccessTokenLifetimeMinutes / Jwt:RefreshTokenLifetimeDays not set.</summary>
     private const int DefaultAccessTokenLifetimeMinutes = 15;
     private const int DefaultRefreshTokenLifetimeDays = 14;
 
-    private readonly SymmetricSecurityKey _signingKey;
     private readonly SigningCredentials _signingCredentials;
     private readonly string? _issuer;
     private readonly string? _audience;
@@ -44,27 +41,20 @@ public class JwtService : IJwtService
     private readonly TimeSpan _refreshLifetime;
 
     /// <summary>
-    /// Builds the service from <c>Jwt:*</c> configuration (<c>Key</c>, optional <c>Issuer</c>/<c>Audience</c>,
-    /// and optional <c>AccessTokenLifetimeMinutes</c>/<c>RefreshTokenLifetimeDays</c>). The signing key is
-    /// held in memory only; never log it.
+    /// Builds the service from <c>Jwt:*</c> configuration (<c>SigningKeyPem</c> or <c>Key</c>, optional
+    /// <c>Issuer</c>/<c>Audience</c>, and optional <c>AccessTokenLifetimeMinutes</c>/<c>RefreshTokenLifetimeDays</c>).
+    /// The signing key is held in memory only; never log it.
     /// </summary>
     /// <param name="configuration">Application configuration supplying the <c>Jwt:*</c> section.</param>
-    /// <exception cref="InvalidOperationException"><c>Jwt:Key</c> is missing or shorter than 32 bytes (too weak for HMAC-SHA256).</exception>
+    /// <exception cref="InvalidOperationException">No signing key is configured, <c>Jwt:Key</c> is shorter than 32 bytes, or <c>Jwt:SigningKeyPem</c> is not an EC P-256 private key.</exception>
     public JwtService(IConfiguration configuration)
     {
-        var jwtKey = configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("Jwt:Key is not configured.");
-
-        var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
-        if (keyBytes.Length < MinKeyByteLength)
-        {
+        var keys = JwtKeyMaterial.FromConfiguration(configuration);
+        if (!keys.CanSign)
             throw new InvalidOperationException(
-                $"Jwt:Key must be at least {MinKeyByteLength} bytes (got {keyBytes.Length}) for HMAC-SHA256. " +
-                "Generate a 64+ byte random key and store it outside source control.");
-        }
-
-        _signingKey = new SymmetricSecurityKey(keyBytes);
-        _signingCredentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256);
+                "JwtService needs a signing key: set Jwt:SigningKeyPem (ES256) or Jwt:Key (HS256). " +
+                "Jwt:PublicKeyPem alone can only validate tokens.");
+        _signingCredentials = keys.SigningCredentials;
         _issuer = configuration["Jwt:Issuer"];
         _audience = configuration["Jwt:Audience"];
         // Optional cryptographic audience boundary: when set, a control-plane ("console") token is stamped
@@ -83,13 +73,13 @@ public class JwtService : IJwtService
 
     /// <inheritdoc/>
     public TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions, string? company = null,
-        string? tokenUse = null, string? appCode = null)
-        => IssueTokens(user, permissions, _accessLifetime, _refreshLifetime, company, tokenUse, appCode);
+        string? tokenUse = null, string? appCode = null, string? tenantId = null)
+        => IssueTokens(user, permissions, _accessLifetime, _refreshLifetime, company, tokenUse, appCode, tenantId);
 
     /// <inheritdoc/>
     public TokenResponseDto IssueTokens(UserAuth user, IEnumerable<string> permissions,
         TimeSpan accessLifetime, TimeSpan refreshLifetime, string? company = null,
-        string? tokenUse = null, string? appCode = null)
+        string? tokenUse = null, string? appCode = null, string? tenantId = null)
     {
         var now = DateTime.UtcNow;
         var expiresAtUtc = now.Add(accessLifetime);
@@ -113,6 +103,11 @@ public class JwtService : IJwtService
             claims.Add(new Claim("token_use", tokenUse));
         if (!string.IsNullOrWhiteSpace(appCode))
             claims.Add(new Claim("app_code", appCode));
+        // Tenant: the signed `tid` claim is the only source ClaimsTenantResolver trusts. It is stamped
+        // explicitly or not at all — never defaulted here — so "no tenant" stays visible downstream.
+        if (!string.IsNullOrWhiteSpace(tenantId))
+            claims.Add(new Claim(Asdamir.Core.MultiTenancy.TenantIds.ClaimType, tenantId));
+
         claims.AddRange(permissions.Select(p => new Claim("perm", p)));
 
         // A console token gets the (distinct) console audience when configured; every other token keeps

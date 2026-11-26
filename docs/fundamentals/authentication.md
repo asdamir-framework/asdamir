@@ -38,6 +38,138 @@ public sealed class LoginHandler(IJwtService jwt)
 
 > **Issuer/Audience must match** between the issuing service and every validator. Keep them identical across the API and any client that validates the token.
 
+### Signing keys: symmetric or asymmetric
+
+`JwtKeyMaterial.FromConfiguration` (`Asdamir.Core.Services`) resolves what a host signs with and what it
+accepts, from the `Jwt` section. Which settings are present decides the shape:
+
+| Setting | Host role | Signs | Validates |
+|---|---|---|---|
+| `Jwt:SigningKeyPem` (EC P-256 private key) | the **issuer** | `ES256`, with a `kid` | `ES256` |
+| `Jwt:PublicKeyPem` (the issuer's public key) | a **validator** | nothing — it cannot mint a token | `ES256` |
+| `Jwt:JwksUrl` (the issuer's key-set URL, https) | a **validator** that follows key rotations | nothing | `ES256`, with keys fetched from the issuer |
+| `Jwt:Key` alone (≥ 32 bytes) | issues **and** validates its own tokens | `HS256` | `HS256` |
+
+Use the asymmetric pair whenever the host that validates a token is not the host that issued it: a
+symmetric key shared between hosts lets every holder mint any token, including one for a more privileged
+audience. `Jwt:Key` alone stays correct for a self-contained app that issues and validates its own tokens.
+
+```csharp
+var keys = JwtKeyMaterial.FromConfiguration(builder.Configuration);
+builder.Services.AddAuthentication().AddJwtBearer(o =>
+{
+    o.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidIssuer = issuer, ValidAudience = audience, ValidateLifetime = true,
+    };
+    keys.ApplyTo(o.TokenValidationParameters);   // keys + the pinned algorithm list
+});
+```
+
+- `ApplyTo` pins `ValidAlgorithms` to the algorithms of the keys actually loaded, so a token cannot pick
+  its own (`none`, or `HS256` presented against the public key).
+- Once an asymmetric key is configured, **`Jwt:Key` is no longer accepted for validation**, even if it is
+  still set. `Jwt:AcceptLegacySymmetric=true` re-admits it for a migration window; turn it off when the
+  tokens signed with the old key have expired.
+- Startup fails on: more than one of the three asymmetric settings, a `Jwt:JwksUrl` that is not an
+  absolute https URL, a private key in `Jwt:PublicKeyPem`, a key that is not
+  P-256, or the legacy window switched on with no `Jwt:Key`.
+- The DB-backed configuration source cannot supply `Jwt:SigningKeyPem`, `Jwt:PublicKeyPem`,
+  `Jwt:JwksUrl` or `Jwt:AcceptLegacySymmetric` (they are protected keys, like `Jwt:Key`).
+
+#### Publishing and following keys (JWKS)
+
+An issuer publishes the public half of its signing key as a JSON Web Key Set; `ExportJwks()` returns the
+document (never private or symmetric material — a host signing with `Jwt:Key` publishes an empty set):
+
+```csharp
+var jwks = keys.ExportJwks();
+app.MapGet("/.well-known/jwks.json", () => Results.Content(jwks, "application/json")).AllowAnonymous();
+```
+
+A validator sets `Jwt:JwksUrl` to that address instead of copying a PEM. What to expect:
+
+| Situation | Behaviour |
+|---|---|
+| Normal operation | The key set is fetched on first use, cached, and re-fetched hourly. |
+| A token arrives with an unknown `kid` (the issuer rotated) | **That request gets 401** and triggers a re-fetch (at most one every 30 s); the next request is accepted. To rotate without that one 401, publish the new key before signing with it. |
+| The issuer has withdrawn a key | It stops being accepted as soon as the set is re-fetched — there is no fallback to the previous set. |
+| The issuer cannot be reached, a key set was fetched earlier | The current set keeps working. |
+| The issuer cannot be reached, nothing was fetched yet | Every token is refused (401) until a fetch succeeds. |
+| The document contains other keys (symmetric, RSA, another curve, a private part, `use` ≠ `sig`) | They are ignored; a document with no usable key counts as a failed fetch. |
+
+`FromConfiguration(configuration, jwksClient)` takes the `HttpClient` used for the fetch — pass one to set
+a timeout or, in development, to accept a local certificate.
+
+- **`Jwt:AdditionalPublicKeysPem`** (up to four `PUBLIC KEY` blocks, beside `Jwt:SigningKeyPem` or
+  `Jwt:PublicKeyPem`) lists further accepted keys. An issuer also publishes them, which is how a signing
+  key is rotated without a failed request: publish the next key first, switch, keep the previous one
+  until its tokens have expired — see [Secret rotation](../secret-rotation.md). It is refused beside
+  `Jwt:JwksUrl` or a symmetric-only key, and a database config row cannot supply it.
+- Generate a pair with [`asdamir secrets new-signing-key`](../cli.md#secrets-new-signing-key). A PEM stored
+  on one line with literal `\n` separators (an environment variable) is read as-is.
+
+#### An app's own service key
+
+A Gateway also authenticates *itself* to the control plane — for the central log and the agent-audit
+ledger — with a short-lived service token (`AppLogServiceToken`, `AgentAuditServiceToken`). Signed with
+the shared `Jwt:Key`, such a token could be produced by any holder of that key for any app. With a
+**service key**, it can only speak for the app that owns the key:
+
+- The app generates its own EC P-256 pair (`asdamir secrets new-signing-key`). The private key goes to
+  that app's Gateway as **`App:ServiceKeyPem`** (a secret; a database config row cannot supply it). The
+  public key is registered with the control plane against the app.
+- `AppServiceKey.FromPem(pem).SigningCredentials` signs ES256, and both `Mint` methods have an overload
+  taking those credentials. The two sinks do this for you: set `AppLogForwardOptions.ServiceKeyPem` /
+  `AgentAuditOptions.ServiceKeyPem` (`AgentAudit:ServiceKeyPem`) and they stop using the shared key.
+- The control plane verifies a service token against the key registered **for the `app_code` the token
+  names** — another app's key does not verify it, and neither does the control plane's own key.
+
+| Situation | Behaviour |
+|---|---|
+| The app has no key registered | Its service tokens under the shared key are accepted, as before. |
+| The app has a key registered | Only tokens signed with that key are accepted. A token for this app under the shared key is refused. |
+| A token is signed with a key that is not registered for that app | 401. |
+| Two keys are registered | Both are accepted — register the new key beside the old one, switch the Gateway, then remove the old one (up to four keys). |
+| A key is removed, or the app is deactivated | Its tokens are refused from the next request. |
+| `App:ServiceKeyPem` is set but unreadable | The sink sends nothing and reports it; it does **not** fall back to the shared key. |
+
+A service key signs service tokens only: it cannot produce an end-user or an operator token.
+
+#### The orchestration token
+
+When the control plane calls a managed app's `gateway/admin/*` endpoints it presents an **orchestration
+token** (`OrchestrationToken`, Core). It signs the token with its own key, so the Gateway verifies it
+against the same published keys as a user token — no secret is exchanged and the Gateway stores none.
+
+| Property | Value | Why |
+|---|---|---|
+| Audience | `Jwt:OrchestrationAudience` (default `asdamir-app-orchestration`) | Not the user audience and not the console audience: no user endpoint and no control-plane endpoint accepts it. |
+| `token_use` | `orchestration` | Marks what it is. |
+| `app_code` | the one app being called | A Gateway that receives it cannot replay it against another app. |
+| `client_id` | `admin-console` by default | The Gateway's `AppMgmtClient` policy authorizes this value (`AdminConsole:ClientId`). |
+| Lifetime | 5 minutes | |
+
+The token carries no tenant (`tid`): the control plane belongs to none. Under strict tenancy an endpoint it
+calls must be marked `[AllowWithoutTenant]`, or the tenant middleware answers 403 `tenant.unresolved` after
+authentication succeeds — see [multi-tenancy](multi-tenancy.md#there-is-no-default-tenant).
+
+A Gateway calls `OrchestrationToken.IsFor(principal, appCode, audience)` for any token carrying
+`client_id` and fails authentication when it returns `false`; a generated Gateway does this already.
+
+#### What a generated app is given
+
+`asdamir new app` wires the above for you:
+
+| App | Token validation | Service key |
+|---|---|---|
+| Commercial (default) | No key of its own. With none of `Jwt:JwksUrl` / `Jwt:PublicKeyPem` / `Jwt:Key` set, the Gateway uses `<AdminConsole:BaseUrl>/.well-known/jwks.json`. | Generated: the private key is in the Gateway's user-secrets (`App:ServiceKeyPem`), the public key in `register_<app>.sql`. |
+| Free (`--mode free`) | Its own `Jwt:Key` — it issues and validates its own tokens, and shares the key with nothing. | None: there is no control plane to authenticate to. |
+
+A commercial Gateway therefore holds nothing that can mint a user or operator token. It needs the control
+plane to sign with `Jwt:SigningKeyPem`; a control plane still signing with `Jwt:Key` publishes no key and
+the Gateway rejects every token.
+
 ## Refresh tokens
 
 The management app demonstrates the recommended pattern (see `Asdamir.AdminConsole.Api/Auth`):

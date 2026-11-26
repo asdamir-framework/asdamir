@@ -20,17 +20,19 @@ management schema into its own database.
 | Apps / users / roles / permissions / menus (+ their config & localization) | **AsdamirVault** DB, administered from **AppManagement** |
 | This app's own business data | **this app's own database** (starts with a single `DemoItems` table) |
 
-The app only **validates** the JWT AppManagement issues (same signing key). To add a menu
+The app only **validates** the JWT AppManagement issues: the Gateway holds no signing key and trusts the
+public keys AppManagement publishes at `<AdminConsole:BaseUrl>/.well-known/jwks.json`. To add a menu
 item, a user, a permission or a role for this app, do it in **AppManagement** — it writes to
 AsdamirVault, scoped to this app's `AppId`.
 
 ## First-time setup
 
 ```bash
-# 1) Dev secret — the SAME 64+ byte JWT signing key AppManagement uses (never in appsettings.json):
-cd src/{{ GatewayProject }}
-dotnet user-secrets set "Jwt:Key" "<shared key>"
-cd ../..
+# 1) Dev secrets (never in appsettings.json). `asdamir new app` already wrote them to the Gateway's
+#    user-secrets: Security:EncryptionKey, ConnectionStrings:Default and App:ServiceKeyPem — this app's OWN
+#    service private key (its public half is in db/admin-onboarding/register_{{ AppNameLower }}.sql).
+#    There is NO shared Jwt:Key to copy. AppManagement must sign with Jwt:SigningKeyPem
+#    (`asdamir secrets new-signing-key`); if it still signs with a shared key, every call after login is a 401.
 
 # 2) Build + test
 dotnet build {{ AppName }}.sln

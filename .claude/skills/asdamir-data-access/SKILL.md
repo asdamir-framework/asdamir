@@ -53,6 +53,15 @@ The framework resolves the request's tenancy (`AddMultiTenancy()` + `app.UseMult
   AppId-scoped proc/store. A request with no app selected = admin-pool scope (`AppId` null).
 - **Multi-company:** `IDbConnectionFactory` is **company-aware** — it routes to the right company DB via
   `ICompanyCatalog` using the JWT `company` claim. So your store hits the correct DB without per-call work.
+- **There is no default tenant.** `ITenantContext.TenantId` THROWS when no tenant was resolved (403
+  `tenant.unresolved`; 500 `TenancyNotConfiguredException` if `UseMultiTenancy()` was never wired). The tenant
+  comes only from the token's signed `tid` claim, which the ISSUER stamps (`IssueTokens(..., tenantId:)` —
+  `TenantIds.Single` for a single-tenant app). An app-wide endpoint for a caller that belongs to no tenant
+  (the control plane's orchestration token) is marked `[AllowWithoutTenant]`: the request is let through with
+  an unresolved tenant, and a `TenantId` read behind it still throws. Where the tenant is advisory (cache key, log tag) check
+  `ITenantContext.IsResolved` first. A background job has no request: set the tenant on the scope's
+  `TenantContext` before touching a tenant-scoped store (as `BackgroundRunProcessor` does). Never write
+  `?? "default"`.
 - These contexts are **scoped** — inject them per request; never capture them in a singleton (use the
   singleton `*Data` holder pattern below for state that must persist).
 

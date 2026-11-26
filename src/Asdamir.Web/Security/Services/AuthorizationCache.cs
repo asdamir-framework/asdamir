@@ -147,7 +147,7 @@ public class AuthorizationCache : IAuthorizationCache, IDisposable
 
     private string GetCacheKey(string userId, string route)
     {
-        var tenant = _tenant?.TenantId ?? "default";
+        var tenant = _tenant is { IsResolved: true } t ? t.TenantId : "-";
         return $"{tenant}:{userId}:{NormalizeRoute(route)}";
     }
 

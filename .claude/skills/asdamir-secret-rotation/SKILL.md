@@ -1,6 +1,6 @@
 ---
 name: asdamir-secret-rotation
-description: Use when rotating a secret — the at-rest encryption key (Security:EncryptionKey), the JWT signing key (Jwt:Key), or a managed app's client secret. The EncryptionKey case is destructive without a re-encryption pass; this drives the safe procedure. Trigger on "rotate key/secret", "change the encryption key", "key compromised", "new signing key".
+description: Use when rotating a secret — the at-rest encryption key (Security:EncryptionKey), the JWT signing key (Jwt:SigningKeyPem, or a shared/free-mode Jwt:Key), an app's service key, or a managed app's client secret. The EncryptionKey case is destructive without a re-encryption pass; this drives the safe procedure. Trigger on "rotate key/secret", "change the encryption key", "key compromised", "new signing key".
 ---
 
 # Asdamir secret / key rotation
@@ -28,9 +28,27 @@ Not covered by the tool (do manually): `appsettings.json` Companies connection s
 re-encrypt with `asdamir secrets encrypt`) and each managed app's own `IsEncrypted=1` config (run
 `rotate-key` against that app's DB too).
 
-## Jwt:Key (token signing) — coordinated
-`Jwt:Key` is **shared** by AppManagement and every managed app Gateway. Roll the new `Jwt__Key` to **all**
-tiers in the same window and restart. Live access tokens stop validating; clients silently exchange their
+## Jwt:SigningKeyPem (ES256, 2.0 line) — issuer only
+`asdamir secrets new-signing-key --out <dir>` generates the pair. The private key goes to the ISSUER's
+`Jwt:SigningKeyPem`; Gateways hold no key and follow `/.well-known/jwks.json` (`Jwt:JwksUrl`).
+**Planned rotation, no failed request:** (1) put the NEW public key in `Jwt:AdditionalPublicKeysPem`,
+restart, wait ≥1 h; (2) switch `Jwt:SigningKeyPem` to the new key and list the OLD public key there;
+(3) after the access-token lifetime, remove the old one. **After a leak:** new key, nothing in
+`AdditionalPublicKeysPem`, clear `dbo.RefreshTokens`.
+**Moving a deployment off the shared `Jwt:Key`** is three ordered steps — Gateways accept both
+(`Jwt:JwksUrl` + `Jwt:Key` + `Jwt:AcceptLegacySymmetric=true`, plus their service key) → AppManagement
+switches (`Jwt:SigningKeyPem`, keeps the window) → the shared key is removed everywhere and discarded.
+Full procedure: `docs/secret-rotation.md`. Never do step 2 before every Gateway finished step 1.
+
+## App:ServiceKeyPem (a managed app's service key) — per-app, no gap
+Generate a new pair, then: (1) register BOTH public keys (`PUT api/admin/apps/{appId}/service-key`, two
+PEM blocks), (2) set the new private key on the Gateway (`App:ServiceKeyPem`, and
+`AgentAudit:ServiceKeyPem` if used) and restart it, (3) register the new public key alone. After a leak,
+skip step 1: register only the new key — the old one is refused from the next request.
+
+## Jwt:Key (free-mode app, or a deployment not yet migrated) — coordinated
+A free-mode app holds its own `Jwt:Key`. In a not-yet-migrated deployment it is still **shared** by
+AppManagement and every Gateway: roll the new `Jwt__Key` to **all** tiers in the same window and restart. Live access tokens stop validating; clients silently exchange their
 refresh token (stored as a SHA-256 hash, so it survives) for a new one. To force every session to
 re-login (suspected compromise), also clear `dbo.RefreshTokens`. No data to re-encrypt.
 
@@ -49,4 +67,5 @@ asdamir secrets encrypt --value 'the-plaintext'      # prints v2:…  (no `decry
 - **Don't switch `Security:EncryptionKey` before running `rotate-key --apply`** — existing ciphertext
   becomes unreadable.
 - **Don't pass keys as flags / commit them** — use the `ASDAMIR_*` env vars; never write them to a file.
-- **Don't diverge `Jwt:Key`** across tiers — roll all of them together.
+- **Don't diverge a still-shared `Jwt:Key`** across tiers — roll all of them together.
+- **Don't reuse the old shared key** after the migration, and don't leave `Jwt:AcceptLegacySymmetric` on.

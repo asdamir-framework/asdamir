@@ -80,7 +80,7 @@ public static class AppCommand
             description: "Opt-in: scaffold an end-user billing/payment page. Adds a Payment page (Server) plus the billing menu/permission/localization seeds. In commercial mode (Model A) the Gateway proxies gateway/billing/* → AppManagement and the billing data + Paddle secret live centrally in AsdamirVault; in free mode (Model B) the Gateway serves billing LOCALLY from the app's OWN DB via the Asdamir.Payments package (LocalDbBillingStore + payment rails + webhook). Default off: without it the app is unchanged.",
             getDefaultValue: () => false);
         var noSecretsOpt = new Option<bool>(new[] { "--no-secrets" },
-            description: "Skip auto-configuring the Gateway's dev user-secrets (CSPRNG Jwt:Key [free mode] + Security:EncryptionKey + ConnectionStrings:Default). By default `new app` writes them so the app is run-ready; pass this to manage secrets yourself.",
+            description: "Skip auto-configuring the Gateway's dev user-secrets (CSPRNG Jwt:Key [free mode] / the app's service key App:ServiceKeyPem [commercial] + Security:EncryptionKey + ConnectionStrings:Default). By default `new app` writes them so the app is run-ready; pass this to manage secrets yourself.",
             getDefaultValue: () => false);
         var noDbOpt = new Option<bool>(new[] { "--no-db" },
             description: "Skip creating the database + applying migrations. By default (when a SQL password was supplied) `new app` runs `db apply --create-database` so the app is ready to run; pass this to scaffold files only (offline / CI / review-first).",
@@ -278,10 +278,20 @@ public static class AppCommand
         var adminPassword = FirstNonEmpty(raw.AdminPassword, SeedPasswordHasher.GeneratePassword);
         var adminPasswordHash = SeedPasswordHasher.Hash(adminPassword);
 
+        // Commercial: the app gets its OWN service key (EC P-256). The private half goes to the Gateway's
+        // user-secrets (App:ServiceKeyPem) and signs the tokens the Gateway presents to AppManagement
+        // (central log forwarding); the public half is written into register_<app>.sql, so AppManagement
+        // verifies those tokens against THIS app's key only. With --no-secrets nothing is generated: a
+        // registered public key whose private half the Gateway does not hold would stop log forwarding.
+        var serviceKey = !isFreeMode && !raw.NoSecrets ? SecretsCommand.GenerateSigningKeyPair() : default;
+        var hasServiceKey = serviceKey.PrivatePem is not null;
+
         var now = DateTime.UtcNow;
         var model = new
         {
             AppName = name,
+            HasServiceKey = hasServiceKey,
+            ServicePublicKeyPem = hasServiceKey ? serviceKey.PublicPem.Trim() : "",
             // SQL-escaped: every template that uses AdminEmail places it inside an N'…' literal
             // (register_<app>.sql / the free-mode management seed). An apostrophe is legal in an address
             // (o'brien@example.com) and used to terminate the literal, breaking the seed. The console output
@@ -542,15 +552,15 @@ public static class AppCommand
 
         // Auto-configure the Gateway's dev user-secrets so the app is run-ready with no hand-editing (unless
         // --no-secrets). Secrets NEVER go to appsettings.json — always to user-secrets. Free mode: the Gateway
-        // issues + validates its OWN JWT, so a fresh CSPRNG Jwt:Key is correct. Commercial: the Jwt:Key MUST
-        // equal AppManagement's signing key (the Gateway only validates tokens AppManagement issued) — the CLI
-        // can't know that, so it's left for the user. ConnectionStrings:Default is written only when a real
+        // issues + validates its OWN JWT, so a fresh CSPRNG Jwt:Key is correct. Commercial: the Gateway holds
+        // NO token-signing key — it validates against the public keys AppManagement publishes (JWKS) — and
+        // gets its own service key (App:ServiceKeyPem) instead. ConnectionStrings:Default is written only when a real
         // password was supplied (masked prompt or a full --connection-string); an empty password keeps the
         // manual placeholder instruction.
         var gatewayCsproj = Path.Combine(appRoot, "src", gatewayProject, $"{gatewayProject}.csproj");
         var secrets = raw.NoSecrets
             ? SecretsResult.Skipped
-            : ConfigureSecrets(gatewayCsproj, isFreeMode, hasRealSecret, connString);
+            : ConfigureSecrets(gatewayCsproj, isFreeMode, hasRealSecret, connString, serviceKey.PrivatePem);
 
         // Create the database + apply migrations so the app is ready to run (unless --no-db). Reuses the SAME
         // journaled runner as `asdamir db apply --create-database` (no duplication) — CREATE DATABASE is
@@ -621,11 +631,24 @@ public static class AppCommand
         Console.WriteLine("Next steps:");
         var step = 1;
         Console.WriteLine($"  {step++}. cd {name}");
-        // Commercial: the Jwt:Key MUST match AppManagement's signing key — the CLI can't know it, so it stays
-        // manual (on BOTH tiers). ConnectionStrings + EncryptionKey were auto-configured above (when possible).
-        Console.WriteLine($"  {step++}. Set Jwt:Key to match AppManagement's (the Gateway validates tokens AppManagement issued):");
-        Console.WriteLine($"     cd src/{gatewayProject} && dotnet user-secrets set \"Jwt:Key\" \"<AppManagement's Jwt:Key>\" && cd ../..");
+        // Commercial: no shared Jwt:Key. The Gateway validates tokens against the public keys AppManagement
+        // publishes at <AdminConsole:BaseUrl>/.well-known/jwks.json, so there is nothing to copy between hosts.
         PrintManualSecretSteps(secrets, hasRealSecret, isFreeMode, gatewayProject, connSecretExample, ref step);
+        if (hasServiceKey && !secrets.ServiceKeySet)
+        {
+            // The public key is already in register_<app>.sql but its private half never reached the Gateway.
+            Console.WriteLine($"  {step++}. ⚠️  The app's service key could not be stored. Before registering, generate a pair and wire both halves:");
+            Console.WriteLine($"       asdamir secrets new-signing-key --out <dir>");
+            Console.WriteLine($"       private key → src/{gatewayProject}: dotnet user-secrets set \"App:ServiceKeyPem\" \"$(cat <dir>/{SecretsCommand.SigningKeyFileName})\"");
+            Console.WriteLine($"       public key  → replace @ServicePublicKeyPem in db/admin-onboarding/register_{model.AppNameLower}.sql");
+        }
+        else if (!hasServiceKey)
+        {
+            Console.WriteLine($"  {step++}. (Optional, recommended) Give the app its own service key — without it central log forwarding is off:");
+            Console.WriteLine($"       asdamir secrets new-signing-key --out <dir>");
+            Console.WriteLine($"       private key → src/{gatewayProject}: dotnet user-secrets set \"App:ServiceKeyPem\" \"$(cat <dir>/{SecretsCommand.SigningKeyFileName})\"");
+            Console.WriteLine($"       public key  → register it in AppManagement: PUT api/admin/apps/<appId>/service-key");
+        }
         if (!dbProvisioned)
         {
             Console.WriteLine($"  {step++}. asdamir db apply --create-database --migrations db/migrations   # creates the app's own (business) DB (reads ConnectionStrings:Default from the secret, or pass -S -d -U -P)");
@@ -637,6 +660,8 @@ public static class AppCommand
         Console.WriteLine($"       asdamir secrets encrypt --value \"<a raw client secret, 20+ chars>\" --key \"<AppManagement's Security:EncryptionKey>\"");
         Console.WriteLine($"  {step++}. Register + seed in AppManagement: run db/admin-onboarding/register_{model.AppNameLower}.sql");
         Console.WriteLine($"     against AsdamirVault — registers the app + seeds its users/roles/permissions/menus/config/localization (AppId-scoped).");
+        Console.WriteLine($"  {step++}. AppManagement must sign with an asymmetric key (Jwt:SigningKeyPem — `asdamir secrets new-signing-key`): this Gateway");
+        Console.WriteLine($"     trusts only the keys it publishes. If AppManagement still signs with a shared Jwt:Key, every call after login is a 401.");
         Console.WriteLine($"  {step++}. ./restart-{model.AppNameLower}.sh              # starts both tiers → open {model.ServerUrl}/ (the UI)");
         Console.WriteLine();
         Console.WriteLine($"  Optional: dotnet build {name}.sln && dotnet test {name}.sln  ·  add a feature: asdamir new feature <Name> --fields \"...\"  ·  undo: asdamir rollback app {name}");
@@ -646,15 +671,15 @@ public static class AppCommand
     }
 
     // ── Auto-configure the Gateway's dev user-secrets (run-ready out of the box) ────────────────────────
-    private readonly record struct SecretsResult(bool Attempted, bool JwtSet, bool EncSet, bool ConnSet, string? Error)
+    private readonly record struct SecretsResult(bool Attempted, bool JwtSet, bool EncSet, bool ConnSet, bool ServiceKeySet, string? Error)
     {
-        public static readonly SecretsResult Skipped = new(false, false, false, false, null);
+        public static readonly SecretsResult Skipped = new(false, false, false, false, false, null);
     }
 
-    private static SecretsResult ConfigureSecrets(string gatewayCsproj, bool isFreeMode, bool hasRealSecret, string connStringWithSecret)
+    private static SecretsResult ConfigureSecrets(string gatewayCsproj, bool isFreeMode, bool hasRealSecret, string connStringWithSecret, string? serviceKeyPem)
     {
         if (!File.Exists(gatewayCsproj))
-            return new SecretsResult(true, false, false, false, $"Gateway csproj not found ({gatewayCsproj})");
+            return new SecretsResult(true, false, false, false, false, $"Gateway csproj not found ({gatewayCsproj})");
 
         var errors = new List<string>();
         bool Set(string key, string value)
@@ -664,15 +689,17 @@ public static class AppCommand
             return ok;
         }
 
-        // Free mode → the Gateway owns its JWT, so a fresh 64-byte CSPRNG key is correct. Commercial → the key
-        // must equal AppManagement's, which we don't have; skip it (left as a manual step in next-steps).
+        // Free mode → the Gateway owns its JWT, so a fresh 64-byte CSPRNG key is correct. Commercial → the
+        // Gateway holds no token-signing key at all (it validates against AppManagement's published keys).
         var jwtSet = isFreeMode && Set("Jwt:Key", NewSecret(64));
+        // Commercial → the app's own service private key (signs the tokens it presents to AppManagement).
+        var serviceKeySet = serviceKeyPem is not null && Set("App:ServiceKeyPem", serviceKeyPem);
         // At-rest encryption key (≥32 chars) — REQUIRED by the Gateway; a fresh CSPRNG key is fine for both modes.
         var encSet = Set("Security:EncryptionKey", NewSecret(32));
         // The connection string carries the real password only when one was supplied; otherwise it's left manual.
         var connSet = hasRealSecret && Set("ConnectionStrings:Default", connStringWithSecret);
 
-        return new SecretsResult(true, jwtSet, encSet, connSet, errors.Count == 0 ? null : string.Join("; ", errors));
+        return new SecretsResult(true, jwtSet, encSet, connSet, serviceKeySet, errors.Count == 0 ? null : string.Join("; ", errors));
     }
 
     /// <summary>A base64 CSPRNG secret from <paramref name="bytes"/> random bytes (64 → an 88-char Jwt:Key,
@@ -714,6 +741,7 @@ public static class AppCommand
         if (!s.Attempted) return;  // --no-secrets → say nothing (the manual steps are printed below)
         var set = new List<string>();
         if (s.JwtSet) set.Add("Jwt:Key");
+        if (s.ServiceKeySet) set.Add("App:ServiceKeyPem");
         if (s.EncSet) set.Add("Security:EncryptionKey");
         if (s.ConnSet) set.Add("ConnectionStrings:Default");
         if (set.Count > 0)

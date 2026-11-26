@@ -249,6 +249,9 @@ INSERT INTO @Seed ([Key],[Culture],[Value]) VALUES
     (N'App.Dash.StatusHint',          N'en-US', N'Gateway + UI online'),
     (N'App.Dash.StatusHint',          N'ru-RU', N'Gateway + интерфейс онлайн'),
     -- Generic user-facing error fallback (error-display contract — see CLAUDE.md).
+    (N'error.tenant.unresolved',      N'tr-TR', N'Oturumunuz bir kiracıya bağlı değil. Lütfen yeniden giriş yapın.'),
+    (N'error.tenant.unresolved',      N'en-US', N'Your session is not bound to a tenant. Please sign in again.'),
+    (N'error.tenant.unresolved',      N'ru-RU', N'Ваш сеанс не привязан к арендатору. Пожалуйста, войдите снова.'),
     (N'Common.UnexpectedError',       N'tr-TR', N'Beklenmeyen bir hata oluştu, lütfen tekrar deneyin.'),
     (N'Common.UnexpectedError',       N'en-US', N'An unexpected error occurred. Please try again.'),
     (N'Common.UnexpectedError',       N'ru-RU', N'Произошла непредвиденная ошибка. Пожалуйста, попробуйте ещё раз.'),

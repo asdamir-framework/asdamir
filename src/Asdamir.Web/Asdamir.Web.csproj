@@ -31,7 +31,11 @@
          localization client skips TLS validation only in Development. AsdamirGrid now ships its own export
          script and AuthenticationGuard's script is served from the package. Error toasts are role=alert and
          AsdamirModal closes on Escape. No public type removed. -->
-    <Version>2.2.0</Version>
+    <!-- 2.3.0 (MINOR): requires Asdamir.Core 2.0.0 (reads ITenantContext.IsResolved). The authorization
+         cache, the authorization audit, the rate-limit key and ApiStringLocalizer treat the tenant as
+         advisory and tag a missing one "-" where they tagged "default"; AuditLoggingMiddleware reads the
+         tid claim. No public type removed. -->
+    <Version>2.3.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Web/UI for Asdamir: Blazor + FluentUI component library (DataGrid, dialogs, layout), API-backed localization (3 cultures), and admin pool security (JWT + DataProtection + cookie/bearer handler).</Description>
     <PackageTags>blazor;fluentui;localization;authorization;jwt;data-protection;ui-components</PackageTags>

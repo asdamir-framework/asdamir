@@ -25,7 +25,12 @@
     <!-- MINOR bump 1.9.0 -> 1.10.0: fixes (cron day-of-week ranges, exception middleware on a started
          response, correlation-id validation, masked phone/e-mail in WhiteListService logs) plus one additive
          option, AgentAuditOptions.SpoolReplayInterval, consumed by Asdamir.Data 1.6.0. No type removed. -->
-    <Version>1.10.0</Version>
+    <!-- MAJOR bump 1.10.0 -> 2.0.0. BREAKING: there is no default tenant (a missing tenant is refused,
+         TenantContext.TenantId throws when unset) and IJwtService.IssueTokens gained a tenantId parameter
+         (binary-breaking for callers compiled against 1.x). New: asymmetric token signing (JwtKeyMaterial,
+         ES256, JWKS publication and validation, AppServiceKey, OrchestrationToken) and AllowWithoutTenant.
+         No public type removed. Upgrade order is in CHANGELOG.md. -->
+    <Version>2.0.0</Version>
     <Description>Core foundation for Asdamir: shared models, abstractions, modules, error handling, and Serilog/Polly wiring.</Description>
     <PackageTags>blazor;fluentui;shared;models;dtos;constants;utilities;abstractions;error-handling;modules</PackageTags>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
@@ -74,6 +79,7 @@
     <!-- Shared/DTO/JWT/validation -->
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <!-- Configuration + Options + DI primitives (from merged Modules/Abstractions/ErrorHandling) -->
     <!-- ErrorHandling: Polly retry/circuit policies + Serilog structured logging -->

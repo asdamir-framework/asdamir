@@ -82,7 +82,7 @@ public sealed class ApiStringLocalizer : IStringLocalizer
 
     private string CacheKey(string culture)
     {
-        var tenantId = _tenantContext?.IsMultiTenant == true ? _tenantContext.TenantId : "global";
+        var tenantId = _tenantContext is { IsMultiTenant: true, IsResolved: true } t ? t.TenantId : "global";
         return $"loc:{_cacheGeneration.Current}:{culture}:{tenantId}";
     }
 

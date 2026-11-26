@@ -76,7 +76,7 @@ public sealed class BackgroundRunProcessor(
         var sp = scope.ServiceProvider;
 
         // Re-establish the run's tenant scope inside this background scope. The scoped
-        // ITenantContext falls back to "default" without an HttpContext, so set it explicitly.
+        // ITenantContext is UNRESOLVED without an HttpContext (reading it would throw), so set it explicitly.
         if (sp.GetRequiredService<ITenantContext>() is TenantContext tc)
         {
             tc.TenantId = item.TenantId;

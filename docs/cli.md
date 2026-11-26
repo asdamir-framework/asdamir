@@ -19,11 +19,11 @@ dotnet tool install -g Asdamir.Tools
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `1.10.0` | — |
-| `Asdamir.Data` | `1.6.0` | — |
+| `Asdamir.Core` | `2.0.0` | — |
+| `Asdamir.Data` | `2.0.0` | — |
 | `Asdamir.Payments` | `1.3.0` | — |
-| `Asdamir.Tools` | `1.9.0` | — |
-| `Asdamir.Web` | `2.2.0` | — |
+| `Asdamir.Tools` | `2.0.0` | — |
+| `Asdamir.Web` | `2.3.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -262,10 +262,23 @@ cd MyApp && ./restart-myapp.sh             # starts both tiers → open the Serv
 - **`--no-secrets`**: skip the user-secrets auto-config (manage them yourself); combine with `--no-db` for a
   pure files-only scaffold. **`--yes`/CI**: a password only via `--connection-string`; the CSPRNG keys are still
   generated.
-- **Commercial mode** is the same, minus one thing the CLI can't know: `Jwt:Key` **must equal AppManagement's**
-  signing key, so it stays a manual step (the Gateway only validates tokens AppManagement issued);
-  `Security:EncryptionKey` + `ConnectionStrings:Default` + the DB are still auto-set-up, and you also run
-  `register_<app>.sql` against AsdamirVault.
+- **Commercial mode** is the same, with different keys: the Gateway gets **no `Jwt:Key`**. It only validates
+  the tokens AppManagement issued, against the public keys AppManagement publishes at
+  `<AdminConsole:BaseUrl>/.well-known/jwks.json`, so there is no key to copy between hosts. Instead `new app`
+  generates the app's **own service key**: the private half goes to the Gateway's user-secrets as
+  `App:ServiceKeyPem` (it signs the tokens the Gateway presents to AppManagement for central log forwarding),
+  the public half is written into `register_<app>.sql`. `Security:EncryptionKey` + `ConnectionStrings:Default`
+  + the DB are still auto-set-up, and you also run `register_<app>.sql` against AsdamirVault.
+
+  | Situation | What happens |
+  |---|---|
+  | AppManagement signs with `Jwt:SigningKeyPem` (ES256) | The Gateway validates its tokens with no key configured. |
+  | AppManagement still signs with a shared `Jwt:Key` | It publishes no key, so the Gateway rejects every token: login succeeds, every call after it is a 401. Give AppManagement a signing key (`asdamir secrets new-signing-key`), or set the same `Jwt:Key` on the Gateway (the pre-2.0 mode, used only when it is set). |
+  | AppManagement is unreachable when the Gateway starts | No token validates until the first successful key fetch. |
+  | AppManagement calls the app's `gateway/admin/*` | The Gateway accepts AppManagement's orchestration token: its own audience (`Jwt:OrchestrationAudience`), `token_use=orchestration`, and **this** app's code. A `client_id` token that is anything else fails authentication. |
+  | `--no-secrets` | No service key is generated and none is registered; central log forwarding stays off until you add one (`new app` prints the steps). |
+  | `register_<app>.sql` is re-run | A key already registered for the app is left as it is. |
+  | `AdminConsole:BaseUrl` is not `https` | The Gateway refuses to start: keys are never fetched over plain http. Pin one key with `Jwt:PublicKeyPem` instead. |
 
 > `asdamir db apply` isn't going away — it's what you run over the app's lifetime (after `new entity`, when a
 > teammate clones the repo, in CI, in prod). `new app` just runs it **once** for you at creation.
@@ -1329,8 +1342,9 @@ company is taken from the token's `company` claim. See the AppManagement console
 
 ## `secrets`
 
-Tooling for the at-rest encryption key (`Security:EncryptionKey`). Keys are read from environment
-variables by default (so they stay out of shell history); flags override for interactive use.
+Tooling for the at-rest encryption key (`Security:EncryptionKey`) and for JWT signing keys. Encryption
+keys are read from environment variables by default (so they stay out of shell history); flags override
+for interactive use.
 
 ### `secrets rotate-key`
 
@@ -1361,6 +1375,21 @@ a stored secret back.)
 export ASDAMIR_ENCRYPTION_KEY='<key>'
 asdamir secrets encrypt --value 'the-plaintext'     # or: echo 'the-plaintext' | asdamir secrets encrypt
 ```
+
+### `secrets new-signing-key`
+
+Generates an EC P-256 key pair for `ES256` token signing. The **private** key is the issuer's
+`Jwt:SigningKeyPem`; the **public** key is every validating host's `Jwt:PublicKeyPem`. See
+[Authentication → Signing keys](fundamentals/authentication.md#signing-keys-symmetric-or-asymmetric).
+
+```bash
+asdamir secrets new-signing-key --out ./keys   # writes jwt-signing-key.pem (owner-only) + jwt-public-key.pem
+asdamir secrets new-signing-key                # prints both PEMs instead
+```
+
+With `--out`, existing key files are not overwritten unless `--force` is passed (replacing a signing key
+in use invalidates every token it signed). Exit codes: `0` written/printed · `1` generation or I/O failure ·
+`64` usage, including "key files already exist".
 
 Full procedures (incl. `Jwt:Key` and per-app client-secret rotation): **[Secret Management & Key Rotation](secret-rotation.md)**.
 

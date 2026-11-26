@@ -51,6 +51,17 @@ public sealed class DatabaseConfigurationOptions
     public ISet<string> ProtectedKeys { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "Jwt:Key",
+        // The asymmetric key settings decide WHO can mint an accepted token: a row supplying a public key
+        // swaps the trusted issuer, and one turning the legacy window on re-admits the old shared key.
+        "Jwt:SigningKeyPem",
+        "Jwt:PublicKeyPem",
+        "Jwt:AdditionalPublicKeysPem",
+        "Jwt:OrchestrationAudience",
+        "Jwt:JwksUrl",
+        "Jwt:AcceptLegacySymmetric",
+        // The app's own service key: a row supplying one would have the app sign as a key someone else holds.
+        "App:ServiceKeyPem",
+        "AgentAudit:ServiceKeyPem",
         "Security:EncryptionKey",
         "ConnectionStrings:*",
         "Persistence:UseInMemory",

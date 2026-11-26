@@ -59,17 +59,14 @@ public sealed class HeaderTenantResolver : ITenantResolver
     /// <returns>
     /// A task that represents the asynchronous operation.
     /// The task result contains a <see cref="TenantContext"/> with the tenant ID from the header,
-    /// or "default" if the header is missing or empty.
+    /// or an unresolved context if the header is missing or empty
+    /// (<see cref="TenantMiddleware"/> then applies <see cref="TenancyOptions.MissingTenant"/>).
     /// </returns>
     public Task<TenantContext> ResolveAsync(HttpContext ctx, CancellationToken ct = default)
     {
         ctx.Request.Headers.TryGetValue(_headerName, out var id);
-        var tc = new TenantContext
-        {
-            TenantId = string.IsNullOrWhiteSpace(id) ? "default" : id.ToString(),
-            TenantName = null,
-            IsMultiTenant = true
-        };
+        var tc = new TenantContext { TenantName = null, IsMultiTenant = true };
+        if (!string.IsNullOrWhiteSpace(id)) tc.TenantId = id.ToString();
         return Task.FromResult(tc);
     }
 }

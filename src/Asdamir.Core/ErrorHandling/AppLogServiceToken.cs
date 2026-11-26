@@ -46,7 +46,32 @@ public static class AppLogServiceToken
         if (string.IsNullOrWhiteSpace(appCode))
             throw new ArgumentException("An app code is required to mint an app-log token.", nameof(appCode));
 
-        var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(signingKey));
+        return Mint(
+            new SigningCredentials(new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(signingKey)),
+                SecurityAlgorithms.HmacSha256),
+            issuer, audience, appCode, lifetime);
+    }
+
+    /// <summary>
+    /// Mints the same token signed with <paramref name="credentials"/> — normally the app's OWN service key
+    /// (<see cref="Asdamir.Core.Services.AppServiceKey"/>, ES256), which the control plane verifies against
+    /// the public key registered for <paramref name="appCode"/>. Unlike the shared-key overload, holding
+    /// these credentials lets the caller speak for this one app only.
+    /// </summary>
+    /// <param name="credentials">The signing credentials.</param>
+    /// <param name="issuer">The token issuer (<c>Jwt:Issuer</c>), or null to omit.</param>
+    /// <param name="audience">The token audience (<c>Jwt:Audience</c>) — the managed-app audience.</param>
+    /// <param name="appCode">The calling app's registered code (<c>App:Code</c>).</param>
+    /// <param name="lifetime">How long the token is valid. Keep it short.</param>
+    /// <returns>A compact JWS string to send as <c>Authorization: Bearer</c>.</returns>
+    /// <exception cref="ArgumentException">The app code is missing.</exception>
+    public static string Mint(SigningCredentials credentials, string? issuer, string? audience, string appCode,
+        TimeSpan lifetime)
+    {
+        ArgumentNullException.ThrowIfNull(credentials);
+        if (string.IsNullOrWhiteSpace(appCode))
+            throw new ArgumentException("An app code is required to mint an app-log token.", nameof(appCode));
+
         var now = DateTime.UtcNow;
         var token = new JwtSecurityToken(
             issuer: string.IsNullOrWhiteSpace(issuer) ? null : issuer,
@@ -59,7 +84,7 @@ public static class AppLogServiceToken
             },
             notBefore: now,
             expires: now.Add(lifetime),
-            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+            signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);
     }

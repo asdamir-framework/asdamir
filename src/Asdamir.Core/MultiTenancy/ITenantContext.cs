@@ -24,9 +24,19 @@ public interface ITenantContext
     /// Gets the unique identifier for the current tenant.
     /// </summary>
     /// <value>
-    /// The tenant ID. Defaults to "default" if no tenant is resolved.
+    /// The tenant ID. There is NO implicit default: when no tenant was resolved, the framework's
+    /// <see cref="TenantContext"/> throws <see cref="TenantNotResolvedException"/> on read rather than
+    /// handing back a plausible value. Check <see cref="IsResolved"/> first where the tenant is optional.
     /// </value>
     string TenantId { get; }
+
+    /// <summary>
+    /// Gets whether a tenant was actually resolved for the current scope. Code for which the tenant is
+    /// advisory (a cache key, an audit tag) checks this instead of reading <see cref="TenantId"/>, which
+    /// throws when nothing was resolved. The default implementation reports <c>true</c> for any non-blank
+    /// <see cref="TenantId"/>, so an existing implementation of this interface keeps working unchanged.
+    /// </summary>
+    bool IsResolved => !string.IsNullOrWhiteSpace(TenantId);
 
     /// <summary>
     /// Gets the display name of the current tenant.

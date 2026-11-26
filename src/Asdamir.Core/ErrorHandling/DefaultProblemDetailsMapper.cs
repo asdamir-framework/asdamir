@@ -65,6 +65,9 @@ public class DefaultProblemDetailsMapper : IProblemDetailsMapper
         // into a small set of stable codes so the client cannot enumerate internal types.
         return exception switch
         {
+            // A known caller placed in no tenant is an authorization failure, not a bad request.
+            Asdamir.Core.MultiTenancy.TenantNotResolvedException tenantEx =>
+                await MapDomainAsync(tenantEx, traceId, cancellationToken, 403).ConfigureAwait(false),
             DomainException domainEx => await MapDomainAsync(domainEx, traceId, cancellationToken).ConfigureAwait(false),
             UnauthorizedAccessException => MapStable(401, ErrorCodes.Unauthorized, traceId),
             KeyNotFoundException => MapStable(404, ErrorCodes.NotFound, traceId),
@@ -75,7 +78,7 @@ public class DefaultProblemDetailsMapper : IProblemDetailsMapper
         };
     }
 
-    private async Task<(int, string, ProblemDetails)> MapDomainAsync(DomainException ex, string traceId, CancellationToken ct)
+    private async Task<(int, string, ProblemDetails)> MapDomainAsync(DomainException ex, string traceId, CancellationToken ct, int status = 400)
     {
         // For domain exceptions, the Title is the localized message keyed by code.
         // We still don't expose Message verbatim: a DomainException's Message can carry
@@ -85,13 +88,13 @@ public class DefaultProblemDetailsMapper : IProblemDetailsMapper
 
         var pd = new ProblemDetails
         {
-            Status = 400,
+            Status = status,
             Title = title,
             Type = $"urn:error:{ex.Code}",
             Instance = traceId,
         };
         pd.Extensions["code"] = ex.Code;
-        return (400, ex.Code, pd);
+        return (status, ex.Code, pd);
     }
 
     private static (int, string, ProblemDetails) MapStable(int status, string code, string traceId)

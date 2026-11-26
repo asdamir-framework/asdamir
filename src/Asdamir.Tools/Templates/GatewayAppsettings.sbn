@@ -19,7 +19,7 @@
     "Default": "{{ ConnectionStringForAppsettings }}"
   },
   "Jwt": {
-    "_comment": "Issuer/Audience MUST match AppManagement (it issues the tokens this Gateway validates). Jwt:Key is the shared signing key — set it via user-secrets / env, never here.",
+    "_comment": "Issuer/Audience MUST match AppManagement (it issues the tokens this Gateway validates). No signing key lives here: the Gateway validates against the public keys AppManagement publishes at <AdminConsole:BaseUrl>/.well-known/jwks.json (override with Jwt:JwksUrl, or pin one key with Jwt:PublicKeyPem). The app's OWN service private key (App:ServiceKeyPem) is a secret — user-secrets / env, never here.",
     "Issuer": "asdamir-adminconsole-api",
     "Audience": "asdamir-adminconsole-clients"
   },

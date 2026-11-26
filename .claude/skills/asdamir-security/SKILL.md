@@ -13,8 +13,30 @@ permission administration is done in the commercial AppManagement app).
 
 **Who issues vs who validates**
 - **JWTs are issued ONLY by AppManagement** (`IJwtService` in `Asdamir.Core`). Managed-app **Gateways
-  validate** them with the **shared** `Jwt:Key` + matching `Jwt:Issuer`/`Jwt:Audience`. A Gateway never
+  validate** them against the keys AppManagement publishes (`Jwt:JwksUrl`, derived from
+  `AdminConsole:BaseUrl` in a generated Gateway) + matching `Jwt:Issuer`/`Jwt:Audience`. A Gateway never
   mints tokens — it proxies credentials to AppManagement's auth API.
+- **Signing keys go through `JwtKeyMaterial`** (`Asdamir.Core.Services`) — never build a
+  `SymmetricSecurityKey` by hand. `Jwt:SigningKeyPem` (issuer, ES256 + `kid`) / `Jwt:PublicKeyPem`
+  or `Jwt:JwksUrl` (validators, cannot sign; the URL form follows rotations — AppManagement serves
+  `/.well-known/jwks.json`) / `Jwt:Key` alone (HS256, self-contained app). Validation calls
+  `keys.ApplyTo(tokenValidationParameters)`, which pins `ValidAlgorithms`. The generated Gateway does
+  exactly this (`GatewayProgram.sbn`): commercial = no key of its own, free = its own `Jwt:Key`.
+- **Orchestration (AppManagement → an app's `gateway/admin/*`) uses `OrchestrationToken` (Core).**
+  AppManagement mints it with its own signing key: own audience (`Jwt:OrchestrationAudience`),
+  `token_use=orchestration`, the target app's `app_code`, `client_id`. A Gateway must call
+  `OrchestrationToken.IsFor(principal, appCode, audience)` for any `client_id` token and `ctx.Fail` on
+  false (the generated one does), and list BOTH audiences in `ValidAudiences`. The pre-2.0
+  `client-token` exchange is only a fallback (`Orchestration:LegacyTokenExchange`). The token has NO
+  `tid`, so every `gateway/admin/*` controller needs `[AllowWithoutTenant]` (Core) or strict tenancy
+  answers 403 `tenant.unresolved` after authentication succeeds.
+- **Service tokens (`app-log`, `agent-audit-ingest`) can be signed with the app's OWN key.**
+  `AppServiceKey` (`App:ServiceKeyPem`, Core) signs ES256; the public key is registered on the app
+  (`PUT api/admin/apps/{appId}/service-key`). AppManagement's `app-service` scheme
+  (`AppServiceTokenHandler`) picks the key by the token's `app_code`, so one app's key never verifies a
+  token naming another app. Ingest endpoints list `AuthSchemes.AppServiceOrApp` and refuse a shared-key
+  token for an app that has a key. A new ingest-style endpoint must do both (list the scheme AND make the
+  `IsServiceKeyIdentity` check), or the shared key keeps speaking for every app there.
 - **One identity table.** Console operators AND app end-users both live in **`dbo.Users`**: an operator
   sits at `AppId = NULL` and is flagged `IsSuperAdmin`; an app end-user carries that app's `AppId`. There
   are **no `Admin*` tables** — migration 008 split them out, migration 078 folded them back
@@ -82,7 +104,7 @@ phone number cannot sign in**. Default code lifetime **180 s** (`Security.Otp.Tt
 `client_id`). Route authorization blocks unauthorized navigation before render (cached + audited).
 
 ## DON'T
-- **Don't mint JWTs in a Gateway** — only AppManagement issues; Gateways validate (shared key/issuer/audience).
+- **Don't mint JWTs in a Gateway** — only AppManagement issues; Gateways validate (AppManagement's published keys + issuer/audience).
 - **Don't store refresh tokens in plaintext / log raw tokens** — hashed only.
 - **Don't grant app permissions from the admin pool** — a managed app's perms come from `UserAppRoles`.
 - **Don't grant permissions directly to a user** — assign roles; permissions flow through roles.

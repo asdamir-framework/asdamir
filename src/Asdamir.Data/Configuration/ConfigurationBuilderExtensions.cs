@@ -32,7 +32,8 @@ public static class ConfigurationBuilderExtensions
     /// the table with other applications must use the overload taking
     /// <see cref="DatabaseConfigurationOptions"/> and set <see cref="DatabaseConfigurationOptions.AppId"/>.
     /// The default <see cref="DatabaseConfigurationOptions.ProtectedKeys"/> apply: a database row can no
-    /// longer supply <c>Jwt:Key</c>, <c>Security:EncryptionKey</c>, <c>ConnectionStrings:*</c> or
+    /// longer supply <c>Jwt:Key</c> (nor <c>Jwt:SigningKeyPem</c> / <c>Jwt:PublicKeyPem</c> / <c>Jwt:AdditionalPublicKeysPem</c> / <c>Jwt:OrchestrationAudience</c> /
+    /// <c>Jwt:AcceptLegacySymmetric</c>), <c>App:ServiceKeyPem</c>, <c>Security:EncryptionKey</c>, <c>ConnectionStrings:*</c> or
     /// <c>Persistence:UseInMemory</c>. The first load is synchronous, and a failed load keeps the
     /// last-known-good values (see <see cref="DynamicConfigurationProvider"/>).
     /// </summary>

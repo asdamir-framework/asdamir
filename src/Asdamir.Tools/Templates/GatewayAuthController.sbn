@@ -20,8 +20,8 @@ public sealed record ChangePasswordRequest(
 /// this controller proxies the credentials to AppManagement's auth API (which owns users,
 /// roles, permissions in AsdamirVault) and relays the issued JWT back. This app stores no
 /// users itself; AppManagement is the single place to manage who can sign in and with what
-/// permissions. The token AppManagement signs is then validated by this Gateway (shared
-/// Jwt:Key / Issuer / Audience) on every subsequent API call.
+/// permissions. The token AppManagement signs is then validated by this Gateway (against the
+/// public keys AppManagement publishes, plus Issuer / Audience) on every subsequent API call.
 /// </summary>
 [ApiController]
 [Route("gateway/auth")]

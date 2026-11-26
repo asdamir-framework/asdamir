@@ -40,8 +40,8 @@
                 _items = await resp.Content.ReadFromJsonAsync<List<MenuItem>>() ?? new();
             else
                 // NOT silent: an empty menu after a successful sign-in is almost always this 401 (the Gateway's
-                // Jwt:Key differs from the issuer's, or the token is for another app) — say so in the log.
-                Logger.LogWarning("gateway/menu returned {Status} — the menu shows Dashboard only. A 401 here means the Gateway rejected the token (check Jwt:Key on both tiers and App:Code).", (int)resp.StatusCode);
+                // does not trust the key the token was signed with, or the token is for another app) — say so.
+                Logger.LogWarning("gateway/menu returned {Status} — the menu shows Dashboard only. A 401 here means the Gateway rejected the token (check that the Gateway trusts the issuer's signing key — commercial: AppManagement signs with Jwt:SigningKeyPem and its /.well-known/jwks.json is reachable from the Gateway; free: Jwt:Key — and App:Code).", (int)resp.StatusCode);
         }
         catch (Exception ex)
         {

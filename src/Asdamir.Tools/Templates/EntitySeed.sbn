@@ -3,7 +3,7 @@
 --
 -- Seeds 3 sample rows so the {{ EntityName }} grid isn't empty on first run. IDEMPOTENT: inserts only
 -- when the default tenant has no {{ TableName }} yet, so re-running `asdamir db apply` (or this script)
--- never duplicates. TenantId='default' matches the app's ITenantContext, so the rows show in the UI.
+-- never duplicates. TenantId='default' matches the `tid` the app's tokens carry (TenantIds.Single), so the rows show in the UI.
 -- Tweak the values / row count to taste. NOTE: any *Id field gets a placeholder number — repoint it at
 -- a real parent row if {{ EntityName }} references another entity.
 SET NOCOUNT ON;

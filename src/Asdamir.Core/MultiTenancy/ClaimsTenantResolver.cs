@@ -26,7 +26,7 @@ namespace Asdamir.Core.MultiTenancy;
 /// </summary>
 public sealed class ClaimsTenantResolver : ITenantResolver
 {
-    private const string DefaultClaimType = "tid";
+    private const string DefaultClaimType = TenantIds.ClaimType;
     private readonly string _claimType;
     private readonly ITenantResolver? _fallback;
 
@@ -49,6 +49,12 @@ public sealed class ClaimsTenantResolver : ITenantResolver
         if (user?.Identity?.IsAuthenticated == true)
         {
             var tid = user.FindFirst(_claimType)?.Value;
+            // JwtBearer's DEFAULT inbound claim mapping renames `tid` to the long tenant-id URI before the
+            // principal reaches us, so a token that carries `tid` shows no `tid` claim at all. Read both
+            // spellings: with only the short one, this resolver never found a tenant behind a stock
+            // AddJwtBearer() — invisible while a missing tenant quietly became "default".
+            if (string.IsNullOrWhiteSpace(tid) && _claimType == TenantIds.ClaimType)
+                tid = user.FindFirst(TenantIds.MappedClaimType)?.Value;
             if (!string.IsNullOrWhiteSpace(tid))
             {
                 return Task.FromResult(new TenantContext
@@ -65,11 +71,9 @@ public sealed class ClaimsTenantResolver : ITenantResolver
             return _fallback.ResolveAsync(ctx, ct);
         }
 
-        return Task.FromResult(new TenantContext
-        {
-            TenantId = "default",
-            TenantName = null,
-            IsMultiTenant = true
-        });
+        // No tenant claim and no fallback: report UNRESOLVED. Whether that is refused or mapped to a
+        // default tenant is the host's explicit choice (TenancyOptions.MissingTenant), made in ONE place
+        // — TenantMiddleware — instead of being baked into every resolver.
+        return Task.FromResult(new TenantContext { IsMultiTenant = true });
     }
 }
