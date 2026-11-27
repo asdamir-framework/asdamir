@@ -18,7 +18,7 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Core` | `2.0.0` | — |
 | `Asdamir.Data` | `2.0.0` | — |
 | `Asdamir.Payments` | `1.3.0` | — |
-| `Asdamir.Tools` | `2.0.0` | `2.1.0` built, pending publish |
+| `Asdamir.Tools` | `2.1.0` | — |
 | `Asdamir.Web` | `2.3.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -31,7 +31,7 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Tools 2.1.0] — 2026-11-27 — *pending publish*
+## [Tools 2.1.0] — 2026-11-27 — published
 
 ### Added
 - **`asdamir secrets check-gateways`** — the gate between step 1 and step 2 of moving off the shared
