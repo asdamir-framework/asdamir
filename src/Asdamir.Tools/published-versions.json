@@ -23,10 +23,10 @@
     "clone — it would need a second copy, which is the duplication this file exists to remove."
   ],
   "packages": {
-    "Asdamir.Core": "2.0.0",
-    "Asdamir.Data": "2.0.0",
-    "Asdamir.Web": "2.3.0",
-    "Asdamir.Payments": "1.3.0",
+    "Asdamir.Core": "2.0.1",
+    "Asdamir.Data": "2.0.1",
+    "Asdamir.Web": "2.3.1",
+    "Asdamir.Payments": "1.3.1",
     "Asdamir.Tools": "2.1.0"
   }
 }

@@ -15,11 +15,11 @@ sentence that was, when this was written, three releases stale.
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `2.0.0` | — |
-| `Asdamir.Data` | `2.0.0` | — |
-| `Asdamir.Payments` | `1.3.0` | — |
-| `Asdamir.Tools` | `2.1.0` | — |
-| `Asdamir.Web` | `2.3.0` | — |
+| `Asdamir.Core` | `2.0.1` | — |
+| `Asdamir.Data` | `2.0.1` | — |
+| `Asdamir.Payments` | `1.3.1` | — |
+| `Asdamir.Tools` | `2.1.0` | `2.1.1` built, pending publish |
+| `Asdamir.Web` | `2.3.1` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -30,6 +30,29 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Core 2.0.1 · Data 2.0.1 · Web 2.3.1 · Payments 1.3.1 · Tools 2.1.1] — 2026-11-27 — Core/Data/Web/Payments published 2026-11-28, Tools *pending publish* — dependency refresh
+
+No API or behaviour change in any package. Every dependency moves to the newest release inside its current
+major version, and the generated-app package pins move with them.
+
+### Changed
+- **Microsoft.Extensions.* / ASP.NET Core** `10.0.9 → 10.0.15`; **Microsoft.IdentityModel.*** and
+  `System.IdentityModel.Tokens.Jwt` `8.3.1 → 8.23.0`; **OpenTelemetry** `1.15/1.16 → 1.21.0`;
+  **Microsoft.Data.SqlClient** `6.0.1 → 6.1.8`; **FluentUI** `4.14.3 → 4.14.5`; **Polly** `8.5.0 → 8.9.1`;
+  **Microsoft.Extensions.Http.Resilience** `10.6.0 → 10.11.1`; **MailKit** `4.16.0 → 4.18.2`; **Markdig**
+  `0.38.0 → 0.45.0`; **Dapper**, **Hangfire**, **Serilog**, **FluentValidation**, **QuestPDF**, **Twilio**,
+  **ClosedXML**, **libphonenumber** to their latest patch/minor. Transitive pins raised to match:
+  `Microsoft.IdentityModel.Protocols.OpenIdConnect 8.23.0`, `Microsoft.OpenApi 2.13.1`.
+- **Tools**: the `asdamir new app` / `new mobile` package pins carry the same versions.
+- Test-only: Testcontainers `4.17.0` (the SQL Server image is now named explicitly, the same image as
+  before), Playwright `1.65.1`, xunit runner `3.1.5`, Test SDK `17.14.2`.
+
+### Not changed, deliberately
+- **System.CommandLine** stays on `2.0.0-beta4`: the stable `2.0.x` line is a different API and the CLI's
+  exit-code contract is built on the old pipeline — a slice of its own.
+- **Major versions** (bunit 2, FluentAssertions 8, FluentUI 5, MailKit 5, Markdig 1, SqlClient 7+,
+  Serilog 10+, .NET 11) are not part of this refresh.
 
 ## [Tools 2.1.0] — 2026-11-27 — published
 

@@ -25,7 +25,8 @@
     <!-- MAJOR bump 1.6.0 -> 2.0.0, co-versioned with Asdamir.Core 2.0.0, which it requires (it reads
          ITenantContext.IsResolved). FeatureManager treats the tenant as advisory; a database config row can
          no longer supply the token-signing settings (protected keys). No public type removed. -->
-    <Version>2.0.0</Version>
+    <!-- PATCH 2.0.0 -> 2.0.1: dependency refresh only (Microsoft.* 10.0.15, IdentityModel 8.23.0, OpenTelemetry 1.21.0, SqlClient 6.1.8 and the rest of the in-major updates). No API or behaviour change. -->
+    <Version>2.0.1</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Data + background processing for Asdamir: Dapper multi-DB repositories, DB-backed configuration, Hangfire jobs, transactional outbox (mail/SMS dispatch).</Description>
     <PackageTags>dapper;outbox;hangfire;sql-server;oracle;postgresql;mail;sms;background-jobs</PackageTags>

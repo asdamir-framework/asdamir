@@ -19,11 +19,11 @@ dotnet tool install -g Asdamir.Tools
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
-| `Asdamir.Core` | `2.0.0` | — |
-| `Asdamir.Data` | `2.0.0` | — |
-| `Asdamir.Payments` | `1.3.0` | — |
-| `Asdamir.Tools` | `2.1.0` | — |
-| `Asdamir.Web` | `2.3.0` | — |
+| `Asdamir.Core` | `2.0.1` | — |
+| `Asdamir.Data` | `2.0.1` | — |
+| `Asdamir.Payments` | `1.3.1` | — |
+| `Asdamir.Tools` | `2.1.0` | `2.1.1` built, pending publish |
+| `Asdamir.Web` | `2.3.1` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
