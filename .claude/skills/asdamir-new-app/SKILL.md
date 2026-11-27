@@ -44,7 +44,9 @@ Notes:
   (`<AdminConsole:BaseUrl>/.well-known/jwks.json`), so AppManagement must sign with `Jwt:SigningKeyPem`
   (if it still signs with a shared key, every call after login is a 401). The app's service key pair is
   generated for you: private half → Gateway user-secrets, public half → `register_<app>.sql`. You also run `db/admin-onboarding/register_<app>.sql` against **AsdamirVault**
-  (registers the app + seeds its users/roles/permissions/menus/config/localization, AppId-scoped).
+  (registers the app + seeds its users/roles/permissions/menus/config/localization, AppId-scoped, and marks the
+  app **central** — `Apps.ReceivesSyncPush = 0` — so AppManagement never pushes edits to it or queues retries;
+  against a vault older than `AsdamirVault_154` that one step is skipped with a note: re-run after migrating).
 - Optional: `dotnet build/test MyPortal.sln`; add features **from the app root** (`cd MyPortal`, then
   `asdamir new feature <Name> --fields "…"` — entity + page + menu, migration applied automatically; or
   `asdamir-new-entity` for the API-only slice). Undo the whole app with `asdamir rollback app MyPortal` (see Teardown).

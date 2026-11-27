@@ -114,7 +114,7 @@ flowchart TB
 | Concern | What you get |
 |---|---|
 | **Database migrations** | `asdamir db apply` — journaled, idempotent, incremental runner (`dbo.__SchemaMigrations`); re-runs apply only what's new |
-| **Secrets & key rotation** | `asdamir secrets rotate-key` re-encrypts at-rest secrets old-key → new-key (transactional, idempotent); `secrets encrypt` for config values — [runbook](docs/secret-rotation.md) |
+| **Secrets & key rotation** | `asdamir secrets rotate-key` re-encrypts at-rest secrets old-key → new-key (transactional, idempotent); `secrets encrypt` for config values; `secrets new-signing-key` for an ES256 pair; `secrets check-gateways` confirms (read-only) every Gateway trusts a new signing key before the control plane switches — [runbook](docs/secret-rotation.md) |
 | **Health probes** | `/health/live` (liveness) + `/health/ready` (readiness — gates traffic on the DB, Dapper mode) on every API tier; liveness on the UI hosts. k8s-ready |
 | **Tracing & metrics** | OpenTelemetry over OTLP — ASP.NET Core + HttpClient + .NET runtime + **SQL/Dapper** spans, correlated across tiers (opt-in via an OTLP endpoint) |
 | **Scale-out** | DB-backed rate limiting (counters aggregate across instances); DB-backed refresh-token store; restart-safe Data Protection keys |

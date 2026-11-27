@@ -126,7 +126,9 @@ again. Gateways drop the old key at their next fetch — within the hour, or imm
 
 ## Rotating an app's service key (`App:ServiceKeyPem`)
 
-Per app, on that app's Gateway and its registration only:
+Per app, on that app's Gateway and its registration only. The registration steps can be done on the
+console's Apps screen (the key action on the app's row, which also shows the registered key ids) or with
+the API calls named below:
 
 1. Generate a pair (`asdamir secrets new-signing-key`).
 2. Register **both** public keys for the app — `PUT /api/admin/apps/{appId}/service-key` with the old and
@@ -144,19 +146,26 @@ next request.
 
 Before the 2.0 line, one `Jwt:Key` was held by AppManagement **and** by every managed app's Gateway, so
 whoever held any Gateway's key could sign an operator token. The move takes three steps, in this order,
-and no step logs anyone out.
+with a **check between step 1 and step 2**, and no step logs anyone out.
 
 **What each host holds**
 
 | | Before | After step 1 | After step 2 | After step 3 |
 |---|---|---|---|---|
 | AppManagement | `Jwt:Key` | `Jwt:Key` | `Jwt:SigningKeyPem` + `Jwt:Key` + `Jwt:AcceptLegacySymmetric=true` | `Jwt:SigningKeyPem` |
-| Each Gateway | `Jwt:Key` | `Jwt:JwksUrl` + `Jwt:Key` + `Jwt:AcceptLegacySymmetric=true` + `App:ServiceKeyPem` | unchanged | `Jwt:JwksUrl` + `App:ServiceKeyPem` |
+| Each Gateway | `Jwt:Key` | `Jwt:PublicKeyPem` (the NEW public key) + `Jwt:Key` + `Jwt:AcceptLegacySymmetric=true` + `App:ServiceKeyPem` | unchanged | `App:ServiceKeyPem` (follows `/.well-known/jwks.json`) |
 | Signs user tokens | shared key | shared key | AppManagement's private key | AppManagement's private key |
 
 ### Step 1 — every Gateway accepts both
 
-For each managed app, on Asdamir 2.0 packages:
+First generate the new signing key pair — **now, not at step 2**, because every Gateway must trust its
+public half before AppManagement signs anything with it:
+
+```bash
+asdamir secrets new-signing-key --out ./keys   # jwt-signing-key.pem (keep secret) + jwt-public-key.pem
+```
+
+Then, for each managed app, on Asdamir 2.0 packages:
 
 1. Make the Gateway validate through the framework. An app generated before 2.0 builds the key by hand in
    `Program.cs`; replace that with:
@@ -169,32 +178,56 @@ For each managed app, on Asdamir 2.0 packages:
 
    and pass the service key to the log sink: `ServiceKeyPem = ctx.Configuration["App:ServiceKeyPem"]` in
    `AppLogForwardOptions`. (A freshly generated app already has both.)
-2. Configure it: `Jwt:JwksUrl = https://<AppManagement>/.well-known/jwks.json`, keep `Jwt:Key`, add
-   `Jwt:AcceptLegacySymmetric=true`.
+2. Configure it: `Jwt:PublicKeyPem = <the contents of jwt-public-key.pem>`, keep `Jwt:Key`, add
+   `Jwt:AcceptLegacySymmetric=true`, restart. The Gateway now accepts both the shared key and the new one.
 3. Give the app its service key: generate a pair, set the private key as `App:ServiceKeyPem` on the
    Gateway, restart it, **then** register the public key (`PUT /api/admin/apps/{appId}/service-key`).
    Registering first would stop the app's log forwarding until the Gateway has the key.
 
-AppManagement has not changed, so it publishes no key yet; the Gateways keep validating with the shared key.
+**Pin the public key — do not point the Gateway at `Jwt:JwksUrl` yet.** A JWKS Gateway trusts only the keys
+AppManagement *publishes*, and AppManagement publishes nothing until it signs with the new key at step 2.
+Such a Gateway would be ready in principle, but nothing could prove it, and its first request after the
+switch is refused while it fetches the key. A pinned key is trusted from the restart on, and the check
+below can confirm it. The Gateway moves to the published key set at step 3.
+
+AppManagement has not changed; the Gateways keep validating its tokens with the shared key.
+
+### Check — every Gateway trusts the new key (the gate to step 2)
+
+```bash
+asdamir secrets check-gateways --key-file ./keys/jwt-signing-key.pem --connection "<AsdamirVault connection>"
+```
+
+It is read-only: for every active app in `dbo.Apps` it signs one two-minute token with the new key and
+sends one GET to that app's Gateway, then prints `ACCEPTED`, `REFUSED`, `UNREACHABLE` or `INCONCLUSIVE` per
+app ([reference](cli.md#secrets-check-gateways)). **Go on to step 2 only when it exits `0`** — every Gateway
+`ACCEPTED`. For anything else, fix that Gateway and run it again: `REFUSED` means it does not trust the
+key (step 1.2 not done, or not restarted); `INCONCLUSIVE` names what to fix (often `--issuer` /
+`--audience`, or a registered Gateway URL or code that does not match the Gateway); `UNREACHABLE` means the
+check could not reach it at all — which is not a pass.
 
 ### Step 2 — AppManagement switches
 
-Generate the signing key, set `Jwt:SigningKeyPem` on AppManagement, keep `Jwt:Key` and add
-`Jwt:AcceptLegacySymmetric=true`, restart. It now signs ES256 and still accepts the tokens it issued
-before the restart. Each Gateway picks the new key up without a restart: the first request with a new
-token triggers the fetch (that one request may get a 401), every later one validates.
+Set `Jwt:SigningKeyPem` on AppManagement to **the key you just checked** (`jwt-signing-key.pem`), keep
+`Jwt:Key` and add `Jwt:AcceptLegacySymmetric=true`, restart. It now signs ES256 and still accepts the
+tokens it issued before the restart. Every Gateway already trusts the key, so no request is refused.
 
-**Do this only when every Gateway has finished step 1.** A Gateway still validating by hand with the
-shared key rejects every token from this point on.
+**Do this only after the check above exited `0`.** A Gateway that does not trust the new key rejects every
+token from this point on.
 
 ### Step 3 — remove the shared key
 
 After the access-token lifetime has passed, remove `Jwt:Key` and `Jwt:AcceptLegacySymmetric` from
-AppManagement and from every Gateway, and restart them. Then **discard the old key**: it must not be
+AppManagement and from every Gateway. On each Gateway also remove `Jwt:PublicKeyPem`: a generated Gateway
+with no key setting follows `<AdminConsole:BaseUrl>/.well-known/jwks.json`, so a later rotation of the
+signing key needs no change there (keep the pin only if you prefer no network dependency — every rotation
+is then a configuration change on each Gateway). Restart them, and run `asdamir secrets check-gateways`
+once more with the same key — it must still exit `0`. Then **discard the old shared key**: it must not be
 reused anywhere.
 
 | Check | Expected |
 |---|---|
+| `asdamir secrets check-gateways --key-file ./keys/jwt-signing-key.pem …` | Exit `0`, every app `ACCEPTED` — the Gateways now trust the key through the published key set. |
 | `GET https://<AppManagement>/.well-known/jwks.json` | One key (`"alg":"ES256"`). Empty means AppManagement is still signing with `Jwt:Key`. |
 | Sign in to an app, open a page that calls its API | Works. A 401 right after a successful sign-in means that Gateway does not trust the published key. |
 | An app without a registered service key | Its central log forwarding stops at step 3: it was still signing with the shared key. Finish step 1.3 for it. |

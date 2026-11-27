@@ -118,7 +118,8 @@ the shared `Jwt:Key`, such a token could be produced by any holder of that key f
 
 - The app generates its own EC P-256 pair (`asdamir secrets new-signing-key`). The private key goes to
   that app's Gateway as **`App:ServiceKeyPem`** (a secret; a database config row cannot supply it). The
-  public key is registered with the control plane against the app.
+  public key is registered with the control plane against the app — on the console's Apps screen, or
+  with `PUT /api/admin/apps/{appId}/service-key`.
 - `AppServiceKey.FromPem(pem).SigningCredentials` signs ES256, and both `Mint` methods have an overload
   taking those credentials. The two sinks do this for you: set `AppLogForwardOptions.ServiceKeyPem` /
   `AgentAuditOptions.ServiceKeyPem` (`AgentAudit:ServiceKeyPem`) and they stop using the shared key.

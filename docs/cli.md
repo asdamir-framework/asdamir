@@ -22,7 +22,7 @@ dotnet tool install -g Asdamir.Tools
 | `Asdamir.Core` | `2.0.0` | — |
 | `Asdamir.Data` | `2.0.0` | — |
 | `Asdamir.Payments` | `1.3.0` | — |
-| `Asdamir.Tools` | `2.0.0` | — |
+| `Asdamir.Tools` | `2.0.0` | `2.1.0` built, pending publish |
 | `Asdamir.Web` | `2.3.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -97,7 +97,8 @@ must reach the database") got `0` with nothing applied. `--apply --no-db` togeth
 **`audit verify-signatures` against a ledger it cannot read** (unreachable server, wrong login, a database
 without the ledger) exits **`64`** with *"could not read the ledger … Nothing was verified"*. It examined
 nothing, so it is neither a finding (`1` would read as "invalid signatures") nor an internal error (it used to
-escape as `70`, "please report it").
+escape as `70`, "please report it"). **`secrets check-gateways`** follows the same rule for a vault it cannot
+read: `64`, so its `1` keeps meaning "a Gateway does not trust the key yet".
 
 Every command that has a handler is under this contract, and the test suite derives that list from the real
 command tree — `audit verify-signatures` had simply never been added to a hand-kept list, and was the one
@@ -362,6 +363,13 @@ as-is on an already-registered app used to overwrite a working secret with the p
 next steps list the step that replaces it (`asdamir secrets encrypt --value <raw> --key <AppManagement's
 Security:EncryptionKey>`) **before** the step that runs the script. With `sqlcmd`, pass `-b` so the script
 stops at the error.
+
+**`register_<app>.sql` registers the app as centrally managed.** The generated app reads its localization and
+settings from AsdamirVault on every request and keeps no local copy, so the script sets
+`dbo.Apps.ReceivesSyncPush = 0` for it: AppManagement then writes a Localization / App Config edit centrally and
+does **not** push it to the app's Gateway (which has no sync receiver) or queue a retry. The step is guarded —
+against a vault older than `AsdamirVault_154` it prints `Sync push: NOT recorded …` and the rest of the script
+runs; re-run the script after migrating that vault.
 
 **`run-tests.sh` is green only when the run was clean.** The generated wrapper used to discard `dotnet
 test`'s exit code and print a skipped test as one quiet line. It now fails when `dotnet test` exits non-zero
@@ -1342,7 +1350,8 @@ company is taken from the token's `company` claim. See the AppManagement console
 
 ## `secrets`
 
-Tooling for the at-rest encryption key (`Security:EncryptionKey`) and for JWT signing keys. Encryption
+Tooling for the at-rest encryption key (`Security:EncryptionKey`) and for JWT signing keys — generating a
+pair (`new-signing-key`) and checking that every Gateway trusts a new one (`check-gateways`). Encryption
 keys are read from environment variables by default (so they stay out of shell history); flags override
 for interactive use.
 
@@ -1390,6 +1399,70 @@ asdamir secrets new-signing-key                # prints both PEMs instead
 With `--out`, existing key files are not overwritten unless `--force` is passed (replacing a signing key
 in use invalidates every token it signed). Exit codes: `0` written/printed · `1` generation or I/O failure ·
 `64` usage, including "key files already exist".
+
+### `secrets check-gateways`
+
+**Read-only.** The gate between step 1 and step 2 of [moving off the shared `Jwt:Key`](secret-rotation.md#moving-from-the-shared-jwtkey-to-asymmetric-signing):
+before AppManagement starts signing with a new `Jwt:SigningKeyPem`, it asks every managed app's Gateway
+whether it already trusts that key. For each **active** row of `dbo.Apps` (the control plane's own row is
+skipped) it signs one short-lived token with the new key and sends **one** GET to the app's Gateway. Nothing
+is written — no database row, no configuration, no file.
+
+```bash
+asdamir secrets new-signing-key --out ./keys                       # step 1: the NEW pair
+asdamir secrets check-gateways --key-file ./keys/jwt-signing-key.pem \
+  --connection "Server=<sql>;Database=AsdamirVault;User ID=<login>;Password=<pwd>;TrustServerCertificate=true"
+```
+
+```text
+Probing with the key in --key-file (kid H7Y7OZSAGxVo…) — iss 'asdamir-adminconsole-api', aud 'asdamir-adminconsole-clients', GET gateway/admin/audittrail?limit=1
+
+APP          GATEWAY URL                 RESULT        DETAIL
+Billing      https://billing.example/    ACCEPTED      403 after authentication (refused by authorization, as designed)
+Orders       https://orders.example/     REFUSED       401: The signature key was not found
+Reports      https://reports.example/    UNREACHABLE   connection failed: Connection refused (reports.example:443)
+Shop         https://shop.example/       INCONCLUSIVE  401 for a reason other than the key: The issuer 'x' is invalid
+
+1 of 4 Gateway(s) trust the new key. Do NOT switch AppManagement yet.
+```
+
+| Result | Means |
+|---|---|
+| `ACCEPTED` | The Gateway authenticated the token, then refused it by authorization (`403`) — **the key is trusted**. |
+| `REFUSED` | `401` whose `WWW-Authenticate` names the signature ("The signature key was not found" / "The signature is invalid") — **the key is not trusted**. |
+| `UNREACHABLE` | No HTTP answer: connection, DNS, TLS, or no answer within `--timeout`. |
+| `INCONCLUSIVE` | An answer that says nothing about the key — the detail says which: a `401` for another stated reason (issuer, audience, lifetime) or for **no** stated reason (a generated Gateway's app-boundary check, e.g. a `dbo.Apps.Code` that differs from the Gateway's `App:Code`), a redirect, a `2xx`, a `404`, a `5xx`. |
+
+**What is sent, and why.** A user-shaped app token — `token_use=app`, `app_code` = the app's registered
+code, `aud` = `--audience`, a `tid`, ES256 with the key's RFC 7638 `kid`, valid two minutes — to
+`gateway/admin/audittrail?limit=1`. A generated Gateway guards that endpoint with the `AppMgmtClient` policy,
+which requires a `client_id` the probe deliberately does not carry, so a trusted token is refused by
+**authorization** (`403`) before the controller runs and an untrusted one by **authentication** (`401`). An
+orchestration token is not used: a Gateway generated before 2.0, or a hand-written one, does not know the
+orchestration audience and would answer `401` while in fact trusting the key.
+
+**A Gateway that follows `Jwt:JwksUrl` reads `REFUSED` before step 2** — and that is true: it trusts only the
+keys AppManagement publishes, and AppManagement publishes the new key only once it signs with it. That is
+why step 1 pins the new **public** key on each Gateway (`Jwt:PublicKeyPem`, beside the shared key); see the
+procedure. After step 2 the same command, run with AppManagement's key, re-checks every Gateway either way.
+
+| Flag | Default | |
+|---|---|---|
+| `--key-file`, `-k` | — (required) | The NEW **private** key PEM (`jwt-signing-key.pem`). The key itself is never accepted on the command line, and is never printed — not in output, not in an error. A public key, an encrypted key or a non-P-256 key is a usage error. |
+| `--connection`, `-c` (alias `--vault-connection`) / `--server`+`--database`+`--user`+`--password` | — | AsdamirVault. **Required** — a connection is never defaulted. |
+| `--issuer` / `--audience` | `asdamir-adminconsole-api` / `asdamir-adminconsole-clients` | What the Gateways expect — AppManagement's `Jwt:Issuer` / `Jwt:Audience`. |
+| `--app <Code>` | every active app | Probe only these apps (repeatable). An unknown code is a usage error. |
+| `--timeout <s>` | `10` | Per Gateway, 1–120. |
+| `--allow-untrusted-certs` | off | Development only: TLS server certificates are **not** validated; a warning line is printed. Without it TLS validation is on. |
+
+Redirects are **not** followed (a followed redirect drops the `Authorization` header and would misreport the
+Gateway): a `3xx` is `INCONCLUSIVE` naming the target — register the final URL.
+
+Exit codes: `0` **only** when at least one Gateway was probed and **every** probed Gateway is `ACCEPTED` ·
+`1` at least one is `REFUSED`, `UNREACHABLE` or `INCONCLUSIVE` — **or no active app was found** (nothing
+checked is not a pass) · `64` usage: no or unusable `--key-file`, no connection, an unknown `--app`, a bad
+`--timeout`, **or a vault that cannot be read** (nothing was examined — the same rule as
+`audit verify-signatures` against an unreadable ledger) · see [Exit codes — NORMATIVE](#exit-codes-normative-and-the-same-model-for-every-command).
 
 Full procedures (incl. `Jwt:Key` and per-app client-secret rotation): **[Secret Management & Key Rotation](secret-rotation.md)**.
 

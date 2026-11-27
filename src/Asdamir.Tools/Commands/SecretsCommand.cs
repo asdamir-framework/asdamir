@@ -40,10 +40,11 @@ public static class SecretsCommand
     public static Command Build()
     {
         var cmd = new Command("secrets",
-            "Secret tooling: re-encrypt stored secrets on Security:EncryptionKey rotation, produce an encrypted value, or generate a JWT signing key pair.");
+            "Secret tooling: re-encrypt stored secrets on Security:EncryptionKey rotation, produce an encrypted value, generate a JWT signing key pair, or check that every Gateway trusts a new signing key.");
         cmd.AddCommand(BuildRotateKey());
         cmd.AddCommand(BuildEncrypt());
         cmd.AddCommand(BuildNewSigningKey());
+        cmd.AddCommand(GatewayKeyCheckCommand.Build());
         return cmd;
     }
 

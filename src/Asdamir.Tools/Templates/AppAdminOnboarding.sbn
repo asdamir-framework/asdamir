@@ -50,6 +50,25 @@ WHEN NOT MATCHED THEN
 DECLARE @AppId UNIQUEIDENTIFIER = (SELECT AppId FROM dbo.Apps WHERE Code = @AppCode);
 PRINT CONCAT('App registered. AppId=', CAST(@AppId AS NVARCHAR(64)));
 GO
+
+-- ── Central model: this app receives NO sync push ─────────────────────────────────────────────
+-- This app reads its management data (localization, settings, …) from AsdamirVault on every request; it
+-- keeps no local copy and has no sync receiver. Recording that stops AppManagement from pushing each
+-- localization / app-config edit to the Gateway and queueing the push for retry when it fails.
+-- Guarded + dynamic SQL so the script still runs against a vault that predates the column
+-- (AsdamirVault_154): there the step is skipped with a note, and re-running the script after the vault is
+-- migrated records it.
+DECLARE @AppId UNIQUEIDENTIFIER = (SELECT AppId FROM dbo.Apps WHERE Code = N'{{ AppName }}');
+IF @AppId IS NULL
+    PRINT 'Sync push: the app is not registered - skipped.';
+ELSE IF COL_LENGTH('dbo.Apps', 'ReceivesSyncPush') IS NULL
+    PRINT 'Sync push: NOT recorded - this AsdamirVault predates Apps.ReceivesSyncPush (apply its migrations, then re-run this script).';
+ELSE
+BEGIN
+    EXEC sp_executesql N'UPDATE dbo.Apps SET ReceivesSyncPush = 0 WHERE AppId = @id', N'@id UNIQUEIDENTIFIER', @id = @AppId;
+    PRINT 'Sync push: off (central model).';
+END
+GO
 {{ if HasServiceKey ~}}
 
 -- ── This app's service key (PUBLIC half) ──────────────────────────────────────────────────────

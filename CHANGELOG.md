@@ -18,7 +18,7 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Core` | `2.0.0` | — |
 | `Asdamir.Data` | `2.0.0` | — |
 | `Asdamir.Payments` | `1.3.0` | — |
-| `Asdamir.Tools` | `2.0.0` | — |
+| `Asdamir.Tools` | `2.0.0` | `2.1.0` built, pending publish |
 | `Asdamir.Web` | `2.3.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -30,6 +30,36 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Tools 2.1.0] — 2026-11-27 — *pending publish*
+
+### Added
+- **`asdamir secrets check-gateways`** — the gate between step 1 and step 2 of moving off the shared
+  `Jwt:Key`. Read-only: for every active app in `dbo.Apps` (the control plane's own row skipped) it signs one
+  two-minute token with the NEW private key (`--key-file`, never on the command line, never printed) and
+  sends one GET to that app's Gateway, then prints `ACCEPTED` / `REFUSED` / `UNREACHABLE` / `INCONCLUSIVE`
+  per app with the evidence. The probe is a user-shaped app token against `gateway/admin/audittrail?limit=1`:
+  a trusted key is refused by authorization (`403`), an untrusted one by authentication (`401` naming the
+  signature); any other answer — a `401` for issuer/audience/lifetime or for no stated reason, a `2xx`,
+  a redirect, a `5xx` — is `INCONCLUSIVE`, never `REFUSED`. TLS validation is on unless
+  `--allow-untrusted-certs` (development; prints a warning). Exit `0` only when every probed Gateway accepted;
+  `1` when one did not or when no active app was found; `64` for usage errors and for a vault that cannot be
+  read. Verified against real generated Gateways (`Category=E2E`).
+
+### Changed
+- **The migration procedure's step 1 now PINS the new public key** on each Gateway (`Jwt:PublicKeyPem`,
+  beside `Jwt:Key` + `Jwt:AcceptLegacySymmetric=true`) instead of pointing it at `Jwt:JwksUrl`; the Gateway
+  moves to the published key set at step 3 (`docs/secret-rotation.md`). Measured on a generated Gateway: a
+  JWKS Gateway trusts only what AppManagement publishes, and AppManagement publishes the new key only once it
+  signs with it — so before step 2 such a Gateway refuses the new key ("The signature key was not found"),
+  and no check could tell "ready" from "not ready". Deployments already on `Jwt:JwksUrl` at step 1 are not
+  broken (they pick the key up at the switch, one refused request each), but `check-gateways` reports them
+  `REFUSED` until they pin.
+
+### Changed
+- **The generated `register_<app>.sql` registers the app as centrally managed** (`Apps.ReceivesSyncPush = 0`),
+  so the control plane no longer pushes localization / configuration edits to a Gateway that has no
+  receiver. Against a control-plane database that predates that column the step is skipped with a note.
 
 ## [Core 2.0.0 · Data 2.0.0 · Web 2.3.0 · Tools 2.0.0] — 2026-11-27 — published — the 2.0 line: strict tenancy · asymmetric token signing
 

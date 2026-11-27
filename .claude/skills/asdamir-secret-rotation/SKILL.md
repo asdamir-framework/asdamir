@@ -35,10 +35,20 @@ re-encrypt with `asdamir secrets encrypt`) and each managed app's own `IsEncrypt
 restart, wait ≥1 h; (2) switch `Jwt:SigningKeyPem` to the new key and list the OLD public key there;
 (3) after the access-token lifetime, remove the old one. **After a leak:** new key, nothing in
 `AdditionalPublicKeysPem`, clear `dbo.RefreshTokens`.
-**Moving a deployment off the shared `Jwt:Key`** is three ordered steps — Gateways accept both
-(`Jwt:JwksUrl` + `Jwt:Key` + `Jwt:AcceptLegacySymmetric=true`, plus their service key) → AppManagement
-switches (`Jwt:SigningKeyPem`, keeps the window) → the shared key is removed everywhere and discarded.
-Full procedure: `docs/secret-rotation.md`. Never do step 2 before every Gateway finished step 1.
+**Moving a deployment off the shared `Jwt:Key`** is three ordered steps with a gate in the middle —
+(1) generate the NEW pair, every Gateway accepts both (`Jwt:PublicKeyPem` = the new PUBLIC key +
+`Jwt:Key` + `Jwt:AcceptLegacySymmetric=true`, plus its service key) → **gate:**
+`asdamir secrets check-gateways --key-file <new jwt-signing-key.pem> --connection <AsdamirVault>` must exit
+`0` (every app `ACCEPTED`) → (2) AppManagement switches to that same key (`Jwt:SigningKeyPem`, keeps the
+window) → (3) the shared key and the Gateways' `Jwt:PublicKeyPem` are removed (they then follow the JWKS),
+re-run the check, discard the old key. Full procedure: `docs/secret-rotation.md`.
+- **Pin at step 1, not `Jwt:JwksUrl`:** AppManagement publishes the new key only once it signs with it, so a
+  JWKS Gateway cannot trust it before step 2 — `check-gateways` reads it `REFUSED`, correctly.
+- `check-gateways` is read-only (one GET per Gateway to `gateway/admin/audittrail?limit=1` with a 2-minute
+  user-shaped app token; `403` = trusted). `REFUSED` = the key is not trusted; `INCONCLUSIVE` names what
+  else is wrong (issuer/audience/URL/code); `UNREACHABLE` is not a pass; no active app is not a pass.
+  `--allow-untrusted-certs` only for dev certificates. Exit `0` all accepted · `1` not ready · `64` usage /
+  unreadable vault.
 
 ## App:ServiceKeyPem (a managed app's service key) — per-app, no gap
 Generate a new pair, then: (1) register BOTH public keys (`PUT api/admin/apps/{appId}/service-key`, two
