@@ -1837,6 +1837,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#secrets-check-gateways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        secrets check-gateways
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2516,6 +2527,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#secrets-check-gateways" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        secrets check-gateways
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2589,7 +2611,7 @@
 </tr>
 <tr>
 <td><code>Asdamir.Tools</code></td>
-<td><code>2.0.0</code></td>
+<td><code>2.1.0</code></td>
 <td>—</td>
 </tr>
 <tr>
@@ -2705,7 +2727,8 @@ must reach the database") got <code>0</code> with nothing applied. <code>--apply
 <p><strong><code>audit verify-signatures</code> against a ledger it cannot read</strong> (unreachable server, wrong login, a database
 without the ledger) exits <strong><code>64</code></strong> with <em>"could not read the ledger … Nothing was verified"</em>. It examined
 nothing, so it is neither a finding (<code>1</code> would read as "invalid signatures") nor an internal error (it used to
-escape as <code>70</code>, "please report it").</p>
+escape as <code>70</code>, "please report it"). <strong><code>secrets check-gateways</code></strong> follows the same rule for a vault it cannot
+read: <code>64</code>, so its <code>1</code> keeps meaning "a Gateway does not trust the key yet".</p>
 <p>Every command that has a handler is under this contract, and the test suite derives that list from the real
 command tree — <code>audit verify-signatures</code> had simply never been added to a hand-kept list, and was the one
 command whose exit code was wrong.</p>
@@ -3114,6 +3137,12 @@ as-is on an already-registered app used to overwrite a working secret with the p
 next steps list the step that replaces it (<code>asdamir secrets encrypt --value &lt;raw&gt; --key &lt;AppManagement's
 Security:EncryptionKey&gt;</code>) <strong>before</strong> the step that runs the script. With <code>sqlcmd</code>, pass <code>-b</code> so the script
 stops at the error.</p>
+<p><strong><code>register_&lt;app&gt;.sql</code> registers the app as centrally managed.</strong> The generated app reads its localization and
+settings from AsdamirVault on every request and keeps no local copy, so the script sets
+<code>dbo.Apps.ReceivesSyncPush = 0</code> for it: AppManagement then writes a Localization / App Config edit centrally and
+does <strong>not</strong> push it to the app's Gateway (which has no sync receiver) or queue a retry. The step is guarded —
+against a vault older than <code>AsdamirVault_154</code> it prints <code>Sync push: NOT recorded …</code> and the rest of the script
+runs; re-run the script after migrating that vault.</p>
 <p><strong><code>run-tests.sh</code> is green only when the run was clean.</strong> The generated wrapper used to discard <code>dotnet
 test</code>'s exit code and print a skipped test as one quiet line. It now fails when <code>dotnet test</code> exits non-zero
 with no failed test in the results (a compile, restore or testhost failure — the log tail is printed), fails
@@ -4129,7 +4158,8 @@ secret encryption are delegated to the API, so the CLI stays credential- and cry
 <p>Exit codes: <code>0</code> ok · <code>1</code> API/HTTP error (401/403/unreachable/non-2xx) · <code>64</code> usage (see <a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>). The
 company is taken from the token's <code>company</code> claim. See the AppManagement console's multi-company (firma) operation.</p>
 <h2 id="secrets"><code>secrets</code><a class="headerlink" href="#secrets" title="Permanent link">&para;</a></h2>
-<p>Tooling for the at-rest encryption key (<code>Security:EncryptionKey</code>) and for JWT signing keys. Encryption
+<p>Tooling for the at-rest encryption key (<code>Security:EncryptionKey</code>) and for JWT signing keys — generating a
+pair (<code>new-signing-key</code>) and checking that every Gateway trusts a new one (<code>check-gateways</code>). Encryption
 keys are read from environment variables by default (so they stay out of shell history); flags override
 for interactive use.</p>
 <h3 id="secrets-rotate-key"><code>secrets rotate-key</code><a class="headerlink" href="#secrets-rotate-key" title="Permanent link">&para;</a></h3>
@@ -4163,6 +4193,111 @@ a stored secret back.)</p>
 <p>With <code>--out</code>, existing key files are not overwritten unless <code>--force</code> is passed (replacing a signing key
 in use invalidates every token it signed). Exit codes: <code>0</code> written/printed · <code>1</code> generation or I/O failure ·
 <code>64</code> usage, including "key files already exist".</p>
+<h3 id="secrets-check-gateways"><code>secrets check-gateways</code><a class="headerlink" href="#secrets-check-gateways" title="Permanent link">&para;</a></h3>
+<p><strong>Read-only.</strong> The gate between step 1 and step 2 of <a href="../secret-rotation/#moving-from-the-shared-jwtkey-to-asymmetric-signing">moving off the shared <code>Jwt:Key</code></a>:
+before AppManagement starts signing with a new <code>Jwt:SigningKeyPem</code>, it asks every managed app's Gateway
+whether it already trusts that key. For each <strong>active</strong> row of <code>dbo.Apps</code> (the control plane's own row is
+skipped) it signs one short-lived token with the new key and sends <strong>one</strong> GET to the app's Gateway. Nothing
+is written — no database row, no configuration, no file.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-29-1" name="__codelineno-29-1" href="#__codelineno-29-1"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>new-signing-key<span class="w"> </span>--out<span class="w"> </span>./keys<span class="w">                       </span><span class="c1"># step 1: the NEW pair</span>
+<a id="__codelineno-29-2" name="__codelineno-29-2" href="#__codelineno-29-2"></a>asdamir<span class="w"> </span>secrets<span class="w"> </span>check-gateways<span class="w"> </span>--key-file<span class="w"> </span>./keys/jwt-signing-key.pem<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-29-3" name="__codelineno-29-3" href="#__codelineno-29-3"></a><span class="w">  </span>--connection<span class="w"> </span><span class="s2">&quot;Server=&lt;sql&gt;;Database=AsdamirVault;User ID=&lt;login&gt;;Password=&lt;pwd&gt;;TrustServerCertificate=true&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-30-1" name="__codelineno-30-1" href="#__codelineno-30-1"></a>Probing with the key in --key-file (kid H7Y7OZSAGxVo…) — iss &#39;asdamir-adminconsole-api&#39;, aud &#39;asdamir-adminconsole-clients&#39;, GET gateway/admin/audittrail?limit=1
+<a id="__codelineno-30-2" name="__codelineno-30-2" href="#__codelineno-30-2"></a>
+<a id="__codelineno-30-3" name="__codelineno-30-3" href="#__codelineno-30-3"></a>APP          GATEWAY URL                 RESULT        DETAIL
+<a id="__codelineno-30-4" name="__codelineno-30-4" href="#__codelineno-30-4"></a>Billing      https://billing.example/    ACCEPTED      403 after authentication (refused by authorization, as designed)
+<a id="__codelineno-30-5" name="__codelineno-30-5" href="#__codelineno-30-5"></a>Orders       https://orders.example/     REFUSED       401: The signature key was not found
+<a id="__codelineno-30-6" name="__codelineno-30-6" href="#__codelineno-30-6"></a>Reports      https://reports.example/    UNREACHABLE   connection failed: Connection refused (reports.example:443)
+<a id="__codelineno-30-7" name="__codelineno-30-7" href="#__codelineno-30-7"></a>Shop         https://shop.example/       INCONCLUSIVE  401 for a reason other than the key: The issuer &#39;x&#39; is invalid
+<a id="__codelineno-30-8" name="__codelineno-30-8" href="#__codelineno-30-8"></a>
+<a id="__codelineno-30-9" name="__codelineno-30-9" href="#__codelineno-30-9"></a>1 of 4 Gateway(s) trust the new key. Do NOT switch AppManagement yet.
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ACCEPTED</code></td>
+<td>The Gateway authenticated the token, then refused it by authorization (<code>403</code>) — <strong>the key is trusted</strong>.</td>
+</tr>
+<tr>
+<td><code>REFUSED</code></td>
+<td><code>401</code> whose <code>WWW-Authenticate</code> names the signature ("The signature key was not found" / "The signature is invalid") — <strong>the key is not trusted</strong>.</td>
+</tr>
+<tr>
+<td><code>UNREACHABLE</code></td>
+<td>No HTTP answer: connection, DNS, TLS, or no answer within <code>--timeout</code>.</td>
+</tr>
+<tr>
+<td><code>INCONCLUSIVE</code></td>
+<td>An answer that says nothing about the key — the detail says which: a <code>401</code> for another stated reason (issuer, audience, lifetime) or for <strong>no</strong> stated reason (a generated Gateway's app-boundary check, e.g. a <code>dbo.Apps.Code</code> that differs from the Gateway's <code>App:Code</code>), a redirect, a <code>2xx</code>, a <code>404</code>, a <code>5xx</code>.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>What is sent, and why.</strong> A user-shaped app token — <code>token_use=app</code>, <code>app_code</code> = the app's registered
+code, <code>aud</code> = <code>--audience</code>, a <code>tid</code>, ES256 with the key's RFC 7638 <code>kid</code>, valid two minutes — to
+<code>gateway/admin/audittrail?limit=1</code>. A generated Gateway guards that endpoint with the <code>AppMgmtClient</code> policy,
+which requires a <code>client_id</code> the probe deliberately does not carry, so a trusted token is refused by
+<strong>authorization</strong> (<code>403</code>) before the controller runs and an untrusted one by <strong>authentication</strong> (<code>401</code>). An
+orchestration token is not used: a Gateway generated before 2.0, or a hand-written one, does not know the
+orchestration audience and would answer <code>401</code> while in fact trusting the key.</p>
+<p><strong>A Gateway that follows <code>Jwt:JwksUrl</code> reads <code>REFUSED</code> before step 2</strong> — and that is true: it trusts only the
+keys AppManagement publishes, and AppManagement publishes the new key only once it signs with it. That is
+why step 1 pins the new <strong>public</strong> key on each Gateway (<code>Jwt:PublicKeyPem</code>, beside the shared key); see the
+procedure. After step 2 the same command, run with AppManagement's key, re-checks every Gateway either way.</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--key-file</code>, <code>-k</code></td>
+<td>— (required)</td>
+<td>The NEW <strong>private</strong> key PEM (<code>jwt-signing-key.pem</code>). The key itself is never accepted on the command line, and is never printed — not in output, not in an error. A public key, an encrypted key or a non-P-256 key is a usage error.</td>
+</tr>
+<tr>
+<td><code>--connection</code>, <code>-c</code> (alias <code>--vault-connection</code>) / <code>--server</code>+<code>--database</code>+<code>--user</code>+<code>--password</code></td>
+<td>—</td>
+<td>AsdamirVault. <strong>Required</strong> — a connection is never defaulted.</td>
+</tr>
+<tr>
+<td><code>--issuer</code> / <code>--audience</code></td>
+<td><code>asdamir-adminconsole-api</code> / <code>asdamir-adminconsole-clients</code></td>
+<td>What the Gateways expect — AppManagement's <code>Jwt:Issuer</code> / <code>Jwt:Audience</code>.</td>
+</tr>
+<tr>
+<td><code>--app &lt;Code&gt;</code></td>
+<td>every active app</td>
+<td>Probe only these apps (repeatable). An unknown code is a usage error.</td>
+</tr>
+<tr>
+<td><code>--timeout &lt;s&gt;</code></td>
+<td><code>10</code></td>
+<td>Per Gateway, 1–120.</td>
+</tr>
+<tr>
+<td><code>--allow-untrusted-certs</code></td>
+<td>off</td>
+<td>Development only: TLS server certificates are <strong>not</strong> validated; a warning line is printed. Without it TLS validation is on.</td>
+</tr>
+</tbody>
+</table>
+<p>Redirects are <strong>not</strong> followed (a followed redirect drops the <code>Authorization</code> header and would misreport the
+Gateway): a <code>3xx</code> is <code>INCONCLUSIVE</code> naming the target — register the final URL.</p>
+<p>Exit codes: <code>0</code> <strong>only</strong> when at least one Gateway was probed and <strong>every</strong> probed Gateway is <code>ACCEPTED</code> ·
+<code>1</code> at least one is <code>REFUSED</code>, <code>UNREACHABLE</code> or <code>INCONCLUSIVE</code> — <strong>or no active app was found</strong> (nothing
+checked is not a pass) · <code>64</code> usage: no or unusable <code>--key-file</code>, no connection, an unknown <code>--app</code>, a bad
+<code>--timeout</code>, <strong>or a vault that cannot be read</strong> (nothing was examined — the same rule as
+<code>audit verify-signatures</code> against an unreadable ledger) · see <a href="#exit-codes-normative-and-the-same-model-for-every-command">Exit codes — NORMATIVE</a>.</p>
 <p>Full procedures (incl. <code>Jwt:Key</code> and per-app client-secret rotation): <strong><a href="../secret-rotation/">Secret Management &amp; Key Rotation</a></strong>.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
