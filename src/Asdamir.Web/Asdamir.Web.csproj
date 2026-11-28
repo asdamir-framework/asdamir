@@ -36,7 +36,12 @@
          advisory and tag a missing one "-" where they tagged "default"; AuditLoggingMiddleware reads the
          tid claim. No public type removed. -->
     <!-- 2.3.1 (PATCH): dependency refresh only (Microsoft.* 10.0.15, IdentityModel 8.23.0, OpenTelemetry 1.21.0, SqlClient 6.1.8 and the rest of the in-major updates). No API or behaviour change. FluentUI 4.14.5. -->
-    <Version>2.3.1</Version>
+    <!-- 2.4.0 (MINOR): AsdamirSignaturePad works. It called twelve functions on a script object no file
+         defined; it now imports its own module (js/asdamir-signature.js): drawing, undo/redo, templates,
+         PNG/SVG/PDF export. AsdamirRetryMonitor's and SecurityDashboard's export buttons download through
+         js/asdamir-download.js for the same reason. New public members: the two module-path constants and
+         IAsyncDisposable on the pad. No public type removed. -->
+    <Version>2.4.0</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Web/UI for Asdamir: Blazor + FluentUI component library (DataGrid, dialogs, layout), API-backed localization (3 cultures), and admin pool security (JWT + DataProtection + cookie/bearer handler).</Description>
     <PackageTags>blazor;fluentui;localization;authorization;jwt;data-protection;ui-components</PackageTags>

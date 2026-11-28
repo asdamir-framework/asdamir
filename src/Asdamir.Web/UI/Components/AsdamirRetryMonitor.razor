@@ -342,6 +342,9 @@
         }
     }
 
+    /// <summary>Where the export download script is served from: a static web asset of this package.</summary>
+    public const string DownloadModulePath = "./_content/Asdamir.Web/js/asdamir-download.js";
+
     private async Task ExportData()
     {
         try
@@ -351,7 +354,9 @@
                 WriteIndented = true
             });
 
-            await JS.InvokeVoidAsync("enterpriseUtils.downloadFile",
+            // The package's own download module: imported on the click, so a host adds no script tag.
+            await using var module = await JS.InvokeAsync<IJSObjectReference>("import", DownloadModulePath);
+            await module.InvokeVoidAsync("downloadText",
                 $"retry-events-{DateTime.Now:yyyyMMdd-HHmmss}.json",
                 jsonData,
                 "application/json");

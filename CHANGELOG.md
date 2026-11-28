@@ -18,8 +18,8 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Core` | `2.0.1` | — |
 | `Asdamir.Data` | `2.0.1` | — |
 | `Asdamir.Payments` | `1.3.1` | — |
-| `Asdamir.Tools` | `2.1.1` | — |
-| `Asdamir.Web` | `2.3.1` | — |
+| `Asdamir.Tools` | `2.1.1` | `2.1.2` built, pending publish |
+| `Asdamir.Web` | `2.3.1` | `2.4.0` built, pending publish |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -30,6 +30,33 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
+
+## [Web 2.4.0 · Tools 2.1.2] — 2026-11-28 — *pending publish* — the signature pad works
+
+### Fixed
+- **`AsdamirSignaturePad` could not be drawn on, and every one of its buttons threw.** The component called
+  twelve functions on a `window.enterpriseUtils` object that no script — in the package or in any host —
+  defined. It now imports its own module, `_content/Asdamir.Web/js/asdamir-signature.js`, so a host needs no
+  script tag and it runs under an enforced `script-src 'self'`. What that module does: drawing with mouse,
+  pen or touch; exact undo / redo; clear; templates; **PNG**, **SVG** (one vector path per stroke) and
+  **PDF** (one A4 page, with the signer details printed beneath the signature) export. The drawing now
+  survives the fullscreen toggle, the stroke counter after loading a template is the real count (it was a
+  hardcoded 10), and the *Save* / *Validate & Save* confirm buttons enable as the name is typed (they used
+  to need a click elsewhere first). The canvas no longer sends every mouse and touch move to the server.
+- **`AsdamirRetryMonitor` → Export** and **`SecurityDashboard` → Export** threw for the same reason (a
+  window global nothing loaded; the dashboard also passed the content and the MIME type in swapped order).
+  Both now download through the package's `asdamir-download.js` module.
+
+### Added
+- `AsdamirSignaturePad.SignatureModulePath` and `AsdamirRetryMonitor.DownloadModulePath` (the module
+  addresses), and `IAsyncDisposable` on the signature pad (detaches the script and releases the module).
+
+### Known limits (documented, not fixed here)
+- `Chart`, `BarcodeScanner` and `OCR` still call script the host page must load, and `Chart` needs Chart.js
+  served from your own origin. `docs/ui-components.md` now says so instead of presenting them as ready.
+
+### Tools 2.1.2
+- Generated apps pin `Asdamir.Web` 2.4.0. No command or template behaviour changed.
 
 ## [Core 2.0.1 · Data 2.0.1 · Web 2.3.1 · Payments 1.3.1 · Tools 2.1.1] — 2026-11-27 — published 2026-11-28 — dependency refresh
 

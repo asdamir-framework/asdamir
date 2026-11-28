@@ -239,7 +239,11 @@
 
             var fileName = $"security-report-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
             
-            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "application/json", json);
+            // The package's own download module (imported on the click). This used to call a window
+            // global the package never loaded — and with the content and MIME type swapped.
+            await using var module = await JSRuntime.InvokeAsync<IJSObjectReference>(
+                "import", "./_content/Asdamir.Web/js/asdamir-download.js");
+            await module.InvokeVoidAsync("downloadText", fileName, json, "application/json");
         }
         catch (Exception ex)
         {

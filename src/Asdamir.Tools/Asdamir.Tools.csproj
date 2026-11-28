@@ -55,7 +55,7 @@
          a generated register script that marks the app as centrally managed (no sync push). Additive. -->
     <!-- 2.1.1 (PATCH): the generated-app package pins follow the framework's refreshed dependencies
          (Microsoft.* 10.0.15, OpenTelemetry 1.21.0, SqlClient 6.1.8, Microsoft.OpenApi 2.13.1). -->
-    <Version>2.1.1</Version>
+    <Version>2.1.2</Version>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Description>Code generator and scaffolding tool for the Asdamir stack. Generates entity/DTO/repository/service/controller/test/migration sets that follow the framework's audited conventions out of the box.</Description>
     <PackageTags>cli;scaffolding;codegen;dotnet-tool;framework</PackageTags>
@@ -64,7 +64,7 @@
          until now, so a consumer reading the listing could not learn that the version they are pinned to has
          a known defect. It exists from 1.5.1 on; keep it to the CORRECTION a consumer must act on, not a
          feature list — the full entry lives in CHANGELOG.md. -->
-    <PackageReleaseNotes>2.1.1 — Generated apps now pin the refreshed dependency set (Microsoft.* 10.0.15, OpenTelemetry 1.21.0, Microsoft.Data.SqlClient 6.1.8, Microsoft.OpenApi 2.13.1) and Asdamir.Core/Data 2.0.1, Web 2.3.1. No command or template behaviour changed. 2.1.0: `asdamir secrets check-gateways` proves every managed app's Gateway trusts a new signing key BEFORE the control plane switches to it (read-only; exit 0 only when all accept). The documented procedure for moving off the shared `Jwt:Key` changed with it: pin the new public key on each Gateway at step 1 (`Jwt:PublicKeyPem`), not `Jwt:JwksUrl` — see docs/secret-rotation.md. The generated `register_&lt;app&gt;.sql` now registers the app as centrally managed, so the control plane stops pushing localization/config edits to a Gateway that has no receiver. 2.0.0 notes (breaking for generated apps: Core/Data 2.0, no shared `Jwt:Key`, no default tenant) are in CHANGELOG.md.</PackageReleaseNotes>
+    <PackageReleaseNotes>2.1.2 — Generated apps pin Asdamir.Web 2.4.0 (a working signature pad and export downloads; see CHANGELOG.md). No command or template behaviour changed. 2.1.1: Generated apps now pin the refreshed dependency set (Microsoft.* 10.0.15, OpenTelemetry 1.21.0, Microsoft.Data.SqlClient 6.1.8, Microsoft.OpenApi 2.13.1) and Asdamir.Core/Data 2.0.1, Web 2.3.1. No command or template behaviour changed. 2.1.0: `asdamir secrets check-gateways` proves every managed app's Gateway trusts a new signing key BEFORE the control plane switches to it (read-only; exit 0 only when all accept). The documented procedure for moving off the shared `Jwt:Key` changed with it: pin the new public key on each Gateway at step 1 (`Jwt:PublicKeyPem`), not `Jwt:JwksUrl` — see docs/secret-rotation.md. The generated `register_&lt;app&gt;.sql` now registers the app as centrally managed, so the control plane stops pushing localization/config edits to a Gateway that has no receiver. 2.0.0 notes (breaking for generated apps: Core/Data 2.0, no shared `Jwt:Key`, no default tenant) are in CHANGELOG.md.</PackageReleaseNotes>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

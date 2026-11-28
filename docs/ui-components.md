@@ -26,14 +26,14 @@ In `_Imports.razor`:
 |---|---|
 | `DataGrid` | Enterprise grid: sorting, paging, deterministic column templates, CSP-clean JS module |
 | `Dialog` | Modal dialogs and confirmations (FluentUI) |
-| `Chart` | Chart.js charts via a typed ES module |
+| `Chart` | Chart.js charts — **the host must load the chart script** (see [Components that still need host script](#components-that-still-need-host-script)) |
 | `Notification` | Toast / inline notifications |
 | `ContentCard` | Consistent card/section layout |
 | `DataExporter` | Export grids to **Excel** (ClosedXML), **PDF** (QuestPDF) and **CSV** |
 | `IntPhone` | International phone input (libphonenumber-validated) |
-| `BarcodeScanner` | Camera barcode scanning (Quagga) |
-| `OCR` | In-browser OCR (Tesseract) |
-| `SignaturePad` | Captures a signature image |
+| `BarcodeScanner` | Camera barcode scanning (Quagga) — **the host must load its script** (see below) |
+| `OCR` | In-browser OCR (Tesseract) — **the host must load its script** (see below) |
+| `SignaturePad` | Draw a signature with mouse, pen or finger; undo/redo, templates, PNG / SVG / PDF export — self-contained (see [Signature pad](#signature-pad-asdamirsignaturepad)) |
 | `FilePicker` | General-purpose file picker: drop zone with native drag & drop (no JS interop), `Accept`/`MaxFileSize` gates, hands the `IBrowserFile` to the caller |
 | `AsdamirTextInput` | **Isolation** text field — native `<input>` + design tokens, no FluentUI dependency; `InputBase<string?>` form integration, typing/paste character filter, `MaxLength`, `InputType` |
 | `AsdamirNumberInput<T>` | **Isolation** numeric field — culture-aware `type="text"` entry (`decimal`/`int`/`long`), no FluentUI dependency; `ToEven` rounding, `Min`/`Max`, wheel-safe |
@@ -168,6 +168,29 @@ The host is FluentUI-free, so it works inside a Blazor Web App interactive islan
 ### Grid export, copy and print (`AsdamirGrid`)
 
 `AsdamirGrid`'s Copy / Print / Download actions load the package's own ES module, `_content/Asdamir.Web/js/asdamir-grid.js`, on first use (an export click — never at render). A host therefore needs **no script tag and no global functions** for the grid; the module is a real file served under `script-src 'self'`, so it works under an enforced CSP. The other package scripts live beside it under `_content/Asdamir.Web/js/` — including `auth-guard.js`, the back-button guard imported by `AuthenticationGuard`.
+
+### Signature pad (`AsdamirSignaturePad`)
+
+```razor
+<AsdamirSignaturePad OnSignatureValidated="OnSigned" />
+
+@code {
+    private void OnSigned(AsdamirSignaturePad.SignatureValidationResult r)
+    {
+        // r.SignerName, r.SignerTitle, r.SignerOrganization, r.SignatureDate, r.Purpose, r.StrokeCount
+    }
+}
+```
+
+The pad draws with mouse, pen or touch and keeps the signature as **strokes**, not pixels: undo and redo are exact, the SVG export is real vector paths, and the drawing survives the fullscreen toggle. **PNG** and **SVG** export the signature alone on a white background; **PDF** is a one-page A4 document with the signature and, when filled in, the signer / title / organization / date / purpose lines beneath it (rendered by the browser, so non-Latin names come out right). *Validate & Save* asks for the signer's details, downloads that PDF and raises `OnSignatureValidated`. Templates are stored in the browser's `localStorage` — they are a per-browser convenience, not server data.
+
+Like the grid, the pad imports its own module — `_content/Asdamir.Web/js/asdamir-signature.js` — so a host needs **no script tag**, and it runs under an enforced `script-src 'self'`. `AsdamirRetryMonitor`'s and `SecurityDashboard`'s export buttons use the same mechanism (`asdamir-download.js`).
+
+> A drawn signature is an image of a gesture. It is **not** an electronic signature in the legal sense — nothing here binds it to a document or proves who drew it. Use it where a visual acknowledgement is enough.
+
+### Components that still need host script
+
+`Chart`, `BarcodeScanner` and `OCR` are **not self-contained yet**: they call browser functions (`fluentCharts.*`, `BarcodeReader.*`, `OCRComponent.*`) that live in scripts under `_content/Asdamir.Web/js/` which the components do not load themselves, and `Chart` additionally expects Chart.js to be present on the page (the package does not bundle it). On a page that has not loaded those scripts the component renders and then fails on first use. Under a strict script policy a CDN copy of Chart.js is blocked, so it must be served from your own origin. Until these are moved onto the import-your-own-module pattern above, treat them as components that need page-level setup.
 
 ### CSV export and formula injection
 
