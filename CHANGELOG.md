@@ -19,7 +19,7 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Data` | `2.0.1` | — |
 | `Asdamir.Payments` | `1.3.1` | — |
 | `Asdamir.Tools` | `2.1.1` | `2.1.2` built, pending publish |
-| `Asdamir.Web` | `2.3.1` | `2.4.0` built, pending publish |
+| `Asdamir.Web` | `2.4.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -31,7 +31,7 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Web 2.4.0 · Tools 2.1.2] — 2026-11-28 — *pending publish* — the signature pad works
+## [Web 2.4.0 · Tools 2.1.2] — 2026-11-28 — Web published 2026-11-28, Tools *pending publish* — the signature pad works
 
 ### Fixed
 - **`AsdamirSignaturePad` could not be drawn on, and every one of its buttons threw.** The component called
