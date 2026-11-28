@@ -71,6 +71,9 @@ Auth flags work like `db apply`: `--connection "<connstr>"` (wins over the parts
   new ciphertext under the new key with `asdamir secrets encrypt` and paste it in.
 - **Managed apps' own encrypted config** in their own databases: run `rotate-key` against each app's DB
   too if it stores `IsEncrypted=1` values (the column/table names are the same).
+- **Sign-in codes that are waiting to be entered**: a two-factor code is stored as a digest keyed by
+  `Security:EncryptionKey`, so the codes open at the moment the key changes stop verifying. Nothing needs
+  re-encrypting — an affected user requests a new code.
 
 ---
 
