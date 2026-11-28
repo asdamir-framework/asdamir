@@ -2086,6 +2086,9 @@ safe to re-run. If a row can't be decrypted with the old key (and isn't already 
   new ciphertext under the new key with <code>asdamir secrets encrypt</code> and paste it in.</li>
 <li><strong>Managed apps' own encrypted config</strong> in their own databases: run <code>rotate-key</code> against each app's DB
   too if it stores <code>IsEncrypted=1</code> values (the column/table names are the same).</li>
+<li><strong>Sign-in codes that are waiting to be entered</strong>: a two-factor code is stored as a digest keyed by
+  <code>Security:EncryptionKey</code>, so the codes open at the moment the key changes stop verifying. Nothing needs
+  re-encrypting — an affected user requests a new code.</li>
 </ul>
 <hr />
 <h2 id="producing-an-encrypted-value-secrets-encrypt">Producing an encrypted value (<code>secrets encrypt</code>)<a class="headerlink" href="#producing-an-encrypted-value-secrets-encrypt" title="Permanent link">&para;</a></h2>

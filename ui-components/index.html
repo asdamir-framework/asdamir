@@ -1412,6 +1412,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#signature-pad-asdamirsignaturepad" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature pad (AsdamirSignaturePad)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#charts-asdamirchart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Charts (AsdamirChart)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#components-that-still-need-host-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components that still need host script
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#csv-export-and-formula-injection" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1917,6 +1950,39 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#signature-pad-asdamirsignaturepad" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature pad (AsdamirSignaturePad)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#charts-asdamirchart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Charts (AsdamirChart)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#components-that-still-need-host-script" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Components that still need host script
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#csv-export-and-formula-injection" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2061,7 +2127,7 @@
 </tr>
 <tr>
 <td><code>Chart</code></td>
-<td>Chart.js charts via a typed ES module</td>
+<td>Line / bar / area / pie / doughnut / scatter charts drawn with the bundled Chart.js — self-contained (see <a href="#charts-asdamirchart">Charts</a>)</td>
 </tr>
 <tr>
 <td><code>Notification</code></td>
@@ -2081,15 +2147,15 @@
 </tr>
 <tr>
 <td><code>BarcodeScanner</code></td>
-<td>Camera barcode scanning (Quagga)</td>
+<td>Camera barcode scanning (Quagga) — <strong>the host must load its script</strong> (see below)</td>
 </tr>
 <tr>
 <td><code>OCR</code></td>
-<td>In-browser OCR (Tesseract)</td>
+<td>In-browser OCR (Tesseract) — <strong>the host must load its script</strong> (see below)</td>
 </tr>
 <tr>
 <td><code>SignaturePad</code></td>
-<td>Captures a signature image</td>
+<td>Draw a signature with mouse, pen or finger; undo/redo, templates, PNG / SVG / PDF export — self-contained (see <a href="#signature-pad-asdamirsignaturepad">Signature pad</a>)</td>
 </tr>
 <tr>
 <td><code>FilePicker</code></td>
@@ -2320,6 +2386,38 @@
 <p><strong>Accessibility.</strong> An <strong>error</strong> toast is rendered with <code>role="alert"</code> (assertive — a screen reader interrupts to announce it); success and info toasts are <code>role="status"</code> (polite). <code>AsdamirModal</code> is a labelled dialog (<code>role="dialog"</code>, <code>aria-modal</code>, <code>aria-labelledby</code> its title): it <strong>takes focus when it opens</strong> and <strong>Escape closes it</strong>, through the same path as the ✕ button and the backdrop click.</p>
 <h3 id="grid-export-copy-and-print-asdamirgrid">Grid export, copy and print (<code>AsdamirGrid</code>)<a class="headerlink" href="#grid-export-copy-and-print-asdamirgrid" title="Permanent link">&para;</a></h3>
 <p><code>AsdamirGrid</code>'s Copy / Print / Download actions load the package's own ES module, <code>_content/Asdamir.Web/js/asdamir-grid.js</code>, on first use (an export click — never at render). A host therefore needs <strong>no script tag and no global functions</strong> for the grid; the module is a real file served under <code>script-src 'self'</code>, so it works under an enforced CSP. The other package scripts live beside it under <code>_content/Asdamir.Web/js/</code> — including <code>auth-guard.js</code>, the back-button guard imported by <code>AuthenticationGuard</code>.</p>
+<h3 id="signature-pad-asdamirsignaturepad">Signature pad (<code>AsdamirSignaturePad</code>)<a class="headerlink" href="#signature-pad-asdamirsignaturepad" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>&lt;AsdamirSignaturePad OnSignatureValidated=&quot;OnSigned&quot; /&gt;
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>@code {
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    private void OnSigned(AsdamirSignaturePad.SignatureValidationResult r)
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>    {
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>        // r.SignerName, r.SignerTitle, r.SignerOrganization, r.SignatureDate, r.Purpose, r.StrokeCount
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    }
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>}
+</code></pre></div>
+<p>The pad draws with mouse, pen or touch and keeps the signature as <strong>strokes</strong>, not pixels: undo and redo are exact, the SVG export is real vector paths, and the drawing survives the fullscreen toggle. <strong>PNG</strong> and <strong>SVG</strong> export the signature alone on a white background; <strong>PDF</strong> is a one-page A4 document with the signature and, when filled in, the signer / title / organization / date / purpose lines beneath it (rendered by the browser, so non-Latin names come out right). <em>Validate &amp; Save</em> asks for the signer's details, downloads that PDF and raises <code>OnSignatureValidated</code>. Templates are stored in the browser's <code>localStorage</code> — they are a per-browser convenience, not server data.</p>
+<p>Like the grid, the pad imports its own module — <code>_content/Asdamir.Web/js/asdamir-signature.js</code> — so a host needs <strong>no script tag</strong>, and it runs under an enforced <code>script-src 'self'</code>. <code>AsdamirRetryMonitor</code>'s and <code>SecurityDashboard</code>'s export buttons use the same mechanism (<code>asdamir-download.js</code>).</p>
+<blockquote>
+<p>A drawn signature is an image of a gesture. It is <strong>not</strong> an electronic signature in the legal sense — nothing here binds it to a document or proves who drew it. Use it where a visual acknowledgement is enough.</p>
+</blockquote>
+<h3 id="charts-asdamirchart">Charts (<code>AsdamirChart</code>)<a class="headerlink" href="#charts-asdamirchart" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>&lt;AsdamirChart TItem=&quot;Sale&quot; Series=&quot;_series&quot; Title=&quot;Sales&quot; Height=&quot;320px&quot;
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>              Options=&quot;@(new AsdamirChart&lt;Sale&gt;.ChartOptions { DefaultType = AsdamirChart&lt;Sale&gt;.ChartType.Bar })&quot; /&gt;
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>@code {
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>    private sealed record Sale(string Month, double Amount);
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a>    private readonly List&lt;AsdamirChart&lt;Sale&gt;.ChartSeries&lt;Sale&gt;&gt; _series =
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a>    [
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a>        new() { Name = &quot;Revenue&quot;, Data = [new(&quot;Jan&quot;, 120), new(&quot;Feb&quot;, 340)], XSelector = s =&gt; s.Month, YSelector = s =&gt; s.Amount },
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a>    ];
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>}
+</code></pre></div>
+<p>The package <strong>bundles Chart.js</strong> (v4.4.9, MIT — see <code>_content/Asdamir.Web/js/THIRD-PARTY-NOTICES.txt</code>) and the component loads it through its own module, <code>_content/Asdamir.Web/js/asdamir-chart.js</code>, from your application's origin. A host needs <strong>no script tag and no CDN allowance</strong>, and it works under an enforced <code>script-src 'self'</code>. If the library cannot be loaded the component shows an error note with a <em>Retry</em> button rather than an empty box.</p>
+<p><strong>Date axes.</strong> With <code>UseTimeScale = true</code> the X values are sent as labels formatted with <code>DateFormat</code> (default <code>MMM dd</code>, current culture) on a category axis — evenly spaced points, in the order given. A proportional time axis needs a Chart.js date-adapter library, which the package does not carry.</p>
+<h3 id="components-that-still-need-host-script">Components that still need host script<a class="headerlink" href="#components-that-still-need-host-script" title="Permanent link">&para;</a></h3>
+<p><code>BarcodeScanner</code> and <code>OCR</code> are <strong>not self-contained yet</strong>: they call browser functions (<code>BarcodeReader.*</code>, <code>OCRComponent.*</code>) that live in scripts under <code>_content/Asdamir.Web/js/</code> which the components do not load themselves. On a page that has not loaded those scripts the component renders and then fails on first use. Until they are moved onto the import-your-own-module pattern above, treat them as components that need page-level setup.</p>
 <h3 id="csv-export-and-formula-injection">CSV export and formula injection<a class="headerlink" href="#csv-export-and-formula-injection" title="Permanent link">&para;</a></h3>
 <p>CSV produced by <code>IExportService</code> (and the grid's CSV download) neutralises cells a spreadsheet would evaluate as a formula: a <strong>text</strong> cell starting with <code>=</code>, <code>+</code>, <code>-</code>, <code>@</code>, TAB or CR is prefixed with a single quote (<code>'</code>), which makes Excel, LibreOffice and Google Sheets treat it as text. Two things are deliberately left alone: typed numeric values, and text made up only of an optional sign, digits, <code>.</code>/<code>,</code> separators and spaces (<code>-12.50</code>, <code>+90 532 123 45 67</code>) — prefixing those would deface every negative amount and phone number in an export.</p>
 <h2 id="framework-ui-components-fluentui-isolation-inputs">Framework UI Components (FluentUI-isolation inputs)<a class="headerlink" href="#framework-ui-components-fluentui-isolation-inputs" title="Permanent link">&para;</a></h2>
@@ -2398,11 +2496,11 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>&lt;AsdamirTextInput @bind-Value=&quot;model.Code&quot;
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>                  Label=&quot;@L[&quot;Field.Order.Code&quot;]&quot;
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>                  MaxLength=&quot;12&quot;
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>                  AllowedCharacter=&quot;ch =&gt; char.IsLetterOrDigit(ch)&quot;
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>                  autocomplete=&quot;off&quot; /&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>&lt;AsdamirTextInput @bind-Value=&quot;model.Code&quot;
+<a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>                  Label=&quot;@L[&quot;Field.Order.Code&quot;]&quot;
+<a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>                  MaxLength=&quot;12&quot;
+<a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>                  AllowedCharacter=&quot;ch =&gt; char.IsLetterOrDigit(ch)&quot;
+<a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a>                  autocomplete=&quot;off&quot; /&gt;
 </code></pre></div>
 <h3 id="asdamirnumberinputtvalue"><code>AsdamirNumberInput&lt;TValue&gt;</code><a class="headerlink" href="#asdamirnumberinputtvalue" title="Permanent link">&para;</a></h3>
 <p><code>TValue</code> is constrained to <code>decimal</code> / <code>int</code> / <code>long</code> (nullable variants allowed). <strong><code>double</code>/<code>float</code> are rejected at runtime</strong> with a clear <code>NotSupportedException</code> — binary floating point cannot represent decimal money exactly, and exact decimal capture is the whole point of a numeric entry field.</p>
@@ -2490,9 +2588,9 @@
 </tr>
 </tbody>
 </table>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>&lt;AsdamirNumberInput TValue=&quot;decimal&quot; @bind-Value=&quot;model.UnitPrice&quot;
-<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>                    Label=&quot;@L[&quot;Field.OrderItem.UnitPrice&quot;]&quot;
-<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a>                    Decimals=&quot;2&quot; Min=&quot;0&quot; MaxIntegerDigits=&quot;9&quot; /&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>&lt;AsdamirNumberInput TValue=&quot;decimal&quot; @bind-Value=&quot;model.UnitPrice&quot;
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>                    Label=&quot;@L[&quot;Field.OrderItem.UnitPrice&quot;]&quot;
+<a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>                    Decimals=&quot;2&quot; Min=&quot;0&quot; MaxIntegerDigits=&quot;9&quot; /&gt;
 </code></pre></div>
 <p><strong>Why <code>type="text"</code> + <code>inputmode="decimal"</code>, NOT <code>type="number"</code>.</strong> A native <code>type="number"</code> input (1) reinterprets the decimal separator per the <strong>browser's</strong> locale, not the app culture — a <code>tr-TR</code> user typing <code>1234,56</code> against an <code>en-US</code> browser silently loses the fraction; (2) ignores <code>maxlength</code>; (3) lets the <strong>mouse wheel</strong> change the value; (4) accepts <code>e</code>/<code>+</code>/<code>-</code> and scientific notation. <code>AsdamirNumberInput</code> instead uses <code>type="text"</code> + <code>inputmode="decimal"</code> (mobile numeric keypad) and a controlled, <strong>culture-aware</strong> parse/format we own: the decimal separator comes from <code>CultureInfo.CurrentCulture.NumberFormat</code>, the group separator is tolerated on parse, and the wheel is neutralized with Blazor's <code>@onwheel:preventDefault</code> (an attribute directive, not inline JS — no CSP concern). Filtering covers <strong>both</strong> typing and paste/IME so a pasted <code>$1,299.99</code> (or an IME commit) is sanitized the same as keystrokes.</p>
 <p><strong>Why these are not FluentUI wrappers (isolation).</strong> Both components carry <strong>zero</strong> <code>Microsoft.FluentUI.*</code> references — they render a native <code>&lt;input&gt;</code> and read only the shared <code>--asd-*</code> / Fluent-2 design tokens. The goal is to let consumer code (generated apps, AppManagement pages) bind to a framework field <strong>without</strong> taking a dependency on the FluentUI component API, so the FluentUI surface can evolve (or be swapped) behind the framework boundary without touching every page. Visually they sit alongside the FluentUI fields unchanged: same tokens, same focus ring/hover, same error treatment, same label alignment.</p>

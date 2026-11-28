@@ -916,6 +916,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#encrypted-values-isencrypted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Encrypted values (IsEncrypted)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1705,6 +1716,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#encrypted-values-isencrypted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Encrypted values (IsEncrypted)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1823,6 +1845,11 @@ change applies without redeploy) — see <a href="../authentication/">Authentica
 <td>Keys a database row can <strong>never</strong> supply — matching rows are dropped and reported through the logger. The DB source outranks appsettings / user-secrets / environment variables, so without this anyone able to write a config row could replace the signing key or a connection string. Matching is case-insensitive; an entry ending in <code>:*</code> protects the whole section. Add host-specific keys, or <code>Clear()</code> the set to opt out.</td>
 </tr>
 <tr>
+<td><code>Encryption</code></td>
+<td><code>null</code></td>
+<td>An <code>IEncryptionService</code>. When set, rows flagged <code>IsEncrypted = 1</code> are <strong>decrypted before they reach <code>IConfiguration</code></strong> (see below). When <code>null</code>, the <code>IsEncrypted</code> column is not read and values load exactly as stored.</td>
+</tr>
+<tr>
 <td><code>RefreshInterval</code></td>
 <td>5 minutes</td>
 <td>How often the table is re-read.</td>
@@ -1836,9 +1863,42 @@ change applies without redeploy) — see <a href="../authentication/">Authentica
 <li><strong>A failed reload keeps the last-known-good values.</strong> A transient database error never replaces good configuration with an empty set; the provider keeps serving what it has, retries on the next interval and logs the failure.</li>
 <li><strong>Logging is attached after <code>Build()</code>.</strong> Configuration is built before the host's logging exists, so call <code>AttachDatabaseConfigurationLogging(...)</code> once the host is built; it reports a load failure that happened in the meantime and any protected keys that were dropped. It is a no-op when no DB-backed provider is registered.</li>
 </ul>
-<blockquote>
-<p><strong><code>IsEncrypted</code> is not acted on by this provider.</strong> A row's <code>Value</code> is loaded exactly as stored — there is no decrypt-on-load (and no encrypt-on-write). Keep real secrets in user-secrets / environment variables, which is also why the bootstrap secrets above are protected keys.</p>
-</blockquote>
+<h3 id="encrypted-values-isencrypted">Encrypted values (<code>IsEncrypted</code>)<a class="headerlink" href="#encrypted-values-isencrypted" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">.</span><span class="n">AddDatabaseConfiguration</span><span class="p">(</span><span class="n">connectionFactory</span><span class="p">,</span><span class="w"> </span><span class="n">o</span><span class="w"> </span><span class="o">=&gt;</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="p">{</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">    </span><span class="n">o</span><span class="p">.</span><span class="n">AppId</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">myAppId</span><span class="p">;</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">    </span><span class="c1">// Built from the configuration available so far (environment / user-secrets):</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">    </span><span class="n">o</span><span class="p">.</span><span class="n">Encryption</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">EncryptionService</span><span class="p">(</span><span class="n">builder</span><span class="p">.</span><span class="n">Configuration</span><span class="p">);</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="p">});</span>
+</code></pre></div>
+<p>With <code>Encryption</code> set, each row flagged <code>IsEncrypted = 1</code> is resolved on load, so every consumer — options binding included — receives the secret itself:</p>
+<table>
+<thead>
+<tr>
+<th>The row holds</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ciphertext (<code>v2:</code> prefix) that decrypts</td>
+<td>the <strong>plaintext</strong> is applied</td>
+</tr>
+<tr>
+<td>ciphertext that does <strong>not</strong> decrypt (wrong key, damaged value)</td>
+<td>the key is <strong>dropped</strong> and logged as an error (<code>CONFIG_SECRET_UNDECRYPTABLE</code>). Ciphertext is never passed on as if it were the secret, and a global row of the same key does not take its place</td>
+</tr>
+<tr>
+<td>a value that is not ciphertext</td>
+<td>applied as stored and logged as a warning — a secret sitting in plaintext</td>
+</tr>
+<tr>
+<td>an empty value</td>
+<td>stays empty (an unconfigured secret); nothing is logged</td>
+</tr>
+</tbody>
+</table>
+<p>A row that is <strong>not</strong> flagged is never decrypted, whatever its value looks like. <code>Security:EncryptionKey</code> itself is a protected key: it must come from the environment or user-secrets, never from the table being read. Produce ciphertext with <code>asdamir secrets encrypt</code>, or let a writer that encrypts do it (the AppManagement console encrypts every value saved as <em>secret</em>). Without <code>Encryption</code> the provider behaves as it always did: no decrypt-on-load.</p>
 <h2 id="layering-precedence">Layering precedence<a class="headerlink" href="#layering-precedence" title="Permanent link">&para;</a></h2>
 <p>Standard .NET precedence applies — later sources win. The database provider sits above static JSON so an operator override takes effect without touching files.</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
