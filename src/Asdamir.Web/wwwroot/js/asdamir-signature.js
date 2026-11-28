@@ -126,6 +126,9 @@ export function init(canvasId, options) {
 
     pads.set(canvasId, pad);
     repaint(pad);
+    // Visible to the page (and to tests): the canvas renders before this module has been fetched, and a
+    // gesture made in that gap reaches a canvas nobody is listening on.
+    canvas.setAttribute("data-asd-signature", "ready");
     return true;
 }
 
@@ -329,5 +332,8 @@ export function dispose(canvasId, keep) {
     pad.canvas.removeEventListener("pointermove", pad.handlers.move);
     pad.canvas.removeEventListener("pointerup", pad.handlers.up);
     pad.canvas.removeEventListener("pointercancel", pad.handlers.up);
-    if (!keep) pads.delete(canvasId);
+    if (!keep) {
+        pads.delete(canvasId);
+        pad.canvas.removeAttribute("data-asd-signature");
+    }
 }

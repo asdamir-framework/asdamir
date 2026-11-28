@@ -83,8 +83,10 @@ public static class ConfigurationBuilderExtensions
             var rows = await connection.QueryAsync<ConfigurationRow>(new CommandDefinition(
                 BuildSql(options), new { appId = options.AppId }, cancellationToken: ct));
 
-            var dict = BuildDictionary(rows, options, out var dropped);
+            var dict = BuildDictionary(rows, options, out var dropped, out var undecryptable, out var plaintextSecrets);
             source.LastDroppedProtectedKeys = dropped;   // reported by the provider once a logger exists
+            source.LastUndecryptableKeys = undecryptable;
+            source.LastPlaintextSecretKeys = plaintextSecrets;
             return dict;
         };
 
@@ -95,15 +97,19 @@ public static class ConfigurationBuilderExtensions
     /// <summary>
     /// The SELECT for the configured scope. Unscoped: no reference to <c>AppId</c> (single-tenant tables may
     /// not have the column). Scoped: own rows + (optionally) global rows, global FIRST so that the
-    /// own-scope row, read later, overwrites it in <see cref="BuildDictionary"/>.
+    /// own-scope row, read later, overwrites it in <c>BuildDictionary</c>.
     /// </summary>
     internal static string BuildSql(DatabaseConfigurationOptions options)
     {
+        // The IsEncrypted column is read only when the host asked for decryption, so a table that predates
+        // the column (or a host that never opted in) is queried exactly as before.
+        var flag = options.Encryption is null ? "" : ", ISNULL(IsEncrypted, 0) AS IsEncrypted";
+
         if (options.AppId is null)
-            return "SELECT CAST(NULL AS UNIQUEIDENTIFIER) AS AppId, [Key], [Value] FROM dbo.AppConfigurations WHERE IsActive = 1 ORDER BY [Key]";
+            return "SELECT CAST(NULL AS UNIQUEIDENTIFIER) AS AppId, [Key], [Value]" + flag + " FROM dbo.AppConfigurations WHERE IsActive = 1 ORDER BY [Key]";
 
         var scope = options.IncludeGlobal ? "(AppId = @appId OR AppId IS NULL)" : "AppId = @appId";
-        return "SELECT AppId, [Key], [Value] FROM dbo.AppConfigurations WHERE IsActive = 1 AND " + scope +
+        return "SELECT AppId, [Key], [Value]" + flag + " FROM dbo.AppConfigurations WHERE IsActive = 1 AND " + scope +
                " ORDER BY CASE WHEN AppId IS NULL THEN 0 ELSE 1 END, [Key]";
     }
 
@@ -115,7 +121,54 @@ public static class ConfigurationBuilderExtensions
     /// </summary>
     internal static Dictionary<string, string?> BuildDictionary(
         IEnumerable<ConfigurationRow> rows, DatabaseConfigurationOptions options, out IReadOnlyList<string> droppedProtectedKeys)
+        => BuildDictionary(rows, options, out droppedProtectedKeys, out _, out _);
+
+    /// <summary>The ciphertext prefix written by <c>EncryptionService</c> (AES-256-GCM).</summary>
+    private const string CiphertextPrefix = "v2:";
+
+    /// <summary>
+    /// As the overload above, and additionally resolves rows flagged <c>IsEncrypted</c> when
+    /// <see cref="DatabaseConfigurationOptions.Encryption"/> is set: decrypted, dropped
+    /// (<paramref name="undecryptableKeys"/>) or applied as stored (<paramref name="plaintextSecretKeys"/>)
+    /// — see that option for the rule. A dropped row does not fall back to a global row of the same key:
+    /// the application's own secret was meant, and a different one must not silently take its place.
+    /// </summary>
+    internal static Dictionary<string, string?> BuildDictionary(
+        IEnumerable<ConfigurationRow> rows, DatabaseConfigurationOptions options,
+        out IReadOnlyList<string> droppedProtectedKeys,
+        out IReadOnlyList<string> undecryptableKeys,
+        out IReadOnlyList<string> plaintextSecretKeys)
     {
+        var undecryptable = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+        var plaintextSecrets = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Returns false when the row must not be applied at all.
+        bool Resolve(ConfigurationRow row, out string? value)
+        {
+            value = row.Value;
+            if (options.Encryption is null || !row.IsEncrypted || string.IsNullOrEmpty(row.Value)) return true;
+
+            // The prefix decides, not IEncryptionService.IsEncrypted: that also answers "yes" for any
+            // base64-looking text (the legacy format), which is what most API keys look like.
+            if (!row.Value.StartsWith(CiphertextPrefix, StringComparison.Ordinal))
+            {
+                plaintextSecrets.Add(row.Key);
+                return true;
+            }
+
+            try
+            {
+                value = options.Encryption.Decrypt(row.Value);
+                return true;
+            }
+            catch (Exception)
+            {
+                undecryptable.Add(row.Key);
+                value = null;
+                return false;
+            }
+        }
+
         var config = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         var fromOwnScope = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var dropped = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -131,16 +184,20 @@ public static class ConfigurationBuilderExtensions
                 if (!isOwn && !(isGlobal && options.IncludeGlobal)) continue;   // another application's row
                 if (options.IsProtected(row.Key)) { dropped.Add(row.Key); continue; }
                 if (isGlobal && fromOwnScope.Contains(row.Key)) continue;       // own scope already won
-                config[row.Key] = row.Value;
-                if (isOwn) fromOwnScope.Add(row.Key);
+                if (isOwn) fromOwnScope.Add(row.Key);                           // owns the key even if dropped below
+                if (!Resolve(row, out var scopedValue)) { config.Remove(row.Key); continue; }
+                config[row.Key] = scopedValue;
                 continue;
             }
 
             if (options.IsProtected(row.Key)) { dropped.Add(row.Key); continue; }
-            config[row.Key] = row.Value;
+            if (!Resolve(row, out var value)) { config.Remove(row.Key); continue; }
+            config[row.Key] = value;
         }
 
         droppedProtectedKeys = dropped.ToArray();
+        undecryptableKeys = undecryptable.ToArray();
+        plaintextSecretKeys = plaintextSecrets.ToArray();
         return config;
     }
 
@@ -171,5 +228,6 @@ public static class ConfigurationBuilderExtensions
         public Guid? AppId { get; set; }
         public string Key { get; set; } = string.Empty;
         public string? Value { get; set; }
+        public bool IsEncrypted { get; set; }
     }
 }

@@ -44,6 +44,19 @@ public sealed class DynamicConfigurationSource : IConfigurationSource
     public IReadOnlyList<string> LastDroppedProtectedKeys { get; set; } = Array.Empty<string>();
 
     /// <summary>
+    /// Keys the most recent load DROPPED because their value is flagged encrypted, carries the ciphertext
+    /// prefix and could not be decrypted (see <see cref="DatabaseConfigurationOptions.Encryption"/>).
+    /// Set by the loader; reported by the provider as an error.
+    /// </summary>
+    public IReadOnlyList<string> LastUndecryptableKeys { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Keys the most recent load found flagged encrypted while holding a value that is not ciphertext.
+    /// They are applied as stored. Set by the loader; reported by the provider as a warning.
+    /// </summary>
+    public IReadOnlyList<string> LastPlaintextSecretKeys { get; set; } = Array.Empty<string>();
+
+    /// <summary>
     /// Builds the configuration provider with optional logger support.
     /// </summary>
     /// <param name="builder">The configuration builder.</param>

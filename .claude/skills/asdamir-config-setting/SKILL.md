@@ -27,8 +27,11 @@ scoped by `AppId`** — a generated app does **NOT** keep its own `AppConfigurat
   does for localization — seed a console tunable at SelfApp.
 - **Secrets on the App Config API:** a row flagged `IsSecret` is returned with an **empty** `Value`; an upsert
   with `IsSecret=true` and an empty value **keeps the stored value** (so re-saving the masked row does not wipe
-  it). **`IsEncrypted` is NOT implemented on this path** — there is no encrypt-on-write and the DB configuration
-  provider does not decrypt on load; do not rely on it.
+  it). **A secret is stored encrypted:** the console API encrypts the value on save (`v2:` AES-256-GCM under
+  `Security:EncryptionKey`) and the row is flagged `IsEncrypted`; the DB configuration provider decrypts flagged
+  rows on load **when the host sets `DatabaseConfigurationOptions.Encryption`** (AppManagement does). A value
+  that does not decrypt is dropped and logged — never bound as ciphertext. Seed a secret key **empty** with
+  `IsEncrypted=1`; never put a real secret in a migration.
 - **A generated app** does **NOT** read `AppConfigurations` from its own DB (it has none) and does **NOT** call
   `AddDatabaseConfiguration` against its own DB. Its settings live in AsdamirVault **AppId-scoped** and are
   reached **through AppManagement's API** — exactly like menus/localization (the Gateway proxies

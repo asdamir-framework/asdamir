@@ -26,7 +26,7 @@ In `_Imports.razor`:
 |---|---|
 | `DataGrid` | Enterprise grid: sorting, paging, deterministic column templates, CSP-clean JS module |
 | `Dialog` | Modal dialogs and confirmations (FluentUI) |
-| `Chart` | Chart.js charts — **the host must load the chart script** (see [Components that still need host script](#components-that-still-need-host-script)) |
+| `Chart` | Line / bar / area / pie / doughnut / scatter charts drawn with the bundled Chart.js — self-contained (see [Charts](#charts-asdamirchart)) |
 | `Notification` | Toast / inline notifications |
 | `ContentCard` | Consistent card/section layout |
 | `DataExporter` | Export grids to **Excel** (ClosedXML), **PDF** (QuestPDF) and **CSV** |
@@ -188,9 +188,29 @@ Like the grid, the pad imports its own module — `_content/Asdamir.Web/js/asdam
 
 > A drawn signature is an image of a gesture. It is **not** an electronic signature in the legal sense — nothing here binds it to a document or proves who drew it. Use it where a visual acknowledgement is enough.
 
+### Charts (`AsdamirChart`)
+
+```razor
+<AsdamirChart TItem="Sale" Series="_series" Title="Sales" Height="320px"
+              Options="@(new AsdamirChart<Sale>.ChartOptions { DefaultType = AsdamirChart<Sale>.ChartType.Bar })" />
+
+@code {
+    private sealed record Sale(string Month, double Amount);
+
+    private readonly List<AsdamirChart<Sale>.ChartSeries<Sale>> _series =
+    [
+        new() { Name = "Revenue", Data = [new("Jan", 120), new("Feb", 340)], XSelector = s => s.Month, YSelector = s => s.Amount },
+    ];
+}
+```
+
+The package **bundles Chart.js** (v4.4.9, MIT — see `_content/Asdamir.Web/js/THIRD-PARTY-NOTICES.txt`) and the component loads it through its own module, `_content/Asdamir.Web/js/asdamir-chart.js`, from your application's origin. A host needs **no script tag and no CDN allowance**, and it works under an enforced `script-src 'self'`. If the library cannot be loaded the component shows an error note with a *Retry* button rather than an empty box.
+
+**Date axes.** With `UseTimeScale = true` the X values are sent as labels formatted with `DateFormat` (default `MMM dd`, current culture) on a category axis — evenly spaced points, in the order given. A proportional time axis needs a Chart.js date-adapter library, which the package does not carry.
+
 ### Components that still need host script
 
-`Chart`, `BarcodeScanner` and `OCR` are **not self-contained yet**: they call browser functions (`fluentCharts.*`, `BarcodeReader.*`, `OCRComponent.*`) that live in scripts under `_content/Asdamir.Web/js/` which the components do not load themselves, and `Chart` additionally expects Chart.js to be present on the page (the package does not bundle it). On a page that has not loaded those scripts the component renders and then fails on first use. Under a strict script policy a CDN copy of Chart.js is blocked, so it must be served from your own origin. Until these are moved onto the import-your-own-module pattern above, treat them as components that need page-level setup.
+`BarcodeScanner` and `OCR` are **not self-contained yet**: they call browser functions (`BarcodeReader.*`, `OCRComponent.*`) that live in scripts under `_content/Asdamir.Web/js/` which the components do not load themselves. On a page that has not loaded those scripts the component renders and then fails on first use. Until they are moved onto the import-your-own-module pattern above, treat them as components that need page-level setup.
 
 ### CSV export and formula injection
 

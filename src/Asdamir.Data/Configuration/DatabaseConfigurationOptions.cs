@@ -68,6 +68,24 @@ public sealed class DatabaseConfigurationOptions
     };
 
     /// <summary>
+    /// When set, rows flagged <c>IsEncrypted = 1</c> are decrypted before they reach
+    /// <c>IConfiguration</c>, so every consumer (options binding included) receives the plaintext secret.
+    /// Three cases, decided per row:
+    /// <list type="bullet">
+    /// <item>the value carries the <c>v2:</c> ciphertext prefix and decrypts → the plaintext is applied;</item>
+    /// <item>it carries the prefix and does NOT decrypt (wrong key, damaged value) → the key is
+    /// <b>dropped</b> and reported as an error. Ciphertext is never handed on as if it were the secret;</item>
+    /// <item>it is flagged encrypted but is not ciphertext → applied as it is and reported as a warning
+    /// (a secret sitting in plaintext; saving it again through a writer that encrypts fixes the row).</item>
+    /// </list>
+    /// An empty value is an unconfigured secret and stays empty. When this is <c>null</c> (the default) the
+    /// <c>IsEncrypted</c> column is not read at all and values pass through unchanged, as before.
+    /// Build the service from the configuration available BEFORE this source is added (environment,
+    /// user-secrets): <c>Security:EncryptionKey</c> is a protected key and can never come from the table.
+    /// </summary>
+    public Asdamir.Core.Contracts.IEncryptionService? Encryption { get; set; }
+
+    /// <summary>
     /// Optional logger factory. Configuration is built before the host's logging exists, so this is
     /// usually null at registration time; attach the real one after the host is built with
     /// <see cref="ConfigurationBuilderExtensions.AttachDatabaseConfigurationLogging"/>.

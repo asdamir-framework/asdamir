@@ -16,10 +16,10 @@ sentence that was, when this was written, three releases stale.
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
 | `Asdamir.Core` | `2.0.1` | — |
-| `Asdamir.Data` | `2.0.1` | — |
+| `Asdamir.Data` | `2.0.1` | `2.1.0` built, pending publish |
 | `Asdamir.Payments` | `1.3.1` | — |
 | `Asdamir.Tools` | `2.1.1` | `2.1.2` built, pending publish |
-| `Asdamir.Web` | `2.4.0` | — |
+| `Asdamir.Web` | `2.4.0` | `2.5.0` built, pending publish |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
@@ -31,7 +31,37 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Web 2.4.0 · Tools 2.1.2] — 2026-11-28 — Web published 2026-11-28, Tools *pending publish* — the signature pad works
+## [Data 2.1.0 · Web 2.5.0 · Tools 2.1.2] — 2026-11-28 — *pending publish* — charts work; encrypted configuration values are decrypted
+
+### Fixed
+- **`AsdamirChart` drew nothing unless the host page had been set up by hand.** It called a
+  `window.fluentCharts` object from a script no page loaded, which fetched Chart.js from a CDN — blocked by
+  a strict script policy — while the copy shipped in the package was a 190-byte placeholder. The package now
+  **bundles Chart.js 4.4.9** (MIT; `_content/Asdamir.Web/js/THIRD-PARTY-NOTICES.txt`) and the component
+  loads it from the application's own origin through its own module (`js/asdamir-chart.js`). No script tag,
+  no CDN allowance, works under `script-src 'self'`.
+- **The chart was not drawn on first load.** The first draw was gated on the first render, which happened
+  while the component still reported "loading"; only a later refresh drew it. It now draws as soon as the
+  canvas is on the page, and a refresh or type change redraws the same canvas instead of replacing it.
+- A chart whose library cannot be loaded shows its error note with *Retry* instead of an empty box.
+
+### Changed
+- **`AsdamirChart` date axis (`UseTimeScale`)** is sent as labels formatted with `DateFormat` on a category
+  axis. A Chart.js time axis needs a separate date-adapter library the package does not carry; without one
+  it threw.
+
+### Added
+- **`DatabaseConfigurationOptions.Encryption` (Data 2.1.0).** When set, rows flagged `IsEncrypted = 1` are
+  decrypted before they reach `IConfiguration`, so options binding receives the secret itself. A value that
+  does not decrypt is **dropped** and logged (`CONFIG_SECRET_UNDECRYPTABLE`) — never passed on as
+  ciphertext; a flagged value that is not ciphertext is applied as stored and logged as a warning. Opt-in:
+  without it the provider reads and behaves exactly as before. See `docs/fundamentals/configuration.md`.
+- `AsdamirChart<T>.ChartModulePath`.
+
+### Tools 2.1.2
+- Generated apps pin `Asdamir.Web` 2.5.0 and `Asdamir.Data` 2.1.0. No command or template behaviour changed.
+
+## [Web 2.4.0] — 2026-11-28 — published 2026-11-28 — the signature pad works
 
 ### Fixed
 - **`AsdamirSignaturePad` could not be drawn on, and every one of its buttons threw.** The component called
@@ -52,11 +82,9 @@ commercial customers.
   addresses), and `IAsyncDisposable` on the signature pad (detaches the script and releases the module).
 
 ### Known limits (documented, not fixed here)
-- `Chart`, `BarcodeScanner` and `OCR` still call script the host page must load, and `Chart` needs Chart.js
-  served from your own origin. `docs/ui-components.md` now says so instead of presenting them as ready.
+- `Chart`, `BarcodeScanner` and `OCR` still call script the host page must load (`Chart` is fixed in
+  Web 2.5.0, above). `docs/ui-components.md` now says so instead of presenting them as ready.
 
-### Tools 2.1.2
-- Generated apps pin `Asdamir.Web` 2.4.0. No command or template behaviour changed.
 
 ## [Core 2.0.1 · Data 2.0.1 · Web 2.3.1 · Payments 1.3.1 · Tools 2.1.1] — 2026-11-27 — published 2026-11-28 — dependency refresh
 

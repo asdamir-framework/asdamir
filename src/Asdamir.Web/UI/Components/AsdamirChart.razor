@@ -5,8 +5,8 @@
 
 @*
     Chart — INSPINIA-styled (Asdamir design system). FluentUI-free: header/controls/legend/stats
-    restyled with .asd-* buttons + scoped CSS. The Chart.js (fluentCharts JS) config and interop are
-    unchanged. Dynamic chart height / series colours flow through CSS custom properties.
+    restyled with .asd-* buttons + scoped CSS. Drawing is Chart.js, shipped in this package and loaded
+    by the component's own module (js/asdamir-chart.js) — the host adds no script tag. Dynamic chart height / series colours flow through CSS custom properties.
 *@
 
 @* Chart Types and Options *@
@@ -203,14 +203,31 @@
         await LoadChartData();
     }
 
+    /// <summary>
+    /// Where the chart script is served from: a static web asset of THIS package, which loads the bundled
+    /// Chart.js from the same folder. The component imports it itself, so a host adds no script tag.
+    /// </summary>
+    public const string ChartModulePath = "./_content/Asdamir.Web/js/asdamir-chart.js";
+
+    private IJSObjectReference? _module;
+
+    // Set when a new configuration is waiting to be drawn. Drawing happens after the render that put the
+    // canvas on the page — the only moment the canvas reference is certain to be valid.
+    private bool _drawPending;
+
+    private async ValueTask<IJSObjectReference> ModuleAsync()
+        => _module ??= await JS.InvokeAsync<IJSObjectReference>("import", ChartModulePath);
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || hasError || isLoading) return;
+        if (!_drawPending || hasError || isLoading) return;
+        _drawPending = false;
 
         try
         {
             await RenderChart();
         }
+        catch (JSDisconnectedException) { /* circuit gone */ }
         catch (Exception)
         {
             hasError = true;
@@ -218,26 +235,22 @@
         }
     }
 
-    private async Task LoadChartData()
+    // Builds the configuration and asks for a draw. It is synchronous work: the canvas stays on the page,
+    // so a refresh redraws in place instead of flashing a "loading" note and discarding the canvas.
+    private Task LoadChartData()
     {
-        isLoading = true;
         hasError = false;
-        StateHasChanged();
-
         try
         {
-            await Task.Delay(100); // Simulate loading
-            
             chartData = GenerateChartConfiguration();
-            isLoading = false;
-            StateHasChanged();
+            _drawPending = true;
         }
         catch (Exception)
         {
             hasError = true;
-            isLoading = false;
-            StateHasChanged();
         }
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private object GenerateChartConfiguration()
@@ -305,7 +318,22 @@
         if (!Series.Any()) return Array.Empty<object>();
         
         var firstSeries = Series.First();
-        return firstSeries.Data.Select(d => firstSeries.XSelector(d)).ToArray();
+        return firstSeries.Data.Select(d => FormatLabel(firstSeries.XSelector(d))).ToArray();
+    }
+
+    // A date axis is sent as formatted labels. Chart.js draws a true time axis only with a separate date
+    // adapter library, which this package does not carry; without it a "time" axis throws.
+    private object FormatLabel(object value)
+    {
+        if (Options?.UseTimeScale != true) return value;
+        var format = Options.DateFormat ?? "MMM dd";
+        return value switch
+        {
+            DateTime d => d.ToString(format, System.Globalization.CultureInfo.CurrentCulture),
+            DateTimeOffset d => d.ToString(format, System.Globalization.CultureInfo.CurrentCulture),
+            DateOnly d => d.ToString(format, System.Globalization.CultureInfo.CurrentCulture),
+            _ => value,
+        };
     }
 
     private object[] GetChartDatasets(ChartType chartType)
@@ -337,12 +365,7 @@
             {
                 display = Options?.ShowXAxis != false,
                 grid = new { display = Options?.ShowGrid != false },
-                type = Options?.UseTimeScale == true ? "time" : "category",
-                time = Options?.UseTimeScale == true ? new 
-                { 
-                    unit = "day", 
-                    displayFormats = new { day = Options?.DateFormat ?? "MMM dd" } 
-                } : null,
+                type = "category",
                 title = new
                 {
                     display = !string.IsNullOrWhiteSpace(Options?.XAxisTitle),
@@ -416,7 +439,7 @@
     {
         if (chartData == null) return;
         
-        await JS.InvokeVoidAsync("fluentCharts.render", canvasRef, chartData);
+        await (await ModuleAsync()).InvokeVoidAsync("render", canvasRef, chartData);
     }
 
     private async Task OnChartTypeChangedInternal()
@@ -440,12 +463,7 @@
         try
         {
             await OnRefresh.InvokeAsync();
-            await LoadChartData();
-            
-            if (!hasError)
-            {
-                await RenderChart();
-            }
+            await LoadChartData();   // marks a draw as pending; OnAfterRenderAsync performs it
         }
         finally
         {
@@ -457,15 +475,11 @@
     private async Task RetryLoad()
     {
         await LoadChartData();
-        if (!hasError)
-        {
-            await RenderChart();
-        }
     }
 
     private async Task DownloadChart()
     {
-        await JS.InvokeVoidAsync("fluentCharts.download", canvasRef, $"chart_{DateTime.Now:yyyyMMdd_HHmmss}.png");
+        await (await ModuleAsync()).InvokeVoidAsync("download", canvasRef, $"chart_{DateTime.Now:yyyyMMdd_HHmmss}.png");
     }
 
     private void ToggleFullscreen()
@@ -504,14 +518,15 @@
 
     public async ValueTask DisposeAsync()
     {
-        // Audit fix: tell Chart.js to dispose its instance + listeners so the JS
-        // side doesn't accumulate orphan charts each time the component unmounts.
+        // Destroy the Chart.js instance and its listeners, or each unmount leaves an orphan chart behind.
+        if (_module is null) return;
         try
         {
-            await JS.InvokeVoidAsync("fluentCharts.dispose", canvasRef);
+            await _module.InvokeVoidAsync("dispose", canvasRef);
+            await _module.DisposeAsync();
         }
         catch (JSDisconnectedException) { /* circuit gone, JS side already torn down */ }
-        catch (Microsoft.JSInterop.JSException) { /* function missing in older JS bundle — tolerate */ }
+        catch (Microsoft.JSInterop.JSException) { /* page navigated away mid-dispose */ }
     }
 }
 

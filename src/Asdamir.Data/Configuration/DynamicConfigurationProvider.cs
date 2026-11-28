@@ -100,6 +100,8 @@ public sealed class DynamicConfigurationProvider : ConfigurationProvider, IDispo
                 Data.Count);
         }
         _reportedDroppedKeys = string.Empty;   // re-report through the real logger
+        _reportedUndecryptableKeys = string.Empty;
+        _reportedPlaintextSecretKeys = string.Empty;
         ReportDroppedProtectedKeys();
     }
 
@@ -184,8 +186,13 @@ public sealed class DynamicConfigurationProvider : ConfigurationProvider, IDispo
         _logger.LogError(ex, "{Message} (keeping {KeyCount} last-known-good keys)", message, Data.Count);
     }
 
+    private string _reportedUndecryptableKeys = string.Empty;
+    private string _reportedPlaintextSecretKeys = string.Empty;
+
     private void ReportDroppedProtectedKeys()
     {
+        ReportSecretKeys();
+
         var dropped = _source.LastDroppedProtectedKeys;
         if (dropped.Count == 0) return;
         var signature = string.Join(",", dropped);
@@ -195,6 +202,30 @@ public sealed class DynamicConfigurationProvider : ConfigurationProvider, IDispo
         _logger.LogWarning(
             "DB-backed configuration contains protected keys that were NOT applied (a database row may not override them): {Keys}",
             signature);
+    }
+
+    // Once per distinct set, and only through a real logger — the same discipline as the protected keys.
+    private void ReportSecretKeys()
+    {
+        if (ReferenceEquals(_logger, NullLogger<DynamicConfigurationProvider>.Instance)) return;
+
+        var undecryptable = string.Join(",", _source.LastUndecryptableKeys);
+        if (undecryptable.Length > 0 && undecryptable != _reportedUndecryptableKeys)
+        {
+            _logger.LogError(
+                "DB-backed configuration: encrypted values could NOT be decrypted and were not applied (wrong Security:EncryptionKey, or a damaged value). ErrorKey: {ErrorKey}, Keys: {Keys}",
+                "CONFIG_SECRET_UNDECRYPTABLE", undecryptable);
+        }
+        _reportedUndecryptableKeys = undecryptable;
+
+        var plaintext = string.Join(",", _source.LastPlaintextSecretKeys);
+        if (plaintext.Length > 0 && plaintext != _reportedPlaintextSecretKeys)
+        {
+            _logger.LogWarning(
+                "DB-backed configuration: values flagged encrypted are stored in PLAINTEXT (applied as stored; save them again to encrypt). Keys: {Keys}",
+                plaintext);
+        }
+        _reportedPlaintextSecretKeys = plaintext;
     }
 
     private async Task LoopAsync(bool skipFirstLoad)
