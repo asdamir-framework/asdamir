@@ -18,7 +18,7 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Core` | `2.0.1` | — |
 | `Asdamir.Data` | `2.0.1` | — |
 | `Asdamir.Payments` | `1.3.1` | — |
-| `Asdamir.Tools` | `2.1.0` | `2.1.1` built, pending publish |
+| `Asdamir.Tools` | `2.1.1` | — |
 | `Asdamir.Web` | `2.3.1` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -31,7 +31,7 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Core 2.0.1 · Data 2.0.1 · Web 2.3.1 · Payments 1.3.1 · Tools 2.1.1] — 2026-11-27 — Core/Data/Web/Payments published 2026-11-28, Tools *pending publish* — dependency refresh
+## [Core 2.0.1 · Data 2.0.1 · Web 2.3.1 · Payments 1.3.1 · Tools 2.1.1] — 2026-11-27 — published 2026-11-28 — dependency refresh
 
 No API or behaviour change in any package. Every dependency moves to the newest release inside its current
 major version, and the generated-app package pins move with them.
