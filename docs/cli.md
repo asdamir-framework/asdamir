@@ -20,10 +20,10 @@ dotnet tool install -g Asdamir.Tools
 | Package | Published on nuget.org | Next (in this repo) |
 | --- | --- | --- |
 | `Asdamir.Core` | `2.0.1` | — |
-| `Asdamir.Data` | `2.0.1` | `2.1.0` built, pending publish |
+| `Asdamir.Data` | `2.1.0` | — |
 | `Asdamir.Payments` | `1.3.1` | — |
 | `Asdamir.Tools` | `2.1.1` | `2.1.2` built, pending publish |
-| `Asdamir.Web` | `2.4.0` | `2.5.0` built, pending publish |
+| `Asdamir.Web` | `2.5.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
 not pushed yet. The published column is what a fresh `asdamir new app` pins.*
