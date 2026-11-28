@@ -18,7 +18,7 @@ sentence that was, when this was written, three releases stale.
 | `Asdamir.Core` | `2.0.1` | — |
 | `Asdamir.Data` | `2.1.0` | — |
 | `Asdamir.Payments` | `1.3.1` | — |
-| `Asdamir.Tools` | `2.1.1` | `2.1.2` built, pending publish |
+| `Asdamir.Tools` | `2.1.2` | — |
 | `Asdamir.Web` | `2.5.0` | — |
 
 *A "Next" ahead of the published column is the normal pre-publish state — the version is built here but
@@ -31,7 +31,7 @@ Gateway dev user-secrets + creates the DB + applies migrations; a profile menu +
 AppManagement (the commercial control plane) is not packed to NuGet — it ships as a compiled release for
 commercial customers.
 
-## [Data 2.1.0 · Web 2.5.0 · Tools 2.1.2] — 2026-11-28 — Data and Web published 2026-11-28, Tools 2.1.2 *pending publish* — charts work; encrypted configuration values are decrypted
+## [Data 2.1.0 · Web 2.5.0 · Tools 2.1.2] — 2026-11-28 — published 2026-11-28 — charts work; encrypted configuration values are decrypted
 
 ### Fixed
 - **`AsdamirChart` drew nothing unless the host page had been set up by hand.** It called a

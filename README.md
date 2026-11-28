@@ -31,7 +31,7 @@ Asdamir gives you two things at once:
 
 <!-- published-versions:begin — GENERATED from src/Asdamir.Tools/published-versions.json by
      packaging/sync-published-versions.sh. Do NOT hand-edit: edit the manifest and re-run. -->
-> Status: stable. Open-core packages on nuget.org — `Asdamir.Core` `2.0.1`, `Asdamir.Data` `2.1.0`, `Asdamir.Payments` `1.3.1`, `Asdamir.Tools` `2.1.1`, `Asdamir.Web` `2.5.0`. Production-ready; semantic versioning —
+> Status: stable. Open-core packages on nuget.org — `Asdamir.Core` `2.0.1`, `Asdamir.Data` `2.1.0`, `Asdamir.Payments` `1.3.1`, `Asdamir.Tools` `2.1.2`, `Asdamir.Web` `2.5.0`. Production-ready; semantic versioning —
 > breaking changes bump the major. The production-readiness features below are in place.
 <!-- published-versions:end -->
 
